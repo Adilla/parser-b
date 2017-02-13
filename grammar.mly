@@ -272,14 +272,14 @@ arguments:
 (* EXPRESSIONS *)
 
 fields:
-| id=IDENT MEMBER_OF e=expression { [(id,e)] }
-| id=IDENT MEMBER_OF e=expression COMMA lst=fields { (id,e)::lst }
+| id=IDENT MEMBER_OF e=expression { [(($startpos(id),id),e)] }
+| id=IDENT MEMBER_OF e=expression COMMA lst=fields { (($startpos(id),id),e)::lst }
 
 rec_fields:
 | e=expression { [None,e] }
 | e=expression COMMA lst=rec_fields { (None,e)::lst }
-| id=IDENT MEMBER_OF e=expression { [(Some id,e)] }
-| id=IDENT MEMBER_OF e=expression COMMA lst=rec_fields { (Some id,e)::lst }
+| id=IDENT MEMBER_OF e=expression { [(Some ($startpos(id),id),e)] }
+| id=IDENT MEMBER_OF e=expression COMMA lst=rec_fields { (Some ($startpos(id),id),e)::lst }
 
 expression:
 (* expression_primaire: *)
@@ -338,9 +338,9 @@ expression:
 | Q_UNION ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Q_Union,(List.hd ids,List.tl ids),p,e) }
 | Q_INTER ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Q_Intersection,(List.hd ids,List.tl ids),p,e) }
 (* expression_de_records: *)
-| STRUCT LPAR fields RPAR   { failwith "Not implemented (records)." }
-| REC LPAR rec_fields RPAR  { failwith "Not implemented (records)." }
-| expression SQUOTE IDENT   { failwith "Not implemented (records)." }
+| STRUCT LPAR lst=fields RPAR   { Record_Type ($startpos,(List.hd lst,List.tl lst))  }
+| REC LPAR lst=rec_fields RPAR  { Record ($startpos,(List.hd lst,List.tl lst)) }
+| e=expression SQUOTE id=IDENT   { Record_Field_Access ($startpos,e,($startpos(id),id)) }
 (* expression_de_relations: *)
 | e1=expression RELATION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Relations)) e1 e2 }
 | ID LPAR e=expression RPAR { Application ($startpos,Builtin ($startpos,Identity_Relation),e) }

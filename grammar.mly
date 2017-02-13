@@ -469,14 +469,15 @@ callup_subst:
 | ids=ident_lst_comma LEFTARROW id=IDENT { CallUp (ids,($startpos(id),id),[]) }
 | ids=ident_lst_comma LEFTARROW id=IDENT LPAR lst=expression_lst_comma RPAR { CallUp (ids,($startpos(id),id),lst) }
 
+expression_lst_comma_wp: LPAR lst=expression_lst_comma RPAR { lst }
+
 level1_substitution:
   BEGIN s=substitution END { s }
 | SKIP { Skip }
-| ids=ident_lst_comma AFFECTATION lst=expression_lst_comma { Affectation1 (ids,lst) }
-| id=IDENT LPAR lst=expression_lst_comma RPAR AFFECTATION e=expression { Affectation2 (($startpos(id),id),lst,e) }
-| id=IDENT LPAR lst1=expression_lst_comma RPAR LPAR lst2=expression_lst_comma RPAR AFFECTATION e=expression
-     { Affectation3 (($startpos(id),id),lst1,lst2,e) } /* TODO generalize this. */
-| id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression { Affectation4 (($startpos(id),id),($startpos(fi),fi),e) }
+| ids=ident_lst_comma AFFECTATION lst=expression_lst_comma { Affectation (ids,lst) }
+| id=IDENT lstlst=nonempty_list(expression_lst_comma_wp) AFFECTATION e=expression
+     { Function_Affectation (($startpos(id),id),(List.hd lstlst,List.tl lstlst),e) }
+| id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression { Record_Affectation (($startpos(id),id),($startpos(fi),fi),e) }
 | PRE p=predicate THEN s=substitution END { Pre (p,s) }
 | ASSERT p=predicate THEN s=substitution END { Assert (p,s) }
 | CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { Choice lst }

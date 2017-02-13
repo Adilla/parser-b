@@ -30,53 +30,84 @@ type clause =
   | Local_Operations of loc * operation list
   | Values of loc * (ident*expression) list
 
+(*
 type ctype = 
   | Machine
   | Refinement of ident 
   | Implementation of ident
+*)
 
-type parsed_component = loc * ctype * ident*ident list*clause list
+(* type parsed_component = loc * ctype * ident*ident list*clause list *)
 
-type specification = {
-  loc: loc;
+type abstract_machine = {
   name: ident;
   parameters: ident list;
-  abstraction: ident option;
+  clause_constraints: (loc*predicate) option;
   clause_sees: (loc*ident list) option;
+  clause_includes: (loc*machine_instanciation list) option;
+  clause_promotes: (loc*ident list) option;
+  clause_extends: (loc*machine_instanciation list) option;
+  clause_uses: (loc*ident list) option;
   clause_sets: (loc*set list) option;
-  clause_constants: (loc*ident list) option;
+  clause_concrete_constants: (loc*ident list) option;
   clause_abstract_constants: (loc*ident list) option;
   clause_properties: (loc*predicate) option;
   clause_concrete_variables: (loc*ident list) option;
-  clause_variables: (loc*ident list) option;
+  clause_abstract_variables: (loc*ident list) option;
   clause_invariant: (loc*predicate) option;
   clause_assertions: (loc*predicate list) option;
-  clause_initialization: (loc*substitution) option;
+  clause_initialisation: (loc*substitution) option;
   clause_operations: (loc*operation list) option;
+}
+
+type refinement = {
+  name: ident;
+  parameters: ident list;
+  refines: ident;
+  clause_sees: (loc*ident list) option;
+  clause_includes: (loc*machine_instanciation list) option;
+  clause_promotes: (loc*ident list) option;
+  clause_extends: (loc*machine_instanciation list) option;
+  clause_sets: (loc*set list) option;
+  clause_concrete_constants: (loc*ident list) option;
+  clause_abstract_constants: (loc*ident list) option;
+  clause_properties: (loc*predicate) option;
+  clause_concrete_variables: (loc*ident list) option;
+  clause_abstract_variables: (loc*ident list) option;
+  clause_invariant: (loc*predicate) option;
+  clause_assertions: (loc*predicate list) option;
+  clause_initialisation: (loc*substitution) option;
+  clause_operations: (loc*operation list) option;
+  clause_local_operations: (loc*operation list) option;
 }
 
 type implementation = {
-  loc: loc;
-  abstraction: ident;
   name: ident;
+  refines: ident;
   parameters: ident list;
-  clause_imports: (loc*machine_instanciation list) option;
   clause_sees: (loc*ident list) option;
+  clause_imports: (loc*machine_instanciation list) option;
   clause_promotes: (loc*ident list) option;
+  clause_extends_B0: (loc*machine_instanciation list) option;
   clause_sets: (loc*set list) option;
-  clause_constants: (loc*ident list) option;
+  clause_concrete_constants: (loc*ident list) option;
   clause_properties: (loc*predicate) option;
+  clause_values: (loc*(ident*expression) list) option;
   clause_concrete_variables: (loc*ident list) option;
   clause_invariant: (loc*predicate) option;
   clause_assertions: (loc*predicate list) option;
-  clause_initialization: (loc*substitution) option;
-  clause_operations: (loc*operation list) option;
-  clause_local_operations: (loc*operation list) option;
-  clause_values: (loc*(ident*expression) list) option;
+  clause_initialisation_B0: (loc*substitution) option;
+  clause_operations_B0: (loc*operation list) option;
+  clause_local_operations_B0: (loc*operation list) option;
 }
 
 type component = 
-  | Spec of specification
-  | Implem of implementation
+  | Abstract_machine of abstract_machine
+  | Refinement of refinement
+  | Implementation of implementation
 
-val mk_component : parsed_component -> (component,loc*string) result
+exception Error of loc*string
+
+val mk_machine_exn : ident -> ident list -> clause list -> abstract_machine
+val mk_refinement_exn : ident -> ident list -> ident -> clause list -> refinement
+val mk_implementation_exn : ident -> ident list -> ident -> clause list -> implementation

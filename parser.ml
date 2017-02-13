@@ -7,8 +7,8 @@ let loc_from_env env : Lexing.position =
   let (start,_) = I.positions env in
   start
 
-let rec loop (state:state) (chkp:Component.parsed_component I.checkpoint)
-  : (Component.parsed_component,loc*string) result =
+let rec loop (state:state) (chkp:Component.component I.checkpoint)
+  : (Component.component,loc*string) result =
   match chkp with
   | I.InputNeeded env -> loop state (I.offer chkp (get_next state))
   | I.Shifting _
@@ -19,10 +19,9 @@ let rec loop (state:state) (chkp:Component.parsed_component I.checkpoint)
   | I.Rejected -> assert false
 
 let parse_component (filename:string) (input:in_channel) : (Component.component,loc*string) result =
-  try begin
-    mk_state filename input >>= fun state ->
-    loop state (Grammar.Incremental.component_eof (get_current_pos state)) >>= fun pcomp ->
-    Component.mk_component pcomp
-    end
+  try
+    ( mk_state filename input >>= fun state ->
+      loop state (Grammar.Incremental.component_eof (get_current_pos state)) )
   with
+  | Component.Error (p,msg) -> Error (p,msg)
   | Lexer_base.Error (p,msg) -> Error (p,msg)

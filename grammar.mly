@@ -210,7 +210,7 @@ let mk_infix_app lc (f:expression) (a1:expression) (a2:expression) : expression 
 %token VALUES
 
 %start component_eof
-%type <Component.parsed_component> component_eof
+%type <Component.component> component_eof
 %type <Expression.expression> expression
 %type <Expression.predicate> predicate
 %type <Substitution.substitution> substitution
@@ -500,11 +500,11 @@ level1_substitution:
 component_eof: a=component EOF { a }
 
 component:
-| MACHINE h=machine_header lst=clause* END { let (id,params) = h in ($startpos,Machine,id,params,lst) }
+| MACHINE h=machine_header lst=clause* END { let (id,params) = h in Abstract_machine (mk_machine_exn id params lst) }
 | REFINEMENT h=machine_header REFINES abs=IDENT lst=clause* END
-  { let (id,params) = h in  ($startpos,Refinement ($startpos(abs),abs),id,params,lst) }
+  { let (id,params) = h in Refinement (mk_refinement_exn id params ($startpos(abs),abs) lst) }
 | IMPLEMENTATION h=machine_header REFINES abs=IDENT lst=clause* END
-  { let (id,params) = h in  ($startpos,Implementation ($startpos(abs),abs),id,params,lst) }
+  { let (id,params) = h in Implementation (mk_implementation_exn id params ($startpos(abs),abs) lst) }
 
 machine_header:
   id=IDENT { (($startpos(id),id),[]) }

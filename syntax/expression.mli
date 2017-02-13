@@ -54,6 +54,9 @@ type expression =
   | Extension of loc*expression non_empty_list
   | Comprehension of loc*ident non_empty_list * predicate
   | Binder of loc*expr_binder*ident non_empty_list*predicate*expression
+  | Record_Field_Access of loc*expression*ident
+  | Record of loc*(ident option*expression) non_empty_list
+  | Record_Type of loc*(ident*expression) non_empty_list
 
 and predicate =
   | P_Ident of ident

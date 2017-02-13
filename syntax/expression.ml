@@ -54,6 +54,9 @@ type expression =
   | Extension of loc*expression non_empty_list
   | Comprehension of loc*ident non_empty_list * predicate
   | Binder of loc*expr_binder*ident non_empty_list*predicate*expression
+  | Record_Field_Access of loc*expression*ident
+  | Record of loc*(ident option*expression) non_empty_list
+  | Record_Type of loc*(ident*expression) non_empty_list
 
 and predicate =
   | P_Ident of ident
@@ -69,7 +72,8 @@ let expr_loc : expression -> loc = function
   | Ident id | Dollar id -> fst id
   | Builtin (l,_) | Pbool (l,_) | Parentheses (l,_) | Application (l,_,_)
   | Couple (l,_,_,_) | Sequence (l,_) | Extension (l,_) | Comprehension (l,_,_)
-  | Binder (l,_,_,_,_)-> l
+  | Binder (l,_,_,_,_) | Record_Field_Access (l,_,_) | Record_Type (l,_)
+  | Record (l,_) -> l
 
 let pred_loc : predicate -> loc = function
   | P_Ident id -> fst id
@@ -314,11 +318,36 @@ let rec pp_expr : expression -> unit = function
       pp_expr_wp e2;
       close_box ();
     end
+  | Record_Field_Access (_,e,id) ->
+    begin
+      open_box ofst;
+      pp_expr_wp e;
+      print_string ("'"^(snd id));
+      close_box ();
+    end
+  | Record (_,(f,lst)) ->
+    begin
+      open_box ofst;
+      print_string "rec(";
+      pp_rec_field f;
+      List.iter (fun e -> print_string ","; print_space (); pp_rec_field e) lst;
+      print_string ")";
+      close_box ();
+    end
+  | Record_Type (_,(f,lst)) ->
+    begin
+      open_box ofst;
+      print_string "struct(";
+      pp_field f;
+      List.iter (fun e -> print_string ","; print_space (); pp_field e) lst;
+      print_string ")";
+      close_box ();
+    end
 
 and pp_expr_wp : expression -> unit = function
   | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _ | Binder _
-  | Sequence _ | Extension _ as e -> pp_expr e
-  | Application (_,_,Couple(_,Infix,_,_)) | Couple _ as e ->
+  | Sequence _ | Extension _ | Record _ | Record_Type _ as e -> pp_expr e
+  | Application (_,_,Couple(_,Infix,_,_)) | Couple _ | Record_Field_Access _ as e ->
     begin
       open_box ofst;
       print_string "(";
@@ -406,3 +435,13 @@ and pp_pred_wp : predicate -> unit = function
       print_string ")";
       close_box ();
     end
+
+and pp_field (id,e:ident*expression) : unit =
+  print_string ( snd id ^ ":" );
+  print_space ();
+  pp_expr e
+
+and pp_rec_field (opt,e:ident option*expression) : unit =
+  match opt with
+  | Some id -> pp_field (id,e)
+  | None -> pp_expr e

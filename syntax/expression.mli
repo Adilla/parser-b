@@ -33,6 +33,8 @@ type e_builtin =
   | Sequence_Set of stype | Size | First | Last | Front | Tail | Reverse
   | G_Union | G_Intersection | G_Concatenation | Unary_Minus
   | Max | Min | TRUE | FALSE
+  | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
+  | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
 type p_builtin =
   | Btrue

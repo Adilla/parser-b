@@ -138,7 +138,6 @@ let mk_infix_app lc (f:expression) (a1:expression) (a2:expression) : expression 
 %token RESTRICTION_T
 %token RESTRICTION_Q
 %token CONC
-(*
 %token TREE
 %token BTREE
 %token CONST
@@ -157,7 +156,6 @@ let mk_infix_app lc (f:expression) (a1:expression) (a2:expression) : expression 
 %token RIGHT
 %token INFIX
 %token SUBTREE
-*)
 %token ELSIF
 %token ELSE
 %token WHEN
@@ -398,29 +396,33 @@ expression:
 | e1=expression RESTRICTION_T e2=expression { mk_infix_app $startpos (Builtin($startpos($2),Head_Restriction)) e1 e2 }
 | e1=expression RESTRICTION_Q e2=expression { mk_infix_app $startpos (Builtin($startpos($2),Tail_Restriction)) e1 e2 }
 | CONC LPAR e=expression RPAR { Application($startpos,Builtin($startpos,G_Concatenation),e) }
-
-(*
-expression_d_arbres:
-  lc=TREE LPAR expression RPAR {}
-| lc=BTREE LPAR expression RPAR {}
-| lc=CONST LPAR expression COMMA expression RPAR {}
-| lc=TOP LPAR expression RPAR {}
-| lc=SONS LPAR expression RPAR {}
-| lc=PREFIX LPAR expression RPAR {}
-| lc=POSTFIX LPAR expression RPAR {}
-| lc=SIZET LPAR expression RPAR {}
-| lc=MIRROR LPAR expression RPAR {}
-| lc=RANK LPAR expression COMMA expression RPAR {}
-| lc=FATHER LPAR expression COMMA expression RPAR {}
-| lc=SON LPAR expression COMMA expression COMMA expression RPAR {}
-| lc=SUBTREE LPAR expression COMMA expression RPAR {}
-| lc=ARITY LPAR expression COMMA expression RPAR {}
-| lc=BIN LPAR expression RPAR {}
-| lc=BIN LPAR expression COMMA expression COMMA expression RPAR {}
-| lc=LEFT LPAR expression RPAR {}
-| lc=RIGHT LPAR expression RPAR {}
-| lc=INFIX LPAR expression RPAR {}
-*)
+(* expression_d_arbres: *)
+| TREE LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Tree),e) }
+| BTREE LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Btree),e) }
+| CONST LPAR e1=expression COMMA e2=expression RPAR
+     { Application ($startpos,Builtin($startpos,Const),Couple($startpos($2),Comma,e1,e2)) }
+| TOP LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Top),e) }
+| SONS LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Sons),e) }
+| PREFIX LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Prefix),e) }
+| POSTFIX LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Postfix),e) }
+| SIZET LPAR e=expression RPAR { Application($startpos,Builtin($startpos,SizeT),e) }
+| MIRROR LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Mirror),e) }
+| RANK LPAR e1=expression COMMA e2=expression RPAR
+     { Application ($startpos,Builtin($startpos,Rank),Couple($startpos($2),Comma,e1,e2)) }
+| FATHER LPAR e1=expression COMMA e2=expression RPAR
+     { Application ($startpos,Builtin($startpos,Father),Couple($startpos($2),Comma,e1,e2)) }
+| SON LPAR e1=expression COMMA e2=expression COMMA e3=expression RPAR
+     { Application ($startpos,Builtin($startpos,Son),Couple($startpos($2),Comma,e1,Couple($startpos(e2),Comma,e2,e3))) }
+| SUBTREE LPAR e1=expression COMMA e2=expression RPAR
+     { Application ($startpos,Builtin($startpos,Subtree),Couple($startpos($2),Comma,e1,e2)) }
+| ARITY LPAR e1=expression COMMA e2=expression RPAR
+     { Application ($startpos,Builtin($startpos,Arity),Couple($startpos($2),Comma,e1,e2)) }
+| BIN LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Bin),e) }
+| BIN LPAR e1=expression COMMA e2=expression COMMA e3=expression RPAR
+     { Application ($startpos,Builtin($startpos,Bin),Couple($startpos($2),Comma,e1,Couple($startpos(e2),Comma,e2,e3))) }
+| LEFT LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Left),e) }
+| RIGHT LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Right),e) }
+| INFIX LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Infix),e) }
 
 (* PREDICATES *)
 

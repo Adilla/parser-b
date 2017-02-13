@@ -207,6 +207,25 @@ let token_to_string = function
   | CIRC            -> "^"
   | FRONT           -> "front"
 
+  | TREE -> "tree"
+  | BTREE -> "btree"
+  | CONST -> "const"
+  | TOP -> "top"
+  | SONS -> "sons"
+  | PREFIX -> "prefix"
+  | POSTFIX -> "postfix"
+  | SIZET -> "sizet"
+  | MIRROR -> "mirror"
+  | RANK -> "rank"
+  | FATHER -> "father"
+  | SON -> "son"
+  | ARITY -> "arity"
+  | BIN -> "bin"
+  | LEFT -> "left"
+  | RIGHT -> "right"
+  | INFIX -> "infix"
+  | SUBTREE -> "subtree"
+
   | DEF_FILE id -> Printf.sprintf "FILE(%s)" id
   | IDENT id -> Printf.sprintf "IDENT(%s)" id
   | INTEGER i -> string_of_int i

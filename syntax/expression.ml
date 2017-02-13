@@ -33,6 +33,8 @@ type e_builtin =
   | Sequence_Set of stype | Size | First | Last | Front | Tail | Reverse
   | G_Union | G_Intersection | G_Concatenation | Unary_Minus
   | Max | Min | TRUE | FALSE
+  | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
+  | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
 type p_builtin =
   | Btrue
@@ -192,6 +194,25 @@ let builtin_to_string : e_builtin -> string = function
   | Tail_Insertion -> "<-"
   | Head_Restriction -> "/|\\"
   | Tail_Restriction -> "\\|/"
+
+  | Tree -> "tree"
+  | Btree -> "btree"
+  | Const -> "const"
+  | Top -> "top"
+  | Sons -> "sons"
+  | Prefix -> "prefix"
+  | Postfix -> "postfix"
+  | SizeT -> "sizet"
+  | Mirror -> "mirror"
+  | Rank -> "rank"
+  | Father -> "father"
+  | Son -> "son"
+  | Subtree -> "subtree"
+  | Arity -> "arity"
+  | Bin -> "bin"
+  | Left -> "left"
+  | Right -> "right"
+  | Infix -> "infix"
 
 let binder_to_string = function
   | Sum -> "SIGMA"

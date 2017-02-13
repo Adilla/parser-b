@@ -1,13 +1,7 @@
 {
   open Lexing
   open Grammar
-(*
 
-  let pp_error out = function
-    | Unexpected_EOF -> Printf.fprintf out "unexpected end of file"
-    | Unexpected_Char c -> Printf.fprintf out "unexpected character '%c'" c
-
-*)
   exception Error of Lexing.position * string
 
   let chars_read = ref ""
@@ -23,14 +17,6 @@
       let l=String.length s in
       - (int_of_string (String.sub s 1 (l-1)))
     else int_of_string s
-(*
-let get_loc lexbuf =
-  let open Lexing in
-  let start = lexbuf.lex_start_p                in
-  let line = start.pos_lnum                     in
-  let cnum = start.pos_cnum - start.pos_bol     in
-  ( line,  cnum+1 )
-   *)
 
 let keywords = Hashtbl.create 137
 
@@ -135,7 +121,6 @@ let _ = List.iter (fun (name, keyword) ->
    "iseq1"     , ISEQ1;
    "iseq"      , ISEQ;
    "perm"      , PERM;
-     (*
    "tree"      , TREE;
    "btree"     , BTREE;
    "const"     , CONST;
@@ -156,7 +141,6 @@ let _ = List.iter (fun (name, keyword) ->
    "right"     , RIGHT;
    "infix"     , INFIX;
    "subtree"   , SUBTREE;
-        *)
    "first"      , FIRST;
    "front"      , FRONT;
    "last"       , LAST;

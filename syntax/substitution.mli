@@ -3,10 +3,9 @@ open Expression
 
 type substitution =
   | Skip
-  | Affectation1 of ident list * expression list
-  | Affectation2 of ident * expression list * expression
-  | Affectation3 of ident * expression list * expression list * expression
-  | Affectation4 of ident * ident * expression
+  | Affectation of ident list * expression list (** id1, ..., idn := e1, ..., en *)
+  | Function_Affectation of ident * (expression list) non_empty_list * expression
+  | Record_Affectation of ident * ident * expression (** record'field := e *)
   | Pre of predicate * substitution
   | Assert of predicate * substitution
   | Choice of substitution list

@@ -4,7 +4,7 @@ open Expression
 type substitution =
   | Skip
   | Affectation of ident list * expression list
-  | Function_Affectation of ident * (expression list) non_empty_list * expression
+  | Function_Affectation of ident * expression non_empty_list * expression
   | Record_Affectation of ident * ident * expression
   | Pre of predicate * substitution
   | Assert of predicate * substitution

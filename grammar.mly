@@ -459,7 +459,7 @@ els: ELSE s=substitution { s }
 
 whn: WHEN p=predicate THEN s=substitution { (p,s) }
 
-case_or: CASE_OR e=expression THEN s=substitution { (expr_to_list e,s) }
+case_or: CASE_OR e=expression THEN s=substitution { (e,s) }
 
 id_eq_expr: id=IDENT EQUAL e=expression { (($startpos(id),id),e) }
 
@@ -472,25 +472,25 @@ callup_subst:
 level1_substitution:
   BEGIN s=substitution END { s }
 | SKIP { Skip }
-| ids=ident_lst_comma AFFECTATION e=expression { Affectation (ids,expr_to_list e) }
+| ids=ident_lst_comma AFFECTATION e=expression { Affectation ((List.hd ids,List.tl ids),expr_to_nonempty_list e) }
 | id=IDENT LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
      { Function_Affectation (($startpos(id),id),(e1,lst),e2) }
 | id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression { Record_Affectation (($startpos(id),id),($startpos(fi),fi),e) }
 | PRE p=predicate THEN s=substitution END { Pre (p,s) }
 | ASSERT p=predicate THEN s=substitution END { Assert (p,s) }
-| CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { Choice lst }
-| IF p=predicate THEN s=substitution ei=elsif* e=option(els) END { IfThenElse (p,s,ei,e) }
-| SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { Select (p,s,w,e) }
+| CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { Choice (List.hd lst,List.tl lst) }
+| IF p=predicate THEN s=substitution ei=elsif* e=option(els) END { IfThenElse (((p,s),ei),e) }
+| SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { Select (((p,s),w),e) }
 | CASE exp=expression OF
         EITHER e=expression THEN s=substitution
         ors=case_or+
         opt=option(els)
-  END END { Case (exp,expr_to_list e,s,ors,opt) }
-| ANY ids=ident_lst_comma WHERE p=predicate THEN s=substitution END { Any (ids,p,s) }
-| LET ids=ident_lst_comma BE eqs=separated_nonempty_list(AND,id_eq_expr) IN s=substitution END { Let (ids,eqs,s) }
-| ids=ident_lst_comma BECOMES_ELT e=expression { BecomesElt (ids,e) }
-| ids=ident_lst_comma MEMBER_OF LPAR p=predicate RPAR { BecomesSuch (ids,p) }
-| VAR ids=ident_lst_comma IN s=substitution END { Var (ids,s) }
+  END END { Case (exp,((e,s),ors),opt) }
+| ANY ids=ident_lst_comma WHERE p=predicate THEN s=substitution END { Any ((List.hd ids,List.tl ids),p,s) }
+| LET ids=ident_lst_comma BE eqs=separated_nonempty_list(AND,id_eq_expr) IN s=substitution END { Let ((List.hd ids,List.tl ids),(List.hd eqs,List.tl eqs),s) }
+| ids=ident_lst_comma BECOMES_ELT e=expression { BecomesElt ((List.hd ids,List.tl ids),e) }
+| ids=ident_lst_comma MEMBER_OF LPAR p=predicate RPAR { BecomesSuch ((List.hd ids,List.tl ids),p) }
+| VAR ids=ident_lst_comma IN s=substitution END { Var ((List.hd ids,List.tl ids),s) }
 | c=callup_subst { c }
 | WHILE cond=predicate DO s=substitution INVARIANT inv=predicate VARIANT var=expression END { While (cond,s,inv,var) }
 

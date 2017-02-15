@@ -25,16 +25,25 @@ let opened_def_files = ref []
 let reset_opened_def_files () = opened_def_files := []
 
 let load_def_file (lc:loc) (fn:string) : in_channel =
-  ( if List.mem fn !opened_def_files then
-      raise (Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
-    else opened_def_files := fn :: !opened_def_files );
   match get_full_name fn with
   | Some fn ->
     begin
+      ( if List.mem fn !opened_def_files then
+          raise (Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
+        else opened_def_files := fn :: !opened_def_files );
       try open_in fn
       with Sys_error _ -> raise (Error (lc,"Error: cannot open file '"^fn^"'."))
     end
   | None -> raise (Error (lc,"Error: cannot find file '"^fn^"'."))
+
+let load_quoted_def_file (lc:loc) (fn:string) : in_channel =
+  let dir = Filename.dirname lc.Lexing.pos_fname in
+  let fn = dir ^ "/" ^ fn in
+  ( if List.mem fn !opened_def_files then
+      raise (Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
+    else opened_def_files := fn :: !opened_def_files );
+  try open_in fn
+  with Sys_error _ -> raise (Error (lc,"Error: cannot open file '"^fn^"'."))
 
 (* ***** *)
 
@@ -81,14 +90,22 @@ let is_def_sep state =
     | VARIABLES, _, _ | CONCRETE_VARIABLES, _, _ | INVARIANT, _, _
     | ASSERTIONS, _, _ | INITIALISATION, _, _ | OPERATIONS, _, _
     | LOCAL_OPERATIONS, _, _ | EOF, _, _ -> false
-    | EQUALEQUAL, _, _ -> true
+    | EQUALEQUAL, _, _ | DEF_FILE _, _, _ -> true
     | _ -> aux ()
   in
-  let result = aux () in
+  let next = get_next state in
+  let _ = Queue.add next queue in
+  let result =
+    match next with
+    | DEF_FILE _, _, _ -> true
+    | STRING _, _, _ -> true
+    | IDENT _, _, _ -> aux ()
+    | _, _, _ -> false
+  in
   prepend_queue state queue;
   result
 
-let is_end_of_def_clause = function
+  let is_end_of_def_clause = function
   | REFINEMENT
   | IMPLEMENTATION
   | REFINES
@@ -118,8 +135,13 @@ let is_end_of_def_clause = function
 
 let rec state_1_start (state:state) (def_lst:macro list) : macro list =
   match get_next state with
+  | STRING fn, st, _ ->
+    let input = load_quoted_def_file st fn in
+    let def_lst = parse_def_file def_lst fn input in
+    state_8_def_file state def_lst
   | DEF_FILE fn, st, _ ->
-    let def_lst = parse_def_file def_lst st fn in
+    let input = load_def_file st fn in
+    let def_lst = parse_def_file def_lst fn input in
     state_8_def_file state def_lst
   | IDENT id, lc, _   -> state_2_eqeq_or_lpar state def_lst (lc,id)
   | tk, st, _ ->
@@ -176,8 +198,7 @@ and state_7_eqeq (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:i
   | EQUALEQUAL, _, _ -> state_3_body state def_lst def_name plst_rev []
   | tk, st, _ -> raise_err st tk
 
-and parse_def_file (def_lst:macro list) (loc:loc) (fn:string) : macro list =
-  let input = load_def_file loc fn in
+and parse_def_file (def_lst:macro list) (fn:string) (input:in_channel) : macro list =
   let state = mk_state fn input in
   match get_next state with
   | DEFINITIONS, _, _ ->  state_1_start state def_lst

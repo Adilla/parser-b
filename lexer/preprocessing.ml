@@ -2,7 +2,7 @@ open Utils
 open Grammar
 open Lexer_with_lk
 
-exception Error of (loc*string)
+(* exception Error of (loc*string) *)
 
 (* Include directories for definition files *)
 
@@ -24,26 +24,26 @@ let get_full_name (fn:string) : string option =
 let opened_def_files = ref []
 let reset_opened_def_files () = opened_def_files := []
 
-let load_def_file (lc:loc) (fn:string) : in_channel =
+let load_def_file_exn (lc:loc) (fn:string) : in_channel =
   match get_full_name fn with
   | Some fn ->
     begin
       ( if List.mem fn !opened_def_files then
-          raise (Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
+          raise (Utils.Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
         else opened_def_files := fn :: !opened_def_files );
       try open_in fn
-      with Sys_error _ -> raise (Error (lc,"Error: cannot open file '"^fn^"'."))
+      with Sys_error _ -> raise (Utils.Error (lc,"Error: cannot open file '"^fn^"'."))
     end
-  | None -> raise (Error (lc,"Error: cannot find file '"^fn^"'."))
+  | None -> raise (Utils.Error (lc,"Error: cannot find file '"^fn^"'."))
 
-let load_quoted_def_file (lc:loc) (fn:string) : in_channel =
+let load_quoted_def_file_exn (lc:loc) (fn:string) : in_channel =
   let dir = Filename.dirname lc.Lexing.pos_fname in
   let fn = dir ^ "/" ^ fn in
   ( if List.mem fn !opened_def_files then
-      raise (Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
+      raise (Utils.Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
     else opened_def_files := fn :: !opened_def_files );
   try open_in fn
-  with Sys_error _ -> raise (Error (lc,"Error: cannot open file '"^fn^"'."))
+  with Sys_error _ -> raise (Utils.Error (lc,"Error: cannot open file '"^fn^"'."))
 
 (* ***** *)
 
@@ -72,13 +72,13 @@ let dump_table (defs:macro_table) : unit =
 
 
 let raise_err (loc:loc) (tk:token) =
-  raise (Error (loc,"Error in clause DEFINITIONS: unexpected token '"
+  raise (Utils.Error (loc,"Error in clause DEFINITIONS: unexpected token '"
                     ^ token_to_string tk ^ "'."))
 
-let is_def_sep state =
+let is_def_sep_exn state =
   let queue = Queue.create () in
   let rec aux () =
-    let next = get_next state in
+    let next = get_next_exn state in
     let _ = Queue.add next queue in
     match next with
     | SEMICOLON, _, _ | MACHINE, _, _ | REFINEMENT, _, _
@@ -93,7 +93,7 @@ let is_def_sep state =
     | EQUALEQUAL, _, _ | DEF_FILE _, _, _ -> true
     | _ -> aux ()
   in
-  let next = get_next state in
+  let next = get_next_exn state in
   let _ = Queue.add next queue in
   let result =
     match next with
@@ -133,39 +133,39 @@ let is_def_sep state =
   | EOF -> true
   | _ -> false
 
-let rec state_1_start (state:state) (def_lst:macro list) : macro list =
-  match get_next state with
+let rec state_1_start_exn (state:state) (def_lst:macro list) : macro list =
+  match get_next_exn state with
   | STRING fn, st, _ ->
-    let input = load_quoted_def_file st fn in
-    let def_lst = parse_def_file def_lst fn input in
-    state_8_def_file state def_lst
+    let input = load_quoted_def_file_exn st fn in
+    let def_lst = parse_def_file_exn def_lst fn input in
+    state_8_def_file_exn state def_lst
   | DEF_FILE fn, st, _ ->
-    let input = load_def_file st fn in
-    let def_lst = parse_def_file def_lst fn input in
-    state_8_def_file state def_lst
-  | IDENT id, lc, _   -> state_2_eqeq_or_lpar state def_lst (lc,id)
+    let input = load_def_file_exn st fn in
+    let def_lst = parse_def_file_exn def_lst fn input in
+    state_8_def_file_exn state def_lst
+  | IDENT id, lc, _   -> state_2_eqeq_or_lpar_exn state def_lst (lc,id)
   | tk, st, _ ->
     if is_end_of_def_clause tk then def_lst
     else raise_err st tk
 
-and state_2_eqeq_or_lpar (state:state) (def_lst:macro list) (def_name:ident) : macro list =
-  match get_next state with
-  | EQUALEQUAL, _, _ -> state_3_body state def_lst def_name [] []
-  | LPAR, _, _ -> state_4_param_lst state def_lst def_name
+and state_2_eqeq_or_lpar_exn (state:state) (def_lst:macro list) (def_name:ident) : macro list =
+  match get_next_exn state with
+  | EQUALEQUAL, _, _ -> state_3_body_exn state def_lst def_name [] []
+  | LPAR, _, _ -> state_4_param_lst_exn state def_lst def_name
   | tk, st, _ -> raise_err st tk
 
-and state_3_body state (def_lst:macro list) (def_name:ident) (plst_rev:ident list) (tks_rev:t_token list) : macro list =
-  match get_next state with
+and state_3_body_exn state (def_lst:macro list) (def_name:ident) (plst_rev:ident list) (tks_rev:t_token list) : macro list =
+  match get_next_exn state with
   (* may be a separator *)
   | SEMICOLON, _, _ as next ->
-    if is_def_sep state then
+    if is_def_sep_exn state then
       begin
         let params = List.rev plst_rev in
         let tokens = List.rev tks_rev in
-        state_1_start state ((def_name,params,tokens)::def_lst)
+        state_1_start_exn state ((def_name,params,tokens)::def_lst)
       end
       else
-        state_3_body state def_lst def_name plst_rev (next::tks_rev)
+        state_3_body_exn state def_lst def_name plst_rev (next::tks_rev)
   | (tk, _, _ ) as next ->
   (* end of definition clause *)
     if is_end_of_def_clause tk then
@@ -174,97 +174,88 @@ and state_3_body state (def_lst:macro list) (def_name:ident) (plst_rev:ident lis
         (def_name,params,tokens)::def_lst
     else
   (* definition body *)
-    state_3_body state def_lst def_name plst_rev (next::tks_rev)
+    state_3_body_exn state def_lst def_name plst_rev (next::tks_rev)
 
-and state_4_param_lst (state:state) (def_lst:macro list) (def_name:ident) : macro list =
-  match get_next state with
-  | IDENT id, st, _ -> state_5_comma_or_rpar state def_lst def_name [(st,id)]
-  | RPAR, _, _ -> state_7_eqeq state def_lst def_name []
+and state_4_param_lst_exn (state:state) (def_lst:macro list) (def_name:ident) : macro list =
+  match get_next_exn state with
+  | IDENT id, st, _ -> state_5_comma_or_rpar_exn state def_lst def_name [(st,id)]
+  | RPAR, _, _ -> state_7_eqeq_exn state def_lst def_name []
   | tk, st, _ -> raise_err st tk
 
-and state_5_comma_or_rpar (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
-  match get_next state with
-  | COMMA, _, _ -> state_6_param state def_lst def_name plst_rev
-  | RPAR, _, _ -> state_7_eqeq state def_lst def_name plst_rev
+and state_5_comma_or_rpar_exn (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
+  match get_next_exn state with
+  | COMMA, _, _ -> state_6_param_exn state def_lst def_name plst_rev
+  | RPAR, _, _ -> state_7_eqeq_exn state def_lst def_name plst_rev
   | tk, st, _ -> raise_err st tk
 
-and state_6_param (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
-  match get_next state with
-  | IDENT id, lc, _ -> state_5_comma_or_rpar state def_lst def_name ((lc,id)::plst_rev)
+and state_6_param_exn (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
+  match get_next_exn state with
+  | IDENT id, lc, _ -> state_5_comma_or_rpar_exn state def_lst def_name ((lc,id)::plst_rev)
   | tk, st, _ -> raise_err st tk
 
-and state_7_eqeq (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
-  match get_next state with
-  | EQUALEQUAL, _, _ -> state_3_body state def_lst def_name plst_rev []
+and state_7_eqeq_exn (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
+  match get_next_exn state with
+  | EQUALEQUAL, _, _ -> state_3_body_exn state def_lst def_name plst_rev []
   | tk, st, _ -> raise_err st tk
 
-and parse_def_file (def_lst:macro list) (fn:string) (input:in_channel) : macro list =
+and parse_def_file_exn (def_lst:macro list) (fn:string) (input:in_channel) : macro list =
   let state = mk_state fn input in
-  match get_next state with
-  | DEFINITIONS, _, _ ->  state_1_start state def_lst
+  match get_next_exn state with
+  | DEFINITIONS, _, _ ->  state_1_start_exn state def_lst
   | tk, st, _ -> raise_err st tk
 
-and state_8_def_file (state:state) (def_lst:macro list) : macro list =
-  match get_next state with
-  | SEMICOLON, _, _ -> state_1_start state def_lst
+and state_8_def_file_exn (state:state) (def_lst:macro list) : macro list =
+  match get_next_exn state with
+  | SEMICOLON, _, _ -> state_1_start_exn state def_lst
   | tk, st, _ ->
     if is_end_of_def_clause tk then def_lst
     else raise_err st tk
 
-let parse_defs (state:state) : macro_table =
-  let defs = state_1_start state [] in
+let parse_defs_exn (state:state) : macro_table =
+  let defs = state_1_start_exn state [] in
   let hsh = Hashtbl.create 47 in
   List.iter (fun ((lc,id),params,body) ->
       Hashtbl.add hsh id (lc,params,body) ) defs;
   hsh
 
-let mk_macro_table (fname:string) (chan:in_channel) : (macro_table,loc*string) result =
-  try (
+let mk_macro_table_exn (fname:string) (chan:in_channel) : macro_table =
     let rec aux1 state =
-      match get_next state with
+      match get_next_exn state with
       | DEFINITIONS, _, _ -> true
       | EOF, _, _ -> false
       | _ -> aux1 state
     in
-    let _ = reset_opened_def_files () in
+    let () = reset_opened_def_files () in
     let state = mk_state fname chan in
-    if aux1 state then Ok (parse_defs state)
-    else Ok (Hashtbl.create 1)
-  ) with Error x -> Error x
+    if aux1 state then parse_defs_exn state
+    else Hashtbl.create 1
 
 (* **************** *)
 
-let rec mk_assoc l1 l2 =
-  match l1, l2 with
-  | [] , [] -> []
-  | h1::t1, h2::t2 -> (snd h1,h2)::(mk_assoc t1 t2)
-  | _, _ -> raise Exit
+let mk_assoc_exn (loc:loc) (l1:ident list) (l2:t_token list list) : (string*t_token list) list =
+  let rec aux l1 l2 =
+    match l1, l2 with
+    | [] , [] -> []
+    | h1::t1, h2::t2 -> (snd h1,h2)::(aux t1 t2)
+    | _, _ -> raise (Utils.Error (loc,"Error while expanding a definition: incorrect number of parameters."))
+  in
+  aux l1 l2
 
-let rec mk_assoc_safe (loc:loc) (l1:ident list) (l2:t_token list list)
-  : ((string*t_token list) list,loc*string) result =
-  try Ok (mk_assoc l1 l2)
-  with Exit -> Error (loc,"Error while expanding a definition: incorrect number of parameters.")
-
-let expand loc (state:state) (name,e_params,body:macro) (a_params:t_token list list) : (unit,loc*string) result =
+let expand_exn loc (state:state) (name,e_params,body:macro) (a_params:t_token list list) : unit =
   let queue = Queue.create () in
-  match mk_assoc_safe loc e_params a_params with
-  | Error e -> Error e
-  | Ok params ->
-    begin
-      List.iter (
-        function
-        | IDENT id, st, ed as tk ->
-          begin
-            try
-              let actual_p = List.assoc id params in
-              List.iter (fun tk0 -> Queue.add tk0 queue) actual_p
-            with
-              Not_found -> Queue.add tk queue
-          end
-        | tk -> Queue.add tk queue
-      ) body;
-      prepend_queue state queue;
-      Ok ()
-    end
+  let params = mk_assoc_exn loc e_params a_params in
+  List.iter (
+    function
+    | IDENT id, st, ed as tk ->
+      begin
+        try
+          let actual_p = List.assoc id params in
+          List.iter (fun tk0 -> Queue.add tk0 queue) actual_p
+        with
+          Not_found -> Queue.add tk queue
+      end
+    | tk -> Queue.add tk queue
+  ) body;
+  prepend_queue state queue
 
 let has_parameters (_,params,_:macro) : bool = not (params = [])

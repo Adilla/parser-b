@@ -11,3 +11,5 @@ type ident = loc*string
 type 'a non_empty_list = 'a*'a list
 
 let ident_eq (_,s1) (_,s2) = ( String.compare s1 s2 = 0 )
+
+exception Error of loc*string

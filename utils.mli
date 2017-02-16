@@ -7,3 +7,5 @@ type ident = loc*string
 val ident_eq : ident -> ident -> bool
 
 type 'a non_empty_list = 'a*'a list
+
+exception Error of loc*string

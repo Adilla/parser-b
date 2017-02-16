@@ -3,6 +3,7 @@ open Expression
 
 type substitution =
   | Skip
+  | BeginEnd of substitution
   | Affectation of ident non_empty_list * expression non_empty_list (** id1, ..., idn := e1, ..., en *)
   | Function_Affectation of ident * expression non_empty_list * expression
   | Record_Affectation of ident * ident * expression (** record'field := e *)
@@ -21,3 +22,5 @@ type substitution =
   | While of predicate * substitution * predicate * expression
   | Sequencement of substitution * substitution
   | Parallel of substitution * substitution
+
+val pp_subst : Format.formatter -> substitution -> unit

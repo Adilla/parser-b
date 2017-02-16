@@ -221,248 +221,96 @@ let binder_to_string = function
   | Q_Intersection -> "INTER"
   | Lambda -> "%"
 
-let rec pp_expr : expression -> unit = function
-  | Ident id -> print_string (snd id)
-  | Dollar id -> print_string (snd id ^ "$")
-  | Builtin (_,bi) -> print_string (builtin_to_string bi)
-  | Pbool (_,p) ->
-    begin
-      open_box ofst;
-      print_string "pbool(";
-      pp_pred p;
-      print_string ")";
-      close_box ();
-    end
-  | Parentheses (_,e) ->
-    begin
-      open_box ofst;
-      print_string "(";
-      pp_expr e;
-      print_string ")";
-      close_box ();
-    end
+let pp_ident (out:formatter) (id:ident) : unit =
+  fprintf out "%s" (snd id)
+
+let pp_ident_list : formatter -> ident list -> unit =
+  pp_print_list ~pp_sep:(fun out () -> fprintf out ",") pp_ident
+
+let rec pp_expr (out:formatter) : expression -> unit = function
+  | Ident id -> pp_ident out id
+  | Dollar id -> fprintf out "%s$" (snd id)
+  | Builtin (_,bi) -> fprintf out "%s" (builtin_to_string bi)
+  | Pbool (_,p) -> fprintf out "@[pbool(%a)@]" pp_pred p
+  | Parentheses (_,e) -> fprintf out "@[(%a)@]" pp_expr e
   | Application (_,Builtin (_,Inverse_Relation),e) ->
-    begin
-      open_box ofst;
-      pp_expr_wp e;
-      print_string "~";
-      close_box ();
-    end
+    fprintf out "@[%a~@]" pp_expr_wp e
   | Application (_,Builtin (_,Unary_Minus),e) ->
-    begin
-      open_box ofst;
-      print_string "-";
-      pp_expr_wp e;
-      close_box ();
-    end
+    fprintf out "@[-%a@]" pp_expr_wp e
   | Application (_,Builtin (_,Image),Couple(_,_,e1,e2)) ->
-    begin
-      open_box ofst;
-      pp_expr_wp e1;
-      print_string "[";
-      pp_expr e2;
-      print_string "]";
-      close_box ();
-    end
+    fprintf out "@[%a[%a]@]" pp_expr_wp e1 pp_expr e2
   | Application (_,Builtin (_,bop),Couple(_,Infix,e1,e2)) ->
-    begin
-      open_box ofst;
-      pp_expr_wp e1;
-      print_space ();
-      print_string (builtin_to_string bop);
-      print_space ();
-      pp_expr_wp e2;
-      close_box ();
-    end
+    fprintf out "@[%a@ %s@ %a@]" pp_expr_wp e1 (builtin_to_string bop) pp_expr_wp e2
   | Application (_,f,a) ->
-    begin
-        open_box ofst;
-        pp_expr_wp f;
-        print_string "(";
-        pp_expr a;
-        print_string ")";
-        close_box ();
-      end
+    fprintf out "@[%a(%a)@]" pp_expr_wp f pp_expr a
   | Comprehension (l,(e,lst),p) ->
-    begin
-      open_box ofst;
-      print_string "{";
-      print_string (snd e);
-      List.iter (fun e -> print_string ", "; print_string (snd e)) lst;
-      print_string " |";
-      print_space ();
-      pp_pred p;
-      print_string "}";
-      close_box ();
-    end
+    fprintf out "@[{@ %a@ |@ %a@ }@]" pp_ident_list (e::lst) pp_pred p
   | Binder (l,bi,(x,lst),p,e) ->
-    begin
-      open_box ofst;
-      print_string (binder_to_string bi ^ "(");
-      print_string (snd x);
-      List.iter (fun (_,x) -> print_string (","^x)) lst;
-      print_string ").(";
-      print_space ();
-      pp_pred p;
-      print_string " |";
-      print_space ();
-      pp_expr e;
-      print_string ")";
-      close_box ();
-    end
-  | Sequence (_,(e,lst)) ->
-    begin
-      open_box ofst;
-      print_string "[";
-      pp_expr e;
-      List.iter (fun e -> print_string ","; print_space (); pp_expr e) lst;
-      print_string "]";
-      close_box ();
-    end
-  | Extension (_,(e,lst)) ->
-    begin
-      open_box ofst;
-      print_string "{";
-      pp_expr e;
-      List.iter (fun e -> print_string ","; print_space (); pp_expr e) lst;
-      print_string "}";
-      close_box ();
-    end
-  | Couple (_,ki,e1,e2) ->
-    begin
-      open_box ofst;
-      pp_expr_wp e1;
-      ( match ki with
-        | Comma -> ( print_string ","; print_space () )
-        | Maplet -> ( print_space (); print_string "|->"; print_space () )
-        | Infix -> assert false );
-      pp_expr_wp e2;
-      close_box ();
-    end
+    fprintf out "@[%s( %a ).(@ %a@ |@ %a@ )@]" (binder_to_string bi)
+      pp_ident_list (x::lst) pp_pred p pp_expr e
+  | Sequence (_,(e,lst)) -> fprintf out "@[[@ %a@ ]@]" pp_expr_list (e::lst)
+  | Extension (_,(e,lst)) -> fprintf out "@[{@ %a@ }@]" pp_expr_list (e::lst)
+  | Couple (_,Infix,e1,e2) -> assert false
+  | Couple (_,Maplet,e1,e2) ->
+    fprintf out "@[%a@ |->@ %a@]" pp_expr_wp e1 pp_expr_wp e2
+  | Couple (_,Comma,e1,e2) ->
+    fprintf out "@[%a,@ %a@]" pp_expr_wp e1 pp_expr_wp e2
   | Record_Field_Access (_,e,id) ->
-    begin
-      open_box ofst;
-      pp_expr_wp e;
-      print_string ("'"^(snd id));
-      close_box ();
-    end
+    fprintf out "@[%a'%a@]" pp_expr_wp e pp_ident id
   | Record (_,(f,lst)) ->
-    begin
-      open_box ofst;
-      print_string "rec(";
-      pp_rec_field f;
-      List.iter (fun e -> print_string ","; print_space (); pp_rec_field e) lst;
-      print_string ")";
-      close_box ();
-    end
+    fprintf out "@[rec(%a)@]" pp_rec_field_list (f::lst)
   | Record_Type (_,(f,lst)) ->
-    begin
-      open_box ofst;
-      print_string "struct(";
-      pp_field f;
-      List.iter (fun e -> print_string ","; print_space (); pp_field e) lst;
-      print_string ")";
-      close_box ();
-    end
+    fprintf out "@[struct(%a)@]" pp_struct_field_list (f::lst)
 
-and pp_expr_wp : expression -> unit = function
-  | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _ | Binder _
-  | Sequence _ | Extension _ | Record _ | Record_Type _ as e -> pp_expr e
+and pp_struct_field_list : formatter -> (ident*expression) list -> unit =
+  let pp (out:formatter) (id,e:ident*expression) : unit =
+    fprintf out "%a: %a" pp_ident id pp_expr_wp e
+  in
+  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@,") pp
+
+and pp_rec_field_list : formatter -> (ident option*expression) list -> unit =
+  let pp (out:formatter) (opt,e:ident option*expression) : unit =
+    match opt with
+    | None -> pp_expr_wp out e
+    | Some id -> fprintf out "%a: %a" pp_ident id pp_expr_wp e
+  in
+  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@,") pp
+
+and pp_expr_list : formatter -> expression list -> unit =
+  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@ ") pp_expr_wp
+
+and pp_expr_wp (out:formatter) : expression -> unit = function
   | Application (_,_,Couple(_,Infix,_,_)) | Couple _ | Record_Field_Access _ as e ->
-    begin
-      open_box ofst;
-      print_string "(";
-      pp_expr e;
-      print_string ")";
-      close_box ();
-    end
-  | Application _ as e -> pp_expr e
+    fprintf out "@[(%a)@]" pp_expr e
+  | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
+  | Binder _ | Sequence _ | Extension _ | Record _ | Record_Type _ | Application _ as e ->
+    pp_expr out e
 
-and pp_pred : predicate -> unit = function
-  | P_Ident id -> print_string (snd id)
-  | P_Builtin (_,Btrue) -> print_string "True"
-  | P_Builtin (_,Bfalse) -> print_string "False"
+and pp_pred (out:formatter) : predicate -> unit =
+  function
+  | P_Ident id -> fprintf out "%s" (snd id)
+  | P_Builtin (_,Btrue) -> fprintf out "btrue"
+  | P_Builtin (_,Bfalse) -> fprintf out "bfalse"
   | Binary_Prop (_,bop,p1,p2) ->
-    begin
-      open_box ofst;
-      pp_pred_wp p1;
-      print_space ();
-      print_string (prop_bop_to_string bop);
-      print_space ();
-      pp_pred_wp p2;
-      close_box ();
-    end
+    fprintf out "@[%a@ %s@ %a@]" pp_pred_wp p1 (prop_bop_to_string bop) pp_pred_wp p2
   | Binary_Pred (_,bop,e1,e2) ->
-    begin
-      open_box ofst;
-      pp_expr e1;
-      print_space ();
-      print_string (pred_bop_to_string bop);
-      print_space ();
-      pp_expr e2;
-      close_box ();
-    end
-  | Negation (_,p) ->
-    begin
-      open_box ofst;
-      print_string "not(";
-      pp_pred p;
-      print_string ")";
-      close_box ();
-    end
-  | Pparentheses (_,p) ->
-    begin
-      open_box ofst;
-      print_string "(";
-      pp_pred p;
-      print_string ")";
-      close_box ();
-    end
+    fprintf out "@[%a@ %s@ %a@]" pp_expr_wp e1 (pred_bop_to_string bop) pp_expr_wp e2
+  | Negation (_,p) -> fprintf out "@[not(%a)@]" pp_pred p
+  | Pparentheses (_,p) -> fprintf out "@[(%a)@]" pp_pred p
   | Universal_Q (_,(x,lst),p) ->
-    begin
-      open_box ofst;
-      print_string "!(";
-      print_string (snd x);
-      List.iter (fun (_,x) -> print_string (","^x)) lst;
-      print_string ").(";
-      print_space ();
-      pp_pred p;
-      print_space ();
-      print_string ")";
-      close_box ();
-    end
+    fprintf out "@[!(%a).(@,%a)@]" pp_ident_list (x::lst) pp_pred p
   | Existential_Q (_,(x,lst),p) ->
-    begin
-      open_box ofst;
-      print_string "#(";
-      print_string (snd x);
-      List.iter (fun (_,x) -> print_string (","^x)) lst;
-      print_string ").(";
-      print_space ();
-      pp_pred p;
-      print_space ();
-      print_string ")";
-      close_box ();
-    end
+    fprintf out "@[#(%a).(@,%a)@]" pp_ident_list (x::lst) pp_pred p
 
-and pp_pred_wp : predicate -> unit = function
+and pp_pred_wp (out:formatter) : predicate -> unit = function
   | P_Ident _ | P_Builtin _ | Negation _ | Pparentheses _
-  | Universal_Q _ | Existential_Q _ as p -> pp_pred p
-  | Binary_Prop _ | Binary_Pred _ as p ->
-    begin
-      open_box ofst;
-      print_string "(";
-      pp_pred p;
-      print_string ")";
-      close_box ();
-    end
+  | Universal_Q _ | Existential_Q _ as p -> pp_pred out p
+  | Binary_Prop _ | Binary_Pred _ as p -> fprintf out "@[(%a)@]" pp_pred p
+    
+and pp_field (out:formatter) (id,e:ident*expression) : unit =
+  fprintf out "%s:@ %a" (snd id) pp_expr e
 
-and pp_field (id,e:ident*expression) : unit =
-  print_string ( snd id ^ ":" );
-  print_space ();
-  pp_expr e
-
-and pp_rec_field (opt,e:ident option*expression) : unit =
+and pp_rec_field (out:formatter) (opt,e:ident option*expression) : unit =
   match opt with
-  | Some id -> pp_field (id,e)
-  | None -> pp_expr e
+  | Some id -> pp_field out (id,e)
+  | None -> pp_expr out e

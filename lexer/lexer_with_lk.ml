@@ -8,7 +8,7 @@ type state = { lb:Lexing.lexbuf;
                mutable queue: t_token Queue.t;
                mutable last: t_token; }
 
-let get_token lexbuf =
+let get_token_exn lexbuf =
   let token = Lexer_base.token lexbuf in
   let startp = lexbuf.Lexing.lex_start_p
   and endp = lexbuf.Lexing.lex_curr_p in
@@ -19,9 +19,9 @@ let mk_state filename input =
   lb.Lexing.lex_curr_p <- { lb.Lexing.lex_curr_p with Lexing.pos_fname = filename; };
   { lb; queue=Queue.create (); last=dummy; }
 
-let get_next (state:state) : t_token =
+let get_next_exn (state:state) : t_token =
   let next =
-    if Queue.is_empty state.queue then get_token state.lb
+    if Queue.is_empty state.queue then get_token_exn state.lb
     else Queue.pop state.queue
   in state.last <- next; next
 

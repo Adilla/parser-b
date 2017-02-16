@@ -2,8 +2,6 @@
   open Lexing
   open Grammar
 
-  exception Error of Lexing.position * string
-
   let chars_read = ref ""
   let string_loc = ref (0,0)
   let add_char c = chars_read := Printf.sprintf "%s%c" !chars_read c
@@ -249,14 +247,14 @@ rule token = parse
  
 (*   | ren_ident as id { REN_IDENT ( get_loc lexbuf , id ) } *)
   | int_lit as i  { INTEGER ( int_of_int_lit i ) }
-  | _   as c    { raise (Error (lexbuf.Lexing.lex_start_p, "Unexpected character '" ^ String.make 1 c ^ "'.")) }
+  | _   as c    { raise (Utils.Error (lexbuf.Lexing.lex_start_p, "Unexpected character '" ^ String.make 1 c ^ "'.")) }
   | eof         { EOF }
 
  and comment = parse
   | "*/" { token lexbuf          }
   | '\n' { new_line lexbuf ; comment lexbuf }
   | _    { comment lexbuf        }
-  | eof	 { raise (Error (lexbuf.Lexing.lex_start_p, "Unexpected end of file")) }
+  | eof	 { raise (Utils.Error (lexbuf.Lexing.lex_start_p, "Unexpected end of file")) }
 
 and string = parse
   | '\\' '"' { add_char '"'; string lexbuf }
@@ -264,4 +262,4 @@ and string = parse
   | '\n' { Lexing.new_line lexbuf ; add_char '\n'; string lexbuf }
   | '"'  { STRING !chars_read }
   | _ as c { add_char c; string lexbuf }
-  | eof	 { raise (Error (lexbuf.Lexing.lex_start_p, "Unexpected end of file.")) }
+  | eof	 { raise (Utils.Error (lexbuf.Lexing.lex_start_p, "Unexpected end of file.")) }

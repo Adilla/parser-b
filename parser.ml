@@ -7,21 +7,20 @@ let loc_from_env env : Lexing.position =
   let (start,_) = I.positions env in
   start
 
-let rec loop (state:state) (chkp:Component.component I.checkpoint)
-  : (Component.component,loc*string) result =
+let rec loop_exn (state:state) (chkp:Component.component I.checkpoint) : Component.component =
   match chkp with
-  | I.InputNeeded env -> loop state (I.offer chkp (get_next state))
+  | I.InputNeeded env -> loop_exn state (I.offer chkp (get_next_exn state))
   | I.Shifting _
-  | I.AboutToReduce _ -> loop state (I.resume chkp)
+  | I.AboutToReduce _ -> loop_exn state (I.resume chkp)
   | I.HandlingError env ->
-    Error (loc_from_env env,"Syntax error: unexpected token '" ^ get_last_token_str state ^ "'.")
-  | I.Accepted v -> Ok v
-  | I.Rejected -> assert false
+    raise (Utils.Error (loc_from_env env, "Syntax error: unexpected token '"
+                                          ^ get_last_token_str state ^ "'."))
+  | I.Accepted v -> v
+  | I.Rejected -> assert false (*unreachable*)
 
 let parse_component (filename:string) (input:in_channel) : (Component.component,loc*string) result =
   try
-    ( mk_state filename input >>= fun state ->
-      loop state (Grammar.Incremental.component_eof (get_current_pos state)) )
+    let state = mk_state_exn filename input in
+    Ok (loop_exn state (Grammar.Incremental.component_eof (get_current_pos state)))
   with
-  | Component.Error (p,msg) -> Error (p,msg)
-  | Lexer_base.Error (p,msg) -> Error (p,msg)
+| Utils.Error (p,msg) -> Error (p,msg)

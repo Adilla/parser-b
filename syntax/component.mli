@@ -30,15 +30,6 @@ type clause =
   | Local_Operations of loc * operation list
   | Values of loc * (ident*expression) list
 
-(*
-type ctype = 
-  | Machine
-  | Refinement of ident 
-  | Implementation of ident
-*)
-
-(* type parsed_component = loc * ctype * ident*ident list*clause list *)
-
 type abstract_machine = {
   name: ident;
   parameters: ident list;
@@ -105,8 +96,6 @@ type component =
   | Abstract_machine of abstract_machine
   | Refinement of refinement
   | Implementation of implementation
-
-exception Error of loc*string
 
 val mk_machine_exn : ident -> ident list -> clause list -> abstract_machine
 val mk_refinement_exn : ident -> ident list -> ident -> clause list -> refinement

@@ -262,22 +262,22 @@ let rec pp_expr (out:formatter) : expression -> unit = function
   | Record_Type (_,(f,lst)) ->
     fprintf out "@[struct(%a)@]" pp_struct_field_list (f::lst)
 
-and pp_struct_field_list : formatter -> (ident*expression) list -> unit =
+and pp_struct_field_list (out:formatter) (lst:(ident*expression) list) : unit =
   let pp (out:formatter) (id,e:ident*expression) : unit =
     fprintf out "%a: %a" pp_ident id pp_expr_wp e
   in
-  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@,") pp
+  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@,") pp out lst
 
-and pp_rec_field_list : formatter -> (ident option*expression) list -> unit =
+and pp_rec_field_list (out:formatter) (lst:(ident option*expression) list) : unit =
   let pp (out:formatter) (opt,e:ident option*expression) : unit =
     match opt with
     | None -> pp_expr_wp out e
     | Some id -> fprintf out "%a: %a" pp_ident id pp_expr_wp e
   in
-  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@,") pp
+  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@,") pp out lst
 
-and pp_expr_list : formatter -> expression list -> unit =
-  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@ ") pp_expr_wp
+and pp_expr_list (out:formatter) (lst:expression list) : unit =
+  pp_print_list ~pp_sep:(fun out () -> fprintf out ",@ ") pp_expr_wp out lst
 
 and pp_expr_wp (out:formatter) : expression -> unit = function
   | Application (_,_,Couple(_,Infix,_,_)) | Couple _ | Record_Field_Access _ as e ->

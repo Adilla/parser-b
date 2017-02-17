@@ -26,53 +26,56 @@ type substitution =
 
 open Format
 
-(*
-  BEGIN s=substitution END { s }
-| SKIP { Skip }
-| ids=ident_lst_comma AFFECTATION e=expression { Affectation ((List.hd ids,List.tl ids),expr_to_nonempty_list e) }
-| id=IDENT LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
-     { Function_Affectation (($startpos(id),id),(e1,lst),e2) }
-| id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression { Record_Affectation (($startpos(id),id),($startpos(fi),fi),e) }
-| PRE p=predicate THEN s=substitution END { Pre (p,s) }
-| ASSERT p=predicate THEN s=substitution END { Assert (p,s) }
-| CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { Choice (List.hd lst,List.tl lst) }
-| IF p=predicate THEN s=substitution ei=elsif* e=option(els) END { IfThenElse (((p,s),ei),e) }
-| SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { Select (((p,s),w),e) }
-| CASE exp=expression OF
-        EITHER e=expression THEN s=substitution
-        ors=case_or+
-        opt=option(els)
-  END END { Case (exp,((e,s),ors),opt) }
-| ANY ids=ident_lst_comma WHERE p=predicate THEN s=substitution END { Any ((List.hd ids,List.tl ids),p,s) }
-| LET ids=ident_lst_comma BE eqs=separated_nonempty_list(AND,id_eq_expr) IN s=substitution END { Let ((List.hd ids,List.tl ids),(List.hd eqs,List.tl eqs),s) }
-| ids=ident_lst_comma BECOMES_ELT e=expression { BecomesElt ((List.hd ids,List.tl ids),e) }
-| ids=ident_lst_comma MEMBER_OF LPAR p=predicate RPAR { BecomesSuch ((List.hd ids,List.tl ids),p) }
-| VAR ids=ident_lst_comma IN s=substitution END { Var ((List.hd ids,List.tl ids),s) }
-| c=callup_subst { c }
-| WHILE cond=predicate DO s=substitution INVARIANT inv=predicate VARIANT var=expression END { While (cond,s,inv,var) }
-| s1=substitution SEMICOLON s2=substitution { Sequencement (s1,s2) }
-| s1=substitution PARALLEL s2=substitution { Parallel (s1,s2) }
-   *)
-
 let rec pp_subst (out:formatter) : substitution -> unit = function
   | Skip -> fprintf out "skip"
   | BeginEnd s -> fprintf out "BEGIN %a END" pp_subst s
-  | Affectation ((x,xlst),(e,elst)) -> assert false (*FIXME ids := elst *)
-  | Function_Affectation (id,(a,alst),e) -> assert false (*FIXME id(lst)(lst) := e*)
-  | Record_Affectation (id,fd,e) -> assert false (*FIXME id'fd := e *)
-  | Pre (p,s) -> assert false (*FIXME PRE THEN END *)
-  | Assert (p,s) -> assert false (*FIXME ASSERT THEN END *)
-  | Choice ((s,slst)) -> assert false (*FIXME CHOICE s (OR s)* END *)
-  | IfThenElse ((ps,pslst),opt) -> assert false (*FIXME IF c THEN s (ELSIF c THEN s) ELSE s END *)
-  | Select ((ps,pslst),opt) -> assert false (*FIXME SELECT p THEN s (WHEN p THEN s)* ELSE s END*)
-  | Case (e,(es,eslst),opt) -> assert false (*FIXME CASE e OF EITHER e THEN s (OR e THEN s) ELSE END END*)
-  | Any ((x,xlst),p,s) -> assert false (*FIXME ANY WHERE THEN END*)
-  | Let ((x,xlst),(ie,ielst),s) -> assert false (*FIXME LET ids BE id=e (AND id=e)* IN s END *)
-  | BecomesElt ((x,xlst),e) -> assert false (*FIXME :: *)
-  | BecomesSuch ((x,lst),p) -> assert false (*FIXME :( ) *)
-  | Var ((x,xlst),s) -> assert false (*FIXME VAR IN END*)
-  | CallUp (ids,f,lst) -> assert false (*FIXME lst <-- Op(lst) *)
-  | While (p,s,q,e) -> assert false (*FIXME WHILE DO INVARIANT VARIANT END*)
-  | Sequencement (s1,s2) -> assert false (*FIXME ; *)
-  | Parallel (s1,s2) -> assert false (*FIXME || *)
+  | Affectation ((x,xlst),(e,elst)) ->
+    fprintf out "%a := %a" pp_ident_list (x::xlst) pp_expr_list (e::elst)
+  | Function_Affectation (id,(a,alst),e) ->
+    let pp_aux out e = fprintf out "(%a)" pp_expr e in
+    fprintf out "%a%a := %a" pp_ident id (pp_print_list pp_aux) (a::alst) pp_expr e
+  | Record_Affectation (id,fd,e) ->
+    fprintf out "%a'%a := %a" pp_ident id pp_ident fd pp_expr e
+  | Pre (p,s) -> fprintf out "PRE %a THEN %a END" pp_pred p pp_subst s
+  | Assert (p,s) -> fprintf out "ASSERT %a THEN %a END" pp_pred p pp_subst s
+  | Choice ((s,slst)) ->
+    let pp_sep out () = fprintf out " OR " in
+    fprintf out "CHOICE %a END" (pp_print_list ~pp_sep pp_subst) (s::slst)
+  | IfThenElse ((ps,pslst),opt) ->
+    let pp_sep out () = fprintf out " ELSIF " in
+    let pp_elsif out (p,s) = fprintf out "%a THEN %a" pp_pred p pp_subst s in
+    fprintf out "IF %a %a END" (pp_print_list ~pp_sep pp_elsif) (ps::pslst) pp_else opt
+  | Select ((ps,pslst),opt) ->
+    let pp_sep out () = fprintf out " WHEN " in
+    let pp_when out (p,s) = fprintf out "%a THEN %a" pp_pred p pp_subst s in
+    fprintf out "SELECT %a %a END" (pp_print_list ~pp_sep pp_when) (ps::pslst) pp_else opt
+  | Case (e,(es,eslst),opt) ->
+    let pp_sep out () = fprintf out " OR " in
+    let pp_or out (e,s) = fprintf out "%a THEN %a" pp_expr e pp_subst s in
+    fprintf out "CASE %a OF EITHER %a %a END END"
+      pp_expr e (pp_print_list ~pp_sep pp_or) (es::eslst) pp_else opt
+  | Any ((x,xlst),p,s) ->
+    fprintf out "ANY %a WHERE %a THEN %a END" pp_ident_list (x::xlst) pp_pred p pp_subst s
+  | Let ((x,xlst),(ie,ielst),s) ->
+    let pp_sep out () = fprintf out " AND " in
+    let pp_eq out (id,e) = fprintf out "%a = %a" pp_ident id pp_expr e in
+    fprintf out "LET %a BE %a IN %a END" pp_ident_list (x::xlst)
+      (pp_print_list ~pp_sep pp_eq) (ie::ielst) pp_subst s
+  | BecomesElt ((x,xlst),e) ->
+    fprintf out "%a :: %a" pp_ident_list (x::xlst) pp_expr e
+  | BecomesSuch ((x,xlst),p) ->
+    fprintf out "%a :( %a )" pp_ident_list (x::xlst) pp_pred p
+  | Var ((x,xlst),s) ->
+    fprintf out "VAR %a IN %a END" pp_ident_list (x::xlst) pp_subst s
+  | CallUp (ids,f,lst) ->
+    fprintf out "%a <-- %a(%a)" pp_ident_list ids pp_ident f pp_expr_list lst
+  | While (p,s,q,e) ->
+    fprintf out "WHILE %a DO %a INVARIANT %a VARIANT %a END"
+      pp_pred p pp_subst s pp_pred q pp_expr e
+  | Sequencement (s1,s2) -> fprintf out "%a; %a" pp_subst s1 pp_subst s2
+  | Parallel (s1,s2) -> fprintf out "%a || %a" pp_subst s1 pp_subst s2
 
+and pp_else (out:formatter) (opt:substitution option) : unit =
+  match opt with
+  | None -> ()
+  | Some s -> fprintf out "ELSE %a" pp_subst s

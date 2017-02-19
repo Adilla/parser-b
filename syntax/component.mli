@@ -100,3 +100,5 @@ type component =
 val mk_machine_exn : ident -> ident list -> clause list -> abstract_machine
 val mk_refinement_exn : ident -> ident list -> ident -> clause list -> refinement
 val mk_implementation_exn : ident -> ident list -> ident -> clause list -> implementation
+
+val ef_component : component -> Easy_format.t 

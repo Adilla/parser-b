@@ -314,3 +314,98 @@ and pp_rec_field (out:formatter) (opt,e:ident option*expression) : unit =
   match opt with
   | Some id -> pp_field out (id,e)
   | None -> pp_expr out e
+
+let mk_atom s = Easy_format.Atom (s,Easy_format.atom)
+let mk_label a b = Easy_format.Label ((a,Easy_format.label),b)
+let mk_list_1 lst = Easy_format.List (("(",",",")",Easy_format.list),lst)
+let mk_list_2 lst = Easy_format.List (("","","",Easy_format.list),lst)
+
+let add_par : expression -> expression = function
+  | Application (_,_,Couple(_,Infix,_,_)) | Couple _  as e -> Parentheses (dloc,e)
+  | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
+  | Record_Field_Access _ | Binder _ | Sequence _ | Extension _ | Record _
+  | Record_Type _ | Application _ as e -> e
+
+let add_par_p : predicate -> predicate = function
+  | P_Ident _ | P_Builtin _ | Negation _ | Pparentheses _
+  | Universal_Q _ | Existential_Q _ as p -> p
+  | Binary_Prop _ | Binary_Pred _ as p -> Pparentheses (dloc,p)
+
+let ef_ident_non_empty_list (x,xlst) =
+  let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
+  Easy_format.List (("",",","",Easy_format.list),lst)
+
+let ef_ident_non_empty_list_2 (x,xlst) =
+  let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
+  Easy_format.List (("(",",",")",Easy_format.list),lst)
+
+let rec ef_expr : expression -> Easy_format.t = function
+  | Ident id -> mk_atom (snd id)
+  | Dollar id -> mk_atom (snd id ^ "$")
+  | Builtin (_,bi) -> mk_atom (builtin_to_string bi)
+  | Pbool (_,p) -> mk_label (mk_atom "pbool") (mk_list_1 [ef_pred p])
+  | Parentheses (_,e) -> mk_list_1 [ef_expr e]
+  | Application (_,Builtin (_,Inverse_Relation),e) ->
+    mk_list_2 [ef_expr (add_par e);mk_atom "~"]
+  | Application (_,Builtin (_,Unary_Minus),e) ->
+    mk_label (mk_atom "~") (ef_expr (add_par e))
+  | Application (_,Builtin (_,Image),Couple(_,_,e1,e2)) ->
+    mk_list_2 [ef_expr (add_par e1);mk_atom "[";ef_expr e2;mk_atom "]"]
+  | Application (_,Builtin (_,bop),Couple(_,Infix,e1,e2)) ->
+    mk_list_2 [ef_expr (add_par e1);mk_atom (builtin_to_string bop);ef_expr (add_par e2)]
+  | Application (_,f,a) ->
+    mk_list_2 [ef_expr (add_par f);mk_atom "(";ef_expr a;mk_atom ")"]
+  | Comprehension (l,xlst,p) ->
+    mk_list_2 [mk_atom "{";ef_ident_non_empty_list xlst;mk_atom "|";ef_pred p]
+  | Binder (l,bi,xlst,p,e) ->
+    let x = mk_label (mk_atom (binder_to_string bi)) (ef_ident_non_empty_list_2 xlst) in
+    let y = mk_list_2 [mk_atom "(";ef_pred p;mk_atom "|";ef_expr e;mk_atom ")"] in
+    mk_list_2 [x;mk_atom ".";y]
+  | Sequence (_,(e,lst)) ->
+    let lst = List.map (fun e -> ef_expr (add_par e)) (e::lst) in
+    Easy_format.List (("[",",","]",Easy_format.list),lst)
+  | Extension (_,(e,lst)) ->
+    let lst = List.map (fun e -> ef_expr (add_par e)) (e::lst) in
+    Easy_format.List (("{",",","}",Easy_format.list),lst)
+  | Couple (_,Infix,e1,e2) -> assert false
+  | Couple (_,Maplet,e1,e2) ->
+    mk_list_2 [ef_expr (add_par e1);mk_atom "|->";ef_expr (add_par e2)]
+  | Couple (_,Comma,e1,e2) ->
+    mk_list_2 [ef_expr (add_par e1);mk_atom ",";ef_expr (add_par e2)]
+  | Record_Field_Access (_,e,id) ->
+    mk_list_2 [ef_expr (add_par e);mk_atom "'";mk_atom (snd id)]
+  | Record (_,(f,lst)) ->
+    let flst = List.map ef_rec_field (f::lst) in
+    let lst = Easy_format.List (("(",",",")",Easy_format.list),flst) in
+    mk_label (mk_atom "rec") lst
+  | Record_Type (_,(f,lst)) ->
+    let flst = List.map ef_struct_field (f::lst) in
+    let lst = Easy_format.List (("(",",",")",Easy_format.list),flst) in
+    mk_label (mk_atom "struct") lst
+
+and ef_struct_field (id,e:ident*expression) : Easy_format.t =
+  mk_list_2 [mk_atom (snd id);mk_atom ":";ef_expr (add_par e)]
+
+and ef_rec_field (opt,e:ident option*expression) : Easy_format.t =
+  match opt with
+  | None -> ef_expr (add_par e)
+  | Some id -> ef_struct_field (id,e)
+
+and ef_pred : predicate -> Easy_format.t = function
+  | P_Ident id -> mk_atom (snd id)
+  | P_Builtin (_,Btrue) -> mk_atom "btrue"
+  | P_Builtin (_,Bfalse) -> mk_atom "bfalse"
+  | Binary_Prop (_,bop,p1,p2) ->
+    mk_list_2 [ef_pred (add_par_p p1);mk_atom (prop_bop_to_string bop);ef_pred (add_par_p p2)]
+  | Binary_Pred (_,bop,e1,e2) ->
+    mk_list_2 [ef_expr (add_par e1);mk_atom (pred_bop_to_string bop);ef_expr (add_par e2)]
+  | Negation (_,p) -> mk_label (mk_atom "not") (mk_list_1 [ef_pred p])
+  | Pparentheses (_,p) -> mk_list_1 [ef_pred p]
+  | Universal_Q (_,xlst,p) ->
+    let x = mk_label (mk_atom "!") (ef_ident_non_empty_list_2 xlst) in
+    let y = mk_list_1 [ef_pred p] in
+    mk_list_2 [x;mk_atom ".";y]
+  | Existential_Q (_,xlst,p) ->
+    let x = mk_label (mk_atom "#") (ef_ident_non_empty_list_2 xlst) in
+    let y = mk_list_1 [ef_pred p] in
+    mk_list_2 [x;mk_atom ".";y]

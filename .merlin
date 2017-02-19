@@ -1,4 +1,5 @@
 S syntax
 S lexer
 S examples
+PKG easy-format
 B _build/**

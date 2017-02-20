@@ -307,22 +307,29 @@ let mk_implementation_exn (name:ident) (params:ident list) (refines:ident) (clau
 open Easy_format
 
 let mk_atom s = Easy_format.Atom (s,Easy_format.atom)
-let mk_label a b = Easy_format.Label ((a,Easy_format.label),b)
-let mk_label_always_break a b = Easy_format.Label ((a,{label with label_break=`Always;space_after_label=false}),b)
-let mk_list_1 lst = Easy_format.List (("(",",",")",Easy_format.list),lst)
-let mk_list_2 lst = Easy_format.List (("","","",Easy_format.list),lst)
+(* let mk_label a b = Easy_format.Label ((a,Easy_format.label),b) *)
 
-let ef_ident_non_empty_list (x,xlst) =
-  match xlst with
-  | [] -> mk_atom (snd x)
-  | _::_ ->
-    let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
-    List (("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),lst)
+let mk_clause (cname:string) (n:Easy_format.t) =
+  Label ((mk_atom cname,
+          {label with label_break=`Always;space_after_label=false}),n)
 
+(* let mk_list_1 lst = Easy_format.List (("(",",",")",Easy_format.list),lst) *)
+(* let mk_list_2 lst = Easy_format.List (("","","",Easy_format.list),lst) *)
+
+let mk_ident_list_comma (lst:ident list) : Easy_format.t =
+    let lst = List.map (fun id -> mk_atom (snd id)) lst in
+    List (("",",","",{list with align_closing=false;
+                                space_after_opening=false;
+                                space_before_closing=false})
+         ,lst)
+
+(*
 let ef_ident_non_empty_list_2 (x,xlst) =
   let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
   List (("(",",",")",list),lst)
+*)
 
+(*
 let ef_machine_inst (id,args:machine_instanciation) : Easy_format.t =
   match args with
   | [] -> mk_atom (snd id)
@@ -349,10 +356,11 @@ let ef_operation (out,name,args,body:operation) : Easy_format.t =
   in
   Label((spec,{label with label_break=`Always;indent_after_label=0;space_after_label=false}),ef_subst body)
 
+   *)
 let add lst f = function
   | None -> lst
   | Some x -> (f x)::lst
-
+(*
 let mk_op_pred (cname:string) (_,p:loc*predicate) =
   mk_label_always_break (mk_atom cname) (ef_pred p)
 
@@ -382,40 +390,50 @@ let mk_op_values (_,lst:loc*(ident*expression) list) =
   let ef (id,e) = List(("","","",list),[mk_atom (snd id);mk_atom "=";ef_expr e]) in
   mk_label_always_break (mk_atom "VALUES") (List(("",";","",list),List.map ef lst))
 
+*)
+let ef_op_list _ = assert false (*FIXME*)
+let ef_pred_list _ = assert false (*FIXME*)
+let ef_set_list _ = assert false (*FIXME*)
+let ef_minst_list _ = assert false (*FIXME*)
+
+let mk_machine_name name params =
+  match params with
+  | [] -> mk_atom (snd name)
+  | _::_ -> Label((mk_atom (snd name),{label with space_after_label=false}),
+                  List(("(",",",")",list),List.map (fun (_,p) -> mk_atom p) params))
+
+let mk_clause_list lst =
+  List (("","\n","",
+         {list with indent_body=0;
+                    space_after_opening=false;
+                    space_after_separator=false;
+                    align_closing=false}),
+        lst)
+
 let ef_machine (mch:abstract_machine) : Easy_format.t =
-  let m_name = match mch.parameters with
-    | [] -> mk_atom (snd mch.name)
-    | _::_ -> mk_label (mk_atom (snd mch.name))
-                (List (("(",",",")",list),List.map (fun (_,p) -> mk_atom p) mch.parameters))
-  in
-  let machine = mk_label (mk_atom "MACHINE") m_name in
+  let machine = mk_clause "MACHINE" (mk_machine_name mch.name mch.parameters) in
   let lst = [mk_atom "END"] in
-  let lst = add lst (mk_ops "OPERATIONS") mch.clause_operations in
-  let lst = add lst mk_op_init mch.clause_initialisation in
-  let lst = add lst (mk_op_pred_list "ASSERTIONS") mch.clause_assertions in
-  let lst = add lst (mk_op_pred "INVARIANT") mch.clause_invariant in
-  let lst = add lst (mk_op_ident_list "VARIABLES") mch.clause_abstract_variables in
-  let lst = add lst (mk_op_ident_list "CONCRETE_VARIABLES") mch.clause_concrete_variables in
-  let lst = add lst (mk_op_pred "PROPERTIES") mch.clause_properties in
-  let lst = add lst (mk_op_ident_list "ABSTRACT_VARIABLES") mch.clause_abstract_constants in
-  let lst = add lst (mk_op_ident_list "CONSTANTS") mch.clause_concrete_constants in
-  let lst = add lst mk_op_sets mch.clause_sets in
-  let lst = add lst (mk_op_ident_list "USES") mch.clause_uses in
-  let lst = add lst (mk_op_minst_list "EXTENDS") mch.clause_extends in
-  let lst = add lst (mk_op_ident_list "PROMOTES") mch.clause_promotes in
-  let lst = add lst (mk_op_minst_list "INCLUDES") mch.clause_includes in
-  let lst = add lst (mk_op_ident_list "SEES") mch.clause_sees in
-  let lst = add lst (mk_op_pred "CONSTRAINTS") mch.clause_constraints in
-  List (("","","",list),machine::lst)
+  let lst = add lst (fun lst -> mk_clause "OPERATIONS" (ef_op_list lst)) mch.clause_operations in
+  let lst = add lst (fun (_,s) -> mk_clause "INITIALISATION" (ef_subst s)) mch.clause_initialisation in
+  let lst = add lst (fun (_,lst) -> mk_clause "ASSERTIONS" (ef_pred_list lst)) mch.clause_assertions in
+  let lst = add lst (fun (_,p) -> mk_clause "INVARIANT" (ef_pred p)) mch.clause_invariant in
+  let lst = add lst (fun (_,lst) -> mk_clause "VARIABLES" (mk_ident_list_comma lst)) mch.clause_abstract_variables in
+  let lst = add lst (fun (_,lst) -> mk_clause "CONCRETE_VARIABLES" (mk_ident_list_comma lst)) mch.clause_concrete_variables in
+  let lst = add lst (fun (_,p) -> mk_clause "PROPERTIES" (ef_pred p)) mch.clause_properties in
+  let lst = add lst (fun (_,lst) -> mk_clause "ABSTRACT_VARIABLES" (mk_ident_list_comma lst)) mch.clause_abstract_constants in
+  let lst = add lst (fun (_,lst) -> mk_clause "CONSTANTS" (mk_ident_list_comma lst)) mch.clause_concrete_constants in
+  let lst = add lst (fun (_,lst) -> mk_clause "SETS" (ef_set_list lst)) mch.clause_sets in
+  let lst = add lst (fun (_,lst) -> mk_clause "USES" (mk_ident_list_comma lst)) mch.clause_uses in
+  let lst = add lst (fun (_,lst) -> mk_clause "EXTENDS" (ef_minst_list lst)) mch.clause_extends in
+  let lst = add lst (fun (_,lst) -> mk_clause "PROMOTES" (mk_ident_list_comma lst)) mch.clause_promotes in
+  let lst = add lst (fun (_,lst) -> mk_clause "INCLUDES" (ef_minst_list lst)) mch.clause_includes in
+  let lst = add lst (fun (_,lst) -> mk_clause "SEES" (mk_ident_list_comma lst)) mch.clause_sees in
+  let lst = add lst (fun (_,p) -> mk_clause "CONSTRAINTS" (ef_pred p)) mch.clause_constraints in
+  mk_clause_list (machine::lst)
 
 let ef_refinement (ref:refinement) : Easy_format.t =
-  let m_name = match ref.parameters with
-    | [] -> mk_atom (snd ref.name)
-    | _::_ -> mk_label (mk_atom (snd ref.name))
-                (List (("(",",",")",list),List.map (fun (_,p) -> mk_atom p) ref.parameters))
-  in
-  let refinement = mk_label (mk_atom "REFINEMENT") m_name in
-  let refines = mk_label (mk_atom "REFINES") (mk_atom (snd ref.refines)) in
+  let refinement = mk_clause "REFINEMENT" (mk_machine_name ref.name ref.parameters) in
+  let refines = mk_clause "REFINES" (mk_atom (snd ref.refines)) in
   let lst = [mk_atom "END"] in
   let lst = add lst (mk_ops "OPERATIONS") ref.clause_operations in
   let lst = add lst (mk_ops "LOCAL_OPERATIONS") ref.clause_local_operations in
@@ -424,7 +442,7 @@ let ef_refinement (ref:refinement) : Easy_format.t =
   let lst = add lst (mk_op_pred "INVARIANT") ref.clause_invariant in
   let lst = add lst (mk_op_ident_list "VARIABLES") ref.clause_abstract_variables in
   let lst = add lst (mk_op_ident_list "CONCRETE_VARIABLES") ref.clause_concrete_variables in
-  let lst = add lst (mk_op_pred "PROPERTIES") ref.clause_properties in
+  let lst = add lst (fun (_,p) -> mk_clause "PROPERTIES" (ef_pred p)) ref.clause_properties in
   let lst = add lst (mk_op_ident_list "ABSTRACT_CONSTANTS") ref.clause_abstract_constants in
   let lst = add lst (mk_op_ident_list "CONSTANTS") ref.clause_concrete_constants in
   let lst = add lst (mk_op_sets) ref.clause_sets in
@@ -432,7 +450,7 @@ let ef_refinement (ref:refinement) : Easy_format.t =
   let lst = add lst (mk_op_ident_list "PROMOTES") ref.clause_promotes in
   let lst = add lst (mk_op_minst_list "INCLUDES") ref.clause_includes in
   let lst = add lst (mk_op_ident_list "SEES") ref.clause_sees in
-  List (("","","",list),refinement::refines::lst)
+  mk_clause_list (refinement::refines::lst)
 
 let ef_implem (imp:implementation) : Easy_format.t =
   let m_name = match imp.parameters with
@@ -457,7 +475,7 @@ let ef_implem (imp:implementation) : Easy_format.t =
   let lst = add lst (mk_op_ident_list "PROMOTES") imp.clause_promotes in
   let lst = add lst (mk_op_minst_list "IMPORTS") imp.clause_imports in
   let lst = add lst (mk_op_ident_list "SEES") imp.clause_sees in
-  List (("","\n","",{list with indent_body=0;stick_to_label=false;space_after_opening=false;space_after_separator=false;align_closing=false}),implementation::refines::lst)
+  mk_clause_list (implementation::refines::lst)
 
 let ef_component : component -> Easy_format.t = function
   | Abstract_machine x -> ef_machine x

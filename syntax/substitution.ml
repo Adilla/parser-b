@@ -84,12 +84,13 @@ open Easy_format
 
 let mk_atom s = Atom (s,atom)
 let mk_label a b = Label ((a,label),b)
+let mk_label_always_break a b = Label ((a,{label with label_break=`Always;space_after_label=false}),b)
 let mk_list_1 lst = List (("(",",",")",list),lst)
 let mk_list_2 lst = List (("","","",list),lst)
 
 let ef_ident_non_empty_list (x,xlst) =
   let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
-  List (("",",","",list),lst)
+  List (("",",","",{list with stick_to_label=false}),lst)
 
 let ef_ident_non_empty_list_2 (x,xlst) =
   let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
@@ -190,11 +191,10 @@ let rec ef_subst : substitution -> Easy_format.t = function
   | BecomesSuch (xlst,p) ->
     mk_label (ef_ident_non_empty_list xlst) (List((":(","",")",list),[ef_pred p]))
   | Var (xlst,s) ->
-    List(("","","",list), [mk_atom "VAR";
-                           ef_ident_non_empty_list xlst;
-                           mk_atom "IN";
-                           ef_subst s;
-                           mk_atom "END"])
+    List(("","","",{list with align_closing=false;indent_body=0;space_after_opening=false}),
+         [ mk_label_always_break (mk_atom "VAR") (ef_ident_non_empty_list xlst);
+           mk_label_always_break (mk_atom "IN") (ef_subst s);
+           mk_atom "END"])
   | CallUp ([],f,lst) ->
     mk_label (mk_atom (snd f)) (List(("(",",",")",list),List.map ef_expr lst))
   | CallUp ((x::xlst),f,lst) ->

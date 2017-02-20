@@ -308,19 +308,25 @@ open Easy_format
 
 let mk_atom s = Easy_format.Atom (s,Easy_format.atom)
 let mk_label a b = Easy_format.Label ((a,Easy_format.label),b)
+let mk_label_always_break a b = Easy_format.Label ((a,{label with label_break=`Always;space_after_label=false}),b)
 let mk_list_1 lst = Easy_format.List (("(",",",")",Easy_format.list),lst)
 let mk_list_2 lst = Easy_format.List (("","","",Easy_format.list),lst)
 
 let ef_ident_non_empty_list (x,xlst) =
-  let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
-  List (("",",","",list),lst)
+  match xlst with
+  | [] -> mk_atom (snd x)
+  | _::_ ->
+    let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
+    List (("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),lst)
 
 let ef_ident_non_empty_list_2 (x,xlst) =
   let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
   List (("(",",",")",list),lst)
 
 let ef_machine_inst (id,args:machine_instanciation) : Easy_format.t =
-  mk_label (mk_atom (snd id)) (List(("(",",",")",list),List.map ef_expr args))
+  match args with
+  | [] -> mk_atom (snd id)
+  | _::_ -> mk_label (mk_atom (snd id)) (List(("(",",",")",list),List.map ef_expr args))
 
 let ef_set (x:set) : Easy_format.t =
   match x with
@@ -331,7 +337,7 @@ let ef_set (x:set) : Easy_format.t =
     List(("","","",list),[mk_atom (snd id);mk_atom "=";enums])
 
 let ef_operation (out,name,args,body:operation) : Easy_format.t =
-  let spec = match out,args with
+  let spec = match out,args with (*FIXME ajouter =*)
     | [],[] -> mk_atom (snd name)
     | [], a::alst ->
       mk_label (mk_atom (snd name)) (ef_ident_non_empty_list_2 (a,alst))
@@ -341,36 +347,40 @@ let ef_operation (out,name,args,body:operation) : Easy_format.t =
       let f = mk_label (mk_atom (snd name)) (ef_ident_non_empty_list_2 (a,alst)) in
       List(("","","",list),[ef_ident_non_empty_list (o,olst);mk_atom "<--";f])
   in
-  mk_label spec (ef_subst body)
+  Label((spec,{label with label_break=`Always;indent_after_label=0;space_after_label=false}),ef_subst body)
 
 let add lst f = function
   | None -> lst
   | Some x -> (f x)::lst
 
 let mk_op_pred (cname:string) (_,p:loc*predicate) =
-  mk_label (mk_atom cname) (ef_pred p)
+  mk_label_always_break (mk_atom cname) (ef_pred p)
 
 let mk_op_pred_list (cname:string) (_,lst:loc*predicate list) =
-  mk_label (mk_atom cname) (List(("",";","",list),List.map ef_pred lst))
+  mk_label_always_break (mk_atom cname) (List(("",";","",list),List.map ef_pred lst))
 
 let mk_op_ident_list (cname:string) (_,lst:loc*ident list) =
-  mk_label (mk_atom cname) (ef_ident_non_empty_list (List.hd lst,List.tl lst)) (*FIXME*)
+  mk_label_always_break (mk_atom cname) (ef_ident_non_empty_list (List.hd lst,List.tl lst)) (*FIXME*)
 
 let mk_op_minst_list (cname:string) (_,lst:loc*machine_instanciation list) =
-  mk_label (mk_atom cname) (List(("",",","",list),List.map ef_machine_inst lst))
+  match lst with
+  | [] -> assert false (*FIXME*)
+  | [mi] -> mk_label_always_break (mk_atom cname) (ef_machine_inst mi)
+  | _::_ -> mk_label_always_break (mk_atom cname) (List(("",",","",list),List.map ef_machine_inst lst))
 
 let mk_op_sets (_,lst:loc*set list) =
-  mk_label (mk_atom "SETS") (List (("",",","",list),List.map ef_set lst))
+  mk_label_always_break (mk_atom "SETS") (List (("",",","",list),List.map ef_set lst))
 
 let mk_op_init (_,s:loc*substitution) =
-  mk_label (mk_atom "INITIALISATION") (ef_subst s)
+  mk_label_always_break (mk_atom "INITIALISATION") (ef_subst s)
 
 let mk_ops (cname:string) (_,lst:loc*operation list) =
-  mk_label (mk_atom cname) (List(("","","",list),List.map ef_operation lst))
+  mk_label_always_break (mk_atom cname)
+    (List(("","\n","",{list with align_closing=false;space_after_opening=false}),List.map ef_operation lst))
 
 let mk_op_values (_,lst:loc*(ident*expression) list) =
   let ef (id,e) = List(("","","",list),[mk_atom (snd id);mk_atom "=";ef_expr e]) in
-  mk_label (mk_atom "VALUES") (List(("",";","",list),List.map ef lst))
+  mk_label_always_break (mk_atom "VALUES") (List(("",";","",list),List.map ef lst))
 
 let ef_machine (mch:abstract_machine) : Easy_format.t =
   let m_name = match mch.parameters with
@@ -430,8 +440,8 @@ let ef_implem (imp:implementation) : Easy_format.t =
     | _::_ -> mk_label (mk_atom (snd imp.name))
                 (List (("(",",",")",list),List.map (fun (_,p) -> mk_atom p) imp.parameters))
   in
-  let implementation = mk_label (mk_atom "IMPLEMENTATION") m_name in
-  let refines = mk_label (mk_atom "REFINES") (mk_atom (snd imp.refines)) in
+  let implementation = mk_label_always_break (mk_atom "IMPLEMENTATION") m_name in
+  let refines = mk_label_always_break (mk_atom "REFINES") (mk_atom (snd imp.refines)) in
   let lst = [mk_atom "END"] in
   let lst = add lst (mk_ops "OPERATIONS") imp.clause_operations_B0 in
   let lst = add lst (mk_ops "LOCAL_OPERATIONS") imp.clause_local_operations_B0 in
@@ -447,7 +457,7 @@ let ef_implem (imp:implementation) : Easy_format.t =
   let lst = add lst (mk_op_ident_list "PROMOTES") imp.clause_promotes in
   let lst = add lst (mk_op_minst_list "IMPORTS") imp.clause_imports in
   let lst = add lst (mk_op_ident_list "SEES") imp.clause_sees in
-  List (("","","",list),implementation::refines::lst)
+  List (("","\n","",{list with indent_body=0;stick_to_label=false;space_after_opening=false;space_after_separator=false;align_closing=false}),implementation::refines::lst)
 
 let ef_component : component -> Easy_format.t = function
   | Abstract_machine x -> ef_machine x

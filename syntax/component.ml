@@ -395,6 +395,7 @@ let ef_op_list _ = assert false (*FIXME*)
 let ef_pred_list _ = assert false (*FIXME*)
 let ef_set_list _ = assert false (*FIXME*)
 let ef_minst_list _ = assert false (*FIXME*)
+let ef_value_list _ = assert false (*FIXME*)
 
 let mk_machine_name name params =
   match params with
@@ -410,71 +411,86 @@ let mk_clause_list lst =
                     align_closing=false}),
         lst)
 
+let mk_operations (_,lst) = mk_clause "OPERATIONS" (ef_op_list lst)
+let mk_local_operations (_,lst) = mk_clause "LOCAL_OPERATIONS" (ef_op_list lst)
+let mk_initialisation (_,s) = mk_clause "INITIALISATION" (ef_subst s)
+let mk_assertions (_,lst) = mk_clause "ASSERTIONS" (ef_pred_list lst)
+let mk_invariant (_,p) = mk_clause "INVARIANT" (ef_pred p)
+let mk_variables (_,lst) = mk_clause "VARIABLES" (mk_ident_list_comma lst)
+let mk_concrete_variables (_,lst) = mk_clause "CONCRETE_VARIABLES" (mk_ident_list_comma lst)
+let mk_properties (_,p) = mk_clause "PROPERTIES" (ef_pred p)
+let mk_abstract_constants (_,lst) = mk_clause "ABSTRACT_VARIABLES" (mk_ident_list_comma lst)
+let mk_constants (_,lst) = mk_clause "CONSTANTS" (mk_ident_list_comma lst)
+let mk_sets (_,lst) = mk_clause "SETS" (ef_set_list lst)
+let mk_uses (_,lst) = mk_clause "USES" (mk_ident_list_comma lst)
+let mk_extends (_,lst) = mk_clause "EXTENDS" (ef_minst_list lst)
+let mk_promotes (_,lst) = mk_clause "PROMOTES" (mk_ident_list_comma lst)
+let mk_includes (_,lst) = mk_clause "INCLUDES" (ef_minst_list lst)
+let mk_sees (_,lst) = mk_clause "SEES" (mk_ident_list_comma lst)
+let mk_constraints (_,p) = mk_clause "CONSTRAINTS" (ef_pred p)
+let mk_imports (_,lst) = mk_clause "IMPORTS" (ef_minst_list lst)
+let mk_values (_,lst) = mk_clause "VALUES" (ef_value_list lst) (*FIXME*)
+
 let ef_machine (mch:abstract_machine) : Easy_format.t =
   let machine = mk_clause "MACHINE" (mk_machine_name mch.name mch.parameters) in
   let lst = [mk_atom "END"] in
-  let lst = add lst (fun lst -> mk_clause "OPERATIONS" (ef_op_list lst)) mch.clause_operations in
-  let lst = add lst (fun (_,s) -> mk_clause "INITIALISATION" (ef_subst s)) mch.clause_initialisation in
-  let lst = add lst (fun (_,lst) -> mk_clause "ASSERTIONS" (ef_pred_list lst)) mch.clause_assertions in
-  let lst = add lst (fun (_,p) -> mk_clause "INVARIANT" (ef_pred p)) mch.clause_invariant in
-  let lst = add lst (fun (_,lst) -> mk_clause "VARIABLES" (mk_ident_list_comma lst)) mch.clause_abstract_variables in
-  let lst = add lst (fun (_,lst) -> mk_clause "CONCRETE_VARIABLES" (mk_ident_list_comma lst)) mch.clause_concrete_variables in
-  let lst = add lst (fun (_,p) -> mk_clause "PROPERTIES" (ef_pred p)) mch.clause_properties in
-  let lst = add lst (fun (_,lst) -> mk_clause "ABSTRACT_VARIABLES" (mk_ident_list_comma lst)) mch.clause_abstract_constants in
-  let lst = add lst (fun (_,lst) -> mk_clause "CONSTANTS" (mk_ident_list_comma lst)) mch.clause_concrete_constants in
-  let lst = add lst (fun (_,lst) -> mk_clause "SETS" (ef_set_list lst)) mch.clause_sets in
-  let lst = add lst (fun (_,lst) -> mk_clause "USES" (mk_ident_list_comma lst)) mch.clause_uses in
-  let lst = add lst (fun (_,lst) -> mk_clause "EXTENDS" (ef_minst_list lst)) mch.clause_extends in
-  let lst = add lst (fun (_,lst) -> mk_clause "PROMOTES" (mk_ident_list_comma lst)) mch.clause_promotes in
-  let lst = add lst (fun (_,lst) -> mk_clause "INCLUDES" (ef_minst_list lst)) mch.clause_includes in
-  let lst = add lst (fun (_,lst) -> mk_clause "SEES" (mk_ident_list_comma lst)) mch.clause_sees in
-  let lst = add lst (fun (_,p) -> mk_clause "CONSTRAINTS" (ef_pred p)) mch.clause_constraints in
+  let lst = add lst mk_operations mch.clause_operations in
+  let lst = add lst mk_initialisation mch.clause_initialisation in
+  let lst = add lst mk_assertions mch.clause_assertions in
+  let lst = add lst mk_invariant mch.clause_invariant in
+  let lst = add lst mk_variables mch.clause_abstract_variables in
+  let lst = add lst mk_concrete_variables mch.clause_concrete_variables in
+  let lst = add lst mk_properties mch.clause_properties in
+  let lst = add lst mk_abstract_constants mch.clause_abstract_constants in
+  let lst = add lst mk_constants mch.clause_concrete_constants in
+  let lst = add lst mk_sets mch.clause_sets in
+  let lst = add lst mk_uses mch.clause_uses in
+  let lst = add lst mk_extends mch.clause_extends in
+  let lst = add lst mk_promotes mch.clause_promotes in
+  let lst = add lst mk_includes mch.clause_includes in
+  let lst = add lst mk_sees mch.clause_sees in
+  let lst = add lst mk_constraints mch.clause_constraints in
   mk_clause_list (machine::lst)
 
 let ef_refinement (ref:refinement) : Easy_format.t =
   let refinement = mk_clause "REFINEMENT" (mk_machine_name ref.name ref.parameters) in
   let refines = mk_clause "REFINES" (mk_atom (snd ref.refines)) in
   let lst = [mk_atom "END"] in
-  let lst = add lst (mk_ops "OPERATIONS") ref.clause_operations in
-  let lst = add lst (mk_ops "LOCAL_OPERATIONS") ref.clause_local_operations in
-  let lst = add lst (mk_op_init) ref.clause_initialisation in
-  let lst = add lst (mk_op_pred_list "ASSERTIONS") ref.clause_assertions in
-  let lst = add lst (mk_op_pred "INVARIANT") ref.clause_invariant in
-  let lst = add lst (mk_op_ident_list "VARIABLES") ref.clause_abstract_variables in
-  let lst = add lst (mk_op_ident_list "CONCRETE_VARIABLES") ref.clause_concrete_variables in
-  let lst = add lst (fun (_,p) -> mk_clause "PROPERTIES" (ef_pred p)) ref.clause_properties in
-  let lst = add lst (mk_op_ident_list "ABSTRACT_CONSTANTS") ref.clause_abstract_constants in
-  let lst = add lst (mk_op_ident_list "CONSTANTS") ref.clause_concrete_constants in
-  let lst = add lst (mk_op_sets) ref.clause_sets in
-  let lst = add lst (mk_op_minst_list "EXTENDS") ref.clause_extends in
-  let lst = add lst (mk_op_ident_list "PROMOTES") ref.clause_promotes in
-  let lst = add lst (mk_op_minst_list "INCLUDES") ref.clause_includes in
-  let lst = add lst (mk_op_ident_list "SEES") ref.clause_sees in
+  let lst = add lst mk_operations ref.clause_operations in
+  let lst = add lst mk_local_operations ref.clause_local_operations in
+  let lst = add lst mk_initialisation ref.clause_initialisation in
+  let lst = add lst mk_assertions ref.clause_assertions in
+  let lst = add lst mk_invariant ref.clause_invariant in
+  let lst = add lst mk_variables ref.clause_abstract_variables in
+  let lst = add lst mk_concrete_variables ref.clause_concrete_variables in
+  let lst = add lst mk_properties ref.clause_properties in
+  let lst = add lst mk_abstract_constants ref.clause_abstract_constants in
+  let lst = add lst mk_constants ref.clause_concrete_constants in
+  let lst = add lst mk_sets ref.clause_sets in
+  let lst = add lst mk_extends ref.clause_extends in
+  let lst = add lst mk_promotes ref.clause_promotes in
+  let lst = add lst mk_includes ref.clause_includes in
+  let lst = add lst mk_sees ref.clause_sees in
   mk_clause_list (refinement::refines::lst)
 
 let ef_implem (imp:implementation) : Easy_format.t =
-  let m_name = match imp.parameters with
-    | [] -> mk_atom (snd imp.name)
-    | _::_ -> mk_label (mk_atom (snd imp.name))
-                (List (("(",",",")",list),List.map (fun (_,p) -> mk_atom p) imp.parameters))
-  in
-  let implementation = mk_label_always_break (mk_atom "IMPLEMENTATION") m_name in
-  let refines = mk_label_always_break (mk_atom "REFINES") (mk_atom (snd imp.refines)) in
+  let implementation = mk_clause "IMPLEMENTATION" (mk_machine_name imp.name imp.parameters) in
+  let refines = mk_clause "REFINES" (mk_atom (snd imp.refines)) in
   let lst = [mk_atom "END"] in
-  let lst = add lst (mk_ops "OPERATIONS") imp.clause_operations_B0 in
-  let lst = add lst (mk_ops "LOCAL_OPERATIONS") imp.clause_local_operations_B0 in
-  let lst = add lst (mk_op_init) imp.clause_initialisation_B0 in
-  let lst = add lst (mk_op_pred_list "ASSERTIONS") imp.clause_assertions in
-  let lst = add lst (mk_op_pred "INVARIANT") imp.clause_invariant in
-  let lst = add lst (mk_op_ident_list "CONCRETE_VARIABLES") imp.clause_concrete_variables in
-  let lst = add lst (mk_op_values) imp.clause_values in
-  let lst = add lst (mk_op_pred "PROPERTIES") imp.clause_properties in
-  let lst = add lst (mk_op_ident_list "CONSTANTS") imp.clause_concrete_constants in
-  let lst = add lst (mk_op_sets) imp.clause_sets in
-  let lst = add lst (mk_op_minst_list "EXTENDS") imp.clause_extends_B0 in
-  let lst = add lst (mk_op_ident_list "PROMOTES") imp.clause_promotes in
-  let lst = add lst (mk_op_minst_list "IMPORTS") imp.clause_imports in
-  let lst = add lst (mk_op_ident_list "SEES") imp.clause_sees in
+  let lst = add lst mk_operations imp.clause_operations_B0 in
+  let lst = add lst mk_local_operations imp.clause_local_operations_B0 in
+  let lst = add lst mk_initialisation imp.clause_initialisation_B0 in
+  let lst = add lst mk_assertions imp.clause_assertions in
+  let lst = add lst mk_invariant imp.clause_invariant in
+  let lst = add lst mk_concrete_variables imp.clause_concrete_variables in
+  let lst = add lst mk_values imp.clause_values in
+  let lst = add lst mk_properties imp.clause_properties in
+  let lst = add lst mk_constants imp.clause_concrete_constants in
+  let lst = add lst mk_sets imp.clause_sets in
+  let lst = add lst mk_extends imp.clause_extends_B0 in
+  let lst = add lst mk_promotes imp.clause_promotes in
+  let lst = add lst mk_imports imp.clause_imports in
+  let lst = add lst mk_sees imp.clause_sees in
   mk_clause_list (implementation::refines::lst)
 
 let ef_component : component -> Easy_format.t = function

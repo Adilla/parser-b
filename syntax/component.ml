@@ -307,14 +307,12 @@ let mk_implementation_exn (name:ident) (params:ident list) (refines:ident) (clau
 open Easy_format
 
 let mk_atom s = Easy_format.Atom (s,Easy_format.atom)
-(* let mk_label a b = Easy_format.Label ((a,Easy_format.label),b) *)
+let mk_sequence lst =
+  List(("","","",{list with align_closing=false;space_after_opening=false}),lst)
 
 let mk_clause (cname:string) (n:Easy_format.t) =
   Label ((mk_atom cname,
           {label with label_break=`Always;space_after_label=false}),n)
-
-(* let mk_list_1 lst = Easy_format.List (("(",",",")",Easy_format.list),lst) *)
-(* let mk_list_2 lst = Easy_format.List (("","","",Easy_format.list),lst) *)
 
 let mk_ident_list_comma (lst:ident list) : Easy_format.t =
     let lst = List.map (fun id -> mk_atom (snd id)) lst in
@@ -323,17 +321,12 @@ let mk_ident_list_comma (lst:ident list) : Easy_format.t =
                                 space_before_closing=false})
          ,lst)
 
-(*
-let ef_ident_non_empty_list_2 (x,xlst) =
-  let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
-  List (("(",",",")",list),lst)
-*)
-
-(*
-let ef_machine_inst (id,args:machine_instanciation) : Easy_format.t =
+let ef_minst (id,args:machine_instanciation) : Easy_format.t =
   match args with
   | [] -> mk_atom (snd id)
-  | _::_ -> mk_label (mk_atom (snd id)) (List(("(",",",")",list),List.map ef_expr args))
+  | _::_ ->
+    Label ((mk_atom (snd id),label), List(("(",",",")",list),
+                                          List.map ef_expr args))
 
 let ef_set (x:set) : Easy_format.t =
   match x with
@@ -344,58 +337,51 @@ let ef_set (x:set) : Easy_format.t =
     List(("","","",list),[mk_atom (snd id);mk_atom "=";enums])
 
 let ef_operation (out,name,args,body:operation) : Easy_format.t =
-  let spec = match out,args with (*FIXME ajouter =*)
-    | [],[] -> mk_atom (snd name)
-    | [], a::alst ->
-      mk_label (mk_atom (snd name)) (ef_ident_non_empty_list_2 (a,alst))
-    | o::olst, [] -> 
-      List(("","","",list),[ef_ident_non_empty_list (o,olst);mk_atom "<--";mk_atom (snd name)])
-    | o::olst, a::alst ->
-      let f = mk_label (mk_atom (snd name)) (ef_ident_non_empty_list_2 (a,alst)) in
-      List(("","","",list),[ef_ident_non_empty_list (o,olst);mk_atom "<--";f])
+  let name_args =
+    match args with
+    | [] -> mk_atom (snd name)
+    | _::_ ->
+      let lst = {list with align_closing=false;
+                           space_after_opening=false;
+                           space_before_closing=false}
+      in
+      let args = List(("(",",",")",lst),
+                      List.map (fun a -> mk_atom (snd a)) args) in
+      Label((mk_atom (snd name),label),args)
   in
-  Label((spec,{label with label_break=`Always;indent_after_label=0;space_after_label=false}),ef_subst body)
+  let spec = match out with
+    | [] -> mk_sequence [name_args; mk_atom "="]
+    | _::_ -> mk_sequence [mk_ident_list_comma out; mk_atom "<--"; name_args; mk_atom "="]
+  in
+  let lbl = {label with label_break=`Always;
+                        indent_after_label=0;
+                        space_after_label=false } in
+  Label((spec, lbl), ef_subst body)
 
-   *)
 let add lst f = function
   | None -> lst
   | Some x -> (f x)::lst
-(*
-let mk_op_pred (cname:string) (_,p:loc*predicate) =
-  mk_label_always_break (mk_atom cname) (ef_pred p)
 
-let mk_op_pred_list (cname:string) (_,lst:loc*predicate list) =
-  mk_label_always_break (mk_atom cname) (List(("",";","",list),List.map ef_pred lst))
+let ef_op_list lst =
+    List(("","\n","",{list with align_closing=false;space_after_opening=false}),
+         List.map ef_operation lst)
 
-let mk_op_ident_list (cname:string) (_,lst:loc*ident list) =
-  mk_label_always_break (mk_atom cname) (ef_ident_non_empty_list (List.hd lst,List.tl lst)) (*FIXME*)
+let ef_pred_list lst =
+  List(("",";","",{list with align_closing=false;space_after_opening=false}),
+       List.map ef_pred lst)
 
-let mk_op_minst_list (cname:string) (_,lst:loc*machine_instanciation list) =
-  match lst with
-  | [] -> assert false (*FIXME*)
-  | [mi] -> mk_label_always_break (mk_atom cname) (ef_machine_inst mi)
-  | _::_ -> mk_label_always_break (mk_atom cname) (List(("",",","",list),List.map ef_machine_inst lst))
+let ef_set_list lst =
+  List(("",",","",{list with align_closing=false;space_after_opening=false}),
+       List.map ef_set lst)
 
-let mk_op_sets (_,lst:loc*set list) =
-  mk_label_always_break (mk_atom "SETS") (List (("",",","",list),List.map ef_set lst))
+let ef_minst_list lst =
+  List(("",",","",{list with align_closing=false;space_after_opening=false}),
+       List.map ef_minst lst)
 
-let mk_op_init (_,s:loc*substitution) =
-  mk_label_always_break (mk_atom "INITIALISATION") (ef_subst s)
-
-let mk_ops (cname:string) (_,lst:loc*operation list) =
-  mk_label_always_break (mk_atom cname)
-    (List(("","\n","",{list with align_closing=false;space_after_opening=false}),List.map ef_operation lst))
-
-let mk_op_values (_,lst:loc*(ident*expression) list) =
-  let ef (id,e) = List(("","","",list),[mk_atom (snd id);mk_atom "=";ef_expr e]) in
-  mk_label_always_break (mk_atom "VALUES") (List(("",";","",list),List.map ef lst))
-
-*)
-let ef_op_list _ = assert false (*FIXME*)
-let ef_pred_list _ = assert false (*FIXME*)
-let ef_set_list _ = assert false (*FIXME*)
-let ef_minst_list _ = assert false (*FIXME*)
-let ef_value_list _ = assert false (*FIXME*)
+let ef_value_list lst =
+  let ef (id,e) = mk_sequence [mk_atom (snd id);mk_atom "=";ef_expr e] in
+  (List(("",";","",{list with align_closing=false;space_after_opening=false}),
+        List.map ef lst))
 
 let mk_machine_name name params =
   match params with
@@ -429,7 +415,7 @@ let mk_includes (_,lst) = mk_clause "INCLUDES" (ef_minst_list lst)
 let mk_sees (_,lst) = mk_clause "SEES" (mk_ident_list_comma lst)
 let mk_constraints (_,p) = mk_clause "CONSTRAINTS" (ef_pred p)
 let mk_imports (_,lst) = mk_clause "IMPORTS" (ef_minst_list lst)
-let mk_values (_,lst) = mk_clause "VALUES" (ef_value_list lst) (*FIXME*)
+let mk_values (_,lst) = mk_clause "VALUES" (ef_value_list lst)
 
 let ef_machine (mch:abstract_machine) : Easy_format.t =
   let machine = mk_clause "MACHINE" (mk_machine_name mch.name mch.parameters) in

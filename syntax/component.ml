@@ -308,7 +308,7 @@ open Easy_format
 
 let mk_atom s = Easy_format.Atom (s,Easy_format.atom)
 let mk_sequence lst =
-  List(("","","",{list with align_closing=false;space_after_opening=false}),lst)
+  List(("","","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),lst)
 
 let mk_clause (cname:string) (n:Easy_format.t) =
   Label ((mk_atom cname,
@@ -363,24 +363,24 @@ let add lst f = function
   | Some x -> (f x)::lst
 
 let ef_op_list lst =
-    List(("","\n","",{list with align_closing=false;space_after_opening=false}),
+    List(("","\n","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
          List.map ef_operation lst)
 
 let ef_pred_list lst =
-  List(("",";","",{list with align_closing=false;space_after_opening=false}),
+  List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
        List.map ef_pred lst)
 
 let ef_set_list lst =
-  List(("",",","",{list with align_closing=false;space_after_opening=false}),
+  List(("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
        List.map ef_set lst)
 
 let ef_minst_list lst =
-  List(("",",","",{list with align_closing=false;space_after_opening=false}),
+  List(("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
        List.map ef_minst lst)
 
 let ef_value_list lst =
   let ef (id,e) = mk_sequence [mk_atom (snd id);mk_atom "=";ef_expr e] in
-  (List(("",";","",{list with align_closing=false;space_after_opening=false}),
+  (List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
         List.map ef lst))
 
 let mk_machine_name name params =

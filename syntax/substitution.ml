@@ -83,133 +83,195 @@ and pp_else (out:formatter) (opt:substitution option) : unit =
 open Easy_format
 
 let mk_atom s = Atom (s,atom)
-let mk_label a b = Label ((a,label),b)
-let mk_label_always_break a b = Label ((a,{label with label_break=`Always;space_after_label=false}),b)
-let mk_list_1 lst = List (("(",",",")",list),lst)
-let mk_list_2 lst = List (("","","",list),lst)
 
-let ef_ident_non_empty_list (x,xlst) =
-  let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
-  List (("",",","",{list with stick_to_label=false}),lst)
+let mk_sequence lst =
+  List(("","","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),lst)
 
-let ef_ident_non_empty_list_2 (x,xlst) =
-  let lst = List.map (fun id -> mk_atom (snd id)) (x::xlst) in
-  List (("(",",",")",list),lst)
+let mk_sequence_nl lst =
+  List(("","","",{list with space_after_opening=false;
+                            space_before_closing=false;
+                            align_closing=false;
+                            wrap_body=`Force_breaks;
+                 }),lst)
+
+let mk_ident_list_comma (lst:ident list) : Easy_format.t =
+    let lst = List.map (fun id -> mk_atom (snd id)) lst in
+    List (("",",","",{list with align_closing=false;
+                                space_after_opening=false;
+                                space_before_closing=false})
+         ,lst)
+
+let rec get_seq_list = function
+  | Sequencement (s1,s2) -> (get_seq_list s1)@(get_seq_list s2)
+  | s -> [s]
+
+let rec get_par_list = function
+  | Parallel (s1,s2) -> (get_par_list s1)@(get_par_list s2)
+  | s -> [s]
 
 let rec ef_subst : substitution -> Easy_format.t = function
   | Skip -> mk_atom "skip"
   | BeginEnd s -> List (("BEGIN","","END",list),[ef_subst s])
-  | Affectation (xlst,(e,elst)) ->
-    let lst = List(("",",","",list),List.map ef_expr (e::elst)) in
-    List(("","","",list),[ef_ident_non_empty_list xlst;mk_atom ":=";lst])
+
+  | Affectation ((x,xlst),(e,elst)) ->
+    let lst = List(("",",","",{list with space_after_opening=false;
+                                         align_closing=false;
+                                         space_before_closing=false}),
+                   List.map ef_expr (e::elst)) in
+    mk_sequence [mk_ident_list_comma (x::xlst);mk_atom ":=";lst]
+
   | Function_Affectation (id,(a,alst),e) ->
     let lst_args = List(("(",",",")",list),List.map ef_expr (a::alst)) in
-    let lf = mk_label (mk_atom (snd id)) lst_args in
-    List(("","","",list),[lf;mk_atom ":=";ef_expr e])
+    let lf = Label ((mk_atom (snd id),label), lst_args) in
+    mk_sequence [lf;mk_atom ":=";ef_expr e]
+
   | Record_Affectation (id,fd,e) ->
-    let lf = List(("","'","",list),[mk_atom (snd id);mk_atom (snd fd)]) in
-    List(("","","",list),[lf;mk_atom ":=";ef_expr e])
+    let lf = mk_atom (snd id ^ "'" ^ snd fd) in
+    mk_sequence [lf;mk_atom ":=";ef_expr e]
+
   | Pre (p,s) ->
-    List(("","","",list),
-         [mk_atom "PRE";ef_pred p;mk_atom "THEN";ef_subst s;mk_atom "END"])
+    let lb = {label with label_break=`Always} in
+    mk_sequence_nl [
+      Label((mk_atom "PRE",lb),ef_pred p);
+      Label((mk_atom "THEN",lb),ef_subst s);
+      mk_atom "END"]
+
   | Assert (p,s) ->
-    List(("","","",list),
-         [mk_atom "ASSERT";ef_pred p;mk_atom "THEN";ef_subst s;mk_atom "END"])
+    let lb = {label with label_break=`Always} in
+    mk_sequence_nl [ Label((mk_atom "ASSERT",lb),ef_pred p);
+                     Label((mk_atom "THEN",lb),ef_subst s);
+                     mk_atom "END"]
+
   | Choice ((s,slst)) ->
-    List(("CHOICE","OR","END",list), List.map ef_subst (s::slst))
-  | IfThenElse ((ps,pslst),opt) ->
-    let ef_if (p,s) =
-      mk_label
-        (List (("","","",list), [mk_atom "IF"; ef_pred p;mk_atom "THEN"]))
-        (ef_subst s)
+    let lb = {label with label_break=`Always} in
+    mk_sequence_nl (
+      Label((mk_atom "CHOICE",lb),ef_subst s)::
+      (List.map (fun s -> Label((mk_atom "OR",lb),ef_subst s)) slst)
+      @[mk_atom "END"])
+
+  | IfThenElse (((p,s),pslst),opt) ->
+    let lb = {label with label_break=`Always;space_after_label=false} in
+    let clst =
+      [ [Label((mk_atom "IF",lb),ef_pred p);
+         Label((mk_atom "THEN",lb),ef_subst s)] ]
+      @
+      (List.map (fun (p,s) ->
+           [Label((mk_atom "ELSIF",lb),ef_pred p);
+            Label((mk_atom "THEN",lb),ef_subst s)]
+         ) pslst)
+      @ (match opt with
+          | None -> []
+          | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
+      @ [[mk_atom "END"]]
     in
-    let ef_elsif (p,s) =
-      mk_label
-        (List (("","","",list), [mk_atom "ELSIF"; ef_pred p;mk_atom "THEN"]))
-        (ef_subst s)
+    mk_sequence_nl (List.concat clst)
+
+  | Select (((p,s),pslst),opt) ->
+    let lb = {label with label_break=`Always} in
+    let clst =
+      [ [Label((mk_atom "SELECT",lb),ef_pred p);
+         Label((mk_atom "THEN",lb),ef_subst s)] ]
+      @
+      (List.map (fun (p,s) ->
+           [Label((mk_atom "WHEN",lb),ef_pred p);
+            Label((mk_atom "THEN",lb),ef_subst s)]
+         ) pslst)
+      @ (match opt with
+          | None -> []
+          | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
+      @ [[mk_atom "END"]]
     in
-    let ef_else = match opt with
-      | None -> []
-      | Some s -> [mk_label (mk_atom "ELSE") (ef_subst s)]
+    mk_sequence_nl (List.concat clst)
+
+  | Case (c,((e,s),eslst),opt) ->
+    let lb = {label with label_break=`Always} in
+    let clst =
+      [ [Label((mk_atom "EITHER",lb),ef_expr e);
+         Label((mk_atom "THEN",lb),ef_subst s)] ]
+      @
+      (List.map (fun (e,s) ->
+           [Label((mk_atom "OR",lb),ef_expr e);
+            Label((mk_atom "THEN",lb),ef_subst s)]
+         ) eslst)
+      @ (match opt with
+          | None -> []
+          | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
+      @ [[mk_atom "END"]]
     in
-    List(("","","",list), (ef_if ps::(List.map ef_elsif pslst))@ef_else@[mk_atom "END"])
-  | Select ((ps,pslst),opt) ->
-    let ef_ps (p,s) =
-      List (("","","",list), [ef_pred p;mk_atom "THEN";ef_subst s])
+    let clst = List.concat clst in
+    let case_c = Label ((mk_atom "CASE",label),ef_expr c) in
+    mk_sequence_nl [ Label((case_c,lb),mk_sequence_nl clst);
+                     mk_atom "END" ]
+
+  | Any ((x,xlst),p,s) ->
+    let lb = { label with label_break=`Always } in
+    mk_sequence_nl [ Label((mk_atom "ANY",lb),mk_ident_list_comma (x::xlst));
+                     Label((mk_atom "WHERE",lb),ef_pred p);
+                     Label((mk_atom "THEN",lb),ef_subst s);
+                     mk_atom "END"]
+
+  | Let ((x,xlst),(ie,ielst),s) ->
+    let lb = { label with label_break=`Always } in
+    let lst = { list with space_after_opening=false; space_before_closing=false; align_closing=false; } in
+    let ef_eq (id,e) = mk_sequence [mk_atom (snd id);mk_atom "=";ef_expr e] in
+    let defs = List(("","AND","",lst),List.map ef_eq (ie::ielst)) in
+    mk_sequence_nl [ Label((mk_atom "LET",lb),mk_ident_list_comma (x::xlst));
+                     Label((mk_atom "BE",lb),defs);
+                     Label((mk_atom "IN",lb),ef_subst s);
+                     mk_atom "END"]
+
+  | BecomesElt ((x,xlst),e) ->
+    mk_sequence [mk_ident_list_comma (x::xlst); mk_atom "::"; ef_expr e]
+
+  | BecomesSuch ((x,xlst),p) ->
+    Label((mk_ident_list_comma (x::xlst),label),
+          List((":(","",")",{list with space_after_opening=false;space_before_closing=false}),[ef_pred p]))
+
+  | Var ((x,xlst),s) ->
+    let lb = {label with label_break=`Always} in
+    mk_sequence_nl [ Label((mk_atom "VAR",lb), mk_ident_list_comma (x::xlst));
+                     Label((mk_atom "IN",lb), ef_subst s);
+                     mk_atom "END"]
+
+  | CallUp (xlst,f,args) ->
+    let lst = {list with align_closing=false;
+                         space_after_opening=false;
+                         space_before_closing=false}
     in
-    let ef_when (p,s) =
-      List (("","","",list), [mk_atom "WHEN";ef_pred p;mk_atom "THEN";ef_subst s])
-    in
-    let ef_else = match opt with
-      | None -> []
-      | Some s -> [mk_label (mk_atom "ELSE") (ef_subst s)]
-    in
-    List (("SELECT","","END",list),ef_ps ps::(List.map ef_when pslst)@ef_else)
-  | Case (e,(es,eslst),opt) ->
-    let ef_either (e,s) =
-      mk_label
-        (List (("","","",list), [mk_atom "EITHER";ef_expr e;mk_atom "THEN"]))
-        (ef_subst s)
-    in
-    let ef_or (e,s) =
-      mk_label
-        (List (("","","",list), [mk_atom "OR";ef_expr e;mk_atom "THEN"]))
-        (ef_subst s)
-    in
-    let ef_else =
-      match opt with
-      | None -> []
-      | Some s -> [mk_label (mk_atom "ELSE") (ef_subst s)]
-    in
-    let lst = (ef_either es)::(List.map ef_or eslst)@ef_else@[mk_atom "END"] in
-    let cs = mk_label
-        (List (("","","",list),[mk_atom "CASE";ef_expr e;mk_atom "OF"]))
-        (List (("","","",list),lst))
-    in
-    List (("","","",list),[cs;mk_atom "END"])
-  | Any (xlst,p,s) ->
-    List(("","","",list), [mk_atom "ANY";
-                           ef_ident_non_empty_list xlst;
-                           mk_atom "WHERE";
-                           ef_pred p;
-                           mk_atom "THEH";
-                           ef_subst s;
-                           mk_atom "END"])
-  | Let (xlst,(ie,ielst),s) ->
-    let ef_eq (id,e) = List (("","=","",list),[mk_atom (snd id);ef_expr e]) in
-    List(("","","",list), [mk_atom "LET";
-                           ef_ident_non_empty_list xlst;
-                           mk_atom "BE";
-                           List (("","AND","",list),List.map ef_eq (ie::ielst));
-                           mk_atom "IN";
-                           ef_subst s;
-                           mk_atom "END"])
-  | BecomesElt (xlst,e) ->
-    List(("","","",list),[ef_ident_non_empty_list xlst;
-                          mk_atom "::";
-                          ef_expr e])
-  | BecomesSuch (xlst,p) ->
-    mk_label (ef_ident_non_empty_list xlst) (List((":(","",")",list),[ef_pred p]))
-  | Var (xlst,s) ->
-    List(("","","",{list with align_closing=false;indent_body=0;space_after_opening=false}),
-         [ mk_label_always_break (mk_atom "VAR") (ef_ident_non_empty_list xlst);
-           mk_label_always_break (mk_atom "IN") (ef_subst s);
-           mk_atom "END"])
-  | CallUp ([],f,lst) ->
-    mk_label (mk_atom (snd f)) (List(("(",",",")",list),List.map ef_expr lst))
-  | CallUp ((x::xlst),f,lst) ->
-    let lf = ef_ident_non_empty_list (x,xlst) in
-    let rg = mk_label (mk_atom (snd f)) (List(("(",",",")",list),List.map ef_expr lst)) in
-    List(("","<--","",list),[lf;rg])
+    let lb = {label with space_after_label=false} in
+    begin match xlst, args with
+      | [], [] -> mk_atom (snd f)
+      | [], _::_ ->
+        let args = List(("(",",",")",lst), List.map ef_expr args) in
+        Label((mk_atom (snd f),lb),args)
+
+      | _::_, [] ->
+        mk_sequence [mk_ident_list_comma xlst;
+                     mk_atom "<--";
+                     mk_atom (snd f)]
+
+      | _::_, _::_ ->
+        let args = List(("(",",",")",lst), List.map ef_expr args) in
+        mk_sequence [mk_ident_list_comma xlst;
+                     mk_atom "<--";
+                     Label((mk_atom (snd f),lb),args)]
+    end
+
   | While (p,s,q,e) ->
-    List(("","","",list),[mk_atom "WHILE";
-                          ef_pred p;
-                          mk_atom "DO";
-                          ef_subst s;
-                          mk_atom "INVARIANT";
-                          ef_pred q;
-                          mk_atom "VARIANT";
-                          ef_expr e;
-                          mk_atom "END"])
-  | Sequencement (s1,s2) -> List (("",";","",list),[ef_subst s1;ef_subst s2]) (*FIXME parenthesese*)
-  | Parallel (s1,s2) -> List (("","||","",list),[ef_subst s1;ef_subst s2])
+    let lb = {label with label_break=`Always} in
+    mk_sequence_nl [ Label((mk_atom "WHILE",lb), ef_pred p);
+                     Label((mk_atom "DO",lb), ef_subst s);
+                     Label((mk_atom "INVARIANT",lb), ef_pred q);
+                     Label((mk_atom "VARIANT",lb), ef_expr e);
+                     mk_atom "END"]
+
+  | Sequencement _ as s ->
+    let seqs = List.map ef_subst (get_seq_list s) in
+    let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks } in
+    List (("",";","",lst),seqs) (*FIXME parenthesese*)
+
+  | Parallel _ as s ->
+    let pars = List.map ef_subst (get_par_list s) in
+    let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks } in
+    List (("","||","",lst),pars) (*FIXME parenthesese*)
+

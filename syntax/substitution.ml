@@ -225,7 +225,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
 
   | BecomesSuch ((x,xlst),p) ->
     Label((mk_ident_list_comma (x::xlst),label),
-          List((":(","",")",{list with space_after_opening=false;space_before_closing=false}),[ef_pred p]))
+          List((":(","",")",list),[ef_pred p]))
 
   | Var ((x,xlst),s) ->
     let lb = {label with label_break=`Always} in
@@ -267,11 +267,11 @@ let rec ef_subst : substitution -> Easy_format.t = function
 
   | Sequencement _ as s ->
     let seqs = List.map ef_subst (get_seq_list s) in
-    let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks } in
+    let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks; space_before_separator=true } in
     List (("",";","",lst),seqs) (*FIXME parenthesese*)
 
   | Parallel _ as s ->
     let pars = List.map ef_subst (get_par_list s) in
-    let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks } in
+    let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks; space_before_separator=true } in
     List (("","||","",lst),pars) (*FIXME parenthesese*)
 

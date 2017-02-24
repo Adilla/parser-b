@@ -91,7 +91,7 @@ let ofst = 2
 
 let pred_bop_to_string : pred_bop -> string = function
   | Equality -> "="
-  | Disequality -> "\\="
+  | Disequality -> "/="
   | Membership -> ":"
   | Non_Membership -> "/:"
   | Inclusion Not_Strict -> "<:"
@@ -328,8 +328,8 @@ let add_par : expression -> expression = function
 
 let add_par_p : predicate -> predicate = function
   | P_Ident _ | P_Builtin _ | Negation _ | Pparentheses _
-  | Universal_Q _ | Existential_Q _ as p -> p
-  | Binary_Prop _ | Binary_Pred _ as p -> Pparentheses (dloc,p)
+  | Universal_Q _ | Existential_Q _ | Binary_Pred _ as p -> p
+  | Binary_Prop _ as p -> Pparentheses (dloc,p)
 
 let list_1 =
   { list with space_after_opening=false;
@@ -350,7 +350,7 @@ let rec get_or_list = function
 
 let rec ef_expr : expression -> Easy_format.t = function
   | Ident id -> mk_atom (snd id)
-  | Dollar id -> mk_atom (snd id ^ "$")
+  | Dollar id -> mk_atom (snd id ^ "$0")
   | Builtin (_,bi) -> mk_atom (builtin_to_string bi)
   | Pbool (_,p) ->
     mk_label (mk_atom "pbool") (List(("(","",")",list_1),[ef_pred p]))

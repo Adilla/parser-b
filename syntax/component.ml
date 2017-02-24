@@ -363,8 +363,8 @@ let add lst f = function
   | Some x -> (f x)::lst
 
 let ef_op_list lst =
-    List(("","\n","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-         List.map ef_operation lst)
+  List(("",";\n","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
+       List.map ef_operation lst)
 
 let ef_pred_list lst =
   List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),

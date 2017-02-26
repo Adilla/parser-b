@@ -23,5 +23,4 @@ type substitution =
   | Sequencement of substitution * substitution
   | Parallel of substitution * substitution
 
-val pp_subst : Format.formatter -> substitution -> unit
 val ef_subst : substitution -> Easy_format.t

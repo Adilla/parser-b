@@ -41,7 +41,6 @@ let get_loc (cl:clause) =
   | Assertions (lc,_) | Initialization (lc,_) | Operations (lc,_)
   | Values (lc,_) | Local_Operations (lc,_) -> lc
 
-(*FIXME use non empty lists *)
 type abstract_machine = {
   name: ident;
   parameters: ident list;

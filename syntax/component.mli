@@ -30,7 +30,7 @@ type clause =
   | Local_Operations of loc * operation list
   | Values of loc * (ident*expression) list
 
-type abstract_machine = {
+type abstract_machine = private {
   name: ident;
   parameters: ident list;
   clause_constraints: (loc*predicate) option;
@@ -51,7 +51,7 @@ type abstract_machine = {
   clause_operations: (loc*operation list) option;
 }
 
-type refinement = {
+type refinement = private {
   name: ident;
   parameters: ident list;
   refines: ident;
@@ -72,7 +72,7 @@ type refinement = {
   clause_local_operations: (loc*operation list) option;
 }
 
-type implementation = {
+type implementation = private {
   name: ident;
   refines: ident;
   parameters: ident list;

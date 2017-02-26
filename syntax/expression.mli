@@ -73,11 +73,5 @@ and predicate =
 val expr_loc : expression -> loc
 val pred_loc : predicate -> loc
 
-val pp_ident : Format.formatter -> ident -> unit
-val pp_ident_list : Format.formatter -> ident list -> unit
-val pp_expr_list : Format.formatter -> expression list -> unit
-val pp_expr : Format.formatter -> expression -> unit
-val pp_pred : Format.formatter -> predicate -> unit
-
 val ef_expr : expression -> Easy_format.t
 val ef_pred : predicate -> Easy_format.t

@@ -1,5 +1,6 @@
 S syntax
 S lexer
 S examples
+S examples/btags
 PKG easy-format
 B _build/**

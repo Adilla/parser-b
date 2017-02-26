@@ -85,6 +85,70 @@ let pred_loc : predicate -> loc = function
 
 (* Print *)
 
+let rec expr_eq e1 e2 : bool =
+  match e1, e2 with
+  | Parentheses (_,e), _ -> expr_eq e e2
+  | _, Parentheses (_,e) -> expr_eq e1 e
+  | Ident id1, Ident id2 -> ident_eq id1 id2
+  | Dollar id1, Dollar id2 -> ident_eq id1 id2
+  | Builtin (_,b1), Builtin (_,b2) -> b1 = b2 (*sufficient?*)
+  | Pbool (_,p1), Pbool (_,p2) -> pred_eq p1 p2
+  | Application (_,f1,a1), Application (_,f2,a2) ->
+    expr_eq f1 f2 && expr_eq a1 a2
+  | Couple (_,_,x1,y1), Couple (_,_,x2,y2) -> expr_eq x1 x2 && expr_eq y1 y2
+  | Sequence (_,(hd1,tl1)), Sequence (_,(hd2,tl2)) ->
+    expr_list_eq (hd1::tl1) (hd2::tl2)
+  | Extension (_,(hd1,tl1)), Extension (_,(hd2,tl2)) ->
+    expr_list_eq (hd1::tl1) (hd2::tl2)
+  | Comprehension (_,(x1,lst1),p1), Comprehension(_,(x2,lst2),p2) ->
+    ident_list_eq (x1::lst1) (x2::lst2) && pred_eq p1 p2
+  | Binder (_,bi1,(x1,lst1),p1,e1), Binder (_,bi2,(x2,lst2),p2,e2) ->
+    bi1 = bi2 && ident_list_eq (x1::lst1) (x2::lst2) &&
+    pred_eq p1 p2 && expr_eq e1 e2
+  | Record_Field_Access (_,e1,id1), Record_Field_Access(_,e2,id2) ->
+    expr_eq e1 e2 && ident_eq id1 id2
+  | Record (_,(hd1,tl1)), Record (_,(hd2,tl2)) ->
+    begin
+      let aux (opt1,e1) (opt2,e2) =
+        expr_eq e1 e2 && (match opt1, opt2 with
+            | None, None -> true
+            | Some id1, Some id2 -> ident_eq id1 id2
+            | _, _ -> false )
+      in
+      try List.for_all2 aux (hd1::tl1) (hd2::tl2)
+      with Invalid_argument _ -> false
+    end
+  | Record_Type (_,(hd1,tl1)), Record_Type(_,(hd2,tl2)) ->
+    begin
+      let aux (id1,e1) (id2,e2) = ident_eq id1 id2 && expr_eq e1 e2 in
+      try List.for_all2 aux (hd1::tl1) (hd2::tl2)
+      with Invalid_argument _ -> false
+    end
+  | _, _ -> false
+
+and expr_list_eq l1 l2 =
+  try List.for_all2 expr_eq l1 l2
+  with Invalid_argument _ -> false
+
+and pred_eq p1 p2 : bool =
+  match p1, p2 with
+  | Pparentheses (_,p), _ -> pred_eq p p2
+  | _, Pparentheses (_,p) -> pred_eq p1 p
+  | P_Ident id1, P_Ident id2 -> ident_eq id1 id2
+  | P_Builtin (_,b1), P_Builtin (_,b2) -> b1 = b2
+  | Binary_Prop (_,b1,p1,q1), Binary_Prop (_,b2,p2,q2) ->
+    b1 = b2 && pred_eq p1 p2 && pred_eq q1 q2
+  | Binary_Pred (_,b1,p1,q1), Binary_Pred (_,b2,p2,q2) ->
+    b1 = b2 && expr_eq p1 p2 && expr_eq q1 q2
+  | Negation (_,p1), Negation (_,p2) -> pred_eq p1 p2
+  | Universal_Q (_,(x1,lst1),p1), Universal_Q (_,(x2,lst2),p2) ->
+    ident_list_eq (x1::lst1) (x2::lst2) && pred_eq p1 p2
+  | Existential_Q (_,(x1,lst1),p1), Existential_Q (_,(x2,lst2),p2) ->
+    ident_list_eq (x1::lst1) (x2::lst2) && pred_eq p1 p2
+  | _, _ -> false
+
+(* Print *)
+
 let pred_bop_to_string : pred_bop -> string = function
   | Equality -> "="
   | Disequality -> "/="

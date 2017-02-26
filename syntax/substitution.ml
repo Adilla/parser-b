@@ -52,6 +52,13 @@ let rec get_par_list = function
   | Parallel (s1,s2) -> (get_par_list s1)@(get_par_list s2)
   | s -> [s]
 
+let add_be = function
+  | Skip | BeginEnd _ | Affectation _ | Function_Affectation _
+  | Record_Affectation _ | Pre _ | Assert _ | Choice _ | IfThenElse _
+  | Select _ | Case _ | Any _ | Let _ | BecomesElt _ | BecomesSuch _
+  | Var _ | CallUp _ | While _ as s -> s
+  | Sequencement _ | Parallel _ as s -> BeginEnd s
+
 let rec ef_subst : substitution -> Easy_format.t = function
   | Skip -> mk_atom "skip"
   | BeginEnd s -> List (("BEGIN","","END",list),[ef_subst s])
@@ -209,12 +216,11 @@ let rec ef_subst : substitution -> Easy_format.t = function
                      mk_atom "END"]
 
   | Sequencement _ as s ->
-    let seqs = List.map ef_subst (get_seq_list s) in
+    let seqs = List.map (fun s -> ef_subst (add_be s)) (get_seq_list s) in
     let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks; space_before_separator=true } in
-    List (("",";","",lst),seqs) (*FIXME parenthesese*)
+    List (("",";","",lst),seqs)
 
   | Parallel _ as s ->
-    let pars = List.map ef_subst (get_par_list s) in
+    let pars = List.map (fun s -> ef_subst (add_be s)) (get_par_list s) in
     let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks; space_before_separator=true } in
-    List (("","||","",lst),pars) (*FIXME parenthesese*)
-
+    List (("","||","",lst),pars)

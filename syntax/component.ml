@@ -62,6 +62,62 @@ type abstract_machine = {
   clause_operations: (loc*operation list) option;
 }
 
+let opt_eq f opt1 opt2 =
+  match opt1, opt2 with
+  | None, None -> true
+  | Some (_,x1), Some (_,x2) -> f x1 x2
+  | _, _ -> false
+
+let minst_eq (id1,lst1:machine_instanciation) (id2,lst2:machine_instanciation) : bool =
+  ident_eq id1 id2 && expr_list_eq lst1 lst2
+
+let minst_list_eq l1 l2 =
+  try List.for_all2 minst_eq l1 l2
+  with Invalid_argument _ -> false
+
+let set_eq (s1:set) (s2:set) : bool =
+  match s1, s2 with
+  | Abstract_Set id1, Abstract_Set id2 -> ident_eq id1 id2
+  | Concrete_Set (id1,lst1), Concrete_Set (id2,lst2) ->
+    ident_eq id1 id2 && ident_list_eq lst1 lst2
+  | _, _ -> false
+
+let set_list_eq l1 l2 =
+try List.for_all2 set_eq l1 l2
+  with Invalid_argument _ -> false
+
+let pred_list_eq l1 l2 =
+  try List.for_all2 pred_eq l1 l2
+  with Invalid_argument _ -> false
+
+let op_eq (out1,name1,params1,s1:operation) (out2,name2,params2,s2:operation) : bool =
+  ident_list_eq out1 out2 && ident_eq name1 name2 &&
+  ident_list_eq params1 params2 && subst_eq s1 s2
+
+let op_list_eq l1 l2 =
+  try List.for_all2 op_eq l1 l2
+  with Invalid_argument _ -> false
+
+let mch_eq mch1 mch2 =
+  ident_eq mch1.name mch2.name &&
+  ident_list_eq mch1.parameters mch2.parameters &&
+  opt_eq (pred_eq) mch1.clause_constraints mch2.clause_constraints &&
+  opt_eq (ident_list_eq) mch1.clause_sees mch2.clause_sees &&
+  opt_eq (minst_list_eq) mch1.clause_includes mch2.clause_includes &&
+  opt_eq (ident_list_eq) mch1.clause_promotes mch2.clause_promotes &&
+  opt_eq (minst_list_eq) mch1.clause_extends mch2.clause_extends &&
+  opt_eq (ident_list_eq) mch1.clause_uses mch2.clause_uses &&
+  opt_eq (set_list_eq) mch1.clause_sets mch2.clause_sets &&
+  opt_eq (ident_list_eq) mch1.clause_concrete_constants mch2.clause_concrete_constants &&
+  opt_eq (ident_list_eq) mch1.clause_abstract_constants mch2.clause_abstract_constants &&
+  opt_eq (pred_eq) mch1.clause_properties mch2.clause_properties &&
+  opt_eq (ident_list_eq) mch1.clause_concrete_variables mch2.clause_concrete_variables &&
+  opt_eq (ident_list_eq) mch1.clause_abstract_variables mch2.clause_abstract_variables &&
+  opt_eq (pred_eq) mch1.clause_invariant mch2.clause_invariant &&
+  opt_eq (pred_list_eq) mch1.clause_assertions mch2.clause_assertions &&
+  opt_eq (subst_eq) mch1.clause_initialisation mch2.clause_initialisation &&
+  opt_eq (op_list_eq) mch1.clause_operations mch2.clause_operations
+
 type refinement = {
   name: ident;
   parameters: ident list;
@@ -83,6 +139,26 @@ type refinement = {
   clause_local_operations: (loc*operation list) option;
 }
 
+let ref_eq ref1 ref2 =
+  ident_eq ref1.name ref2.name &&
+  ident_list_eq ref1.parameters ref2.parameters &&
+  ident_eq ref1.refines ref2.refines &&
+  opt_eq (ident_list_eq) ref1.clause_sees ref2.clause_sees &&
+  opt_eq (minst_list_eq) ref1.clause_includes ref2.clause_includes &&
+  opt_eq (ident_list_eq) ref1.clause_promotes ref2.clause_promotes &&
+  opt_eq (minst_list_eq) ref1.clause_extends ref2.clause_extends &&
+  opt_eq (set_list_eq) ref1.clause_sets ref2.clause_sets &&
+  opt_eq (ident_list_eq) ref1.clause_concrete_constants ref2.clause_concrete_constants &&
+  opt_eq (ident_list_eq) ref1.clause_abstract_constants ref2.clause_abstract_constants &&
+  opt_eq (pred_eq) ref1.clause_properties ref2.clause_properties &&
+  opt_eq (ident_list_eq) ref1.clause_concrete_variables ref2.clause_concrete_variables &&
+  opt_eq (ident_list_eq) ref1.clause_abstract_variables ref2.clause_abstract_variables &&
+  opt_eq (pred_eq) ref1.clause_invariant ref2.clause_invariant &&
+  opt_eq (pred_list_eq) ref1.clause_assertions ref2.clause_assertions &&
+  opt_eq (subst_eq) ref1.clause_initialisation ref2.clause_initialisation &&
+  opt_eq (op_list_eq) ref1.clause_operations ref2.clause_operations &&
+  opt_eq (op_list_eq) ref1.clause_local_operations ref2.clause_local_operations
+
 type implementation = {
   name: ident;
   refines: ident;
@@ -103,10 +179,42 @@ type implementation = {
   clause_local_operations_B0: (loc*operation list) option;
 }
 
+let valuation_list_eq l1 l2 =
+  try List.for_all2
+        (fun (id1,e1) (id2,e2) -> ident_eq id1 id2 && expr_eq e1 e2)
+        l1 l2
+  with Invalid_argument _ -> false
+
+let imp_eq imp1 imp2 =
+  ident_eq imp1.name imp2.name &&
+  ident_eq imp1.refines imp2.refines &&
+  ident_list_eq imp1.parameters imp2.parameters &&
+  opt_eq (ident_list_eq) imp1.clause_sees imp2.clause_sees &&
+  opt_eq (minst_list_eq) imp1.clause_imports imp2.clause_imports &&
+  opt_eq (ident_list_eq) imp1.clause_promotes imp2.clause_promotes &&
+  opt_eq (minst_list_eq) imp1.clause_extends_B0 imp2.clause_extends_B0 &&
+  opt_eq (set_list_eq) imp1.clause_sets imp2.clause_sets &&
+  opt_eq (ident_list_eq) imp1.clause_concrete_constants imp2.clause_concrete_constants &&
+  opt_eq (pred_eq) imp1.clause_properties imp2.clause_properties &&
+  opt_eq (valuation_list_eq) imp1.clause_values imp2.clause_values &&
+  opt_eq (ident_list_eq) imp1.clause_concrete_variables imp2.clause_concrete_variables &&
+  opt_eq (pred_eq) imp1.clause_invariant imp2.clause_invariant &&
+  opt_eq (pred_list_eq) imp1.clause_assertions imp2.clause_assertions &&
+  opt_eq (subst_eq) imp1.clause_initialisation_B0 imp2.clause_initialisation_B0 &&
+  opt_eq (op_list_eq) imp1.clause_operations_B0 imp2.clause_operations_B0 &&
+  opt_eq (op_list_eq) imp1.clause_local_operations_B0 imp2.clause_local_operations_B0
+
 type component = 
   | Abstract_machine of abstract_machine
   | Refinement of refinement
   | Implementation of implementation
+
+let component_eq c1 c2 =
+  match c1, c2 with
+  | Abstract_machine mch1, Abstract_machine mch2 -> mch_eq mch1 mch2
+  | Refinement ref1, Refinement ref2 -> ref_eq ref1 ref2
+  | Implementation imp1, Implementation imp2 -> imp_eq imp1 imp2
+  | _, _ -> false
 
 let check_none_exn lc = function
   | None -> ()

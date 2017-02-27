@@ -51,6 +51,8 @@ type abstract_machine = private {
   clause_operations: (loc*operation list) option;
 }
 
+val mch_eq : abstract_machine -> abstract_machine -> bool
+
 type refinement = private {
   name: ident;
   parameters: ident list;
@@ -72,6 +74,8 @@ type refinement = private {
   clause_local_operations: (loc*operation list) option;
 }
 
+val ref_eq : refinement -> refinement -> bool
+
 type implementation = private {
   name: ident;
   refines: ident;
@@ -92,10 +96,14 @@ type implementation = private {
   clause_local_operations_B0: (loc*operation list) option;
 }
 
+val imp_eq : implementation -> implementation -> bool
+
 type component = 
   | Abstract_machine of abstract_machine
   | Refinement of refinement
   | Implementation of implementation
+
+val component_eq : component -> component -> bool
 
 val mk_machine_exn : ident -> ident list -> clause list -> abstract_machine
 val mk_refinement_exn : ident -> ident list -> ident -> clause list -> refinement

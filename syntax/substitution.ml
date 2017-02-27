@@ -23,6 +23,87 @@ type substitution =
   | Sequencement of substitution * substitution
   | Parallel of substitution * substitution
 
+let rec subst_eq s1 s2 : bool =
+  match s1,s2 with
+  | BeginEnd s, _ -> subst_eq s s2
+  | _, BeginEnd s -> subst_eq s1 s
+  | Skip, Skip -> true
+  | Affectation ((x1,xlst1),(e1,elst1)), Affectation ((x2,xlst2),(e2,elst2)) ->
+    ident_list_eq (x1::xlst1) (x2::xlst2) &&
+    expr_list_eq (e1::elst1) (e2::elst2)
+  | Function_Affectation (f1,(e1,elst1),a1), Function_Affectation (f2,(e2,elst2),a2) ->
+    ident_eq f1 f2 && expr_list_eq (e1::elst1) (e2::elst2) && expr_eq a1 a1
+  | Record_Affectation (id1,fd1,e1), Record_Affectation (id2,fd2,e2) ->
+    ident_eq id1 id2 && ident_eq fd1 fd2 && expr_eq e1 e2
+  | Pre (p1,s1), Pre (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
+  | Assert (p1,s1), Assert (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
+  | Choice (s1,slst1), Choice (s2,slst2) -> subst_list_eq (s1::slst1) (s2::slst2)
+  | IfThenElse ((y1,ylst1),opt1), IfThenElse ((y2,ylst2),opt2) ->
+    let aux l1 l2 =
+      try List.for_all2
+            (fun (p1,s1) (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2)
+            l1 l2
+      with Invalid_argument _ -> false
+    in
+    aux (y1::ylst1) (y2::ylst2) &&
+    ( match opt1, opt2 with
+      | None, None -> true
+      | Some s1, Some s2 -> subst_eq s1 s2
+      | _, _ -> false )
+  | Select ((y1,ylst1),opt1), Select ((y2,ylst2),opt2) ->
+    let aux l1 l2 =
+      try List.for_all2
+            (fun (p1,s1) (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2)
+            l1 l2
+      with Invalid_argument _ -> false
+    in
+    aux (y1::ylst1) (y2::ylst2) &&
+    ( match opt1, opt2 with
+      | None, None -> true
+      | Some s1, Some s2 -> subst_eq s1 s2
+      | _, _ -> false )
+  | Case (e1,(y1,ylst1),opt1), Case (e2,(y2,ylst2),opt2) ->
+    let aux l1 l2 =
+      try List.for_all2
+            (fun (e1,s1) (e2,s2) -> expr_eq e1 e2 && subst_eq s1 s2)
+            l1 l2
+      with Invalid_argument _ -> false
+    in
+    expr_eq e1 e2 && aux (y1::ylst1) (y2::ylst2) &&
+    ( match opt1, opt2 with
+      | None, None -> true
+      | Some s1, Some s2 -> subst_eq s1 s2
+      | _, _ -> false )
+  | Any ((x1,xlst1),p1,s1), Any ((x2,xlst2),p2,s2) ->
+    ident_list_eq (x1::xlst1) (x2::xlst2) && pred_eq p1 p2 && subst_eq s1 s2
+  | Let ((x1,xlst1),(y1,ylst1),s1), Let ((x2,xlst2),(y2,ylst2),s2) ->
+    let aux l1 l2 =
+      try List.for_all2
+            (fun (id1,e1) (id2,e2) -> ident_eq id1 id2 && expr_eq e1 e2)
+            l1 l2
+      with Invalid_argument _ -> false
+    in
+    ident_list_eq (x1::xlst1) (x2::xlst2) && aux (y1::ylst1) (y2::ylst2) && subst_eq s1 s2
+  | BecomesElt ((x1,xlst1),e1), BecomesElt ((x2,xlst2),e2) ->
+    ident_list_eq (x1::xlst1) (x2::xlst2) && expr_eq e1 e2
+  | BecomesSuch ((x1,xlst1),p1), BecomesSuch ((x2,xlst2),p2) ->
+    ident_list_eq (x1::xlst1) (x2::xlst2) && pred_eq p1 p2
+  | Var ((x1,xlst1),s1), Var ((x2,xlst2),s2) ->
+    ident_list_eq (x1::xlst1) (x2::xlst2) && subst_eq s1 s2
+  | CallUp (xlst1,op1,elst1), CallUp (xlst2,op2,elst2) ->
+    ident_list_eq xlst1 xlst2 && ident_eq op1 op2 && expr_list_eq elst1 elst2
+  | While (p1,s1,q1,e1), While (p2,s2,q2,e2) ->
+    pred_eq p1 p2 && subst_eq s1 s2 && pred_eq q1 q2 && expr_eq e1 e2
+  | Sequencement (s1,r1), Sequencement (s2,r2) ->
+    subst_eq s1 s2 && subst_eq r1 r2
+  | Parallel (s1,r1), Parallel (s2,r2) ->
+    subst_eq s1 s2 && subst_eq r1 r2
+  | _, _ -> false
+
+and subst_list_eq l1 l2 : bool =
+  try List.for_all2 subst_eq l1 l2
+  with Invalid_argument _ -> false
+
 open Easy_format
 
 let mk_atom s = Atom (s,atom)

@@ -74,6 +74,7 @@ val expr_loc : expression -> loc
 val pred_loc : predicate -> loc
 
 val expr_eq : expression -> expression -> bool
+val expr_list_eq : expression list -> expression list -> bool
 val pred_eq : predicate -> predicate -> bool
 
 val ef_expr : expression -> Easy_format.t

@@ -20,7 +20,14 @@ let rec loop_exn (state:state) (chkp:Component.component I.checkpoint) : Compone
 
 let parse_component (filename:string) (input:in_channel) : (Component.component,loc*string) result =
   try
-    let state = mk_state_exn filename input in
+    let state = mk_state_from_channel_exn filename input in
+    Ok (loop_exn state (Grammar.Incremental.component_eof (get_current_pos state)))
+  with
+| Utils.Error (p,msg) -> Error (p,msg)
+
+let parse_component_from_string (input:string) : (Component.component,loc*string) result =
+  try
+    let state = mk_state_from_string_exn input in
     Ok (loop_exn state (Grammar.Incremental.component_eof (get_current_pos state)))
   with
 | Utils.Error (p,msg) -> Error (p,msg)

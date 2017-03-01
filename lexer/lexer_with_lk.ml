@@ -14,8 +14,8 @@ let get_token_exn lexbuf =
   and endp = lexbuf.Lexing.lex_curr_p in
   token, startp, endp
 
-let mk_state filename input =
-  let lb = Lexing.from_channel input in
+let mk_state filename lb =
+(*   let lb = Lexing.from_channel input in *)
   lb.Lexing.lex_curr_p <- { lb.Lexing.lex_curr_p with Lexing.pos_fname = filename; };
   { lb; queue=Queue.create (); last=dummy; }
 

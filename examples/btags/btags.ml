@@ -16,9 +16,6 @@ let check_extension filename =
 
 let continue_on_error = ref false
 
-let error loc fmt =
-    Printf.kfprintf (fun _ -> prerr_newline () (*; exit 1*) ) stderr fmt
-
 let debug fmt =
   if !debug_mode then Printf.kfprintf (fun _ -> prerr_newline ()) stderr fmt
   else Printf.ifprintf stderr fmt
@@ -35,7 +32,7 @@ let run_on_file filename =
   else
     begin
       try
-        debug "Generating tags for file '%s'.\n" filename;
+        debug "Generating tags for file '%s'." filename;
         let input = open_in filename in
         match Parser.parse_component filename input with
         | Ok c -> tags := Tags.add_tags !tags c

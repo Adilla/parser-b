@@ -36,6 +36,10 @@ type e_builtin =
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
+val expr_constants : e_builtin list
+val expr_infix_ops: e_builtin list
+val expr_prefix_postfix_ops: e_builtin list
+
 type p_builtin =
   | Btrue
   | Bfalse

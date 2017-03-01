@@ -36,6 +36,33 @@ type e_builtin =
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
+let expr_constants = [
+  MaxInt; MinInt; INTEGER; NATURAL; NATURAL1; INT; NAT; NAT1; STRINGS;
+  BOOLEANS; Empty_Set; Empty_Seq; TRUE; FALSE ]
+
+let expr_infix_ops =
+  [ Product; Difference; Addition; Division; Modulo; Power; Interval; Union;
+    Intersection; Relations; Composition; Direct_Product; Parallel_Product;
+    Domain_Restriction; Domain_Soustraction; Codomain_Restriction;
+    Codomain_Soustraction; Surcharge; Concatenation; Head_Insertion;
+    Tail_Insertion; Head_Restriction; Tail_Restriction;
+    Functions Partial_Functions; Functions Total_Functions;
+    Functions Partial_Injections; Functions Total_Injections;
+    Functions Partial_Surjections; Functions Total_Surjections;
+    Functions Bijections
+  ]
+
+let expr_prefix_postfix_ops =
+  [ Unary_Minus; First_Projection; Second_Projection; Iteration; Image; Max; Min;
+    Cardinal; Identity_Relation; Closure; Transitive_Closure; Domain; Range; Fnc;
+    Rel; Size; First; Last; Front; Tail; Reverse; G_Union; G_Intersection;
+    G_Concatenation; Tree; Btree; Const; Top; Sons; Prefix; Postfix; SizeT;
+    Mirror; Rank; Father; Son; Subtree; Arity; Bin; Left; Right; Infix;
+    Sequence_Set All_Seq; Sequence_Set Non_Empty_Seq; Sequence_Set Injective_Seq;
+    Sequence_Set Injective_Non_Empty_Seq; Sequence_Set Permutations; Power_Set Full;
+    Power_Set Non_Empty; Power_Set Finite; Power_Set Finite_Non_Empty;
+    Inverse_Relation ]
+
 type p_builtin =
   | Btrue
   | Bfalse

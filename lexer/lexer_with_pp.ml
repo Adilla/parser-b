@@ -120,10 +120,15 @@ let get_next_exn (state:state) : t_token =
   in
   aux state.lstate
 
-let mk_state_exn (filename:string) (input:in_channel) : state =
-  let macros = Preprocessing.mk_macro_table_exn filename input in
+let mk_state_from_channel_exn (filename:string) (input:in_channel) : state =
+  let macros = Preprocessing.mk_macro_table_exn filename (Lexing.from_channel input) in
   seek_in input 0;
-  let lstate = Lexer_with_lk.mk_state filename input in
+  let lstate = Lexer_with_lk.mk_state filename (Lexing.from_channel input) in
+  { macros; lstate; fuel=999; }
+
+let mk_state_from_string_exn (input:string) : state =
+  let macros = Preprocessing.mk_macro_table_exn "noname" (Lexing.from_string input) in
+  let lstate = Lexer_with_lk.mk_state "noname" (Lexing.from_string input) in
   { macros; lstate; fuel=999; }
 
 let get_last_token_str (state:state) : string =

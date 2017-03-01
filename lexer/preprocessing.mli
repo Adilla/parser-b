@@ -3,7 +3,7 @@ type macro
 
 val add_path : string -> unit
 
-val mk_macro_table_exn : string -> in_channel -> macro_table
+val mk_macro_table_exn : string -> Lexing.lexbuf -> macro_table
 val dump_table : macro_table -> unit
 val find : macro_table -> string -> macro option
 

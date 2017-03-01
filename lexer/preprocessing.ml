@@ -199,7 +199,7 @@ and state_7_eqeq_exn (state:state) (def_lst:macro list) (def_name:ident) (plst_r
   | tk, st, _ -> raise_err st tk
 
 and parse_def_file_exn (def_lst:macro list) (fn:string) (input:in_channel) : macro list =
-  let state = mk_state fn input in
+  let state = mk_state fn (Lexing.from_channel input) in
   match get_next_exn state with
   | DEFINITIONS, _, _ ->  state_1_start_exn state def_lst
   | tk, st, _ -> raise_err st tk
@@ -218,7 +218,7 @@ let parse_defs_exn (state:state) : macro_table =
       Hashtbl.add hsh id (lc,params,body) ) defs;
   hsh
 
-let mk_macro_table_exn (fname:string) (chan:in_channel) : macro_table =
+let mk_macro_table_exn (fname:string) (lb:Lexing.lexbuf) : macro_table =
     let rec aux1 state =
       match get_next_exn state with
       | DEFINITIONS, _, _ -> true
@@ -226,7 +226,7 @@ let mk_macro_table_exn (fname:string) (chan:in_channel) : macro_table =
       | _ -> aux1 state
     in
     let () = reset_opened_def_files () in
-    let state = mk_state fname chan in
+    let state = mk_state fname lb in
     if aux1 state then parse_defs_exn state
     else Hashtbl.create 1
 

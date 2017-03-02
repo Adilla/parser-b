@@ -30,7 +30,7 @@ type clause =
   | Local_Operations of loc * operation list
   | Values of loc * (ident*expression) list
 
-type abstract_machine = private {
+type abstract_machine = {
   name: ident;
   parameters: ident list;
   clause_constraints: (loc*predicate) option;
@@ -53,7 +53,7 @@ type abstract_machine = private {
 
 val mch_eq : abstract_machine -> abstract_machine -> bool
 
-type refinement = private {
+type refinement = {
   name: ident;
   parameters: ident list;
   refines: ident;
@@ -76,7 +76,7 @@ type refinement = private {
 
 val ref_eq : refinement -> refinement -> bool
 
-type implementation = private {
+type implementation = {
   name: ident;
   refines: ident;
   parameters: ident list;

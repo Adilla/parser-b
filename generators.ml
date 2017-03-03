@@ -13,13 +13,23 @@ let pred_op_list =
     Inequality Greater_or_Equal;
     Inequality Strictly_Greater ]
 
+let char_list : char list =
+  let rec aux n =
+    if n <= 97 then [97]
+    else n::(aux (n-1)) 
+  in
+  List.map Char.chr (aux 122)
+
+let gen_string : string Gen.t = fun rd ->
+  "str_" ^ (Gen.string_size ~gen:(Gen.oneofl char_list) (Gen.return 3) rd)
+
 let gen_e_constant_bi : e_builtin Gen.t = fun random ->
   match Gen.int_bound 43 random with
   | 0 -> Integer (Gen.small_nat random)
-  | 1 -> String (Gen.string random)
+  | 1 -> String (gen_string random)
   | _ -> Gen.oneofl Expression.expr_constants random
 
-let gen_ident : ident Gen.t = fun rd -> (dloc,Gen.string rd)
+let gen_ident : ident Gen.t = fun rd -> (dloc,gen_string rd)
 
 let split_int n rd =
   let k = Random.State.int rd (n + 1) in
@@ -128,8 +138,8 @@ and sized_pred : predicate Gen.sized = fun n ->
              (sized_pred (n-1)) );
       ]
 
-let gen_expr : expression Gen.t = Gen.sized sized_expr
-let gen_pred : predicate Gen.t = Gen.sized sized_pred
+let gen_expr : expression Gen.t = sized_expr 7
+let gen_pred : predicate Gen.t = sized_pred 7
 
 let gen_nel (gen:'a Gen.t) : ('a non_empty_list) Gen.t = fun rd ->
   (gen rd, Gen.small_list gen rd)
@@ -209,7 +219,7 @@ let rec sized_subst : substitution Gen.sized = fun n rd ->
         (sized_pair split_int sized_subst sized_subst (n-1));
     ] rd
 
-let gen_subst : substitution Gen.t = Gen.sized sized_subst
+let gen_subst : substitution Gen.t = sized_subst 7
 
 let gen_minst : machine_instanciation Gen.t =
   Gen.pair gen_ident (Gen.small_list gen_expr)

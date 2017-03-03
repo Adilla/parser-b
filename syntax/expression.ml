@@ -270,7 +270,7 @@ let builtin_to_string : e_builtin -> string = function
   | Codomain_Soustraction -> "|>>"
   | Surcharge -> "<+"
   | Functions Partial_Functions -> "+->"
-  | Functions Partial_Injections -> ">+->"
+  | Functions Partial_Injections -> ">+>"
   | Functions Total_Injections -> ">->"
   | Functions Total_Functions -> "-->"
   | Functions Total_Surjections -> "-->>"
@@ -346,7 +346,7 @@ let rec ef_expr : expression -> Easy_format.t = function
   | Dollar id -> mk_atom (snd id ^ "$0")
   | Builtin (_,bi) -> mk_atom (builtin_to_string bi)
   | Pbool (_,p) ->
-    mk_label (mk_atom "pbool") (List(("(","",")",list_1),[ef_pred p]))
+    mk_label (mk_atom "bool") (List(("(","",")",list_1),[ef_pred p]))
   | Parentheses (_,e) -> List(("(","",")",list_1),[ef_expr e])
   | Application (_,Builtin (_,Inverse_Relation),e) ->
     mk_label (ef_expr (add_par e)) (mk_atom "~")
@@ -354,6 +354,9 @@ let rec ef_expr : expression -> Easy_format.t = function
     mk_label (mk_atom "-") (ef_expr (add_par e))
   | Application (_,Builtin (_,Image),Couple(_,_,e1,e2)) ->
     mk_label (ef_expr (add_par e1)) (List (("[","","]",list_1),[ef_expr e2]))
+  | Application (_,Builtin (_,(Composition|Parallel_Product as bop)),Couple(_,Infix,e1,e2)) -> (*FIXME*)
+    List(("(",builtin_to_string bop,")",{ list_1 with space_before_separator=true }),
+         [ef_expr (add_par e1); ef_expr (add_par e2)])
   | Application (_,Builtin (_,bop),Couple(_,Infix,e1,e2)) ->
     List(("",builtin_to_string bop,"",{ list_1 with space_before_separator=true }),
          [ef_expr (add_par e1); ef_expr (add_par e2)])
@@ -361,7 +364,7 @@ let rec ef_expr : expression -> Easy_format.t = function
     mk_label (ef_expr (add_par f)) (List (("(","",")",list_1),[ef_expr a]))
   | Comprehension (_,(x,xlst),p) ->
     List(("{","","}",{ list with align_closing=false}),
-         [mk_atom "{";mk_ident_list_comma (x::xlst);mk_atom "|";ef_pred p])
+         [mk_ident_list_comma (x::xlst);mk_atom "|";ef_pred p])
   | Binder (l,bi,(x,xlst),p,e) ->
     let lst = List.map (fun (_,id) -> mk_atom id) (x::xlst) in
     let x = mk_label (mk_atom (binder_to_string bi)) (List(("(",",",")",list_1), lst)) in

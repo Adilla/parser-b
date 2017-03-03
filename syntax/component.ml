@@ -463,7 +463,7 @@ let ef_operation (out,name,args,body:operation) : Easy_format.t =
   let lbl = {label with label_break=`Always;
                         indent_after_label=0;
                         space_after_label=false } in
-  Label((spec, lbl), ef_subst body)
+  Label((spec, lbl), ef_subst (Substitution.add_begin_end_ifn body))
 
 let add lst f = function
   | None -> lst
@@ -478,7 +478,7 @@ let ef_pred_list lst =
        List.map ef_pred lst)
 
 let ef_set_list lst =
-  List(("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
+  List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
        List.map ef_set lst)
 
 let ef_minst_list lst =
@@ -512,7 +512,7 @@ let mk_invariant (_,p) = mk_clause "INVARIANT" (ef_pred p)
 let mk_variables (_,lst) = mk_clause "VARIABLES" (mk_ident_list_comma lst)
 let mk_concrete_variables (_,lst) = mk_clause "CONCRETE_VARIABLES" (mk_ident_list_comma lst)
 let mk_properties (_,p) = mk_clause "PROPERTIES" (ef_pred p)
-let mk_abstract_constants (_,lst) = mk_clause "ABSTRACT_VARIABLES" (mk_ident_list_comma lst)
+let mk_abstract_constants (_,lst) = mk_clause "ABSTRACT_CONSTANTS" (mk_ident_list_comma lst)
 let mk_constants (_,lst) = mk_clause "CONSTANTS" (mk_ident_list_comma lst)
 let mk_sets (_,lst) = mk_clause "SETS" (ef_set_list lst)
 let mk_uses (_,lst) = mk_clause "USES" (mk_ident_list_comma lst)

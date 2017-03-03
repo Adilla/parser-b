@@ -483,7 +483,7 @@ level1_substitution:
 | SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { Select (((p,s),w),e) }
 | CASE exp=expression OF
         EITHER e=expression THEN s=substitution
-        ors=case_or+
+        ors=case_or*
         opt=option(els)
   END END { Case (exp,((e,s),ors),opt) }
 | ANY ids=ident_lst_comma WHERE p=predicate THEN s=substitution END { Any ((List.hd ids,List.tl ids),p,s) }

@@ -140,6 +140,8 @@ let add_be = function
   | Var _ | CallUp _ | While _ as s -> s
   | Sequencement _ | Parallel _ as s -> BeginEnd s
 
+let add_begin_end_ifn = add_be
+
 let rec ef_subst : substitution -> Easy_format.t = function
   | Skip -> mk_atom "skip"
   | BeginEnd s -> List (("BEGIN","","END",list),[ef_subst s])
@@ -217,8 +219,9 @@ let rec ef_subst : substitution -> Easy_format.t = function
   | Case (c,((e,s),eslst),opt) ->
     let lb = {label with label_break=`Always} in
     let clst =
-      [ [Label((mk_atom "EITHER",lb),ef_expr e);
-         Label((mk_atom "THEN",lb),ef_subst s)] ]
+      [ [ (mk_atom "OF");
+          Label((mk_atom "EITHER",lb),ef_expr e);
+          Label((mk_atom "THEN",lb),ef_subst s)] ]
       @
       (List.map (fun (e,s) ->
            [Label((mk_atom "OR",lb),ef_expr e);
@@ -245,7 +248,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
     let lb = { label with label_break=`Always } in
     let lst = { list with space_after_opening=false; space_before_closing=false; align_closing=false; } in
     let ef_eq (id,e) = mk_sequence [mk_atom (snd id);mk_atom "=";ef_expr e] in
-    let defs = List(("","AND","",lst),List.map ef_eq (ie::ielst)) in
+    let defs = List(("","&","",lst),List.map ef_eq (ie::ielst)) in
     mk_sequence_nl [ Label((mk_atom "LET",lb),mk_ident_list_comma (x::xlst));
                      Label((mk_atom "BE",lb),defs);
                      Label((mk_atom "IN",lb),ef_subst s);

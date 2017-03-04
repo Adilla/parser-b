@@ -9,7 +9,9 @@ let mk_infix_app lc (f:expression) (a1:expression) (a2:expression) : expression 
 
 let rec expr_to_list (e:expression) : expression list =
   match e with
-  | Couple (_,Comma,e1,e2) -> e1::(expr_to_list e2) 
+  | Couple (_,Comma,e1,e2) ->
+(*     e1::(expr_to_list e2)  *)
+    (expr_to_list e1)@[e2] (*FIXME*)
   | _ -> [e]
 
 let rec expr_to_nonempty_list (e:expression): expression non_empty_list =
@@ -351,7 +353,7 @@ expression:
 (* expression_de_relations: *)
 | e1=expression RELATION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Relations)) e1 e2 }
 | ID LPAR e=expression RPAR { Application ($startpos,Builtin ($startpos,Identity_Relation),e) }
-| e=expression TILDE { Application ($startpos,e,Builtin ($startpos($2),Inverse_Relation)) }
+| e=expression TILDE { Application ($startpos,Builtin ($startpos($2),Inverse_Relation),e) }
 | PROJ1 LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,First_Projection),e) }
 | PROJ2 LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Second_Projection),e) }
 | e1=expression SEMICOLON e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Composition))  e1 e2  }
@@ -444,7 +446,7 @@ predicate:
 | e1=expression SMALLER_OR_EQUAL e2=expression { Binary_Pred ($startpos,Inequality Smaller_or_Equal,e1,e2) }
 | e1=expression S_SMALLER e2=expression { Binary_Pred ($startpos,Inequality Strictly_Smaller,e1,e2) }
 | e1=expression GREATER_OR_EQUAL e2=expression { Binary_Pred ($startpos,Inequality Greater_or_Equal,e1,e2) }
-| e1=expression S_GREATER e2=expression { Binary_Pred ($startpos,Inequality Strictly_Smaller,e1,e2) }
+| e1=expression S_GREATER e2=expression { Binary_Pred ($startpos,Inequality Strictly_Greater,e1,e2) }
 
 (* GENERALIZED SUBSTITUTIONS *)
 

@@ -144,7 +144,7 @@ let add_begin_end_ifn = add_be
 
 let rec ef_subst : substitution -> Easy_format.t = function
   | Skip -> mk_atom "skip"
-  | BeginEnd s -> List (("BEGIN","","END",list),[ef_subst s])
+  | BeginEnd s -> List (("BEGIN","","END",{list with stick_to_label=false;}),[ef_subst s])
 
   | Affectation ((x,xlst),(e,elst)) ->
     let lst = List(("",",","",{list with space_after_opening=false;
@@ -183,7 +183,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
       @[mk_atom "END"])
 
   | IfThenElse (((p,s),pslst),opt) ->
-    let lb = {label with label_break=`Always;space_after_label=false} in
+    let lb = {label with label_break=`Always_rec; space_after_label=false} in
     let clst =
       [ [Label((mk_atom "IF",lb),ef_pred p);
          Label((mk_atom "THEN",lb),ef_subst s)] ]

@@ -150,11 +150,12 @@ let rec ef_subst : substitution -> Easy_format.t = function
     let lst = List(("",",","",{list with space_after_opening=false;
                                          align_closing=false;
                                          space_before_closing=false}),
-                   List.map ef_expr (e::elst)) in
+                   List.map (fun e -> ef_expr (Expression.add_par e)) (e::elst)) in
     mk_sequence [mk_ident_list_comma (x::xlst);mk_atom ":=";lst]
 
   | Function_Affectation (id,(a,alst),e) ->
-    let lst_args = List(("(",",",")",list),List.map ef_expr (a::alst)) in
+    let aux (e:expression) = List(("(","",")",list),[ef_expr e]) in
+    let lst_args = List(("","","",list),List.map aux (a::alst)) in
     let lf = Label ((mk_atom (snd id),label), lst_args) in
     mk_sequence [lf;mk_atom ":=";ef_expr e]
 
@@ -276,7 +277,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
     begin match xlst, args with
       | [], [] -> mk_atom (snd f)
       | [], _::_ ->
-        let args = List(("(",",",")",lst), List.map ef_expr args) in
+        let args = List(("(",",",")",lst), List.map (fun e -> ef_expr (add_par e)) args) in
         Label((mk_atom (snd f),lb),args)
 
       | _::_, [] ->
@@ -285,7 +286,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
                      mk_atom (snd f)]
 
       | _::_, _::_ ->
-        let args = List(("(",",",")",lst), List.map ef_expr args) in
+        let args = List(("(",",",")",lst), List.map (fun e -> ef_expr (add_par e)) args) in
         mk_sequence [mk_ident_list_comma xlst;
                      mk_atom "<--";
                      Label((mk_atom (snd f),lb),args)]

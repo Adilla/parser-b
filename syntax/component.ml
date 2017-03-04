@@ -432,8 +432,9 @@ let ef_minst (id,args:machine_instanciation) : Easy_format.t =
   match args with
   | [] -> mk_atom (snd id)
   | _::_ ->
-    Label ((mk_atom (snd id),label), List(("(",",",")",list),
-                                          List.map ef_expr args))
+    Label ((mk_atom (snd id),label),
+           List(("(",",",")",list),
+                List.map (fun e -> ef_expr (add_par e)) args))
 
 let ef_set (x:set) : Easy_format.t =
   match x with

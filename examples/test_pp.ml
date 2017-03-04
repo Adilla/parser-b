@@ -12,8 +12,10 @@ let () =
     print_endline "Success"
   else
     let () = print_endline "Failure" in
-    let out1 = open_out "out1.mch" in
-    let out2 = open_out "out2.mch" in
-    let () = Easy_format.Pretty.to_channel out1 (Component.ef_component comp) in
-    let () = Easy_format.Pretty.to_channel out2 (Component.ef_component comp2) in
+    let out1 = open_out "out1.scm" in
+    let out2 = open_out "out2.scm" in
+    let out_str = open_out "str.mch" in
+    let () = output_string out_str str in
+    let () = Sexp.to_channel out1 (Sexp.sexp_of_component comp) in
+    let () = Sexp.to_channel out2 (Sexp.sexp_of_component comp2) in
     ()

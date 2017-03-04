@@ -20,7 +20,9 @@ let rec expr_to_nonempty_list (e:expression): expression non_empty_list =
 
 let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
   let rec aux = function
-  | Couple (_,Comma,e1,e2) -> (None,e1)::(aux e2) 
+  | Couple (_,Comma,e1,e2) ->
+(*     (None,e1)::(aux e2)  FIXME*)
+    (aux e2)@[(None,e1)]
   | e -> [(None,e)]
   in
   let lst = aux e in
@@ -293,7 +295,7 @@ expression:
 (* expression_primaire: *)
 | id=IDENT { Ident ($startpos(id),id) }
 | id=IDENT DOLLAR_ZERO { Dollar ($startpos(id),id) }
-| LPAR e=expression RPAR { e }
+| LPAR e=expression RPAR { Parentheses ($startpos,e) }
 | s=STRING { Builtin ($startpos(s),String s) }
 (* expression_booleenne: *)
 | TRUE { Builtin ($startpos,TRUE) }

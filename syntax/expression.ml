@@ -49,11 +49,11 @@ let expr_infix_ops =
     Functions Partial_Functions; Functions Total_Functions;
     Functions Partial_Injections; Functions Total_Injections;
     Functions Partial_Surjections; Functions Total_Surjections;
-    Functions Bijections
+    Functions Bijections; Image
   ]
 
 let expr_prefix_postfix_ops =
-  [ Unary_Minus; First_Projection; Second_Projection; Iteration; Image; Max; Min;
+  [ Unary_Minus; First_Projection; Second_Projection; Iteration; Max; Min;
     Cardinal; Identity_Relation; Closure; Transitive_Closure; Domain; Range; Fnc;
     Rel; Size; First; Last; Front; Tail; Reverse; G_Union; G_Intersection;
     G_Concatenation; Tree; Btree; Const; Top; Sons; Prefix; Postfix; SizeT;
@@ -198,11 +198,11 @@ let prop_bop_to_string : prop_bop -> string = function
 
 let builtin_to_string : e_builtin -> string = function
   | Integer i -> string_of_int i
-  | String s -> s
+  | String s -> "\"" ^ s ^ "\""
   | TRUE -> "TRUE"
   | FALSE -> "FALSE"
-  | MaxInt -> "MaxInt"
-  | MinInt -> "MinInt"
+  | MaxInt -> "MAXINT"
+  | MinInt -> "MININT"
   | INTEGER -> "INTEGER"
   | NATURAL -> "NATURAL"
   | NATURAL1 -> "NATURAL1"
@@ -210,7 +210,7 @@ let builtin_to_string : e_builtin -> string = function
   | NAT -> "NAT"
   | NAT1 -> "NAT1"
   | STRINGS -> "STRING"
-  | BOOLEANS -> "BOOLEAN"
+  | BOOLEANS -> "BOOL"
   | Empty_Set -> "{}"
   | Empty_Seq -> "[]"
   | Successor -> "Succ"
@@ -314,9 +314,9 @@ let mk_atom s = Atom (s,atom)
 let mk_label a b = Label ((a,{label with space_after_label=false}),b)
 
 let add_par : expression -> expression = function
-  | Application (_,_,Couple(_,Infix,_,_)) | Couple _  as e -> Parentheses (dloc,e)
+  | Application (_,_,Couple(_,Infix,_,_)) | Couple _  | Record_Field_Access _ as e -> Parentheses (dloc,e)
   | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
-  | Record_Field_Access _ | Binder _ | Sequence _ | Extension _ | Record _
+  | Binder _ | Sequence _ | Extension _ | Record _
   | Record_Type _ | Application _ as e -> e
 
 let add_par_p : predicate -> predicate = function

@@ -567,7 +567,7 @@ let ef_refinement (ref:refinement) : Easy_format.t =
   let lst = add lst mk_sees ref.clause_sees in
   mk_clause_list (refinement::refines::lst)
 
-let ef_implem (imp:implementation) : Easy_format.t =
+let ef_implementation (imp:implementation) : Easy_format.t =
   let implementation = mk_clause "IMPLEMENTATION" (mk_machine_name imp.name imp.parameters) in
   let refines = mk_clause "REFINES" (mk_atom (snd imp.refines)) in
   let lst = [mk_atom "END"] in
@@ -590,7 +590,7 @@ let ef_implem (imp:implementation) : Easy_format.t =
 let ef_component : component -> Easy_format.t = function
   | Abstract_machine x -> ef_machine x
   | Refinement x -> ef_refinement x
-  | Implementation x -> ef_implem x
+  | Implementation x -> ef_implementation x
 
 let map_opt f = function
   | None -> None

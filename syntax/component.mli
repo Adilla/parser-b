@@ -109,6 +109,9 @@ val mk_machine_exn : ident -> ident list -> clause list -> abstract_machine
 val mk_refinement_exn : ident -> ident list -> ident -> clause list -> refinement
 val mk_implementation_exn : ident -> ident list -> ident -> clause list -> implementation
 
+val ef_machine : abstract_machine -> Easy_format.t 
+val ef_refinement : refinement -> Easy_format.t 
+val ef_implementation : implementation -> Easy_format.t 
 val ef_component : component -> Easy_format.t 
 
 val norm_mch : abstract_machine -> abstract_machine

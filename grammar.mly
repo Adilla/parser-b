@@ -429,7 +429,7 @@ expression:
 (* PREDICATES *)
 
 predicate:
-  LPAR p=predicate RPAR { p }
+  LPAR p=predicate RPAR { Pparentheses ($startpos,p) }
 | p=predicate AND q=predicate { Binary_Prop ($startpos,Conjonction,p,q) }
 | NOT LPAR p=predicate RPAR { Negation ($startpos,p) }
 | p=predicate OR q=predicate { Binary_Prop ($startpos,Disjonction,p,q) }

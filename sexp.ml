@@ -21,6 +21,7 @@ open Expression
 
 let sexp_of_ident (_,s:Utils.ident) : t = Atom ("ident_" ^ s)
 
+(*
 let rec get_and_list = function
   | Binary_Prop (_,Conjonction,p1,p2) -> (get_and_list p1)@(get_and_list p2)
   | s -> [s]
@@ -28,13 +29,14 @@ let rec get_and_list = function
 let rec get_or_list = function
   | Binary_Prop (_,Disjonction,p1,p2) -> (get_or_list p1)@(get_or_list p2)
   | s -> [s]
+*)
 
 let rec sexp_of_expr : expression -> t = function
   | Ident id -> sexp_of_ident id
   | Dollar id -> Atom ("ident_" ^ snd id ^ "$0")
   | Builtin (_,bi) -> Atom (builtin_to_string bi)
   | Pbool (_,p) -> List [Atom "bool"; (sexp_of_pred p)]
-  | Parentheses (_,e) -> sexp_of_expr e
+  | Parentheses (_,e) -> sexp_of_expr e (*FIXME*)
   | Application (_,e1,e2) -> List [Atom "App";sexp_of_expr e1;sexp_of_expr e2]
   | Couple (_,cm,e1,e2) ->
     let atm = match cm with
@@ -69,16 +71,12 @@ and sexp_of_pred : predicate -> t = function
   | P_Ident id -> sexp_of_ident id
   | P_Builtin (_,Btrue) -> Atom "btrue"
   | P_Builtin (_,Bfalse) -> Atom "bfalse"
-  | Binary_Prop (_,(Conjonction as bop),_,_) as p ->
-    List ((Atom (prop_bop_to_string bop))::(List.map sexp_of_pred (get_and_list p)))
-  | Binary_Prop (_,(Disjonction as bop),_,_) as p ->
-    List ((Atom (prop_bop_to_string bop))::(List.map sexp_of_pred (get_or_list p)))
   | Binary_Prop (_,bop,p,q) ->
     List [Atom (prop_bop_to_string bop);sexp_of_pred p;sexp_of_pred q]
   | Binary_Pred (_,bop,e1,e2) ->
     List [Atom (pred_bop_to_string bop);sexp_of_expr e1;sexp_of_expr e2]
   | Negation (_,p) -> List [Atom "Neg";sexp_of_pred p]
-  | Pparentheses (_,p) -> sexp_of_pred p
+  | Pparentheses (_,p) -> sexp_of_pred p (*FIXME*)
   | Universal_Q (_,(x,xlst),p) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
     List [Atom "!";ids;sexp_of_pred p]
@@ -88,6 +86,7 @@ and sexp_of_pred : predicate -> t = function
 
 open Substitution
 
+(*
 let rec get_seq_list = function
   | Sequencement (s1,s2) -> (get_seq_list s1)@(get_seq_list s2)
   | s -> [s]
@@ -95,10 +94,11 @@ let rec get_seq_list = function
 let rec get_par_list = function
   | Parallel (s1,s2) -> (get_par_list s1)@(get_par_list s2)
   | s -> [s]
+*)
 
 let rec sexp_of_subst : substitution -> t = function
   | Skip -> Atom "SKIP"
-  | BeginEnd s -> sexp_of_subst s
+  | BeginEnd s -> sexp_of_subst s (*FIXME*)
   | Affectation ((x,xlst),(e,elst)) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
     let exprs = List ((sexp_of_expr e)::(List.map sexp_of_expr elst)) in
@@ -156,10 +156,10 @@ let rec sexp_of_subst : substitution -> t = function
   | While (p,s,q,e) ->
     List [Atom "WHILE";sexp_of_pred p;sexp_of_subst s;
           sexp_of_pred q;sexp_of_expr e]
-  | Sequencement _ as s ->
-    List ((Atom "SEQ")::(List.map sexp_of_subst (get_seq_list s)))
-  | Parallel _ as s ->
-    List ((Atom "PAR")::(List.map sexp_of_subst (get_par_list s)))
+  | Sequencement (s1,s2) ->
+    List [Atom "SEQ";sexp_of_subst s1;sexp_of_subst s2]
+  | Parallel (s1,s2) ->
+    List [Atom "PAR";sexp_of_subst s1;sexp_of_subst s2]
 
 open Component
 

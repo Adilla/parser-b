@@ -110,3 +110,8 @@ val mk_refinement_exn : ident -> ident list -> ident -> clause list -> refinemen
 val mk_implementation_exn : ident -> ident list -> ident -> clause list -> implementation
 
 val ef_component : component -> Easy_format.t 
+
+val norm_mch : abstract_machine -> abstract_machine
+val norm_ref : refinement -> refinement
+val norm_imp : implementation -> implementation
+val norm_component : component -> component

@@ -319,6 +319,11 @@ let add_par : expression -> expression = function
   | Binder _ | Sequence _ | Extension _ | Record _
   | Record_Type _ | Application _ as e -> e
 
+let add_par2 : expression -> expression = function (*FIXME*)
+  | Application _ | Couple _  | Record_Field_Access _ as e -> Parentheses (dloc,e)
+  | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
+  | Binder _ | Sequence _ | Extension _ | Record _ | Record_Type _ as e -> e
+
 let add_par_p : predicate -> predicate = function
   | P_Ident _ | P_Builtin _ | Negation _ | Pparentheses _
   | Universal_Q _ | Existential_Q _ | Binary_Pred _ as p -> p
@@ -382,7 +387,7 @@ let rec ef_expr : expression -> Easy_format.t = function
   | Couple (_,Comma,e1,e2) ->
     List(("","","",list_1),[ef_expr (add_par e1);mk_atom ",";ef_expr (add_par e2)])
   | Record_Field_Access (_,e,id) ->
-    mk_label (ef_expr (add_par e)) (mk_atom ("'" ^ snd id))
+    mk_label (ef_expr (add_par2 e)) (mk_atom ("'" ^ snd id))
   | Record (_,(f,lst)) ->
     let flst = List.map ef_rec_field (f::lst) in
     let lst = List (("(",",",")",list_1),flst) in
@@ -429,3 +434,48 @@ and ef_pred : predicate -> Easy_format.t = function
     let x = mk_label (mk_atom "#") (List(("(",",",")",list_1),lst)) in
     let y = List(("(","",")",list_1), [ef_pred p]) in
     List(("",".","",{list_1 with space_after_separator=false}),[x;y])
+
+let rec mk_conjonction l p1 p2 =
+  match p1 with
+  | Binary_Prop (l2,Conjonction,q1,q2) ->
+    mk_conjonction l2 q1 (Binary_Prop (l,Conjonction,q2,p2))
+  | _ -> Binary_Prop (l,Conjonction,p1,p2)
+
+let rec mk_disjunction l p1 p2 =
+  match p1 with
+  | Binary_Prop (l2,Disjonction,q1,q2) ->
+    mk_disjunction l2 q1 (Binary_Prop (l,Disjonction,q2,p2))
+  | _ -> Binary_Prop (l,Disjonction,p1,p2)
+
+(* Remove parentheses *)
+let rec norm_expr : expression -> expression = function
+  | Ident _ | Dollar _ | Builtin _ as e -> e
+  | Pbool (l,p) -> Pbool (l,norm_pred p)
+  | Parentheses (_,e) -> norm_expr e
+  | Application (l,f,a) -> Application (l,norm_expr f,norm_expr a)
+  | Comprehension (l,xlst,p) -> Comprehension (l,xlst,norm_pred p)
+  | Binder (l,bi,xlst,p,e) -> Binder (l,bi,xlst,norm_pred p,norm_expr e)
+  | Sequence (l,(e,lst)) -> Sequence (l,(norm_expr e,List.map norm_expr lst))
+  | Extension (l,(e,lst)) -> Extension (l,(norm_expr e,List.map norm_expr lst))
+  | Couple (l,cm,e1,e2) -> Couple (l,cm,norm_expr e1,norm_expr e2)
+  | Record_Field_Access (l,e,id) -> Record_Field_Access (l,norm_expr e,id)
+  | Record (l,(f,lst)) ->
+    let aux (id,e) = (id,norm_expr e) in
+    Record (l,(aux f,List.map aux lst))
+  | Record_Type (l,(f,lst)) ->
+    let aux (id,e) = (id,norm_expr e) in
+    Record_Type (l,(aux f,List.map aux lst))
+
+(* Remove parentheses and flatten conjonctions and disjonctions *)
+and norm_pred : predicate -> predicate = function
+  | P_Ident _ | P_Builtin _ as p -> p
+  | Binary_Prop (l,Conjonction,p1,p2) ->
+    mk_conjonction l (norm_pred p1) (norm_pred p2)
+  | Binary_Prop (l,Disjonction,p1,p2) ->
+    mk_disjunction l (norm_pred p1) (norm_pred p2)
+  | Binary_Prop (l,bop,p1,p2) -> Binary_Prop (l,bop,norm_pred p1,norm_pred p2)
+  | Binary_Pred (l,bop,e1,e2) -> Binary_Pred (l,bop,norm_expr e1,norm_expr e2)
+  | Negation (l,p) -> Negation (l,norm_pred p)
+  | Pparentheses (_,p) -> norm_pred p
+  | Universal_Q (l,xlst,p) -> Universal_Q (l,xlst,norm_pred p)
+  | Existential_Q (l,xlst,p) -> Existential_Q (l,xlst,norm_pred p)

@@ -7,22 +7,20 @@ open Component
 let mk_infix_app lc (f:expression) (a1:expression) (a2:expression) : expression =
   Application (lc,f,Couple(lc,Infix,a1,a2))
 
-let rec expr_to_list (e:expression) : expression list =
-  match e with
-  | Couple (_,Comma,e1,e2) ->
-(*     e1::(expr_to_list e2)  *)
-    (expr_to_list e1)@[e2] (*FIXME*)
-  | _ -> [e]
+let expr_to_list (e:expression) : expression list =
+  let rec aux lst = function
+    | Couple (_,Comma,e1,e2) -> aux (e2::lst) e1
+    | e -> e::lst
+  in
+  aux [] e
 
 let rec expr_to_nonempty_list (e:expression): expression non_empty_list =
   let lst = expr_to_list e in
   (List.hd lst,List.tl lst)
 
 let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
-  let rec aux = function
-  | Couple (_,Comma,e1,e2) ->
-(*     (None,e1)::(aux e2)  FIXME*)
-    (aux e2)@[(None,e1)]
+  let rec aux lst = function
+  | Couple (_,Comma,e1,e2) -> aux e1 ((None,e2)::lst)
   | e -> [(None,e)]
   in
   let lst = aux e in

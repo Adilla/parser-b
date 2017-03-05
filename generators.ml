@@ -103,7 +103,7 @@ let rec sized_expr : expression Gen.sized = fun n ->
         Gen.map (fun nel -> Record (dloc,nel))
           (sized_nel split_int_into_nel
              (fun fuel -> Gen.pair
-                 (Gen.map (fun x -> Some x) gen_ident) (*FIXME*)
+                 (Gen.map (fun x -> Some x) gen_ident)
                  (sized_expr fuel) ) (n-1));
         Gen.map (fun nel -> Record_Type (dloc,nel))
           (sized_nel split_int_into_nel
@@ -117,12 +117,11 @@ and sized_pred : predicate Gen.sized = fun n ->
     Gen.map (fun (op,(p,q)) -> Binary_Pred (dloc,op,p,q))
       (Gen.pair (Gen.oneofl pred_op_list)
          (sized_pair split_int sized_expr sized_expr 0))
-
 (*
     Gen.oneof
       [ Gen.map (fun id -> P_Ident id) gen_ident;
         Gen.return (P_Builtin (dloc,Btrue));
-        Gen.return (P_Builtin (dloc,Bfalse)) ] (*FIXME*)
+        Gen.return (P_Builtin (dloc,Bfalse)) ]
 *)
   else
     Gen.oneof

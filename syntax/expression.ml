@@ -36,6 +36,12 @@ type e_builtin =
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
+let builtin_eq b1 b2 =
+  match b1, b2 with
+  | Integer i1, Integer i2 -> i1 == i2
+  | String s1, String s2 -> String.equal s1 s2
+  | _, _ -> b1 = b2
+
 let expr_constants = [
   MaxInt; MinInt; INTEGER; NATURAL; NATURAL1; INT; NAT; NAT1; STRINGS;
   BOOLEANS; Empty_Set; Empty_Seq; TRUE; FALSE ]
@@ -84,7 +90,7 @@ type expression =
   | Comprehension of loc*ident non_empty_list * predicate
   | Binder of loc*expr_binder*ident non_empty_list*predicate*expression
   | Record_Field_Access of loc*expression*ident
-  | Record of loc*(ident option*expression) non_empty_list
+  | Record of loc*(ident option*expression) non_empty_list (*FIXME on a soit que des Nones ou que des Somes*)
   | Record_Type of loc*(ident*expression) non_empty_list
 
 and predicate =
@@ -118,7 +124,7 @@ let rec expr_eq e1 e2 : bool =
   | _, Parentheses (_,e) -> expr_eq e1 e
   | Ident id1, Ident id2 -> ident_eq id1 id2
   | Dollar id1, Dollar id2 -> ident_eq id1 id2
-  | Builtin (_,b1), Builtin (_,b2) -> b1 = b2 (*FIXME*)
+  | Builtin (_,b1), Builtin (_,b2) -> builtin_eq b1 b2
   | Pbool (_,p1), Pbool (_,p2) -> pred_eq p1 p2
   | Application (_,f1,a1), Application (_,f2,a2) ->
     expr_eq f1 f2 && expr_eq a1 a2
@@ -353,7 +359,7 @@ let rec ef_expr : expression -> Easy_format.t = function
     mk_label (mk_atom "-") (ef_expr (add_par e))
   | Application (_,Builtin (_,Image),Couple(_,_,e1,e2)) ->
     mk_label (ef_expr (add_par e1)) (List (("[","","]",list_1),[ef_expr e2]))
-  | Application (_,Builtin (_,(Composition|Parallel_Product as bop)),Couple(_,Infix,e1,e2)) -> (*FIXME*)
+  | Application (_,Builtin (_,(Composition|Parallel_Product as bop)),Couple(_,Infix,e1,e2)) ->
     List(("(",builtin_to_string bop,")",{ list_1 with space_before_separator=true }),
          [ef_expr (add_par e1); ef_expr (add_par e2)])
   | Application (_,Builtin (_,bop),Couple(_,Infix,e1,e2)) ->

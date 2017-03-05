@@ -3,12 +3,14 @@ let parse_from_string str =
   | Ok c -> c
   | Error (_,msg) -> failwith msg
 
+open Component
+
 let () =
   let () = Random.self_init () in
-  let comp = Generators.gen_component (Random.get_state ()) in
-  let str = Easy_format.Pretty.to_string (Component.ef_component comp) in
-  let comp2 = parse_from_string str in
-  if Component.component_eq comp comp2 then
+  let comp = norm_component (Generators.gen_component (Random.get_state ())) in
+  let str = Easy_format.Pretty.to_string (ef_component comp) in
+  let comp2 = norm_component (parse_from_string str) in
+  if component_eq comp comp2 then
     print_endline "Success"
   else
     let () = print_endline "Failure" in

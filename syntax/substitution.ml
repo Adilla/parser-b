@@ -309,3 +309,48 @@ let rec ef_subst : substitution -> Easy_format.t = function
     let pars = List.map (fun s -> ef_subst (add_be s)) (get_par_list s) in
     let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks; space_before_separator=true } in
     List (("","||","",lst),pars)
+let map_opt f = function
+  | None -> None
+  | Some x -> Some (f x)
+
+let rec mk_sequence s1 s2 =
+  match s1 with
+  | Sequencement (r1,r2) -> mk_sequence r1 (Sequencement (r2,s2))
+  | _ -> Sequencement (s1,s2)
+
+let rec mk_parallel s1 s2 =
+  match s1 with
+  | Parallel (r1,r2) -> mk_parallel r1 (Parallel (r2,s2))
+  | _ -> Parallel (s1,s2)
+
+let rec norm_subst : substitution -> substitution = function
+  | Skip as s -> s
+  | BeginEnd s -> norm_subst s
+  | Affectation (xlst,(e,elst)) ->
+    Affectation (xlst,(norm_expr e,List.map norm_expr elst))
+  | Function_Affectation (id,(a,alst),e) ->
+    Function_Affectation (id,(norm_expr a,List.map norm_expr alst),norm_expr e)
+  | Record_Affectation (id,fd,e) -> Record_Affectation (id,fd,norm_expr e)
+  | Pre (p,s) -> Pre (norm_pred p,norm_subst s)
+  | Assert (p,s) -> Assert (norm_pred p,norm_subst s)
+  | Choice ((s,slst)) -> Choice (norm_subst s,List.map norm_subst slst)
+  | IfThenElse ((ps,pslst),opt) ->
+    let aux (p,s) = (norm_pred p,norm_subst s) in
+    IfThenElse ((aux ps,List.map aux pslst),map_opt norm_subst opt)
+  | Select ((ps,pslst),opt) ->
+    let aux (p,s) = (norm_pred p,norm_subst s) in
+    Select ((aux ps,List.map aux pslst),map_opt norm_subst opt)
+  | Case (c,(es,eslst),opt) ->
+    let aux (e,s) = (norm_expr e,norm_subst s) in
+    Case (norm_expr c,(aux es,List.map aux eslst),map_opt norm_subst opt)
+  | Any (xlst,p,s) -> Any (xlst,norm_pred p,norm_subst s)
+  | Let (xlst,(ie,ielst),s) ->
+    let aux (id,e) = (id,norm_expr e) in
+    Let (xlst,(aux ie,List.map aux ielst),norm_subst s)
+  | BecomesElt (xlst,e) -> BecomesElt (xlst,norm_expr e)
+  | BecomesSuch (xlst,p) -> BecomesSuch (xlst,norm_pred p)
+  | Var (xlst,s) -> Var (xlst,norm_subst s)
+  | CallUp (xlst,f,args) -> CallUp (xlst,f,List.map norm_expr args)
+  | While (p,s,q,e) -> While (norm_pred p,norm_subst s,norm_pred q,norm_expr e)
+  | Sequencement (s1,s2) -> mk_sequence s1 s2
+  | Parallel (s1,s2) -> mk_parallel s1 s2

@@ -92,3 +92,6 @@ val add_par : expression -> expression
 
 val ef_expr : expression -> Easy_format.t
 val ef_pred : predicate -> Easy_format.t
+
+val norm_expr : expression -> expression
+val norm_pred : predicate -> predicate

@@ -30,3 +30,4 @@ val subst_eq : substitution -> substitution -> bool
 val subst_list_eq : substitution list -> substitution list -> bool
 
 val ef_subst : substitution -> Easy_format.t
+val norm_subst : substitution -> substitution

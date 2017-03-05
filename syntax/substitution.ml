@@ -315,12 +315,12 @@ let map_opt f = function
 
 let rec mk_sequence s1 s2 =
   match s1 with
-  | Sequencement (r1,r2) -> mk_sequence r1 (Sequencement (r2,s2))
+  | Sequencement (r1,r2) -> mk_sequence r1 (mk_sequence r2 s2)
   | _ -> Sequencement (s1,s2)
 
 let rec mk_parallel s1 s2 =
   match s1 with
-  | Parallel (r1,r2) -> mk_parallel r1 (Parallel (r2,s2))
+  | Parallel (r1,r2) -> mk_parallel r1 (mk_parallel r2 s2)
   | _ -> Parallel (s1,s2)
 
 let rec norm_subst : substitution -> substitution = function
@@ -352,5 +352,5 @@ let rec norm_subst : substitution -> substitution = function
   | Var (xlst,s) -> Var (xlst,norm_subst s)
   | CallUp (xlst,f,args) -> CallUp (xlst,f,List.map norm_expr args)
   | While (p,s,q,e) -> While (norm_pred p,norm_subst s,norm_pred q,norm_expr e)
-  | Sequencement (s1,s2) -> mk_sequence s1 s2
-  | Parallel (s1,s2) -> mk_parallel s1 s2
+  | Sequencement (s1,s2) -> mk_sequence (norm_subst s1) (norm_subst s2)
+  | Parallel (s1,s2) -> mk_parallel (norm_subst s1) (norm_subst s2)

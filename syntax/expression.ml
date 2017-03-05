@@ -118,7 +118,7 @@ let rec expr_eq e1 e2 : bool =
   | _, Parentheses (_,e) -> expr_eq e1 e
   | Ident id1, Ident id2 -> ident_eq id1 id2
   | Dollar id1, Dollar id2 -> ident_eq id1 id2
-  | Builtin (_,b1), Builtin (_,b2) -> b1 = b2 (*sufficient?*)
+  | Builtin (_,b1), Builtin (_,b2) -> b1 = b2 (*FIXME*)
   | Pbool (_,p1), Pbool (_,p2) -> pred_eq p1 p2
   | Application (_,f1,a1), Application (_,f2,a2) ->
     expr_eq f1 f2 && expr_eq a1 a2
@@ -314,12 +314,6 @@ let mk_atom s = Atom (s,atom)
 let mk_label a b = Label ((a,{label with space_after_label=false}),b)
 
 let add_par : expression -> expression = function
-  | Application (_,_,Couple(_,Infix,_,_)) | Couple _  | Record_Field_Access _ as e -> Parentheses (dloc,e)
-  | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
-  | Binder _ | Sequence _ | Extension _ | Record _
-  | Record_Type _ | Application _ as e -> e
-
-let add_par2 : expression -> expression = function (*FIXME*)
   | Application _ | Couple _  | Record_Field_Access _ as e -> Parentheses (dloc,e)
   | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
   | Binder _ | Sequence _ | Extension _ | Record _ | Record_Type _ as e -> e
@@ -387,7 +381,7 @@ let rec ef_expr : expression -> Easy_format.t = function
   | Couple (_,Comma,e1,e2) ->
     List(("","","",list_1),[ef_expr (add_par e1);mk_atom ",";ef_expr (add_par e2)])
   | Record_Field_Access (_,e,id) ->
-    mk_label (ef_expr (add_par2 e)) (mk_atom ("'" ^ snd id))
+    mk_label (ef_expr (add_par e)) (mk_atom ("'" ^ snd id))
   | Record (_,(f,lst)) ->
     let flst = List.map ef_rec_field (f::lst) in
     let lst = List (("(",",",")",list_1),flst) in
@@ -438,13 +432,13 @@ and ef_pred : predicate -> Easy_format.t = function
 let rec mk_conjonction l p1 p2 =
   match p1 with
   | Binary_Prop (l2,Conjonction,q1,q2) ->
-    mk_conjonction l2 q1 (Binary_Prop (l,Conjonction,q2,p2))
+    mk_conjonction l2 q1 (mk_conjonction l q2 p2)
   | _ -> Binary_Prop (l,Conjonction,p1,p2)
 
 let rec mk_disjunction l p1 p2 =
   match p1 with
   | Binary_Prop (l2,Disjonction,q1,q2) ->
-    mk_disjunction l2 q1 (Binary_Prop (l,Disjonction,q2,p2))
+    mk_disjunction l2 q1 (mk_disjunction l q2 p2)
   | _ -> Binary_Prop (l,Disjonction,p1,p2)
 
 (* Remove parentheses *)

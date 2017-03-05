@@ -266,8 +266,7 @@ let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
 /* 230 */
 %left TILDE
 /* 250 */
-%left LSQU LPAR
-%left SQUOTE
+%left LSQU LPAR SQUOTE
 
 %%
 

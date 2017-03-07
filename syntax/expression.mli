@@ -36,6 +36,8 @@ type e_builtin =
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
+val builtin_to_string : e_builtin -> string
+
 val expr_constants : e_builtin list
 val expr_infix_ops: e_builtin list
 val expr_prefix_postfix_ops: e_builtin list
@@ -46,7 +48,12 @@ type p_builtin =
 
 type expr_binder = Sum | Prod | Q_Union | Q_Intersection | Lambda
 
+val binder_to_string : expr_binder -> string
+
 type c_or_m = Maplet | Comma | Infix
+
+val pred_bop_to_string : pred_bop -> string
+val prop_bop_to_string : prop_bop -> string
 
 type expression =
   | Ident of ident
@@ -81,5 +88,10 @@ val expr_eq : expression -> expression -> bool
 val expr_list_eq : expression list -> expression list -> bool
 val pred_eq : predicate -> predicate -> bool
 
+val add_par : expression -> expression
+
 val ef_expr : expression -> Easy_format.t
 val ef_pred : predicate -> Easy_format.t
+
+val norm_expr : expression -> expression
+val norm_pred : predicate -> predicate

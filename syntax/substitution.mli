@@ -23,8 +23,11 @@ type substitution =
   | Sequencement of substitution * substitution
   | Parallel of substitution * substitution
 
+val add_begin_end_ifn : substitution -> substitution
+
 val subst_eq : substitution -> substitution -> bool
 
 val subst_list_eq : substitution list -> substitution list -> bool
 
 val ef_subst : substitution -> Easy_format.t
+val norm_subst : substitution -> substitution

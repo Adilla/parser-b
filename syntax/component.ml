@@ -432,8 +432,9 @@ let ef_minst (id,args:machine_instanciation) : Easy_format.t =
   match args with
   | [] -> mk_atom (snd id)
   | _::_ ->
-    Label ((mk_atom (snd id),label), List(("(",",",")",list),
-                                          List.map ef_expr args))
+    Label ((mk_atom (snd id),label),
+           List(("(",",",")",list),
+                List.map (fun e -> ef_expr (add_par e)) args))
 
 let ef_set (x:set) : Easy_format.t =
   match x with
@@ -463,7 +464,7 @@ let ef_operation (out,name,args,body:operation) : Easy_format.t =
   let lbl = {label with label_break=`Always;
                         indent_after_label=0;
                         space_after_label=false } in
-  Label((spec, lbl), ef_subst body)
+  Label((spec, lbl), ef_subst (Substitution.add_begin_end_ifn body))
 
 let add lst f = function
   | None -> lst
@@ -478,7 +479,7 @@ let ef_pred_list lst =
        List.map ef_pred lst)
 
 let ef_set_list lst =
-  List(("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
+  List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
        List.map ef_set lst)
 
 let ef_minst_list lst =
@@ -512,7 +513,7 @@ let mk_invariant (_,p) = mk_clause "INVARIANT" (ef_pred p)
 let mk_variables (_,lst) = mk_clause "VARIABLES" (mk_ident_list_comma lst)
 let mk_concrete_variables (_,lst) = mk_clause "CONCRETE_VARIABLES" (mk_ident_list_comma lst)
 let mk_properties (_,p) = mk_clause "PROPERTIES" (ef_pred p)
-let mk_abstract_constants (_,lst) = mk_clause "ABSTRACT_VARIABLES" (mk_ident_list_comma lst)
+let mk_abstract_constants (_,lst) = mk_clause "ABSTRACT_CONSTANTS" (mk_ident_list_comma lst)
 let mk_constants (_,lst) = mk_clause "CONSTANTS" (mk_ident_list_comma lst)
 let mk_sets (_,lst) = mk_clause "SETS" (ef_set_list lst)
 let mk_uses (_,lst) = mk_clause "USES" (mk_ident_list_comma lst)
@@ -566,7 +567,7 @@ let ef_refinement (ref:refinement) : Easy_format.t =
   let lst = add lst mk_sees ref.clause_sees in
   mk_clause_list (refinement::refines::lst)
 
-let ef_implem (imp:implementation) : Easy_format.t =
+let ef_implementation (imp:implementation) : Easy_format.t =
   let implementation = mk_clause "IMPLEMENTATION" (mk_machine_name imp.name imp.parameters) in
   let refines = mk_clause "REFINES" (mk_atom (snd imp.refines)) in
   let lst = [mk_atom "END"] in
@@ -589,4 +590,84 @@ let ef_implem (imp:implementation) : Easy_format.t =
 let ef_component : component -> Easy_format.t = function
   | Abstract_machine x -> ef_machine x
   | Refinement x -> ef_refinement x
-  | Implementation x -> ef_implem x
+  | Implementation x -> ef_implementation x
+
+let map_opt f = function
+  | None -> None
+  | Some (l,x) -> Some (l,f x)
+
+let norm_minst (id, lst:machine_instanciation) : machine_instanciation =
+  (id, List.map norm_expr lst)
+
+let norm_op (out,f,args,s:operation) : operation =
+  (out, f, args, norm_subst s)
+
+let norm_val (id,e:ident*expression) : ident*expression =
+  (id, norm_expr e)
+
+let norm_mch (mch: abstract_machine) : abstract_machine = {
+  name = mch.name;
+  parameters = mch.parameters;
+  clause_constraints = map_opt norm_pred mch.clause_constraints;
+  clause_sees = mch.clause_sees;
+  clause_includes = map_opt (List.map norm_minst) mch.clause_includes;
+  clause_promotes = mch.clause_promotes;
+  clause_extends = map_opt (List.map norm_minst) mch.clause_extends;
+  clause_uses = mch.clause_uses;
+  clause_sets = mch.clause_sets;
+  clause_concrete_constants = mch.clause_concrete_constants;
+  clause_abstract_constants = mch.clause_abstract_constants;
+  clause_properties = map_opt norm_pred mch.clause_properties;
+  clause_concrete_variables = mch.clause_concrete_variables;
+  clause_abstract_variables = mch.clause_abstract_variables;
+  clause_invariant = map_opt norm_pred mch.clause_invariant;
+  clause_assertions = map_opt (List.map norm_pred) mch.clause_assertions;
+  clause_initialisation = map_opt norm_subst mch.clause_initialisation;
+  clause_operations = map_opt (List.map norm_op) mch.clause_operations;
+}
+
+let norm_ref (ref: refinement) : refinement = {
+  name = ref.name;
+  parameters = ref.parameters;
+  refines = ref.refines;
+  clause_sees = ref.clause_sees;
+  clause_includes = map_opt (List.map norm_minst) ref.clause_includes;
+  clause_promotes = ref.clause_promotes;
+  clause_extends = map_opt (List.map norm_minst) ref.clause_extends;
+  clause_sets = ref.clause_sets;
+  clause_concrete_constants = ref.clause_concrete_constants;
+  clause_abstract_constants = ref.clause_abstract_constants;
+  clause_properties = map_opt norm_pred ref.clause_properties;
+  clause_concrete_variables = ref.clause_concrete_variables;
+  clause_abstract_variables = ref.clause_abstract_variables;
+  clause_invariant = map_opt norm_pred ref.clause_invariant;
+  clause_assertions = map_opt (List.map norm_pred) ref.clause_assertions;
+  clause_initialisation = map_opt norm_subst ref.clause_initialisation;
+  clause_operations = map_opt (List.map norm_op) ref.clause_operations;
+  clause_local_operations = map_opt (List.map norm_op) ref.clause_local_operations;
+}
+
+let norm_imp (imp: implementation) : implementation = {
+  name = imp.name;
+  parameters = imp.parameters;
+  refines = imp.refines;
+  clause_sees = imp.clause_sees;
+  clause_imports = map_opt (List.map norm_minst) imp.clause_imports;
+  clause_promotes = imp.clause_promotes;
+  clause_extends_B0 = map_opt (List.map norm_minst) imp.clause_extends_B0;
+  clause_sets = imp.clause_sets;
+  clause_concrete_constants = imp.clause_concrete_constants;
+  clause_properties = map_opt norm_pred imp.clause_properties;
+  clause_concrete_variables = imp.clause_concrete_variables;
+  clause_invariant = map_opt norm_pred imp.clause_invariant;
+  clause_assertions = map_opt (List.map norm_pred) imp.clause_assertions;
+  clause_initialisation_B0 = map_opt norm_subst imp.clause_initialisation_B0;
+  clause_values = map_opt (List.map norm_val) imp.clause_values;
+  clause_operations_B0 = map_opt (List.map norm_op) imp.clause_operations_B0;
+  clause_local_operations_B0 = map_opt (List.map norm_op) imp.clause_local_operations_B0;
+}
+
+let norm_component : component -> component = function
+  | Abstract_machine x -> Abstract_machine (norm_mch x)
+  | Refinement x -> Refinement (norm_ref x)
+  | Implementation x -> Implementation (norm_imp x)

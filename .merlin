@@ -3,4 +3,5 @@ S lexer
 S examples
 S examples/btags
 PKG easy-format
+PKG qcheck
 B _build/**

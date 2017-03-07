@@ -36,6 +36,12 @@ type e_builtin =
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
+let builtin_eq b1 b2 =
+  match b1, b2 with
+  | Integer i1, Integer i2 -> i1 == i2
+  | String s1, String s2 -> String.equal s1 s2
+  | _, _ -> b1 = b2
+
 let expr_constants = [
   MaxInt; MinInt; INTEGER; NATURAL; NATURAL1; INT; NAT; NAT1; STRINGS;
   BOOLEANS; Empty_Set; Empty_Seq; TRUE; FALSE ]
@@ -49,11 +55,11 @@ let expr_infix_ops =
     Functions Partial_Functions; Functions Total_Functions;
     Functions Partial_Injections; Functions Total_Injections;
     Functions Partial_Surjections; Functions Total_Surjections;
-    Functions Bijections
+    Functions Bijections; Image
   ]
 
 let expr_prefix_postfix_ops =
-  [ Unary_Minus; First_Projection; Second_Projection; Iteration; Image; Max; Min;
+  [ Unary_Minus; First_Projection; Second_Projection; Iteration; Max; Min;
     Cardinal; Identity_Relation; Closure; Transitive_Closure; Domain; Range; Fnc;
     Rel; Size; First; Last; Front; Tail; Reverse; G_Union; G_Intersection;
     G_Concatenation; Tree; Btree; Const; Top; Sons; Prefix; Postfix; SizeT;
@@ -118,7 +124,7 @@ let rec expr_eq e1 e2 : bool =
   | _, Parentheses (_,e) -> expr_eq e1 e
   | Ident id1, Ident id2 -> ident_eq id1 id2
   | Dollar id1, Dollar id2 -> ident_eq id1 id2
-  | Builtin (_,b1), Builtin (_,b2) -> b1 = b2 (*sufficient?*)
+  | Builtin (_,b1), Builtin (_,b2) -> builtin_eq b1 b2
   | Pbool (_,p1), Pbool (_,p2) -> pred_eq p1 p2
   | Application (_,f1,a1), Application (_,f2,a2) ->
     expr_eq f1 f2 && expr_eq a1 a2
@@ -198,11 +204,11 @@ let prop_bop_to_string : prop_bop -> string = function
 
 let builtin_to_string : e_builtin -> string = function
   | Integer i -> string_of_int i
-  | String s -> s
+  | String s -> "\"" ^ s ^ "\""
   | TRUE -> "TRUE"
   | FALSE -> "FALSE"
-  | MaxInt -> "MaxInt"
-  | MinInt -> "MinInt"
+  | MaxInt -> "MAXINT"
+  | MinInt -> "MININT"
   | INTEGER -> "INTEGER"
   | NATURAL -> "NATURAL"
   | NATURAL1 -> "NATURAL1"
@@ -210,9 +216,9 @@ let builtin_to_string : e_builtin -> string = function
   | NAT -> "NAT"
   | NAT1 -> "NAT1"
   | STRINGS -> "STRING"
-  | BOOLEANS -> "BOOLEAN"
-  | Empty_Set -> "[]"
-  | Empty_Seq -> "{}"
+  | BOOLEANS -> "BOOL"
+  | Empty_Set -> "{}"
+  | Empty_Seq -> "[]"
   | Successor -> "Succ"
   | Predecessor -> "Pred"
   | Cardinal -> "card"
@@ -270,7 +276,7 @@ let builtin_to_string : e_builtin -> string = function
   | Codomain_Soustraction -> "|>>"
   | Surcharge -> "<+"
   | Functions Partial_Functions -> "+->"
-  | Functions Partial_Injections -> ">+->"
+  | Functions Partial_Injections -> ">+>"
   | Functions Total_Injections -> ">->"
   | Functions Total_Functions -> "-->"
   | Functions Total_Surjections -> "-->>"
@@ -314,10 +320,9 @@ let mk_atom s = Atom (s,atom)
 let mk_label a b = Label ((a,{label with space_after_label=false}),b)
 
 let add_par : expression -> expression = function
-  | Application (_,_,Couple(_,Infix,_,_)) | Couple _  as e -> Parentheses (dloc,e)
+  | Application _ | Couple _  | Record_Field_Access _ as e -> Parentheses (dloc,e)
   | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
-  | Record_Field_Access _ | Binder _ | Sequence _ | Extension _ | Record _
-  | Record_Type _ | Application _ as e -> e
+  | Binder _ | Sequence _ | Extension _ | Record _ | Record_Type _ as e -> e
 
 let add_par_p : predicate -> predicate = function
   | P_Ident _ | P_Builtin _ | Negation _ | Pparentheses _
@@ -346,7 +351,7 @@ let rec ef_expr : expression -> Easy_format.t = function
   | Dollar id -> mk_atom (snd id ^ "$0")
   | Builtin (_,bi) -> mk_atom (builtin_to_string bi)
   | Pbool (_,p) ->
-    mk_label (mk_atom "pbool") (List(("(","",")",list_1),[ef_pred p]))
+    mk_label (mk_atom "bool") (List(("(","",")",list_1),[ef_pred p]))
   | Parentheses (_,e) -> List(("(","",")",list_1),[ef_expr e])
   | Application (_,Builtin (_,Inverse_Relation),e) ->
     mk_label (ef_expr (add_par e)) (mk_atom "~")
@@ -354,6 +359,9 @@ let rec ef_expr : expression -> Easy_format.t = function
     mk_label (mk_atom "-") (ef_expr (add_par e))
   | Application (_,Builtin (_,Image),Couple(_,_,e1,e2)) ->
     mk_label (ef_expr (add_par e1)) (List (("[","","]",list_1),[ef_expr e2]))
+  | Application (_,Builtin (_,(Composition|Parallel_Product as bop)),Couple(_,Infix,e1,e2)) ->
+    List(("(",builtin_to_string bop,")",{ list_1 with space_before_separator=true }),
+         [ef_expr (add_par e1); ef_expr (add_par e2)])
   | Application (_,Builtin (_,bop),Couple(_,Infix,e1,e2)) ->
     List(("",builtin_to_string bop,"",{ list_1 with space_before_separator=true }),
          [ef_expr (add_par e1); ef_expr (add_par e2)])
@@ -361,7 +369,7 @@ let rec ef_expr : expression -> Easy_format.t = function
     mk_label (ef_expr (add_par f)) (List (("(","",")",list_1),[ef_expr a]))
   | Comprehension (_,(x,xlst),p) ->
     List(("{","","}",{ list with align_closing=false}),
-         [mk_atom "{";mk_ident_list_comma (x::xlst);mk_atom "|";ef_pred p])
+         [mk_ident_list_comma (x::xlst);mk_atom "|";ef_pred p])
   | Binder (l,bi,(x,xlst),p,e) ->
     let lst = List.map (fun (_,id) -> mk_atom id) (x::xlst) in
     let x = mk_label (mk_atom (binder_to_string bi)) (List(("(",",",")",list_1), lst)) in
@@ -427,3 +435,48 @@ and ef_pred : predicate -> Easy_format.t = function
     let x = mk_label (mk_atom "#") (List(("(",",",")",list_1),lst)) in
     let y = List(("(","",")",list_1), [ef_pred p]) in
     List(("",".","",{list_1 with space_after_separator=false}),[x;y])
+
+let rec mk_conjonction l p1 p2 =
+  match p1 with
+  | Binary_Prop (l2,Conjonction,q1,q2) ->
+    mk_conjonction l2 q1 (mk_conjonction l q2 p2)
+  | _ -> Binary_Prop (l,Conjonction,p1,p2)
+
+let rec mk_disjunction l p1 p2 =
+  match p1 with
+  | Binary_Prop (l2,Disjonction,q1,q2) ->
+    mk_disjunction l2 q1 (mk_disjunction l q2 p2)
+  | _ -> Binary_Prop (l,Disjonction,p1,p2)
+
+(* Remove parentheses *)
+let rec norm_expr : expression -> expression = function
+  | Ident _ | Dollar _ | Builtin _ as e -> e
+  | Pbool (l,p) -> Pbool (l,norm_pred p)
+  | Parentheses (_,e) -> norm_expr e
+  | Application (l,f,a) -> Application (l,norm_expr f,norm_expr a)
+  | Comprehension (l,xlst,p) -> Comprehension (l,xlst,norm_pred p)
+  | Binder (l,bi,xlst,p,e) -> Binder (l,bi,xlst,norm_pred p,norm_expr e)
+  | Sequence (l,(e,lst)) -> Sequence (l,(norm_expr e,List.map norm_expr lst))
+  | Extension (l,(e,lst)) -> Extension (l,(norm_expr e,List.map norm_expr lst))
+  | Couple (l,cm,e1,e2) -> Couple (l,cm,norm_expr e1,norm_expr e2)
+  | Record_Field_Access (l,e,id) -> Record_Field_Access (l,norm_expr e,id)
+  | Record (l,(f,lst)) ->
+    let aux (id,e) = (id,norm_expr e) in
+    Record (l,(aux f,List.map aux lst))
+  | Record_Type (l,(f,lst)) ->
+    let aux (id,e) = (id,norm_expr e) in
+    Record_Type (l,(aux f,List.map aux lst))
+
+(* Remove parentheses and flatten conjonctions and disjonctions *)
+and norm_pred : predicate -> predicate = function
+  | P_Ident _ | P_Builtin _ as p -> p
+  | Binary_Prop (l,Conjonction,p1,p2) ->
+    mk_conjonction l (norm_pred p1) (norm_pred p2)
+  | Binary_Prop (l,Disjonction,p1,p2) ->
+    mk_disjunction l (norm_pred p1) (norm_pred p2)
+  | Binary_Prop (l,bop,p1,p2) -> Binary_Prop (l,bop,norm_pred p1,norm_pred p2)
+  | Binary_Pred (l,bop,e1,e2) -> Binary_Pred (l,bop,norm_expr e1,norm_expr e2)
+  | Negation (l,p) -> Negation (l,norm_pred p)
+  | Pparentheses (_,p) -> norm_pred p
+  | Universal_Q (l,xlst,p) -> Universal_Q (l,xlst,norm_pred p)
+  | Existential_Q (l,xlst,p) -> Existential_Q (l,xlst,norm_pred p)

@@ -140,19 +140,22 @@ let add_be = function
   | Var _ | CallUp _ | While _ as s -> s
   | Sequencement _ | Parallel _ as s -> BeginEnd s
 
+let add_begin_end_ifn = add_be
+
 let rec ef_subst : substitution -> Easy_format.t = function
   | Skip -> mk_atom "skip"
-  | BeginEnd s -> List (("BEGIN","","END",list),[ef_subst s])
+  | BeginEnd s -> List (("BEGIN","","END",{list with stick_to_label=false;}),[ef_subst s])
 
   | Affectation ((x,xlst),(e,elst)) ->
     let lst = List(("",",","",{list with space_after_opening=false;
                                          align_closing=false;
                                          space_before_closing=false}),
-                   List.map ef_expr (e::elst)) in
+                   List.map (fun e -> ef_expr (Expression.add_par e)) (e::elst)) in
     mk_sequence [mk_ident_list_comma (x::xlst);mk_atom ":=";lst]
 
   | Function_Affectation (id,(a,alst),e) ->
-    let lst_args = List(("(",",",")",list),List.map ef_expr (a::alst)) in
+    let aux (e:expression) = List(("(","",")",list),[ef_expr e]) in
+    let lst_args = List(("","","",list),List.map aux (a::alst)) in
     let lf = Label ((mk_atom (snd id),label), lst_args) in
     mk_sequence [lf;mk_atom ":=";ef_expr e]
 
@@ -181,7 +184,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
       @[mk_atom "END"])
 
   | IfThenElse (((p,s),pslst),opt) ->
-    let lb = {label with label_break=`Always;space_after_label=false} in
+    let lb = {label with label_break=`Always_rec; space_after_label=false} in
     let clst =
       [ [Label((mk_atom "IF",lb),ef_pred p);
          Label((mk_atom "THEN",lb),ef_subst s)] ]
@@ -217,8 +220,9 @@ let rec ef_subst : substitution -> Easy_format.t = function
   | Case (c,((e,s),eslst),opt) ->
     let lb = {label with label_break=`Always} in
     let clst =
-      [ [Label((mk_atom "EITHER",lb),ef_expr e);
-         Label((mk_atom "THEN",lb),ef_subst s)] ]
+      [ [ (mk_atom "OF");
+          Label((mk_atom "EITHER",lb),ef_expr e);
+          Label((mk_atom "THEN",lb),ef_subst s)] ]
       @
       (List.map (fun (e,s) ->
            [Label((mk_atom "OR",lb),ef_expr e);
@@ -245,7 +249,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
     let lb = { label with label_break=`Always } in
     let lst = { list with space_after_opening=false; space_before_closing=false; align_closing=false; } in
     let ef_eq (id,e) = mk_sequence [mk_atom (snd id);mk_atom "=";ef_expr e] in
-    let defs = List(("","AND","",lst),List.map ef_eq (ie::ielst)) in
+    let defs = List(("","&","",lst),List.map ef_eq (ie::ielst)) in
     mk_sequence_nl [ Label((mk_atom "LET",lb),mk_ident_list_comma (x::xlst));
                      Label((mk_atom "BE",lb),defs);
                      Label((mk_atom "IN",lb),ef_subst s);
@@ -273,7 +277,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
     begin match xlst, args with
       | [], [] -> mk_atom (snd f)
       | [], _::_ ->
-        let args = List(("(",",",")",lst), List.map ef_expr args) in
+        let args = List(("(",",",")",lst), List.map (fun e -> ef_expr (add_par e)) args) in
         Label((mk_atom (snd f),lb),args)
 
       | _::_, [] ->
@@ -282,7 +286,7 @@ let rec ef_subst : substitution -> Easy_format.t = function
                      mk_atom (snd f)]
 
       | _::_, _::_ ->
-        let args = List(("(",",",")",lst), List.map ef_expr args) in
+        let args = List(("(",",",")",lst), List.map (fun e -> ef_expr (add_par e)) args) in
         mk_sequence [mk_ident_list_comma xlst;
                      mk_atom "<--";
                      Label((mk_atom (snd f),lb),args)]
@@ -305,3 +309,48 @@ let rec ef_subst : substitution -> Easy_format.t = function
     let pars = List.map (fun s -> ef_subst (add_be s)) (get_par_list s) in
     let lst = { list with space_after_opening=false; align_closing=false; space_before_closing=false; indent_body=0; wrap_body=`Force_breaks; space_before_separator=true } in
     List (("","||","",lst),pars)
+let map_opt f = function
+  | None -> None
+  | Some x -> Some (f x)
+
+let rec mk_sequence s1 s2 =
+  match s1 with
+  | Sequencement (r1,r2) -> mk_sequence r1 (mk_sequence r2 s2)
+  | _ -> Sequencement (s1,s2)
+
+let rec mk_parallel s1 s2 =
+  match s1 with
+  | Parallel (r1,r2) -> mk_parallel r1 (mk_parallel r2 s2)
+  | _ -> Parallel (s1,s2)
+
+let rec norm_subst : substitution -> substitution = function
+  | Skip as s -> s
+  | BeginEnd s -> norm_subst s
+  | Affectation (xlst,(e,elst)) ->
+    Affectation (xlst,(norm_expr e,List.map norm_expr elst))
+  | Function_Affectation (id,(a,alst),e) ->
+    Function_Affectation (id,(norm_expr a,List.map norm_expr alst),norm_expr e)
+  | Record_Affectation (id,fd,e) -> Record_Affectation (id,fd,norm_expr e)
+  | Pre (p,s) -> Pre (norm_pred p,norm_subst s)
+  | Assert (p,s) -> Assert (norm_pred p,norm_subst s)
+  | Choice ((s,slst)) -> Choice (norm_subst s,List.map norm_subst slst)
+  | IfThenElse ((ps,pslst),opt) ->
+    let aux (p,s) = (norm_pred p,norm_subst s) in
+    IfThenElse ((aux ps,List.map aux pslst),map_opt norm_subst opt)
+  | Select ((ps,pslst),opt) ->
+    let aux (p,s) = (norm_pred p,norm_subst s) in
+    Select ((aux ps,List.map aux pslst),map_opt norm_subst opt)
+  | Case (c,(es,eslst),opt) ->
+    let aux (e,s) = (norm_expr e,norm_subst s) in
+    Case (norm_expr c,(aux es,List.map aux eslst),map_opt norm_subst opt)
+  | Any (xlst,p,s) -> Any (xlst,norm_pred p,norm_subst s)
+  | Let (xlst,(ie,ielst),s) ->
+    let aux (id,e) = (id,norm_expr e) in
+    Let (xlst,(aux ie,List.map aux ielst),norm_subst s)
+  | BecomesElt (xlst,e) -> BecomesElt (xlst,norm_expr e)
+  | BecomesSuch (xlst,p) -> BecomesSuch (xlst,norm_pred p)
+  | Var (xlst,s) -> Var (xlst,norm_subst s)
+  | CallUp (xlst,f,args) -> CallUp (xlst,f,List.map norm_expr args)
+  | While (p,s,q,e) -> While (norm_pred p,norm_subst s,norm_pred q,norm_expr e)
+  | Sequencement (s1,s2) -> mk_sequence (norm_subst s1) (norm_subst s2)
+  | Parallel (s1,s2) -> mk_parallel (norm_subst s1) (norm_subst s2)

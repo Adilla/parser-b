@@ -15,7 +15,7 @@ let rec expr_to_list (e:expression) : expression list =
 let rec expr_to_nonempty_list (e:expression): expression non_empty_list =
   let lst = expr_to_list e in
   (List.hd lst,List.tl lst)
-
+(*
 let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
   let rec aux = function
   | Couple (_,Comma,e1,e2) -> (None,e1)::(aux e2) 
@@ -23,7 +23,7 @@ let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
   in
   let lst = aux e in
   (List.hd lst,List.tl lst)
-
+*)
 %}
 
 %token EOF
@@ -280,12 +280,13 @@ liste_ident:
 fields:
 | id=IDENT MEMBER_OF e=expression { [(($startpos(id),id),e)] }
 | id=IDENT MEMBER_OF e=expression COMMA lst=fields { (($startpos(id),id),e)::lst }
-
+(*
 rec_fields:
 (* | e=expression { [None,e] } *)
 (* | e=expression COMMA lst=rec_fields { (None,e)::lst } *)
 | id=IDENT MEMBER_OF e=expression { [(Some ($startpos(id),id),e)] }
 | id=IDENT MEMBER_OF e=expression COMMA lst=rec_fields { (Some ($startpos(id),id),e)::lst }
+   *)
 
 expression:
 (* expression_primaire: *)
@@ -345,8 +346,8 @@ expression:
 | Q_INTER ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Q_Intersection,(List.hd ids,List.tl ids),p,e) }
 (* expression_de_records: *)
 | STRUCT LPAR lst=fields RPAR   { Record_Type ($startpos,(List.hd lst,List.tl lst))  }
-| REC LPAR lst=rec_fields RPAR  { Record ($startpos,(List.hd lst,List.tl lst)) }
-| REC LPAR e=expression RPAR  { Record ($startpos,expr_to_rfields e) }
+| REC LPAR lst=fields RPAR  { Record ($startpos,(List.hd lst,List.tl lst)) }
+(* | REC LPAR e=expression RPAR  { Record ($startpos,expr_to_rfields e) } *)
 | e=expression SQUOTE id=IDENT   { Record_Field_Access ($startpos,e,($startpos(id),id)) }
 (* expression_de_relations: *)
 | e1=expression RELATION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Relations)) e1 e2 }

@@ -84,7 +84,7 @@ type expression =
   | Comprehension of loc*ident non_empty_list * predicate
   | Binder of loc*expr_binder*ident non_empty_list*predicate*expression
   | Record_Field_Access of loc*expression*ident
-  | Record of loc*(ident option*expression) non_empty_list
+  | Record of loc*(ident*expression) non_empty_list
   | Record_Type of loc*(ident*expression) non_empty_list
 
 and predicate =
@@ -134,7 +134,7 @@ let rec expr_eq e1 e2 : bool =
     pred_eq p1 p2 && expr_eq e1 e2
   | Record_Field_Access (_,e1,id1), Record_Field_Access(_,e2,id2) ->
     expr_eq e1 e2 && ident_eq id1 id2
-  | Record (_,(hd1,tl1)), Record (_,(hd2,tl2)) ->
+  | Record (_,(hd1,tl1)), Record (_,(hd2,tl2)) (*->
     begin
       let aux (opt1,e1) (opt2,e2) =
         expr_eq e1 e2 && (match opt1, opt2 with
@@ -144,7 +144,7 @@ let rec expr_eq e1 e2 : bool =
       in
       try List.for_all2 aux (hd1::tl1) (hd2::tl2)
       with Invalid_argument _ -> false
-    end
+    end *)
   | Record_Type (_,(hd1,tl1)), Record_Type(_,(hd2,tl2)) ->
     begin
       let aux (id1,e1) (id2,e2) = ident_eq id1 id2 && expr_eq e1 e2 in
@@ -381,7 +381,7 @@ let rec ef_expr : expression -> Easy_format.t = function
   | Record_Field_Access (_,e,id) ->
     mk_label (ef_expr (add_par e)) (mk_atom ("'" ^ snd id))
   | Record (_,(f,lst)) ->
-    let flst = List.map ef_rec_field (f::lst) in
+    let flst = List.map ef_struct_field (f::lst) in
     let lst = List (("(",",",")",list_1),flst) in
     mk_label (mk_atom "rec") lst
   | Record_Type (_,(f,lst)) ->
@@ -391,11 +391,12 @@ let rec ef_expr : expression -> Easy_format.t = function
 
 and ef_struct_field (id,e:ident*expression) : Easy_format.t =
   List(("",":","",list_1), [mk_atom (snd id);ef_expr (add_par e)])
-
+(*
 and ef_rec_field (opt,e:ident option*expression) : Easy_format.t =
   match opt with
   | None -> ef_expr (add_par e)
   | Some id -> ef_struct_field (id,e)
+   *)
 
 and ef_pred : predicate -> Easy_format.t = function
   | P_Ident id -> mk_atom (snd id)

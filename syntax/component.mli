@@ -118,3 +118,11 @@ val norm_mch : abstract_machine -> abstract_machine
 val norm_ref : refinement -> refinement
 val norm_imp : implementation -> implementation
 val norm_component : component -> component
+
+val mch_of_clist : ident -> ident list -> clause list -> (abstract_machine,string) result
+val ref_of_clist : ident -> ident list -> ident -> clause list -> (refinement,string) result
+val imp_of_clist : ident ->ident list -> ident -> clause list -> (implementation,string) result
+
+val clist_of_mch : abstract_machine -> clause list
+val clist_of_ref : refinement -> clause list
+val clist_of_imp : implementation -> clause list

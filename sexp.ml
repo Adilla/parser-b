@@ -158,106 +158,47 @@ let sexp_of_op (out,name,args,body:operation) : t =
          List (List.map sexp_of_ident args);
          sexp_of_subst body ]
 
-let mk_operations (_,lst) =
-  List ( (Atom "OPERATIONS")::(List.map sexp_of_op lst) )
-let mk_local_operations (_,lst) =
-  List ( (Atom "LOCAL_OPERATIONS")::(List.map sexp_of_op lst) )
-let mk_initialisation (_,s) =
-  List [Atom "INITIALISATION";sexp_of_subst s]
-let mk_assertions (_,lst) =
-  List ((Atom "ASSERTIONS")::(List.map sexp_of_pred lst))
-let mk_invariant (_,p) =
-  List [Atom "INVARIANT";sexp_of_pred p]
-let mk_variables (_,lst) =
-  List ( (Atom "VARIABLES")::(List.map sexp_of_ident lst) )
-let mk_concrete_variables (_,lst) =
-  List ( (Atom "CONCRETE_VARIABLES")::(List.map sexp_of_ident lst) )
-let mk_properties (_,p) =
-  List [Atom "PROPERTIES";sexp_of_pred p]
-let mk_abstract_constants (_,lst) =
-  List ( (Atom "ABSTRACT_CONSTANTS")::(List.map sexp_of_ident lst) )
-let mk_constants (_,lst) =
-  List ( (Atom "CONSTANTS")::(List.map sexp_of_ident lst) )
-let mk_sets (_,lst) =
-  List ( (Atom "SETS")::(List.map sexp_of_set lst) )
-let mk_uses (_,lst) =
-  List ( (Atom "USES")::(List.map sexp_of_ident lst) )
-let mk_extends (_,lst) =
-  List ( (Atom "EXTENDS")::(List.map sexp_of_minst lst) )
-let mk_promotes (_,lst) =
-  List ( (Atom "PROMOTES")::(List.map sexp_of_ident lst) )
-let mk_includes (_,lst) =
-  List ( (Atom "INCLUDES")::(List.map sexp_of_minst lst) )
-let mk_sees (_,lst) =
-  List ( (Atom "SEES")::(List.map sexp_of_ident lst) )
-let mk_constraints (_,p) =
-  List [Atom "CONSTRAINTS";sexp_of_pred p]
-let mk_imports (_,lst) =
-  List ( (Atom "IMPORTS")::(List.map sexp_of_minst lst) )
-let mk_values (_,lst) =
-  let aux (id,e) = List [sexp_of_ident id;sexp_of_expr e] in
-  List ( (Atom "VALUES")::(List.map aux lst) )
+let sexp_of_clause : clause -> t = function
+  | Constraints (l,p) -> List [Atom "CONSTRAINTS";sexp_of_pred p]
+  | Imports (l,lst) -> List ( (Atom "IMPORTS")::(List.map sexp_of_minst lst) )
+  | Includes (l,lst) -> List ( (Atom "INCLUDES")::(List.map sexp_of_minst lst) )
+  | Extends (l,lst) -> List ( (Atom "EXTENDS")::(List.map sexp_of_minst lst) )
+  | Properties (l,p) -> List [Atom "PROPERTIES";sexp_of_pred p]
+  | Invariant (l,p) -> List [Atom "INVARIANT";sexp_of_pred p]
+  | Assertions (l,lst) -> List ((Atom "ASSERTIONS")::(List.map sexp_of_pred lst))
+  | Initialization (l,s) -> List [Atom "INITIALISATION";sexp_of_subst s]
+  | Operations (l,lst) -> List ( (Atom "OPERATIONS")::(List.map sexp_of_op lst) )
+  | Local_Operations (l,lst) -> List ( (Atom "LOCAL_OPERATIONS")::(List.map sexp_of_op lst) )
+  | Values (l,lst) ->
+    let aux (id,e) = List [sexp_of_ident id;sexp_of_expr e] in
+    List ( (Atom "VALUES")::(List.map aux lst) )
+  | Sees (l,lst) -> List ( (Atom "SEES")::(List.map sexp_of_ident lst) )
+  | Promotes (l,lst) -> List ( (Atom "PROMOTES")::(List.map sexp_of_ident lst) )
+  | Uses (l,lst) -> List ( (Atom "USES")::(List.map sexp_of_ident lst) )
+  | Sets (l,lst) -> List ( (Atom "SETS")::(List.map sexp_of_set lst) )
+  | Constants (l,lst) -> List ( (Atom "CONSTANTS")::(List.map sexp_of_ident lst) )
+  | Abstract_constants (l,lst) ->
+    List ( (Atom "ABSTRACT_CONSTANTS")::(List.map sexp_of_ident lst) )
+  | Concrete_variables (l,lst) ->
+    List ( (Atom "CONCRETE_VARIABLES")::(List.map sexp_of_ident lst) )
+  | Variables (l,lst) -> List ( (Atom "VARIABLES")::(List.map sexp_of_ident lst) )
 
 let sexp_of_mch (mch:abstract_machine) : t =
-  let lst = [] in
-  let lst = add lst mk_operations mch.clause_operations in
-  let lst = add lst mk_initialisation mch.clause_initialisation in
-  let lst = add lst mk_assertions mch.clause_assertions in
-  let lst = add lst mk_invariant mch.clause_invariant in
-  let lst = add lst mk_variables mch.clause_abstract_variables in
-  let lst = add lst mk_concrete_variables mch.clause_concrete_variables in
-  let lst = add lst mk_properties mch.clause_properties in
-  let lst = add lst mk_abstract_constants mch.clause_abstract_constants in
-  let lst = add lst mk_constants mch.clause_concrete_constants in
-  let lst = add lst mk_sets mch.clause_sets in
-  let lst = add lst mk_uses mch.clause_uses in
-  let lst = add lst mk_extends mch.clause_extends in
-  let lst = add lst mk_promotes mch.clause_promotes in
-  let lst = add lst mk_includes mch.clause_includes in
-  let lst = add lst mk_constraints mch.clause_constraints in
   List ( (Atom "MACHINE")::(sexp_of_ident mch.name)::
-         (List (List.map sexp_of_ident mch.parameters))::lst)
+         (List (List.map sexp_of_ident mch.parameters))::
+         (List.map sexp_of_clause (clist_of_mch mch)) )
 
 let sexp_of_ref (ref:refinement) : t =
-  let lst = [] in
-  let lst = add lst mk_operations ref.clause_operations in
-  let lst = add lst mk_local_operations ref.clause_local_operations in
-  let lst = add lst mk_initialisation ref.clause_initialisation in
-  let lst = add lst mk_assertions ref.clause_assertions in
-  let lst = add lst mk_invariant ref.clause_invariant in
-  let lst = add lst mk_variables ref.clause_abstract_variables in
-  let lst = add lst mk_concrete_variables ref.clause_concrete_variables in
-  let lst = add lst mk_properties ref.clause_properties in
-  let lst = add lst mk_abstract_constants ref.clause_abstract_constants in
-  let lst = add lst mk_constants ref.clause_concrete_constants in
-  let lst = add lst mk_sets ref.clause_sets in
-  let lst = add lst mk_extends ref.clause_extends in
-  let lst = add lst mk_promotes ref.clause_promotes in
-  let lst = add lst mk_includes ref.clause_includes in
-  let lst = add lst mk_sees ref.clause_sees in
   List ( (Atom "REFINEMENT")::(sexp_of_ident ref.name)::
          (List (List.map sexp_of_ident ref.parameters))::
-         (List [Atom "REFINES";sexp_of_ident ref.refines])::lst)
+         (List [Atom "REFINES";sexp_of_ident ref.refines])::
+         (List.map sexp_of_clause (clist_of_ref ref)) )
 
 let sexp_of_imp (imp:implementation) : t =
-  let lst = [] in
-  let lst = add lst mk_operations imp.clause_operations_B0 in
-  let lst = add lst mk_local_operations imp.clause_local_operations_B0 in
-  let lst = add lst mk_initialisation imp.clause_initialisation_B0 in
-  let lst = add lst mk_assertions imp.clause_assertions in
-  let lst = add lst mk_invariant imp.clause_invariant in
-  let lst = add lst mk_concrete_variables imp.clause_concrete_variables in
-  let lst = add lst mk_values imp.clause_values in
-  let lst = add lst mk_properties imp.clause_properties in
-  let lst = add lst mk_constants imp.clause_concrete_constants in
-  let lst = add lst mk_sets imp.clause_sets in
-  let lst = add lst mk_extends imp.clause_extends_B0 in
-  let lst = add lst mk_promotes imp.clause_promotes in
-  let lst = add lst mk_imports imp.clause_imports in
-  let lst = add lst mk_sees imp.clause_sees in
   List ( (Atom "IMPLEMENTATION")::(sexp_of_ident imp.name)::
          (List (List.map sexp_of_ident imp.parameters))::
-         (List [Atom "REFINES";sexp_of_ident imp.refines])::lst)
+         (List [Atom "REFINES";sexp_of_ident imp.refines])::
+         (List.map sexp_of_clause (clist_of_imp imp)) )
 
 let sexp_of_component = function 
   | Abstract_machine mch -> sexp_of_mch mch

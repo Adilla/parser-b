@@ -27,13 +27,14 @@ let () =
   Arg.parse args (fun _ -> ()) ("Usage: "^ Sys.argv.(0) ^" [options]");
   Random.self_init ();
   let rd = Random.get_state () in
+  let open Print in
   let x = match !kind with
-    | Expr -> Expression.ef_expr (Generators.gen_expr rd)
-    | Pred -> Expression.ef_pred (Generators.gen_pred rd)
-    | Subst -> Substitution.ef_subst (Generators.gen_subst rd)
-    | Mch -> Component.ef_machine (Generators.gen_machine rd)
-    | Ref -> Component.ef_refinement (Generators.gen_refinement rd)
-    | Imp -> Component.ef_implementation (Generators.gen_implementation rd)
-    | Comp -> Component.ef_component (Generators.gen_component rd)
+    | Expr -> ef_expr (Generators.gen_expr rd)
+    | Pred -> ef_pred (Generators.gen_pred rd)
+    | Subst -> ef_subst (Generators.gen_subst rd)
+    | Mch -> ef_machine (Generators.gen_machine rd)
+    | Ref -> ef_refinement (Generators.gen_refinement rd)
+    | Imp -> ef_implementation (Generators.gen_implementation rd)
+    | Comp -> ef_component (Generators.gen_component rd)
   in
   pretty_print x

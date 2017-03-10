@@ -116,8 +116,6 @@ let pred_loc : predicate -> loc = function
   | Negation (l,_) | Pparentheses (l,_) | Universal_Q (l,_,_)
   | Existential_Q (l,_,_) -> l
 
-(* Print *)
-
 let rec expr_eq e1 e2 : bool =
   match e1, e2 with
   | Parentheses (_,e), _ -> expr_eq e e2
@@ -140,17 +138,7 @@ let rec expr_eq e1 e2 : bool =
     pred_eq p1 p2 && expr_eq e1 e2
   | Record_Field_Access (_,e1,id1), Record_Field_Access(_,e2,id2) ->
     expr_eq e1 e2 && ident_eq id1 id2
-  | Record (_,(hd1,tl1)), Record (_,(hd2,tl2)) (*->
-    begin
-      let aux (opt1,e1) (opt2,e2) =
-        expr_eq e1 e2 && (match opt1, opt2 with
-            | None, None -> true
-            | Some id1, Some id2 -> ident_eq id1 id2
-            | _, _ -> false )
-      in
-      try List.for_all2 aux (hd1::tl1) (hd2::tl2)
-      with Invalid_argument _ -> false
-    end *)
+  | Record (_,(hd1,tl1)), Record (_,(hd2,tl2))
   | Record_Type (_,(hd1,tl1)), Record_Type(_,(hd2,tl2)) ->
     begin
       let aux (id1,e1) (id2,e2) = ident_eq id1 id2 && expr_eq e1 e2 in
@@ -313,128 +301,6 @@ let binder_to_string = function
   | Q_Union -> "UNION"
   | Q_Intersection -> "INTER"
   | Lambda -> "%"
-
-open Easy_format
-
-let mk_atom s = Atom (s,atom)
-let mk_label a b = Label ((a,{label with space_after_label=false}),b)
-
-let add_par : expression -> expression = function
-  | Application _ | Couple _  | Record_Field_Access _ as e -> Parentheses (dloc,e)
-  | Ident _ | Dollar _ | Pbool _ | Builtin _ | Parentheses _ | Comprehension _
-  | Binder _ | Sequence _ | Extension _ | Record _ | Record_Type _ as e -> e
-
-let add_par_p : predicate -> predicate = function
-  | P_Ident _ | P_Builtin _ | Negation _ | Pparentheses _
-  | Universal_Q _ | Existential_Q _ | Binary_Pred _ as p -> p
-  | Binary_Prop _ as p -> Pparentheses (dloc,p)
-
-let list_1 =
-  { list with space_after_opening=false;
-              space_before_closing=false;
-              align_closing=false }
-
-let mk_ident_list_comma (lst:ident list) : Easy_format.t =
-    let lst = List.map (fun id -> mk_atom (snd id)) lst in
-    List (("",",","",list_1), lst)
-
-let rec get_and_list = function
-  | Binary_Prop (_,Conjonction,p1,p2) -> (get_and_list p1)@(get_and_list p2)
-  | s -> [s]
-
-let rec get_or_list = function
-  | Binary_Prop (_,Disjonction,p1,p2) -> (get_or_list p1)@(get_or_list p2)
-  | s -> [s]
-
-let rec ef_expr : expression -> Easy_format.t = function
-  | Ident id -> mk_atom (snd id)
-  | Dollar id -> mk_atom (snd id ^ "$0")
-  | Builtin (_,bi) -> mk_atom (builtin_to_string bi)
-  | Pbool (_,p) ->
-    mk_label (mk_atom "bool") (List(("(","",")",list_1),[ef_pred p]))
-  | Parentheses (_,e) -> List(("(","",")",list_1),[ef_expr e])
-  | Application (_,Builtin (_,Inverse_Relation),e) ->
-    mk_label (ef_expr (add_par e)) (mk_atom "~")
-  | Application (_,Builtin (_,Unary_Minus),e) ->
-    mk_label (mk_atom "-") (ef_expr (add_par e))
-  | Application (_,Builtin (_,Image),Couple(_,_,e1,e2)) ->
-    mk_label (ef_expr (add_par e1)) (List (("[","","]",list_1),[ef_expr e2]))
-  | Application (_,Builtin (_,(Composition|Parallel_Product as bop)),Couple(_,Infix,e1,e2)) ->
-    List(("(",builtin_to_string bop,")",{ list_1 with space_before_separator=true }),
-         [ef_expr (add_par e1); ef_expr (add_par e2)])
-  | Application (_,Builtin (_,bop),Couple(_,Infix,e1,e2)) ->
-    List(("",builtin_to_string bop,"",{ list_1 with space_before_separator=true }),
-         [ef_expr (add_par e1); ef_expr (add_par e2)])
-  | Application (_,f,a) ->
-    mk_label (ef_expr (add_par f)) (List (("(","",")",list_1),[ef_expr a]))
-  | Comprehension (_,(x,xlst),p) ->
-    List(("{","","}",{ list with align_closing=false}),
-         [mk_ident_list_comma (x::xlst);mk_atom "|";ef_pred p])
-  | Binder (l,bi,(x,xlst),p,e) ->
-    let lst = List.map (fun (_,id) -> mk_atom id) (x::xlst) in
-    let x = mk_label (mk_atom (binder_to_string bi)) (List(("(",",",")",list_1), lst)) in
-    let y = List(("(","|",")",list_1), [ef_pred p;ef_expr e]) in
-    List (("",".","",list_1),[x;y])
-  | Sequence (_,(e,lst)) ->
-    let lst = List.map (fun e -> ef_expr (add_par e)) (e::lst) in
-    List (("[",",","]",list_1),lst)
-  | Extension (_,(e,lst)) ->
-    let lst = List.map (fun e -> ef_expr (add_par e)) (e::lst) in
-    List (("{",",","}",list_1),lst)
-  | Couple (_,Infix,e1,e2) -> assert false
-  | Couple (_,Maplet,e1,e2) ->
-    List(("","","",list_1),[ef_expr (add_par e1);mk_atom "|->";ef_expr (add_par e2)])
-  | Couple (_,Comma,e1,e2) ->
-    List(("","","",list_1),[ef_expr (add_par e1);mk_atom ",";ef_expr (add_par e2)])
-  | Record_Field_Access (_,e,id) ->
-    mk_label (ef_expr (add_par e)) (mk_atom ("'" ^ snd id))
-  | Record (_,(f,lst)) ->
-    let flst = List.map ef_struct_field (f::lst) in
-    let lst = List (("(",",",")",list_1),flst) in
-    mk_label (mk_atom "rec") lst
-  | Record_Type (_,(f,lst)) ->
-    let flst = List.map ef_struct_field (f::lst) in
-    let lst = List (("(",",",")",list_1),flst) in
-    mk_label (mk_atom "struct") lst
-
-and ef_struct_field (id,e:ident*expression) : Easy_format.t =
-  List(("",":","",list_1), [mk_atom (snd id);ef_expr (add_par e)])
-(*
-and ef_rec_field (opt,e:ident option*expression) : Easy_format.t =
-  match opt with
-  | None -> ef_expr (add_par e)
-  | Some id -> ef_struct_field (id,e)
-   *)
-
-and ef_pred : predicate -> Easy_format.t = function
-  | P_Ident id -> mk_atom (snd id)
-  | P_Builtin (_,Btrue) -> mk_atom "btrue"
-  | P_Builtin (_,Bfalse) -> mk_atom "bfalse"
-  | Binary_Prop (_,Conjonction,_,_) as p ->
-    let pars = List.map (fun p -> ef_pred (add_par_p p)) (get_and_list p) in
-    List (("","&","",{ list_1 with space_before_separator=true}),pars)
-  | Binary_Prop (_,Disjonction,_,_) as p ->
-    let pars = List.map (fun p -> ef_pred (add_par_p p)) (get_or_list p) in
-    List (("","or","",{ list_1 with space_before_separator=true}),pars)
-  | Binary_Prop (_,bop,p1,p2) ->
-    List(("",prop_bop_to_string bop,"",{list_1 with space_before_separator=true}),
-         [ef_pred (add_par_p p1); ef_pred (add_par_p p2)])
-  | Binary_Pred (_,bop,e1,e2) ->
-    List (("",pred_bop_to_string bop,"",{list_1 with space_before_separator=true}),
-          [ef_expr e1; ef_expr e2])
-  | Negation (_,p) ->
-    mk_label (mk_atom "not") (List(("(","",")",list_1),[ef_pred p]))
-  | Pparentheses (_,p) -> List(("(","",")",list_1),[ef_pred p])
-  | Universal_Q (_,(x,xlst),p) ->
-    let lst = List.map (fun (_,id) -> mk_atom id) (x::xlst) in
-    let x = mk_label (mk_atom "!") (List(("(",",",")",list_1),lst)) in
-    let y = List(("(","",")",list_1), [ef_pred p]) in
-    List(("",".","",{list_1 with space_after_separator=false}),[x;y])
-  | Existential_Q (_,(x,xlst),p) ->
-    let lst = List.map (fun (_,id) -> mk_atom id) (x::xlst) in
-    let x = mk_label (mk_atom "#") (List(("(",",",")",list_1),lst)) in
-    let y = List(("(","",")",list_1), [ef_pred p]) in
-    List(("",".","",{list_1 with space_after_separator=false}),[x;y])
 
 let rec mk_conjonction l p1 p2 =
   match p1 with

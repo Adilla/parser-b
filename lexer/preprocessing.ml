@@ -29,21 +29,21 @@ let load_def_file_exn (lc:loc) (fn:string) : in_channel =
   | Some fn ->
     begin
       ( if List.mem fn !opened_def_files then
-          raise (Utils.Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
+          raise (Error.Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
         else opened_def_files := fn :: !opened_def_files );
       try open_in fn
-      with Sys_error _ -> raise (Utils.Error (lc,"Error: cannot open file '"^fn^"'."))
+      with Sys_error _ -> raise (Error.Error (lc,"Error: cannot open file '"^fn^"'."))
     end
-  | None -> raise (Utils.Error (lc,"Error: cannot find file '"^fn^"'."))
+  | None -> raise (Error.Error (lc,"Error: cannot find file '"^fn^"'."))
 
 let load_quoted_def_file_exn (lc:loc) (fn:string) : in_channel =
   let dir = Filename.dirname lc.Lexing.pos_fname in
   let fn = dir ^ "/" ^ fn in
   ( if List.mem fn !opened_def_files then
-      raise (Utils.Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
+      raise (Error.Error (lc,"Error: trying to load '" ^ fn ^ "' twice."))
     else opened_def_files := fn :: !opened_def_files );
   try open_in fn
-  with Sys_error _ -> raise (Utils.Error (lc,"Error: cannot open file '"^fn^"'."))
+  with Sys_error _ -> raise (Error.Error (lc,"Error: cannot open file '"^fn^"'."))
 
 (* ***** *)
 
@@ -72,7 +72,7 @@ let dump_table (defs:macro_table) : unit =
 
 
 let raise_err (loc:loc) (tk:token) =
-  raise (Utils.Error (loc,"Error in clause DEFINITIONS: unexpected token '"
+  raise (Error.Error (loc,"Error in clause DEFINITIONS: unexpected token '"
                     ^ token_to_string tk ^ "'."))
 
 let is_def_sep_exn state =
@@ -237,7 +237,7 @@ let mk_assoc_exn (loc:loc) (l1:ident list) (l2:t_token list list) : (string*t_to
     match l1, l2 with
     | [] , [] -> []
     | h1::t1, h2::t2 -> (snd h1,h2)::(aux t1 t2)
-    | _, _ -> raise (Utils.Error (loc,"Error while expanding a definition: incorrect number of parameters."))
+    | _, _ -> raise (Error.Error (loc,"Error while expanding a definition: incorrect number of parameters."))
   in
   aux l1 l2
 

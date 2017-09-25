@@ -169,7 +169,7 @@ let mch_eq mch1 mch2 =
 
 let check_none_exn lc = function
   | None -> ()
-  | Some _ -> raise (Utils.Error (lc,"This clause is defined twice."))
+  | Some _ -> raise (Error.Error (lc,"This clause is defined twice."))
 
 let add_clause_mch_exn (co:abstract_machine) (cl:clause) : abstract_machine =
   match cl with
@@ -196,13 +196,13 @@ let add_clause_mch_exn (co:abstract_machine) (cl:clause) : abstract_machine =
   | Operations (lc,lst) ->
     ( check_none_exn lc co.clause_operations; { co with clause_operations = Some(lc,lst) } )
   | Values (lc,_) ->
-    raise (Utils.Error (lc, "The clause VALUES is not allowed in abstract machines."))
+    raise (Error.Error (lc, "The clause VALUES is not allowed in abstract machines."))
   | Local_Operations (lc,_) ->
-    raise (Utils.Error (lc, "The clause LOCAL_OPERATIONS is not allowed in abstract machines."))
+    raise (Error.Error (lc, "The clause LOCAL_OPERATIONS is not allowed in abstract machines."))
   | Promotes (lc,lst) ->
     ( check_none_exn lc co.clause_promotes; { co with clause_promotes = Some(lc,lst) } )
   | Imports (lc,_) ->
-    raise (Utils.Error (lc, "The clause IMPORTS is not allowed in abstract machines."))
+    raise (Error.Error (lc, "The clause IMPORTS is not allowed in abstract machines."))
   | Constraints (lc,lst) ->
     ( check_none_exn lc co.clause_constraints; { co with clause_constraints = Some(lc,lst) } )
   | Includes (lc,lst) ->
@@ -238,7 +238,7 @@ let mk_machine_exn (name:ident) (params:ident list) (clauses:clause list) : abst
 let mch_of_clist (name:ident) (params:ident list) (clauses:clause list)
   : (abstract_machine,string) result =
   try Ok (mk_machine_exn name params clauses)
-  with Utils.Error (_,err) -> Error err
+  with Error.Error (_,err) -> Error err
 
 let norm_mch (mch: abstract_machine) : abstract_machine =
   mk_machine_exn mch.name mch.parameters
@@ -313,25 +313,25 @@ let add_clause_ref_exn (co:refinement) (cl:clause) : refinement =
   | Operations (lc,lst) ->
     ( check_none_exn lc co.clause_operations; { co with clause_operations = Some(lc,lst) } )
   | Values (lc,lst) ->
-    raise (Utils.Error (lc, "The clause VALUES is not allowed in refinements."))
+    raise (Error.Error (lc, "The clause VALUES is not allowed in refinements."))
   | Local_Operations (lc,lst) ->
     ( check_none_exn lc co.clause_local_operations; { co with clause_local_operations = Some(lc,lst) } )
   | Promotes (lc,lst) ->
     ( check_none_exn lc co.clause_promotes; { co with clause_promotes = Some(lc,lst) } )
   | Imports (lc,lst) ->
-    raise (Utils.Error (lc, "The clause IMPORTS is not allowed in refinements."))
+    raise (Error.Error (lc, "The clause IMPORTS is not allowed in refinements."))
   | Abstract_constants (lc,lst) ->
     ( check_none_exn lc co.clause_abstract_constants; { co with clause_abstract_constants = Some(lc,lst) } )
   | Variables (lc,lst) ->
     ( check_none_exn lc co.clause_abstract_variables; { co with clause_abstract_variables = Some(lc,lst) } )
   | Constraints (lc,_) ->
-    raise (Utils.Error (lc, "The clause CONSTRAINTS is not allowed in refinements."))
+    raise (Error.Error (lc, "The clause CONSTRAINTS is not allowed in refinements."))
   | Includes (lc,lst) ->
     ( check_none_exn lc co.clause_includes; { co with clause_includes = Some(lc,lst) } )
   | Extends (lc,lst) ->
     ( check_none_exn lc co.clause_extends; { co with clause_extends = Some(lc,lst) } )
   | Uses (lc,lst) ->
-    raise (Utils.Error (lc, "The clause USES is not allowed in refinements."))
+    raise (Error.Error (lc, "The clause USES is not allowed in refinements."))
 
 let mk_refinement_exn (name:ident) (params:ident list) (refines:ident) (clauses:clause list) : refinement =
   let ref:refinement =
@@ -359,7 +359,7 @@ let mk_refinement_exn (name:ident) (params:ident list) (refines:ident) (clauses:
 let ref_of_clist (name:ident) (params:ident list) (refines:ident) (clauses:clause list)
   : (refinement,string) result =
   try Ok (mk_refinement_exn name params refines clauses)
-  with Utils.Error (_,err) -> Error err
+  with Error.Error (_,err) -> Error err
 
 let norm_ref (ref: refinement) : refinement =
   mk_refinement_exn ref.name ref.parameters ref.refines
@@ -440,17 +440,17 @@ let add_clause_imp_exn (co:implementation) (cl:clause) : implementation =
   | Imports (lc,lst) ->
     ( check_none_exn lc co.clause_imports; { co with clause_imports = Some(lc,lst) } )
   | Abstract_constants (lc,lst) ->
-    raise (Utils.Error (lc, "The clause ABSTRACT_CONSTANTS is not allowed in implementations."))
+    raise (Error.Error (lc, "The clause ABSTRACT_CONSTANTS is not allowed in implementations."))
   | Variables (lc,lst) ->
-    raise (Utils.Error (lc, "The clause VARIABLES is not allowed in implementations."))
+    raise (Error.Error (lc, "The clause VARIABLES is not allowed in implementations."))
   | Constraints (lc,_) ->
-    raise (Utils.Error (lc, "The clause CONSTRAINTS is not allowed in implementation."))
+    raise (Error.Error (lc, "The clause CONSTRAINTS is not allowed in implementation."))
   | Includes (lc,lst) ->
-    raise (Utils.Error (lc, "The clause INCLUDES is not allowed in implementations."))
+    raise (Error.Error (lc, "The clause INCLUDES is not allowed in implementations."))
   | Extends (lc,lst) ->
     ( check_none_exn lc co.clause_extends_B0; { co with clause_extends_B0 = Some(lc,lst) } )
   | Uses (lc,lst) ->
-    raise (Utils.Error (lc, "The clause USES is not allowed in implementations."))
+    raise (Error.Error (lc, "The clause USES is not allowed in implementations."))
 
 let mk_implementation_exn (name:ident) (params:ident list) (refines:ident) (clauses:clause list) : implementation =
   let imp:implementation =
@@ -477,7 +477,7 @@ let mk_implementation_exn (name:ident) (params:ident list) (refines:ident) (clau
 let imp_of_clist (name:ident) (params:ident list) (refines:ident) (clauses:clause list)
   : (implementation,string) result =
   try Ok (mk_implementation_exn name params refines clauses)
-  with Utils.Error (_,err) -> Error err
+  with Error.Error (_,err) -> Error err
 
 let norm_imp (imp: implementation) : implementation =
   mk_implementation_exn imp.name imp.parameters imp.refines

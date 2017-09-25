@@ -26,16 +26,16 @@ let rec read_params_exn (nb_lpar:int) (nb_lbra:int) (state:Lexer_with_lk.state)
     read_params_exn nb_lpar (nb_lbra+1) state rev_defs (next::tks)
   | RBRA, st, _ as next ->
     if nb_lbra < 1 (* ie nb_lpar = 0 *) then
-      raise (Utils.Error (st,"Unbalanced number of brackets."))
+      raise (Error.Error (st,"Unbalanced number of brackets."))
     else read_params_exn nb_lpar (nb_lbra-1) state rev_defs (next::tks)
-  | EOF, st, _ -> raise (Utils.Error (st,"Unexpected end of file."))
+  | EOF, st, _ -> raise (Error.Error (st,"Unexpected end of file."))
   | next -> read_params_exn nb_lpar nb_lbra state rev_defs (next::tks)
 
 let get_params_exn (state:Lexer_with_lk.state) : t_token list list =
   match Lexer_with_lk.get_next_exn state with
   | LPAR, _, _ -> List.rev (read_params_exn 0 0 state [] [])
-  | EOF, st, _ -> raise (Utils.Error (st,"Unexpected end of file."))
-  | tk, st, _ -> raise (Utils.Error (st,"Unexpected token '"^ Lexer_with_lk.token_to_string tk ^"'."))
+  | EOF, st, _ -> raise (Error.Error (st,"Unexpected end of file."))
+  | tk, st, _ -> raise (Error.Error (st,"Unexpected token '"^ Lexer_with_lk.token_to_string tk ^"'."))
 
 let is_comp_start_exn (state:Lexer_with_lk.state) : bool =
   let queue = Queue.create () in
@@ -85,7 +85,7 @@ let decr_fuel_exn (state:state) : unit =
   if state.fuel > 0 then
     state.fuel <- state.fuel - 1
   else
-    raise (Utils.Error(dloc,"Cyclic macro detected."))
+    raise (Error.Error(dloc,"Cyclic macro detected."))
 
 let get_next_exn (state:state) : t_token =
   let open Preprocessing in

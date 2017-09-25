@@ -13,21 +13,23 @@ let rec loop_exn (state:state) (chkp:Component.component I.checkpoint) : Compone
   | I.Shifting _
   | I.AboutToReduce _ -> loop_exn state (I.resume chkp)
   | I.HandlingError env ->
-    raise (Utils.Error (loc_from_env env, "Syntax error: unexpected token '"
+    raise (Error.Error (loc_from_env env, "Syntax error: unexpected token '"
                                           ^ get_last_token_str state ^ "'."))
   | I.Accepted v -> v
   | I.Rejected -> assert false (*unreachable*)
 
+let parse_component_exn (filename:string) (input:in_channel) : Component.component =
+  let state = mk_state_from_channel_exn filename input in
+  loop_exn state (Grammar.Incremental.component_eof (get_current_pos state))
+
 let parse_component (filename:string) (input:in_channel) : (Component.component,loc*string) result =
-  try
-    let state = mk_state_from_channel_exn filename input in
-    Ok (loop_exn state (Grammar.Incremental.component_eof (get_current_pos state)))
-  with
-| Utils.Error (p,msg) -> Error (p,msg)
+  try Ok (parse_component_exn filename input)
+  with Error.Error (p,msg) -> Error (p,msg)
+
+let parse_component_from_string_exn (input:string) : Component.component =
+  let state = mk_state_from_string_exn input in
+  loop_exn state (Grammar.Incremental.component_eof (get_current_pos state))
 
 let parse_component_from_string (input:string) : (Component.component,loc*string) result =
-  try
-    let state = mk_state_from_string_exn input in
-    Ok (loop_exn state (Grammar.Incremental.component_eof (get_current_pos state)))
-  with
-| Utils.Error (p,msg) -> Error (p,msg)
+  try Ok (parse_component_from_string_exn input)
+  with Error.Error (p,msg) -> Error (p,msg)

@@ -14,3 +14,11 @@ let bind (res:'a t_error) (f:'a -> 'b t_error) =
 
 let (>>=) = bind
 
+let rec fold_left (f:'a -> 'b -> ('a,'c) result) (acc:'a) (lst:'b list) : ('a,'c) result =
+  match lst with
+  | [] -> Ok acc
+  | hd::tl ->
+    begin match f acc hd with
+      | Ok acc -> fold_left f acc tl
+      | Error _ as err -> err
+    end

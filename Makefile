@@ -1,6 +1,6 @@
 .PHONY: clean printer tags generator test
 
-all: printer tags generator test bdoc
+all: printer tags generator bdoc
 
 printer:
 	ocamlbuild -Is syntax,lexer,examples -use-ocamlfind -pkgs menhirLib,easy-format -menhir 'menhir --explain --table --unused-token DEFINITIONS --unused-token DEF_FILE --unused-token EQUALEQUAL' pp.native

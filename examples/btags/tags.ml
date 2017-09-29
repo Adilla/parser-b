@@ -32,7 +32,7 @@ let clause = function
   | 'p' -> "PARAMETERS"
   | _ -> ""
 
-let mk_tag (c:char) ((lc,id):ident) (sc:ident option) : tag =
+let mk_tag (c:char) ((lc,id):u_ident) (sc:u_ident option) : tag =
   { tagname = id;
     tagkind = c;
     tagfile = lc.Lexing.pos_fname;
@@ -45,13 +45,13 @@ let mk_tag (c:char) ((lc,id):ident) (sc:ident option) : tag =
 
 open Component
 
-let add_params (tags:tags) (id:ident) : tags =
+let add_params (tags:tags) (id:u_ident) : tags =
   (mk_tag 'p' id None)::tags
 
-let add_promotes (tags:tags) (id:ident) : tags =
+let add_promotes (tags:tags) (id:u_ident) : tags =
   (mk_tag 'o' id None)::tags
 
-let add_sets (tags:tags) (s:set) : tags =
+let add_sets (tags:tags) (s:loc set) : tags =
   let lst = match s with
     | Abstract_Set id -> [mk_tag 's' id None]
     | Concrete_Set (id,elts) ->
@@ -60,25 +60,25 @@ let add_sets (tags:tags) (s:set) : tags =
   in
   lst@tags
 
-let add_constant (tags:tags) (id:ident) : tags =
+let add_constant (tags:tags) (id:u_ident) : tags =
   (mk_tag 'c' id None)::tags
   
-let add_abstract_constant (tags:tags) (id:ident) : tags =
+let add_abstract_constant (tags:tags) (id:u_ident) : tags =
   (mk_tag 'C' id None)::tags
 
-let add_variable (tags:tags) (id:ident) : tags =
+let add_variable (tags:tags) (id:u_ident) : tags =
   (mk_tag 'v' id None)::tags
 
-let add_concrete_variable (tags:tags) (id:ident) : tags =
+let add_concrete_variable (tags:tags) (id:u_ident) : tags =
   (mk_tag 'V' id None)::tags
 
-let add_operation (tags:tags) (_,name,_,_:operation) : tags =
+let add_operation (tags:tags) (_,name,_,_:u_operation) : tags =
   (mk_tag 'o' name None)::tags
 
-let add_local_operation (tags:tags) (_,name,_,_:operation) : tags =
+let add_local_operation (tags:tags) (_,name,_,_:u_operation) : tags =
   (mk_tag 'l' name None)::tags
 
-let get_tags_mch (tags:tags) (mch:abstract_machine) : tags =
+let get_tags_mch (tags:tags) (mch:u_machine) : tags =
   let tags = (mk_tag 'm' mch.name None)::tags in
   let tags = List.fold_left add_params tags mch.parameters in
   let tags = match mch.clause_promotes with
@@ -111,7 +111,7 @@ let get_tags_mch (tags:tags) (mch:abstract_machine) : tags =
   in
   tags
 
-let get_tags_ref (tags:tags) (ref:refinement) : tags =
+let get_tags_ref (tags:tags) (ref:u_refinement) : tags =
   let tags = (mk_tag 'r' ref.name None)::tags in
   let tags = List.fold_left add_params tags ref.parameters in
   let tags = match ref.clause_promotes with
@@ -148,7 +148,7 @@ let get_tags_ref (tags:tags) (ref:refinement) : tags =
   in
   tags
 
-let get_tags_imp (tags:tags) (imp:implementation) : tags =
+let get_tags_imp (tags:tags) (imp:u_implementation) : tags =
   let tags = (mk_tag 'i' imp.name None)::tags in
   let tags = List.fold_left add_params tags imp.parameters in
   let tags = match imp.clause_promotes with
@@ -177,7 +177,7 @@ let get_tags_imp (tags:tags) (imp:implementation) : tags =
   in
   tags
 
-let add_tags (tags:tags) : component -> tags = function
+let add_tags (tags:tags) : u_comp -> tags = function
   | Abstract_machine mch -> get_tags_mch tags mch
   | Refinement ref -> get_tags_ref tags ref
   | Implementation imp -> get_tags_imp tags imp

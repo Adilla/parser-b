@@ -77,69 +77,78 @@ type expr_binder = Sum | Prod | Q_Union | Q_Intersection | Lambda
 
 type c_or_m = Maplet | Comma | Infix
 
-type expression =
-  | Ident of ident (* Free or Bound variable *)
-  | Dollar of ident
-  | Builtin of loc*e_builtin
-  | Pbool of loc*predicate
-  | Parentheses of loc*expression
-  | Application of loc*expression*expression
-  | Couple of loc*c_or_m*expression*expression
-  | Sequence of loc*expression non_empty_list
-  | Extension of loc*expression non_empty_list
-  | Comprehension of loc*ident non_empty_list * predicate
-  | Binder of loc*expr_binder*ident non_empty_list*predicate*expression
-  | Record_Field_Access of loc*expression*ident
-  | Record of loc*(ident*expression) non_empty_list
-  | Record_Type of loc*(ident*expression) non_empty_list
+type 'lc ident = 'lc * string
+type u_ident = loc ident
 
-and predicate =
-  | P_Ident of ident
-  | P_Builtin of loc*p_builtin
-  | Binary_Prop of loc*prop_bop*predicate*predicate
-  | Binary_Pred of loc*pred_bop*expression*expression
-  | Negation of loc*predicate
-  | Pparentheses of loc*predicate
-  | Universal_Q of loc*ident non_empty_list*predicate
-  | Existential_Q of loc*ident non_empty_list*predicate
+type ('lc,'ty) expression =
+  | Ident of 'ty * 'lc ident
+  | Dollar of 'ty * 'lc ident
+  | Builtin of 'lc * 'ty * e_builtin
+  | Pbool of 'lc * 'ty * ('lc,'ty) predicate
+  | Application of 'lc * 'ty * ('lc,'ty) expression * ('lc,'ty) expression
+  | Couple of 'lc * 'ty * c_or_m  * ('lc,'ty) expression * ('lc,'ty) expression
+  | Sequence of 'lc * 'ty * (('lc,'ty) expression) non_empty_list
+  | Extension of 'lc * 'ty * (('lc,'ty) expression) non_empty_list
+  | Comprehension of 'lc * 'ty * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate
+  | Binder of 'lc * 'ty * expr_binder * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate * ('lc,'ty) expression
+  | Record_Field_Access of 'lc * 'ty * ('lc,'ty) expression * 'lc ident
+  | Record of 'lc * 'ty * ('lc ident * ('lc,'ty) expression) non_empty_list
+  | Record_Type of 'lc * 'ty * ('lc ident * ('lc,'ty) expression) non_empty_list
 
-let expr_loc : expression -> loc = function
-  | Ident id | Dollar id -> fst id
-  | Builtin (l,_) | Pbool (l,_) | Parentheses (l,_) | Application (l,_,_)
-  | Couple (l,_,_,_) | Sequence (l,_) | Extension (l,_) | Comprehension (l,_,_)
-  | Binder (l,_,_,_,_) | Record_Field_Access (l,_,_) | Record_Type (l,_)
-  | Record (l,_) -> l
+and ('lc,'ty) predicate =
+  | P_Builtin of 'lc * p_builtin
+  | Binary_Prop of 'lc * prop_bop * ('lc,'ty) predicate * ('lc,'ty) predicate
+  | Binary_Pred of 'lc * pred_bop * ('lc,'ty) expression * ('lc,'ty) expression
+  | Negation of 'lc * ('lc,'ty) predicate
+  | Universal_Q of 'lc * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate
+  | Existential_Q of 'lc * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate
 
-let pred_loc : predicate -> loc = function
-  | P_Ident id -> fst id
+type u_expr = (loc,bool) expression
+type u_pred = (loc,bool) predicate
+
+let expr_loc : u_expr -> loc = function
+  | Ident (_,(l,_)) | Dollar (_,(l,_)) | Builtin (l,_,_) | Pbool (l,_,_)
+  | Application (l,_,_,_) | Couple (l,_,_,_,_) | Sequence (l,_,_) | Extension (l,_,_)
+  | Comprehension (l,_,_,_) | Binder (l,_,_,_,_,_) | Record_Field_Access (l,_,_,_)
+  | Record_Type (l,_,_) | Record (l,_,_) -> l
+
+let pred_loc : u_pred -> loc = function
   | P_Builtin (l,_) | Binary_Prop (l,_,_,_) | Binary_Pred (l,_,_,_)
-  | Negation (l,_) | Pparentheses (l,_) | Universal_Q (l,_,_)
+  | Negation (l,_) | Universal_Q (l,_,_)
   | Existential_Q (l,_,_) -> l
 
-let rec expr_eq e1 e2 : bool =
+let ident_eq (_,s1:'lc ident) (_,s2:'lc2 ident) : bool = String.equal s1 s2
+
+let ident_list_eq (lst1:'lc ident list) (lst2:'lc2 ident list) : bool =
+  try List.for_all2 ident_eq lst1 lst2
+  with Invalid_argument _ -> false
+
+let ident_nelist_eq (hd1,tl1:'lc ident non_empty_list) (hd2,tl2:'lc2 ident non_empty_list) : bool =
+  ident_list_eq (hd1::tl1) (hd2::tl2)
+
+let aux_list_eq (hd1,tl1:('ty*'lc ident) non_empty_list) (hd2,tl2:('ty2*'lc2 ident) non_empty_list) : bool =
+  try List.for_all2 (fun (_,s1) (_,s2) -> ident_eq s1 s2) (hd1::tl1) (hd2::tl2)
+  with Invalid_argument _ -> false
+
+let rec expr_eq : type a b c d. (a,b) expression -> (c,d) expression -> bool = fun e1 e2 ->
   match e1, e2 with
-  | Parentheses (_,e), _ -> expr_eq e e2
-  | _, Parentheses (_,e) -> expr_eq e1 e
-  | Ident id1, Ident id2 -> ident_eq id1 id2
-  | Dollar id1, Dollar id2 -> ident_eq id1 id2
-  | Builtin (_,b1), Builtin (_,b2) -> builtin_eq b1 b2
-  | Pbool (_,p1), Pbool (_,p2) -> pred_eq p1 p2
-  | Application (_,f1,a1), Application (_,f2,a2) ->
-    expr_eq f1 f2 && expr_eq a1 a2
-  | Couple (_,_,x1,y1), Couple (_,_,x2,y2) -> expr_eq x1 x2 && expr_eq y1 y2
-  | Sequence (_,(hd1,tl1)), Sequence (_,(hd2,tl2)) ->
+  | Ident (_,v1), Ident (_,v2) | Dollar (_,v1), Dollar (_,v2) -> ident_eq v1 v2
+  | Builtin (_,_,b1), Builtin (_,_,b2) -> builtin_eq b1 b2
+  | Pbool (_,_,p1), Pbool (_,_,p2) -> pred_eq p1 p2
+  | Application (_,_,f1,a1), Application (_,_,f2,a2) -> expr_eq f1 f2 && expr_eq a1 a2
+  | Couple (_,_,_,x1,y1), Couple (_,_,_,x2,y2) -> expr_eq x1 x2 && expr_eq y1 y2
+  | Sequence (_,_,(hd1,tl1)), Sequence (_,_,(hd2,tl2)) ->
     expr_list_eq (hd1::tl1) (hd2::tl2)
-  | Extension (_,(hd1,tl1)), Extension (_,(hd2,tl2)) ->
+  | Extension (_,_,(hd1,tl1)), Extension (_,_,(hd2,tl2)) ->
     expr_list_eq (hd1::tl1) (hd2::tl2)
-  | Comprehension (_,(x1,lst1),p1), Comprehension(_,(x2,lst2),p2) ->
-    ident_list_eq (x1::lst1) (x2::lst2) && pred_eq p1 p2
-  | Binder (_,bi1,(x1,lst1),p1,e1), Binder (_,bi2,(x2,lst2),p2,e2) ->
-    bi1 = bi2 && ident_list_eq (x1::lst1) (x2::lst2) &&
-    pred_eq p1 p2 && expr_eq e1 e2
-  | Record_Field_Access (_,e1,id1), Record_Field_Access(_,e2,id2) ->
-    expr_eq e1 e2 && ident_eq id1 id2
-  | Record (_,(hd1,tl1)), Record (_,(hd2,tl2))
-  | Record_Type (_,(hd1,tl1)), Record_Type(_,(hd2,tl2)) ->
+  | Comprehension (_,_,lst1,p1), Comprehension(_,_,lst2,p2) ->
+    aux_list_eq lst1 lst2 && pred_eq p1 p2
+  | Binder (_,_,bi1,lst1,p1,e1), Binder (_,_,bi2,lst2,p2,e2) ->
+    bi1 = bi2 && aux_list_eq lst1 lst2 && pred_eq p1 p2 && expr_eq e1 e2
+  | Record_Field_Access (_,_,e1,f1), Record_Field_Access(_,_,e2,f2) ->
+    expr_eq e1 e2 && ident_eq f1 f2
+  | Record (_,_,(hd1,tl1)), Record (_,_,(hd2,tl2))
+  | Record_Type (_,_,(hd1,tl1)), Record_Type(_,_,(hd2,tl2)) ->
     begin
       let aux (id1,e1) (id2,e2) = ident_eq id1 id2 && expr_eq e1 e2 in
       try List.for_all2 aux (hd1::tl1) (hd2::tl2)
@@ -147,25 +156,22 @@ let rec expr_eq e1 e2 : bool =
     end
   | _, _ -> false
 
-and expr_list_eq l1 l2 =
+and expr_list_eq : type a b c d. ((a,b) expression list) -> ((c,d) expression list) -> bool = fun l1 l2 ->
   try List.for_all2 expr_eq l1 l2
   with Invalid_argument _ -> false
 
-and pred_eq p1 p2 : bool =
+and pred_eq : type a b c d. (a,b) predicate -> (c,d) predicate -> bool = fun p1 p2 ->
   match p1, p2 with
-  | Pparentheses (_,p), _ -> pred_eq p p2
-  | _, Pparentheses (_,p) -> pred_eq p1 p
-  | P_Ident id1, P_Ident id2 -> ident_eq id1 id2
   | P_Builtin (_,b1), P_Builtin (_,b2) -> b1 = b2
   | Binary_Prop (_,b1,p1,q1), Binary_Prop (_,b2,p2,q2) ->
     b1 = b2 && pred_eq p1 p2 && pred_eq q1 q2
   | Binary_Pred (_,b1,p1,q1), Binary_Pred (_,b2,p2,q2) ->
     b1 = b2 && expr_eq p1 p2 && expr_eq q1 q2
   | Negation (_,p1), Negation (_,p2) -> pred_eq p1 p2
-  | Universal_Q (_,(x1,lst1),p1), Universal_Q (_,(x2,lst2),p2) ->
-    ident_list_eq (x1::lst1) (x2::lst2) && pred_eq p1 p2
-  | Existential_Q (_,(x1,lst1),p1), Existential_Q (_,(x2,lst2),p2) ->
-    ident_list_eq (x1::lst1) (x2::lst2) && pred_eq p1 p2
+  | Universal_Q (_,lst1,p1), Universal_Q (_,lst2,p2) ->
+    aux_list_eq lst1 lst2 && pred_eq p1 p2
+  | Existential_Q (_,lst1,p1), Existential_Q (_,lst2,p2) ->
+    aux_list_eq lst1 lst2 && pred_eq p1 p2
   | _, _ -> false
 
 (* Print *)
@@ -313,36 +319,3 @@ let rec mk_disjunction l p1 p2 =
   | Binary_Prop (l2,Disjonction,q1,q2) ->
     mk_disjunction l2 q1 (mk_disjunction l q2 p2)
   | _ -> Binary_Prop (l,Disjonction,p1,p2)
-
-(* Remove parentheses *)
-let rec norm_expr : expression -> expression = function
-  | Ident _ | Dollar _ | Builtin _ as e -> e
-  | Pbool (l,p) -> Pbool (l,norm_pred p)
-  | Parentheses (_,e) -> norm_expr e
-  | Application (l,f,a) -> Application (l,norm_expr f,norm_expr a)
-  | Comprehension (l,xlst,p) -> Comprehension (l,xlst,norm_pred p)
-  | Binder (l,bi,xlst,p,e) -> Binder (l,bi,xlst,norm_pred p,norm_expr e)
-  | Sequence (l,(e,lst)) -> Sequence (l,(norm_expr e,List.map norm_expr lst))
-  | Extension (l,(e,lst)) -> Extension (l,(norm_expr e,List.map norm_expr lst))
-  | Couple (l,cm,e1,e2) -> Couple (l,cm,norm_expr e1,norm_expr e2)
-  | Record_Field_Access (l,e,id) -> Record_Field_Access (l,norm_expr e,id)
-  | Record (l,(f,lst)) ->
-    let aux (id,e) = (id,norm_expr e) in
-    Record (l,(aux f,List.map aux lst))
-  | Record_Type (l,(f,lst)) ->
-    let aux (id,e) = (id,norm_expr e) in
-    Record_Type (l,(aux f,List.map aux lst))
-
-(* Remove parentheses and flatten conjonctions and disjonctions *)
-and norm_pred : predicate -> predicate = function
-  | P_Ident _ | P_Builtin _ as p -> p
-  | Binary_Prop (l,Conjonction,p1,p2) ->
-    mk_conjonction l (norm_pred p1) (norm_pred p2)
-  | Binary_Prop (l,Disjonction,p1,p2) ->
-    mk_disjunction l (norm_pred p1) (norm_pred p2)
-  | Binary_Prop (l,bop,p1,p2) -> Binary_Prop (l,bop,norm_pred p1,norm_pred p2)
-  | Binary_Pred (l,bop,e1,e2) -> Binary_Pred (l,bop,norm_expr e1,norm_expr e2)
-  | Negation (l,p) -> Negation (l,norm_pred p)
-  | Pparentheses (_,p) -> norm_pred p
-  | Universal_Q (l,xlst,p) -> Universal_Q (l,xlst,norm_pred p)
-  | Existential_Q (l,xlst,p) -> Existential_Q (l,xlst,norm_pred p)

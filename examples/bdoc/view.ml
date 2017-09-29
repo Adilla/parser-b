@@ -2,36 +2,36 @@ open Utils
 open Component
 open Expression
 
-type t_kind = Machine | Refinement of ident | Implementation of ident
+type t_kind = Machine | Refinement of u_ident | Implementation of u_ident
 
 type  t_component = {
-  name: ident;
-  parameters: ident list;
+  name: u_ident;
+  parameters: u_ident list;
   component_kind: t_kind;
-  clause_constraints: (loc*predicate) option;
-  clause_sees: (loc*ident list) option;
-  clause_includes: (loc*machine_instanciation list) option;
-  clause_promotes_included_operation: (loc*ident list) option;
-  clause_promotes_imported_operation: (loc*ident list) option;
-  clause_full_inclusion: (loc*machine_instanciation list) option; (*extends in machine/refinement*)
-  clause_full_importation: (loc*machine_instanciation list) option; (*extends in implementation*)
-  clause_uses: (loc*ident list) option;
-  clause_sets: (loc*set list) option;
-  clause_concrete_constants: (loc*ident list) option;
-  clause_abstract_constants: (loc*ident list) option;
-  clause_properties: (loc*predicate) option;
-  clause_concrete_variables: (loc*ident list) option;
-  clause_abstract_variables: (loc*ident list) option;
-  clause_invariant: (loc*predicate) option;
-  clause_assertions: (loc*predicate list) option;
-  clause_initialisation: (loc*Substitution.substitution) option;
-  clause_operations: (loc*operation list) option;
-  clause_local_operations: (loc*operation list) option;
-  clause_values: (loc*(ident*expression) list) option;
-  clause_imports: (loc*machine_instanciation list) option;
+  clause_constraints: (loc*u_pred) option;
+  clause_sees: (loc*u_ident list) option;
+  clause_includes: (loc*(loc,bool) machine_instanciation list) option;
+  clause_promotes_included_operation: (loc*u_ident list) option;
+  clause_promotes_imported_operation: (loc*u_ident list) option;
+  clause_full_inclusion: (loc*(loc,bool) machine_instanciation list) option; (*extends in machine/refinement*)
+  clause_full_importation: (loc*(loc,bool) machine_instanciation list) option; (*extends in implementation*)
+  clause_uses: (loc*u_ident list) option;
+  clause_sets: (loc*loc set list) option;
+  clause_concrete_constants: (loc*u_ident list) option;
+  clause_abstract_constants: (loc*u_ident list) option;
+  clause_properties: (loc*u_pred) option;
+  clause_concrete_variables: (loc*u_ident list) option;
+  clause_abstract_variables: (loc*u_ident list) option;
+  clause_invariant: (loc*u_pred) option;
+  clause_assertions: (loc*u_pred list) option;
+  clause_initialisation: (loc*Substitution.u_subst) option;
+  clause_operations: (loc*u_operation list) option;
+  clause_local_operations: (loc*u_operation list) option;
+  clause_values: (loc*(u_ident*u_expr) list) option;
+  clause_imports: (loc*(loc,bool) machine_instanciation list) option;
 }
 
-let convert_component : component -> t_component = function
+let convert_component : u_comp -> t_component = function
   | Abstract_machine mch ->
     { name = mch.name;
       parameters = mch.parameters;
@@ -109,41 +109,41 @@ let convert_component : component -> t_component = function
       clause_imports = imp.clause_imports; }
 
 type dep_kind = D_Sees | D_Uses | D_Includes | D_Imports
-type exp_source = Declared | Included_From of ident | Inherited_E
-type exp_source_op = Declared_Operation | Promoted_From of ident
-type vis_source = Seen_From of ident | Used_From of ident | Imported_From of ident | Inherited
-type vis_source_op = Op_Seen_From of ident | Op_Imported_From of ident | Op_Included_From of ident | Local_Op
+type exp_source = Declared | Included_From of u_ident | Inherited_E
+type exp_source_op = Declared_Operation | Promoted_From of u_ident
+type vis_source = Seen_From of u_ident | Used_From of u_ident | Imported_From of u_ident | Inherited
+type vis_source_op = Op_Seen_From of u_ident | Op_Imported_From of u_ident | Op_Included_From of u_ident | Local_Op
 
 type component_view = {
-  name: ident;
-  parameters: ident list;
+  name: u_ident;
+  parameters: u_ident list;
   component_kind: t_kind;
-  dependencies: (ident*dep_kind) list;
-  refined_by: ident list;
-  required_by: (ident*dep_kind) list;
+  dependencies: (u_ident*dep_kind) list;
+  refined_by: u_ident list;
+  required_by: (u_ident*dep_kind) list;
   (* Sets *)
-  exported_sets: (set*exp_source) list; 
-  visible_sets: (set*vis_source) list;
+  exported_sets: (loc set*exp_source) list; 
+  visible_sets: (loc set*vis_source) list;
   (* Constants *)
-  exported_abstract_constants: (ident*exp_source) list;
-  exported_concrete_constants: (ident*exp_source) list;
-  visible_abstract_constants:  (ident*vis_source) list;
-  visible_concrete_constants:  (ident*vis_source) list;
+  exported_abstract_constants: (u_ident*exp_source) list;
+  exported_concrete_constants: (u_ident*exp_source) list;
+  visible_abstract_constants:  (u_ident*vis_source) list;
+  visible_concrete_constants:  (u_ident*vis_source) list;
   (* Variables *)
-  exported_abstract_variables: (ident*exp_source) list; 
-  exported_concrete_variables: (ident*exp_source) list;
-  visible_abstract_variables:  (ident*vis_source) list;
-  visible_concrete_variables:  (ident*vis_source) list;
+  exported_abstract_variables: (u_ident*exp_source) list; 
+  exported_concrete_variables: (u_ident*exp_source) list;
+  visible_abstract_variables:  (u_ident*vis_source) list;
+  visible_concrete_variables:  (u_ident*vis_source) list;
   (* Operations *)
-  exported_operations: (ident*exp_source_op) list;
-  visible_operations:  (ident*vis_source_op) list;
+  exported_operations: (u_ident*exp_source_op) list;
+  visible_operations:  (u_ident*vis_source_op) list;
 }
 
 let get_list : ('a*'b list) option -> 'b list = function
   | None -> []
   | Some (_,lst) -> lst
 
-let get_dependencies (mch:t_component) : (ident*dep_kind) list =
+let get_dependencies (mch:t_component) : (u_ident*dep_kind) list =
   let accu = [] in
   let accu = List.fold_left (fun accu x -> (x,D_Sees)::accu) accu (get_list mch.clause_sees) in
   let accu = List.fold_left (fun accu x -> (x,D_Uses)::accu) accu (get_list mch.clause_uses) in
@@ -163,8 +163,8 @@ let extract_entities_from_machine_list
     (type a) (type b) (type c)
     (f:string -> component_view option)
     (get:component_view -> (a*c) list)
-    (machines:ident list)
-    (mk_elt:ident -> a -> b)
+    (machines:u_ident list)
+    (mk_elt:u_ident -> a -> b)
   : b list
   =
     List.fold_left (
@@ -198,14 +198,14 @@ let is_homonym_imp f get x lst : bool =
 
 let get_exported_idents
     (f:string -> component_view option)
-    (get_mch_idents:component_view -> (ident*'b) list)
-    (declared_idents: ident list)
-    (included_machines: ident list)
-    (fully_included_machines: ident list)
+    (get_mch_idents:component_view -> (u_ident*'b) list)
+    (declared_idents: u_ident list)
+    (included_machines: u_ident list)
+    (fully_included_machines: u_ident list)
     (ckind: t_kind)
     (inherited:bool)
-    (imported:ident list)
-  : (ident*exp_source) list
+    (imported:u_ident list)
+  : (u_ident*exp_source) list
   =
   let lst1 = List.map (fun x -> (x,Declared)) declared_idents in
   let lst2 = extract_entities_from_machine_list f get_mch_idents included_machines
@@ -227,7 +227,7 @@ let get_exported_idents
   List.concat [lst1;lst2;lst3;lst4]
 
 (*FIXME est ce qu'un raffinement ou une implantation hérite de certains ensembles de la machine raffinée? *)
-let get_exported_sets (f:string -> component_view option) (mch:t_component) : (set*exp_source) list =
+let get_exported_sets (f:string -> component_view option) (mch:t_component) : (loc set*exp_source) list =
   let get_mch_idents = (fun view -> view.exported_sets) in
   let declared_idents = (get_list mch.clause_sets) in
   let included_machines = (List.map fst (get_list mch.clause_includes)) in
@@ -241,12 +241,12 @@ let get_exported_sets (f:string -> component_view option) (mch:t_component) : (s
   in
   List.concat [lst1;lst2;lst3]
 
-let get_imported_mch (mch:t_component) : ident list =
+let get_imported_mch (mch:t_component) : u_ident list =
   match mch.clause_imports with
   | None -> []
   | Some (_,lst) -> List.map fst lst
 
-let get_exported_abstract_constants (f:string -> component_view option) (mch:t_component) : (ident*exp_source) list =
+let get_exported_abstract_constants (f:string -> component_view option) (mch:t_component) : (u_ident*exp_source) list =
   get_exported_idents f
     (fun view -> view.exported_abstract_constants)
     (get_list mch.clause_abstract_constants)
@@ -256,7 +256,7 @@ let get_exported_abstract_constants (f:string -> component_view option) (mch:t_c
     false
     (get_imported_mch mch)
 
-let get_exported_concrete_constants (f:string -> component_view option) (mch:t_component) : (ident*exp_source) list =
+let get_exported_concrete_constants (f:string -> component_view option) (mch:t_component) : (u_ident*exp_source) list =
   get_exported_idents f
     (fun view -> view.exported_concrete_constants)
     (get_list mch.clause_concrete_constants)
@@ -266,7 +266,7 @@ let get_exported_concrete_constants (f:string -> component_view option) (mch:t_c
     true
     (get_imported_mch mch)
 
-let get_exported_abstract_variables (f:string -> component_view option) (mch:t_component) : (ident*exp_source) list =
+let get_exported_abstract_variables (f:string -> component_view option) (mch:t_component) : (u_ident*exp_source) list =
   get_exported_idents f
     (fun view -> view.exported_abstract_variables)
     (get_list mch.clause_abstract_variables)
@@ -276,7 +276,7 @@ let get_exported_abstract_variables (f:string -> component_view option) (mch:t_c
     false
     (get_imported_mch mch)
 
-let get_exported_concrete_variables (f:string -> component_view option) (mch:t_component) : (ident*exp_source) list =
+let get_exported_concrete_variables (f:string -> component_view option) (mch:t_component) : (u_ident*exp_source) list =
   get_exported_idents f
     (fun view -> view.exported_concrete_variables)
     (get_list mch.clause_concrete_variables)
@@ -290,11 +290,11 @@ let get_visible_idents
     (type a) (type b)
     (f:string -> component_view option)
     (get_mch_idents:component_view -> (a*b) list)
-    (seen_machines: ident list)
-    (used_machines: ident list)
-    (imported_machines: ident list)
-    (fully_imported_machines: ident list)
-    (refined_machine: ident option)
+    (seen_machines: u_ident list)
+    (used_machines: u_ident list)
+    (imported_machines: u_ident list)
+    (fully_imported_machines: u_ident list)
+    (refined_machine: u_ident option)
   : (a*vis_source) list
   =
   let lst1 = extract_entities_from_machine_list f get_mch_idents seen_machines
@@ -316,7 +316,7 @@ let get_visible_idents
   in
   List.concat [lst1;lst2;lst3;lst4;lst5]
 
-let get_visible_sets (f:string -> component_view option) (mch:t_component) : (set*vis_source) list =
+let get_visible_sets (f:string -> component_view option) (mch:t_component) : (loc set*vis_source) list =
   get_visible_idents f
     (fun view -> view.exported_sets)
     (get_list mch.clause_sees)
@@ -327,7 +327,7 @@ let get_visible_sets (f:string -> component_view option) (mch:t_component) : (se
      | Machine -> None
      | Refinement abs | Implementation abs -> Some abs)
 
-let get_visible_abstract_constants  (f:string -> component_view option) (mch:t_component) : (ident*vis_source) list =
+let get_visible_abstract_constants  (f:string -> component_view option) (mch:t_component) : (u_ident*vis_source) list =
   get_visible_idents f
     (fun view -> view.exported_abstract_constants)
     (get_list mch.clause_sees)
@@ -338,7 +338,7 @@ let get_visible_abstract_constants  (f:string -> component_view option) (mch:t_c
      | Machine -> None
      | Refinement abs | Implementation abs -> Some abs)
 
-let get_visible_concrete_constants  (f:string -> component_view option) (mch:t_component) : (ident*vis_source) list =
+let get_visible_concrete_constants  (f:string -> component_view option) (mch:t_component) : (u_ident*vis_source) list =
   get_visible_idents f
     (fun view -> view.exported_concrete_constants)
     (get_list mch.clause_sees)
@@ -350,7 +350,7 @@ let get_visible_concrete_constants  (f:string -> component_view option) (mch:t_c
      | Refinement abs | Implementation abs -> Some abs)
 
 
-let get_visible_abstract_variables  (f:string -> component_view option) (mch:t_component) : (ident*vis_source) list =
+let get_visible_abstract_variables  (f:string -> component_view option) (mch:t_component) : (u_ident*vis_source) list =
   get_visible_idents f
     (fun view -> view.exported_abstract_variables)
     (get_list mch.clause_sees)
@@ -361,7 +361,7 @@ let get_visible_abstract_variables  (f:string -> component_view option) (mch:t_c
      | Machine -> None
      | Refinement abs | Implementation abs -> Some abs)
 
-let get_visible_concrete_variables  (f:string -> component_view option) (mch:t_component) : (ident*vis_source) list =
+let get_visible_concrete_variables  (f:string -> component_view option) (mch:t_component) : (u_ident*vis_source) list =
   get_visible_idents f
     (fun view -> view.exported_concrete_variables)
     (get_list mch.clause_sees)
@@ -372,7 +372,7 @@ let get_visible_concrete_variables  (f:string -> component_view option) (mch:t_c
      | Machine -> None
      | Refinement abs | Implementation abs -> Some abs)
 
-let find_source (f:string -> component_view option) (lst:(ident*'e) list) (op:ident) : ident =
+let find_source (f:string -> component_view option) (lst:(u_ident*'e) list) (op:u_ident) : u_ident =
   let rec aux = function
     | [] -> ( warning ("cannot find operation '"^snd op^"'."); (dloc,"???") )
     | (mch_name,_)::tl ->
@@ -385,13 +385,13 @@ let find_source (f:string -> component_view option) (lst:(ident*'e) list) (op:id
   in
   aux lst
 
-let get_exported_operations (f:string -> component_view option) (mch:t_component) : (ident*exp_source_op) list =
+let get_exported_operations (f:string -> component_view option) (mch:t_component) : (u_ident*exp_source_op) list =
   let lst1 = List.map (fun (_,op,_,_) -> (op,Declared_Operation)) (get_list mch.clause_operations) in
   let local_ops = List.map (fun (_,(_,s),_,_) -> s) (get_list mch.clause_local_operations) in
   let lst1 = List.filter (fun ((_,s),_) -> not (List.mem s local_ops)) lst1 in
   let lst2 = List.map (fun x -> (x,Promoted_From (find_source f (get_list mch.clause_includes) x))) (get_list mch.clause_promotes_included_operation) in
   let lst3 = List.map (fun x -> (x,Promoted_From (find_source f (get_list mch.clause_imports) x))) (get_list mch.clause_promotes_imported_operation) in
-  let get_exp_ops (inc_mch,_) : (ident*exp_source_op) list =
+  let get_exp_ops (inc_mch,_) : (u_ident*exp_source_op) list =
     match f (snd inc_mch) with
     | None -> (warning_cannot_find_component (snd inc_mch); [])
     | Some view -> List.map (fun (op,_) -> (op,Promoted_From inc_mch)) view.exported_operations
@@ -400,8 +400,8 @@ let get_exported_operations (f:string -> component_view option) (mch:t_component
   let lst5 =  List.concat (List.map get_exp_ops (get_list mch.clause_full_importation)) in
   List.concat [ lst1; lst2; lst3; lst4; lst5 ]
 
-let get_visible_operations (f:string -> component_view option) (mch:t_component) : (ident*vis_source_op) list =
-  let get_exp_ops (s:ident -> vis_source_op) (mch2:ident) : (ident*vis_source_op) list =
+let get_visible_operations (f:string -> component_view option) (mch:t_component) : (u_ident*vis_source_op) list =
+  let get_exp_ops (s:u_ident -> vis_source_op) (mch2:u_ident) : (u_ident*vis_source_op) list =
     match f (snd mch2) with
     | None -> (warning_cannot_find_component (snd mch2); [])
     | Some view -> List.map (fun (op,_) -> (op,s mch2)) view.exported_operations
@@ -412,8 +412,8 @@ let get_visible_operations (f:string -> component_view option) (mch:t_component)
   let lst4 = List.map (fun (_,op,_,_) -> (op,Local_Op)) (get_list mch.clause_local_operations) in
   List.concat [lst1;lst2;lst3;lst4]
 
-let make (f:string -> component_view option) (refined_by:ident list)
-    (required_by:(ident*dep_kind) list) (component:component) : component_view =
+let make (f:string -> component_view option) (refined_by:u_ident list)
+    (required_by:(u_ident*dep_kind) list) (component:u_comp) : component_view =
   let mch = convert_component component in
   { name = mch.name;
     parameters = mch.parameters;

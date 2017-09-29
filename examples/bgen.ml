@@ -15,9 +15,6 @@ let set_kind s =
 let set_out filename =
   out := open_out filename
 
-let pretty_print (x:Easy_format.t) : unit =
-  Easy_format.Pretty.to_channel !out x
-
 let args = [
   ("-o", Arg.String set_out, "Output file" );
   ("-k", Arg.String set_kind, "Kind of generation (expr|pred|subst|mch|ref|imp|comp) (default=comp)" )
@@ -28,13 +25,11 @@ let () =
   Random.self_init ();
   let rd = Random.get_state () in
   let open Print in
-  let x = match !kind with
-    | Expr -> ef_expr (Generators.gen_expr rd)
-    | Pred -> ef_pred (Generators.gen_pred rd)
-    | Subst -> ef_subst (Generators.gen_subst rd)
-    | Mch -> ef_machine (Generators.gen_machine rd)
-    | Ref -> ef_refinement (Generators.gen_refinement rd)
-    | Imp -> ef_implementation (Generators.gen_implementation rd)
-    | Comp -> ef_component (Generators.gen_component rd)
-  in
-  pretty_print x
+  match !kind with
+    | Expr -> print_expression !out (Generators.gen_expr rd)
+    | Pred -> print_predicate !out (Generators.gen_pred rd)
+    | Subst -> print_substitution !out (Generators.gen_subst rd)
+    | Mch -> print_machine !out (Generators.gen_machine rd)
+    | Ref -> print_refinement !out (Generators.gen_refinement rd)
+    | Imp -> print_implementation !out (Generators.gen_implementation rd)
+    | Comp -> print_component !out (Generators.gen_component rd)

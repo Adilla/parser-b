@@ -19,43 +19,43 @@ let to_channel (out:out_channel) (x:t) : unit =
 
 open Expression
 
-let sexp_of_ident (_,s:Utils.ident) : t = Atom ("ident_" ^ s)
+let sexp_of_ident (_,s:'lc Utils.ident) : t = Atom ("ident_" ^ s)
+let sexp_of_ident2 (_,(_,s):'ty*'lc Utils.ident) : t = Atom ("ident_" ^ s)
 
-let rec sexp_of_expr : expression -> t = function
-  | Ident id -> sexp_of_ident id
-  | Dollar id -> Atom ("ident_" ^ snd id ^ "$0")
-  | Builtin (_,bi) -> Atom (builtin_to_string bi)
-  | Pbool (_,p) -> List [Atom "bool"; (sexp_of_pred p)]
-  | Parentheses (_,e) -> List [Atom "Parentheses";sexp_of_expr e]
-  | Application (_,e1,e2) -> List [Atom "App";sexp_of_expr e1;sexp_of_expr e2]
-  | Couple (_,cm,e1,e2) ->
+let rec sexp_of_expr : ('lc,'ty) expression -> t = function
+  | Ident (_,id) -> sexp_of_ident id
+  | Dollar (_,id) -> Atom ("ident_" ^ snd id ^ "$0")
+  | Builtin (_,_,bi) -> Atom (builtin_to_string bi)
+  | Pbool (_,_,p) -> List [Atom "bool"; (sexp_of_pred p)]
+  | Application (_,_,e1,e2) -> List [Atom "App";sexp_of_expr e1;sexp_of_expr e2]
+  | Couple (_,_,cm,e1,e2) ->
     let atm = match cm with
       | Maplet -> "Pair_maplet"
       | Comma -> "Pair_comma"
       | Infix -> "Pair_infix"
     in
     List [Atom atm;sexp_of_expr e1;sexp_of_expr e2]
-  | Sequence (_,(e,elst)) ->
+  | Sequence (_,_,(e,elst)) ->
     List ((Atom "Seq")::(sexp_of_expr e)::(List.map sexp_of_expr elst))
-  | Extension (_,(e,elst)) ->
+  | Extension (_,_,(e,elst)) ->
     List ((Atom "Ext")::(sexp_of_expr e)::(List.map sexp_of_expr elst))
-  | Comprehension (_,(id,idlst),p) ->
-    let ids = List ((sexp_of_ident id)::(List.map sexp_of_ident idlst)) in
+  | Comprehension (_,_,(id,idlst),p) ->
+    let ids = List ((sexp_of_ident2 id)::(List.map sexp_of_ident2 idlst)) in
     List [Atom "Compr";ids;sexp_of_pred p]
-  | Binder (_,bi,(x,xlst),p,e) ->
-    let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
+  | Binder (_,_,bi,(x,xlst),p,e) ->
+    let ids = List ((sexp_of_ident2 x)::(List.map sexp_of_ident2 xlst)) in
     List [Atom (binder_to_string bi);ids;sexp_of_pred p;sexp_of_expr e]
-  | Record_Field_Access (_,e,id) ->
+  | Record_Field_Access (_,_,e,id) ->
     List [Atom "Record_Field_Access";sexp_of_expr e;sexp_of_ident id]
-  | Record (_,(x,xlst)) ->
+  | Record (_,_,(x,xlst)) ->
     let aux (id,e) = List [sexp_of_ident id;sexp_of_expr e] in
     List ((Atom "Rec")::(aux x)::(List.map aux xlst))
-  | Record_Type (_,(x,xlst)) ->
+  | Record_Type (_,_,(x,xlst)) ->
     let aux (id,e) = List [sexp_of_ident id;sexp_of_expr e] in
     List ((Atom "Rec")::(aux x)::(List.map aux xlst))
 
-and sexp_of_pred : predicate -> t = function
-  | P_Ident id -> sexp_of_ident id
+and sexp_of_pred : ('lc,'ty) predicate -> t = function
+(*   | P_Ident id -> sexp_of_ident id *)
   | P_Builtin (_,Btrue) -> Atom "btrue"
   | P_Builtin (_,Bfalse) -> Atom "bfalse"
   | Binary_Prop (_,bop,p,q) ->
@@ -63,79 +63,77 @@ and sexp_of_pred : predicate -> t = function
   | Binary_Pred (_,bop,e1,e2) ->
     List [Atom (pred_bop_to_string bop);sexp_of_expr e1;sexp_of_expr e2]
   | Negation (_,p) -> List [Atom "Neg";sexp_of_pred p]
-  | Pparentheses (_,p) -> List [Atom "Parentheses"; sexp_of_pred p]
   | Universal_Q (_,(x,xlst),p) ->
-    let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
+    let ids = List ((sexp_of_ident2 x)::(List.map sexp_of_ident2 xlst)) in
     List [Atom "!";ids;sexp_of_pred p]
   | Existential_Q (_,(x,xlst),p) ->
-    let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
+    let ids = List ((sexp_of_ident2 x)::(List.map sexp_of_ident2 xlst)) in
     List [Atom "#";ids;sexp_of_pred p]
 
 open Substitution
 
-let rec sexp_of_subst : substitution -> t = function
-  | Skip -> Atom "SKIP"
-  | BeginEnd s -> List [Atom "BeginEnd"; sexp_of_subst s]
-  | Affectation ((x,xlst),(e,elst)) ->
+let rec sexp_of_subst : ('lc,'ty) substitution -> t = function
+  | Skip _ -> Atom "SKIP"
+  | Affectation (_,(x,xlst),e) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
-    let exprs = List ((sexp_of_expr e)::(List.map sexp_of_expr elst)) in
+    let exprs = List [sexp_of_expr e] in
     List [Atom "AFF1";ids;exprs]
-  | Function_Affectation (f,(e,elst),a) ->
+  | Function_Affectation (_,f,(e,elst),a) ->
     let exprs = List ((sexp_of_expr e)::(List.map sexp_of_expr elst)) in
     List [Atom "AFF2";sexp_of_ident f;exprs;sexp_of_expr a]
-  | Record_Affectation (id,fd,e) ->
+  | Record_Affectation (_,id,fd,e) ->
     List [Atom "AFF3";sexp_of_ident id;sexp_of_ident fd;sexp_of_expr e]
-  | Pre (p,s) -> List [Atom "PRE"; sexp_of_pred p; sexp_of_subst s]
-  | Assert (p,s) -> List [Atom "ASSERT"; sexp_of_pred p; sexp_of_subst s]
-  | Choice (s,slst) ->
+  | Pre (_,p,s) -> List [Atom "PRE"; sexp_of_pred p; sexp_of_subst s]
+  | Assert (_,p,s) -> List [Atom "ASSERT"; sexp_of_pred p; sexp_of_subst s]
+  | Choice (_,(s,slst)) ->
     List ( (Atom "CHOICE")::(sexp_of_subst s)::(List.map sexp_of_subst slst))
-  | IfThenElse ((y,ylst),s_opt) ->
+  | IfThenElse (_,(y,ylst),s_opt) ->
     let aux (p,s) = List [sexp_of_pred p;sexp_of_subst s] in
     let yy = List ((aux y)::(List.map aux ylst)) in
     begin match s_opt with
       | None -> List [Atom "IF";yy]
       | Some els -> List [Atom "IF";yy;sexp_of_subst els]
     end
-  | Select ((y,ylst),s_opt) ->
+  | Select (_,(y,ylst),s_opt) ->
    let aux (p,s) = List [sexp_of_pred p;sexp_of_subst s] in
     let yy = List ((aux y)::(List.map aux ylst)) in
     begin match s_opt with
       | None -> List [Atom "SELECT";yy]
       | Some els -> List [Atom "SELECT";yy;sexp_of_subst els]
     end
-  | Case (e,(y,ylst),s_opt) ->
+  | Case (_,e,(y,ylst),s_opt) ->
     let aux (e,s) = List [sexp_of_expr e;sexp_of_subst s] in
     let yy = List ((aux y)::(List.map aux ylst)) in
     begin match s_opt with
       | None -> List [Atom "SELECT";sexp_of_expr e;yy]
       | Some els -> List [Atom "SELECT";sexp_of_expr e;yy;sexp_of_subst els]
     end
-  | Any ((x,xlst),p,s) ->
+  | Any (_,(x,xlst),p,s) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
     List [Atom "ANY";ids;sexp_of_pred p;sexp_of_subst s]
-  | Let ((x,xlst),(y,ylst),s) ->
+  | Let (_,(x,xlst),(y,ylst),s) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
     let aux (id,e) = List [sexp_of_ident id;sexp_of_expr e] in
     let exprs = List ((aux y)::(List.map aux ylst)) in
     List [Atom "LET";ids;exprs;sexp_of_subst s]
-  | BecomesElt ((x,xlst),e) ->
+  | BecomesElt (_,(x,xlst),e) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
     List [Atom "BECOMESELT";ids;sexp_of_expr e]
-  | BecomesSuch ((x,xlst),p) ->
+  | BecomesSuch (_,(x,xlst),p) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
     List [Atom "BECOMESSUCH";ids;sexp_of_pred p]
-  | Var ((x,xlst),s) ->
+  | Var (_,(x,xlst),s) ->
     let ids = List ((sexp_of_ident x)::(List.map sexp_of_ident xlst)) in
     List [Atom "VAR";ids;sexp_of_subst s]
-  | CallUp (outs,f,args) ->
+  | CallUp (_,outs,f,args) ->
     List ( ((Atom "CALL")::(List.map sexp_of_ident outs))@
           ((sexp_of_ident f)::(List.map sexp_of_expr args)) )
-  | While (p,s,q,e) ->
+  | While (_,p,s,q,e) ->
     List [Atom "WHILE";sexp_of_pred p;sexp_of_subst s;
           sexp_of_pred q;sexp_of_expr e]
-  | Sequencement (s1,s2) ->
+  | Sequencement (_,s1,s2) ->
     List [Atom "SEQ";sexp_of_subst s1;sexp_of_subst s2]
-  | Parallel (s1,s2) ->
+  | Parallel (_,s1,s2) ->
     List [Atom "PAR";sexp_of_subst s1;sexp_of_subst s2]
 
 open Component
@@ -144,21 +142,21 @@ let add lst f = function
   | None -> lst
   | Some x -> (f x)::lst
 
-let sexp_of_set : set -> t = function
+let sexp_of_set : 'lc set -> t = function
   | Abstract_Set id -> sexp_of_ident id
   | Concrete_Set (id,lst) ->
     List[sexp_of_ident id;List (List.map sexp_of_ident lst)]
 
-let sexp_of_minst (id,args:machine_instanciation) : t =
+let sexp_of_minst (id,args:('lc,'ty) machine_instanciation) : t =
   List [Atom (snd id); List (List.map sexp_of_expr args)]
 
-let sexp_of_op (out,name,args,body:operation) : t =
-  List [ List (List.map sexp_of_ident out);
+let sexp_of_op (out,name,args,body:('lc,'ty) operation) : t =
+  List [ List (List.map sexp_of_ident2 out);
          sexp_of_ident name;
-         List (List.map sexp_of_ident args);
+         List (List.map sexp_of_ident2 args);
          sexp_of_subst body ]
 
-let sexp_of_clause : clause -> t = function
+let sexp_of_clause : ('lc,'ty) clause -> t = function
   | Constraints (l,p) -> List [Atom "CONSTRAINTS";sexp_of_pred p]
   | Imports (l,lst) -> List ( (Atom "IMPORTS")::(List.map sexp_of_minst lst) )
   | Includes (l,lst) -> List ( (Atom "INCLUDES")::(List.map sexp_of_minst lst) )
@@ -183,18 +181,18 @@ let sexp_of_clause : clause -> t = function
     List ( (Atom "CONCRETE_VARIABLES")::(List.map sexp_of_ident lst) )
   | Variables (l,lst) -> List ( (Atom "VARIABLES")::(List.map sexp_of_ident lst) )
 
-let sexp_of_mch (mch:abstract_machine) : t =
+let sexp_of_mch (mch:('lc,'ty) abstract_machine) : t =
   List ( (Atom "MACHINE")::(sexp_of_ident mch.name)::
          (List (List.map sexp_of_ident mch.parameters))::
          (List.map sexp_of_clause (clist_of_mch mch)) )
 
-let sexp_of_ref (ref:refinement) : t =
+let sexp_of_ref (ref:('lc,'ty) refinement) : t =
   List ( (Atom "REFINEMENT")::(sexp_of_ident ref.name)::
          (List (List.map sexp_of_ident ref.parameters))::
          (List [Atom "REFINES";sexp_of_ident ref.refines])::
          (List.map sexp_of_clause (clist_of_ref ref)) )
 
-let sexp_of_imp (imp:implementation) : t =
+let sexp_of_imp (imp:('lc,'ty) implementation) : t =
   List ( (Atom "IMPLEMENTATION")::(sexp_of_ident imp.name)::
          (List (List.map sexp_of_ident imp.parameters))::
          (List [Atom "REFINES";sexp_of_ident imp.refines])::

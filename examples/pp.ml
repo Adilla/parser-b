@@ -15,7 +15,7 @@ let pretty_print c =
   if !sexp then
     Sexp.to_channel !out (Sexp.sexp_of_component c)
   else
-    Easy_format.Pretty.to_channel !out (Print.ef_component c)
+    Print.print_component !out c
 
 let run_on_file filename =
   try

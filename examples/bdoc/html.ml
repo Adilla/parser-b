@@ -1,4 +1,5 @@
 open View
+open Utils
 
 let generate_html_header (out:out_channel) : unit =
   Printf.fprintf out "<!DOCTYPE html>\n";
@@ -62,17 +63,17 @@ let pp_vis_source_op (out:out_channel) : vis_source_op -> unit = function
   | Op_Included_From mch -> Printf.fprintf out " <span style=\"color:red\">[Included/Promoted from <a href=\"./%s.html\">%s</a>]</span>" (snd mch) (snd mch)
   | Local_Op -> Printf.fprintf out " <span style=\"color:red\">[Local Operation]</span>"
 
-let pp_ident (out:out_channel) (id:Utils.ident) : unit = Printf.fprintf out "%s" (snd id)
+let pp_ident (out:out_channel) (id:u_ident) : unit = Printf.fprintf out "%s" (snd id)
 
-let pp_dep (out:out_channel) (name,kind:Utils.ident*dep_kind) : unit =
+let pp_dep (out:out_channel) (name,kind:u_ident*dep_kind) : unit =
   Printf.fprintf out "<a href=\"./%a.html\">%a</a>%a"
     pp_ident name pp_ident name pp_dep_kind kind
 
-let pp_refined_by (out:out_channel) (name:Utils.ident) : unit =
+let pp_refined_by (out:out_channel) (name:u_ident) : unit =
   Printf.fprintf out "<a href=\"./%a.html\">%a</a>"
     pp_ident name pp_ident name
 
-let pp_ident_list (out:out_channel) (lst:Utils.ident list) : unit =
+let pp_ident_list (out:out_channel) (lst:u_ident list) : unit =
   match lst with
   | [] -> ()
   | hd::tl ->
@@ -81,7 +82,7 @@ let pp_ident_list (out:out_channel) (lst:Utils.ident list) : unit =
       List.iter (fun x -> Printf.fprintf out ", %a" pp_ident x) tl
     end
 
-let pp_exported_set (out:out_channel) (set,src:Component.set*exp_source) : unit =
+let pp_exported_set (out:out_channel) (set,src:loc Component.set*exp_source) : unit =
   match set with
   | Component.Abstract_Set id ->
     Printf.fprintf out "%a%a" pp_ident id pp_exp_source src
@@ -93,13 +94,13 @@ let pp_exported_set (out:out_channel) (set,src:Component.set*exp_source) : unit 
       Printf.fprintf out "</ul>\n"
     end
     
-let pp_exported_ident (type a) (out:out_channel) (id,src:Utils.ident*exp_source) : unit =
+let pp_exported_ident (type a) (out:out_channel) (id,src:u_ident*exp_source) : unit =
   Printf.fprintf out "%a%a" pp_ident id pp_exp_source src
 
-let pp_exported_operation (type a) (out:out_channel) (id,src:Utils.ident*exp_source_op) : unit =
+let pp_exported_operation (type a) (out:out_channel) (id,src:u_ident*exp_source_op) : unit =
   Printf.fprintf out "%a%a" pp_ident id pp_exp_source_op src
 
-let pp_visible_set (out:out_channel) (set,src:Component.set*vis_source) : unit =
+let pp_visible_set (out:out_channel) (set,src:loc Component.set*vis_source) : unit =
   match set with
   | Component.Abstract_Set id ->
     Printf.fprintf out "%a%a" pp_ident id pp_vis_source src
@@ -111,10 +112,10 @@ let pp_visible_set (out:out_channel) (set,src:Component.set*vis_source) : unit =
       Printf.fprintf out "</ul>\n"
     end
     
-let pp_visible_ident (type a) (out:out_channel) (id,src:Utils.ident*vis_source) : unit =
+let pp_visible_ident (type a) (out:out_channel) (id,src:u_ident*vis_source) : unit =
   Printf.fprintf out "%a%a" pp_ident id pp_vis_source src
 
-let pp_visible_operation (type a) (out:out_channel) (id,src:Utils.ident*vis_source_op) : unit =
+let pp_visible_operation (type a) (out:out_channel) (id,src:u_ident*vis_source_op) : unit =
   Printf.fprintf out "%a%a" pp_ident id pp_vis_source_op src
 
 let print_list (type a) (out:out_channel) (title:string) (pp:out_channel -> a -> unit) (lst: a list) : unit =

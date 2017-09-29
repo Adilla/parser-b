@@ -55,38 +55,39 @@ type c_or_m = Maplet | Comma | Infix
 val pred_bop_to_string : pred_bop -> string
 val prop_bop_to_string : prop_bop -> string
 
-type expression =
-  | Ident of ident
-  | Dollar of ident
-  | Builtin of loc*e_builtin
-  | Pbool of loc*predicate
-  | Parentheses of loc*expression
-  | Application of loc*expression*expression
-  | Couple of loc*c_or_m*expression*expression
-  | Sequence of loc*expression non_empty_list
-  | Extension of loc*expression non_empty_list
-  | Comprehension of loc*ident non_empty_list * predicate
-  | Binder of loc*expr_binder*ident non_empty_list*predicate*expression
-  | Record_Field_Access of loc*expression*ident
-  | Record of loc*(ident*expression) non_empty_list
-  | Record_Type of loc*(ident*expression) non_empty_list
+type ('lc,'ty) expression =
+  | Ident of 'ty * 'lc ident
+  | Dollar of 'ty * 'lc ident
+  | Builtin of 'lc * 'ty * e_builtin
+  | Pbool of 'lc * 'ty * ('lc,'ty) predicate
+  | Application of 'lc * 'ty * ('lc,'ty) expression * ('lc,'ty) expression
+  | Couple of 'lc * 'ty * c_or_m  * ('lc,'ty) expression * ('lc,'ty) expression
+  | Sequence of 'lc * 'ty * (('lc,'ty) expression) non_empty_list
+  | Extension of 'lc * 'ty * (('lc,'ty) expression) non_empty_list
+  | Comprehension of 'lc * 'ty * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate
+  | Binder of 'lc * 'ty * expr_binder * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate * ('lc,'ty) expression
+  | Record_Field_Access of 'lc * 'ty * ('lc,'ty) expression * 'lc ident
+  | Record of 'lc * 'ty * ('lc ident * ('lc,'ty) expression) non_empty_list
+  | Record_Type of 'lc * 'ty * ('lc ident * ('lc,'ty) expression) non_empty_list
 
-and predicate =
-  | P_Ident of ident
-  | P_Builtin of loc*p_builtin
-  | Binary_Prop of loc*prop_bop*predicate*predicate
-  | Binary_Pred of loc*pred_bop*expression*expression
-  | Negation of loc*predicate
-  | Pparentheses of loc*predicate
-  | Universal_Q of loc*ident non_empty_list*predicate
-  | Existential_Q of loc*ident non_empty_list*predicate
+and ('lc,'ty) predicate =
+  | P_Builtin of 'lc * p_builtin
+  | Binary_Prop of 'lc * prop_bop * ('lc,'ty) predicate * ('lc,'ty) predicate
+  | Binary_Pred of 'lc * pred_bop * ('lc,'ty) expression * ('lc,'ty) expression
+  | Negation of 'lc * ('lc,'ty) predicate
+  | Universal_Q of 'lc * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate
+  | Existential_Q of 'lc * ('ty*'lc ident) non_empty_list * ('lc,'ty) predicate
 
-val expr_loc : expression -> loc
-val pred_loc : predicate -> loc
+type u_expr = (loc,bool) expression
+type u_pred = (loc,bool) predicate
 
-val expr_eq : expression -> expression -> bool
-val expr_list_eq : expression list -> expression list -> bool
-val pred_eq : predicate -> predicate -> bool
+val expr_loc : u_expr -> loc
+val pred_loc : u_pred -> loc
 
-val norm_expr : expression -> expression
-val norm_pred : predicate -> predicate
+val expr_eq : ('lc,'ty) expression -> ('lc2,'ty2) expression -> bool
+val expr_list_eq : ('lc,'ty) expression list -> ('lc2,'ty2) expression list -> bool
+val pred_eq : ('lc,'ty) predicate -> ('lc2,'ty2) predicate -> bool
+
+val ident_eq : 'lc ident -> 'lc2 ident -> bool
+val ident_list_eq : 'lc ident list -> 'lc2 ident list -> bool
+val ident_nelist_eq : 'lc ident non_empty_list -> 'lc2 ident non_empty_list -> bool

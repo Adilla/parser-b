@@ -4,6 +4,18 @@ open Substitution
 open Component
 open QCheck
 
+type ident = unit Utils.ident
+type expr = (unit,unit) Expression.expression
+type pred = (unit,unit) Expression.predicate
+type subst = (unit,unit) Substitution.substitution
+type machine = (unit,unit) Component.abstract_machine
+type refinement = (unit,unit) Component.refinement
+type implementation = (unit,unit) Component.implementation
+type component = (unit,unit) Component.component
+type set = unit Component.set
+type m_inst = (unit,unit) Component.machine_instanciation
+type operation = (unit,unit) Component.operation
+
 let pred_op_list =
   [ Equality; Disequality; Membership; Non_Membership;
     Inclusion Not_Strict; Inclusion Strict; Inclusion Non_Inclusion;
@@ -29,14 +41,18 @@ let gen_e_constant_bi : e_builtin Gen.t = fun random ->
   | 1 -> String (gen_string random)
   | _ -> Gen.oneofl Expression.expr_constants random
 
-let gen_ident : ident Gen.t = fun rd -> (dloc,gen_string rd)
+let gen_ident : ident Gen.t = fun rd -> ((),gen_string rd)
+let gen_ident2 : (unit*ident) Gen.t = fun rd -> ((),((),gen_string rd))
 
 let split_int n rd =
   let k = Random.State.int rd (n + 1) in
   (k, n - k)
 
-let gen_ident_nel rd =
+let gen_ident_nel rd : ident non_empty_list =
   (gen_ident rd, Gen.small_list gen_ident rd)
+
+let gen_ident_nel2 rd : (unit*ident) non_empty_list =
+  (gen_ident2 rd, Gen.small_list gen_ident2 rd)
 
 let split_int_into_nel n rd =
   let rec aux n k = (*returns a list of size (k+1) which sum is n *)
@@ -58,63 +74,63 @@ let sized_nel (split:int non_empty_list Gen.sized) (gen:'a Gen.sized)
   let (f,flst) = split n rd in
   (gen f rd, List.map (fun f -> gen f rd) flst)
 
-let rec sized_expr : expression Gen.sized = fun n ->
+let rec sized_expr : expr Gen.sized = fun n ->
   if n <= 0 then
     Gen.oneof
-      [ Gen.map (fun id -> Ident id) gen_ident;
-        Gen.map (fun id -> Dollar id) gen_ident;
-        Gen.map (fun bi -> Builtin (dloc,bi)) gen_e_constant_bi ]
+      [ Gen.map (fun id -> Ident ((),id)) gen_ident;
+        Gen.map (fun id -> Dollar ((),id)) gen_ident;
+        Gen.map (fun bi -> Builtin ((),(),bi)) gen_e_constant_bi ]
 
   else
     Gen.oneof
-      [ Gen.map (fun p -> Pbool (dloc,p)) (sized_pred (n-1));
+      [ Gen.map (fun p -> Pbool ((),(),p)) (sized_pred (n-1));
 (*         Gen.map (fun e -> Parentheses (dloc,e)) (sized_expr (n-1)); *)
-        Gen.map (fun (e1,e2) -> Application (dloc,e1,e2))
+        Gen.map (fun (e1,e2) -> Application ((),(),e1,e2))
           (sized_pair split_int sized_expr sized_expr (n-1));
-        Gen.map (fun (bi,e2) -> Application (dloc,Builtin (dloc,bi),e2))
+        Gen.map (fun (bi,e2) -> Application ((),(),Builtin ((),(),bi),e2))
           (Gen.pair
              (Gen.oneofl Expression.expr_prefix_postfix_ops) 
              (sized_expr (n-1)));
         Gen.map (fun (bi,(e1,e2)) ->
-            Application (dloc,Builtin(dloc,bi),Couple(dloc,Infix,e1,e2)))
+            Application ((),(),Builtin((),(),bi),Couple((),(),Infix,e1,e2)))
           (Gen.pair
              (Gen.oneofl Expression.expr_infix_ops)
              (sized_pair split_int sized_expr sized_expr (n-1)));
-        Gen.map (fun (x,(e1,e2)) -> Couple(dloc,x,e1,e2))
+        Gen.map (fun (x,(e1,e2)) -> Couple((),(),x,e1,e2))
           (Gen.pair
              (Gen.oneofl [Comma;Maplet])
              (sized_pair split_int sized_expr sized_expr (n-1))
           );
-        Gen.map (fun lst -> Sequence (dloc,lst))
+        Gen.map (fun lst -> Sequence ((),(),lst))
           (sized_nel split_int_into_nel sized_expr (n-1));
-        Gen.map (fun lst -> Extension (dloc,lst))
+        Gen.map (fun lst -> Extension ((),(),lst))
           (sized_nel split_int_into_nel sized_expr (n-1));
-        Gen.map (fun (nel,p) -> Comprehension (dloc,nel,p))
+        Gen.map (fun (nel,p) -> Comprehension ((),(),nel,p))
           (Gen.pair
-             gen_ident_nel
+             gen_ident_nel2
              (sized_pred (n-1)) );
-        Gen.map (fun (bi,nel,(p,e)) -> Binder (dloc,bi,nel,p,e))
+        Gen.map (fun (bi,nel,(p,e)) -> Binder ((),(),bi,nel,p,e))
           (Gen.triple
              (Gen.oneofl [Sum;Prod;Q_Union;Q_Intersection;Lambda])
-             gen_ident_nel
+             gen_ident_nel2
              (sized_pair split_int sized_pred sized_expr (n-1)) );
-        Gen.map (fun (e,id) -> Record_Field_Access (dloc,e,id))
+        Gen.map (fun (e,id) -> Record_Field_Access ((),(),e,id))
           (Gen.pair (sized_expr (n-1)) gen_ident);
-        Gen.map (fun nel -> Record (dloc,nel))
+        Gen.map (fun nel -> Record ((),(),nel))
           (sized_nel split_int_into_nel
              (fun fuel -> Gen.pair
                  gen_ident
                  (sized_expr fuel) ) (n-1));
-        Gen.map (fun nel -> Record_Type (dloc,nel))
+        Gen.map (fun nel -> Record_Type ((),(),nel))
           (sized_nel split_int_into_nel
              (fun fuel -> Gen.pair
                  gen_ident
                  (sized_expr fuel) ) (n-1));
       ]
 
-and sized_pred : predicate Gen.sized = fun n ->
+and sized_pred : pred Gen.sized = fun n ->
   if n <= 0 then
-    Gen.map (fun (op,(p,q)) -> Binary_Pred (dloc,op,p,q))
+    Gen.map (fun (op,(p,q)) -> Binary_Pred ((),op,p,q))
       (Gen.pair (Gen.oneofl pred_op_list)
          (sized_pair split_int sized_expr sized_expr 0))
 (*
@@ -125,26 +141,26 @@ and sized_pred : predicate Gen.sized = fun n ->
 *)
   else
     Gen.oneof
-      [ Gen.map (fun p -> Negation (dloc,p)) (sized_pred (n-1));
+      [ Gen.map (fun p -> Negation ((),p)) (sized_pred (n-1));
 (*         Gen.map (fun p -> Pparentheses (dloc,p)) (sized_pred (n-1)); *)
-        Gen.map (fun (op,(p,q)) -> Binary_Prop (dloc,op,p,q))
+        Gen.map (fun (op,(p,q)) -> Binary_Prop ((),op,p,q))
           (Gen.pair (Gen.oneofl [Conjonction; Disjonction; Implication; Equivalence])
              (sized_pair split_int sized_pred sized_pred (n-1)));
-        Gen.map (fun (op,(p,q)) -> Binary_Pred (dloc,op,p,q))
+        Gen.map (fun (op,(p,q)) -> Binary_Pred ((),op,p,q))
           (Gen.pair (Gen.oneofl pred_op_list)
              (sized_pair split_int sized_expr sized_expr (n-1)));
-        Gen.map (fun (nel,p) -> Universal_Q (dloc,nel,p))
+        Gen.map (fun (nel,p) -> Universal_Q ((),nel,p))
           (Gen.pair
-             gen_ident_nel
+             gen_ident_nel2
              (sized_pred (n-1)) );
-        Gen.map (fun (nel,p) -> Existential_Q (dloc,nel,p))
+        Gen.map (fun (nel,p) -> Existential_Q ((),nel,p))
           (Gen.pair
-             gen_ident_nel
+             gen_ident_nel2
              (sized_pred (n-1)) );
       ]
 
-let gen_expr : expression Gen.t = sized_expr 7
-let gen_pred : predicate Gen.t = sized_pred 7
+let gen_expr : expr Gen.t = sized_expr 7
+let gen_pred : pred Gen.t = sized_pred 7
 
 let gen_nel (gen:'a Gen.t) : ('a non_empty_list) Gen.t = fun rd ->
   (gen rd, Gen.small_list gen rd)
@@ -169,64 +185,63 @@ let sized_nel_and_opt (gen1:'a Gen.sized) (gen2:'b Gen.sized) :
       (sized_nel split_int_into_nel gen1 n)
       (Gen.return None) rd
 
-let rec sized_subst : substitution Gen.sized = fun n rd ->
+let rec sized_subst : subst Gen.sized = fun n rd ->
   if n <= 0 then
     Gen.oneof [
-      Gen.return Skip;
-      Gen.map (fun (id_nel,e_nel) -> Affectation (id_nel,e_nel))
-        (Gen.pair gen_ident_nel (gen_nel gen_expr)) ;
-      Gen.map (fun (id,e_nel,e)-> Function_Affectation(id,e_nel,e))
+      Gen.return (Skip ());
+      Gen.map (fun (id_nel,e_nel) -> Affectation ((),id_nel,e_nel))
+        (Gen.pair gen_ident_nel gen_expr) ;
+      Gen.map (fun (id,e_nel,e)-> Function_Affectation((),id,e_nel,e))
         (Gen.triple gen_ident (gen_nel gen_expr) gen_expr);
-      Gen.map (fun (id,fd,e) -> Record_Affectation (id,fd,e))
+      Gen.map (fun (id,fd,e) -> Record_Affectation ((),id,fd,e))
         (Gen.triple gen_ident gen_ident gen_expr);
-      Gen.map (fun (id_nel,e) -> BecomesElt (id_nel,e))
+      Gen.map (fun (id_nel,e) -> BecomesElt ((),id_nel,e))
         (Gen.pair gen_ident_nel gen_expr);
-      Gen.map (fun (id_nel,p) -> BecomesSuch (id_nel,p))
+      Gen.map (fun (id_nel,p) -> BecomesSuch ((),id_nel,p))
         (Gen.pair gen_ident_nel gen_pred);
-      Gen.map (fun (id_lst,id,e_lst) -> CallUp (id_lst,id,e_lst))
+      Gen.map (fun (id_lst,id,e_lst) -> CallUp ((),id_lst,id,e_lst))
         (Gen.triple (Gen.small_list gen_ident) gen_ident (Gen.small_list gen_expr))
     ] rd
   else
     Gen.oneof [
-      Gen.map (fun s -> BeginEnd s) (sized_subst (n-1));
-      Gen.map (fun (p,s) -> Pre (p,s))
+      Gen.map (fun (p,s) -> Pre ((),p,s))
         (Gen.pair gen_pred (sized_subst (n-1)));
-      Gen.map (fun (p,s) -> Assert (p,s))
+      Gen.map (fun (p,s) -> Assert ((),p,s))
         (Gen.pair gen_pred (sized_subst (n-1)));
-      Gen.map (fun (s_nle) -> Choice s_nle)
+      Gen.map (fun (s_nle) -> Choice ((),s_nle))
         (sized_nel split_int_into_nel sized_subst (n-1));
-      Gen.map (fun (ps_nel,s_opt) -> IfThenElse (ps_nel,s_opt))
+      Gen.map (fun (ps_nel,s_opt) -> IfThenElse ((),ps_nel,s_opt))
         (sized_nel_and_opt
            (fun fuel -> Gen.pair gen_pred (sized_subst fuel))
            sized_subst (n-1));
-      Gen.map (fun (ps_nel,s_opt) -> Select (ps_nel,s_opt))
+      Gen.map (fun (ps_nel,s_opt) -> Select ((),ps_nel,s_opt))
         (sized_nel_and_opt
            (fun fuel -> Gen.pair gen_pred (sized_subst fuel))
            sized_subst (n-1));
-      Gen.map (fun (e,(es_nel,s_opt)) -> Case (e,es_nel,s_opt))
+      Gen.map (fun (e,(es_nel,s_opt)) -> Case ((),e,es_nel,s_opt))
         (Gen.pair gen_expr
            (sized_nel_and_opt
               (fun fuel -> Gen.pair gen_expr (sized_subst fuel))
               sized_subst (n-1)) );
-      Gen.map (fun (id_nel,p,s) -> Any (id_nel,p,s))
+      Gen.map (fun (id_nel,p,s) -> Any ((),id_nel,p,s))
         (Gen.triple gen_ident_nel gen_pred (sized_subst (n-1)));
-      Gen.map (fun (id_nel,ie_nel,s) -> Let (id_nel,ie_nel,s))
+      Gen.map (fun (id_nel,ie_nel,s) -> Let ((),id_nel,ie_nel,s))
         (Gen.triple gen_ident_nel
            (gen_nel (Gen.pair gen_ident gen_expr))
            (sized_subst (n-1)));
-      Gen.map (fun (id_nel,s) -> Var (id_nel,s))
+      Gen.map (fun (id_nel,s) -> Var ((),id_nel,s))
         (Gen.pair gen_ident_nel (sized_subst (n-1)));
-      Gen.map (fun (p,s,q,e) -> While (p,s,q,e))
+      Gen.map (fun (p,s,q,e) -> While ((),p,s,q,e))
         (Gen.quad gen_pred (sized_subst (n-1)) gen_pred gen_expr);
-      Gen.map (fun (s1,s2) -> Sequencement (s1,s2))
+      Gen.map (fun (s1,s2) -> Sequencement ((),s1,s2))
         (sized_pair split_int sized_subst sized_subst (n-1));
-      Gen.map (fun (s1,s2) -> Parallel (s1,s2))
+      Gen.map (fun (s1,s2) -> Parallel ((),s1,s2))
         (sized_pair split_int sized_subst sized_subst (n-1));
     ] rd
 
-let gen_subst : substitution Gen.t = sized_subst 7
+let gen_subst : subst Gen.t = sized_subst 7
 
-let gen_minst : machine_instanciation Gen.t =
+let gen_minst : m_inst Gen.t =
   Gen.pair gen_ident (Gen.list_size (Gen.oneofl [0;1;2;3]) gen_expr)
 
 let small_list (gen:'a Gen.t) : ('a list) Gen.t =
@@ -238,44 +253,44 @@ let gen_set : set Gen.t =
                 (Gen.pair gen_ident (small_list gen_ident)) ]
 
 let gen_op : operation Gen.t =
-  Gen.quad (Gen.small_list gen_ident) gen_ident
-    (Gen.small_list gen_ident) gen_subst
+  Gen.quad (Gen.small_list gen_ident2) gen_ident
+    (Gen.small_list gen_ident2) gen_subst
 
-let gen_machine : abstract_machine Gen.t = fun rd -> {
+let gen_machine : machine Gen.t = fun rd -> {
     name = gen_ident rd;
     parameters = Gen.small_list gen_ident rd;
     clause_constraints =
-      Gen.opt (Gen.map (fun p -> (dloc,p)) gen_pred) rd;
+      Gen.opt (Gen.map (fun p -> ((),p)) gen_pred) rd;
     clause_sees =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
     clause_includes =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_minst)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_minst)) rd;
     clause_promotes =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
     clause_extends =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_minst)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_minst)) rd;
     clause_uses =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
     clause_sets =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_set)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_set)) rd;
     clause_concrete_constants =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
     clause_abstract_constants =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
     clause_properties =
-      Gen.opt (Gen.map (fun p -> (dloc,p)) gen_pred) rd;
+      Gen.opt (Gen.map (fun p -> ((),p)) gen_pred) rd;
     clause_concrete_variables =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
     clause_abstract_variables =
-      Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+      Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
     clause_invariant =
-      Gen.opt (Gen.map (fun p -> (dloc,p)) gen_pred) rd;
+      Gen.opt (Gen.map (fun p -> ((),p)) gen_pred) rd;
     clause_assertions =
-      Gen.opt (Gen.map (fun p -> (dloc,p)) (small_list gen_pred)) rd;
+      Gen.opt (Gen.map (fun p -> ((),p)) (small_list gen_pred)) rd;
     clause_initialisation =
-      Gen.opt (Gen.map (fun s -> (dloc,s)) gen_subst) rd;
+      Gen.opt (Gen.map (fun s -> ((),s)) gen_subst) rd;
     clause_operations =
-      Gen.opt (Gen.map (fun op -> (dloc,op)) (small_list gen_op)) rd;
+      Gen.opt (Gen.map (fun op -> ((),op)) (small_list gen_op)) rd;
 }
 
 let gen_refinement : refinement Gen.t = fun rd -> {
@@ -283,35 +298,35 @@ let gen_refinement : refinement Gen.t = fun rd -> {
   parameters = Gen.small_list gen_ident rd;
   refines = gen_ident rd;
   clause_sees =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_includes =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_minst)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_minst)) rd;
   clause_promotes =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_extends =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_minst)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_minst)) rd;
   clause_sets =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_set)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_set)) rd;
   clause_concrete_constants =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_abstract_constants =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_properties =
-    Gen.opt (Gen.map (fun p -> (dloc,p)) gen_pred) rd;
+    Gen.opt (Gen.map (fun p -> ((),p)) gen_pred) rd;
   clause_concrete_variables =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_abstract_variables =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_invariant =
-    Gen.opt (Gen.map (fun p -> (dloc,p)) gen_pred) rd;
+    Gen.opt (Gen.map (fun p -> ((),p)) gen_pred) rd;
   clause_assertions =
-    Gen.opt (Gen.map (fun p -> (dloc,p)) (small_list gen_pred)) rd;
+    Gen.opt (Gen.map (fun p -> ((),p)) (small_list gen_pred)) rd;
   clause_initialisation =
-    Gen.opt (Gen.map (fun s -> (dloc,s)) gen_subst) rd;
+    Gen.opt (Gen.map (fun s -> ((),s)) gen_subst) rd;
   clause_operations =
-    Gen.opt (Gen.map (fun op -> (dloc,op)) (small_list gen_op)) rd;
+    Gen.opt (Gen.map (fun op -> ((),op)) (small_list gen_op)) rd;
   clause_local_operations =
-    Gen.opt (Gen.map (fun op -> (dloc,op)) (small_list gen_op)) rd;
+    Gen.opt (Gen.map (fun op -> ((),op)) (small_list gen_op)) rd;
 }
 
 let gen_implementation : implementation Gen.t = fun rd -> {
@@ -319,33 +334,33 @@ let gen_implementation : implementation Gen.t = fun rd -> {
   parameters = Gen.small_list gen_ident rd;
   refines = gen_ident rd;
   clause_sees =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_imports =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_minst)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_minst)) rd;
   clause_promotes =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_extends_B0 =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_minst)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_minst)) rd;
   clause_sets =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_set)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_set)) rd;
   clause_concrete_constants =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_properties =
-    Gen.opt (Gen.map (fun p -> (dloc,p)) gen_pred) rd;
+    Gen.opt (Gen.map (fun p -> ((),p)) gen_pred) rd;
   clause_values =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list (Gen.pair gen_ident gen_expr))) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list (Gen.pair gen_ident gen_expr))) rd;
   clause_concrete_variables =
-    Gen.opt (Gen.map (fun lst -> (dloc,lst)) (small_list gen_ident)) rd;
+    Gen.opt (Gen.map (fun lst -> ((),lst)) (small_list gen_ident)) rd;
   clause_invariant =
-    Gen.opt (Gen.map (fun p -> (dloc,p)) gen_pred) rd;
+    Gen.opt (Gen.map (fun p -> ((),p)) gen_pred) rd;
   clause_assertions =
-    Gen.opt (Gen.map (fun p -> (dloc,p)) (small_list gen_pred)) rd;
+    Gen.opt (Gen.map (fun p -> ((),p)) (small_list gen_pred)) rd;
   clause_initialisation_B0 =
-    Gen.opt (Gen.map (fun s -> (dloc,s)) gen_subst) rd;
+    Gen.opt (Gen.map (fun s -> ((),s)) gen_subst) rd;
   clause_operations_B0 =
-    Gen.opt (Gen.map (fun op -> (dloc,op)) (small_list gen_op)) rd;
+    Gen.opt (Gen.map (fun op -> ((),op)) (small_list gen_op)) rd;
   clause_local_operations_B0 =
-    Gen.opt (Gen.map (fun op -> (dloc,op)) (small_list gen_op)) rd;
+    Gen.opt (Gen.map (fun op -> ((),op)) (small_list gen_op)) rd;
   }
 
 let gen_component : component Gen.t =

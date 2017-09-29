@@ -1,14 +1,16 @@
-let print_error (loc:Utils.loc) (msg:string) : unit =
+open Utils
+
+let print_error (loc:loc) (msg:string) : unit =
   let open Lexing in
   Printf.fprintf stdout "[file:%s;line:%i;column:%i] %s\n"
     loc.pos_fname loc.pos_lnum (loc.pos_cnum-loc.pos_bol+1) msg;
   exit(1)
 
-let components : (string,Component.component) Hashtbl.t = Hashtbl.create 47
+let components : (string,Component.u_comp) Hashtbl.t = Hashtbl.create 47
 let views : (string,View.component_view) Hashtbl.t = Hashtbl.create 47
-let backrefs : (string,Utils.ident list*(Utils.ident*View.dep_kind) list) Hashtbl.t = Hashtbl.create 47
+let backrefs : (string,u_ident list*(u_ident*View.dep_kind) list) Hashtbl.t = Hashtbl.create 47
 
-let get_name : Component.component -> string = function
+let get_name : Component.u_comp -> string = function
   | Component.Abstract_machine mch -> snd mch.Component.name
   | Component.Refinement ref -> snd ref.Component.name
   | Component.Implementation imp -> snd imp.Component.name
@@ -59,7 +61,7 @@ let enter () =
 
 let leave () = decr counter
 
-let get_backrefs (name:string) : Utils.ident list * (Utils.ident*View.dep_kind) list =
+let get_backrefs (name:string) : u_ident list * (u_ident*View.dep_kind) list =
   try Hashtbl.find backrefs name
   with Not_found -> ([], [])
 
@@ -67,13 +69,13 @@ let get_list : ('a*'b list) option -> 'b list = function
   | None -> []
   | Some (_,lst) -> lst
 
-let update_backrefs _ (c:Component.component) : unit =
+let update_backrefs _ (c:Component.u_comp) : unit =
   let open Component in
-  let add_refines (name:Utils.ident) (refined_mch:Utils.ident) : unit =
+  let add_refines (name:u_ident) (refined_mch:u_ident) : unit =
     let (a,b) = get_backrefs (snd refined_mch) in
     Hashtbl.add backrefs (snd refined_mch) (name::a,b)
   in
-  let add_required_by (name:Utils.ident) (dk:View.dep_kind) (required_mch:Utils.ident) : unit =
+  let add_required_by (name:u_ident) (dk:View.dep_kind) (required_mch:u_ident) : unit =
     let (a,b) = get_backrefs (snd required_mch) in
     Hashtbl.add backrefs (snd required_mch) (a,(name,dk)::b)
   in

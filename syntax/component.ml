@@ -2,28 +2,28 @@ open Utils
 open Expression
 open Substitution
 
-type operation = ident list * ident * ident list * substitution
+type ('lc,'ty) operation = ('ty*'lc ident) list * 'lc ident * ('ty*'lc ident) list * ('lc,'ty) substitution
+type u_operation   = (loc,bool) operation
 
-let op_eq (out1,name1,params1,s1:operation) (out2,name2,params2,s2:operation) : bool =
-  ident_list_eq out1 out2 && ident_eq name1 name2 &&
-  ident_list_eq params1 params2 && subst_eq s1 s2
+let op_eq (out1,name1,params1,s1:('lc,'ty) operation) (out2,name2,params2,s2:('lc2,'ty2) operation) : bool =
+  let aux (_,x1) (_,x2) = ident_eq x1 x2 in 
+  let aux lst1 lst2 =
+   try List.for_all2 aux lst1 lst2
+   with Invalid_argument _ -> false
+  in
+  aux out1 out2 && ident_eq name1 name2 &&
+  aux params1 params2 && subst_eq s1 s2
 
-let norm_op (out,f,args,s:operation) : operation =
-  (out, f, args, norm_subst s)
+type ('lc,'ty) machine_instanciation = 'lc ident * ('lc,'ty) expression list
 
-type machine_instanciation = ident * expression list
-
-let minst_eq (id1,lst1:machine_instanciation) (id2,lst2:machine_instanciation) : bool =
+let minst_eq (id1,lst1:('lc,'ty) machine_instanciation) (id2,lst2:('lc2,'ty2) machine_instanciation) : bool =
   ident_eq id1 id2 && expr_list_eq lst1 lst2
 
-let norm_minst (id, lst:machine_instanciation) : machine_instanciation =
-  (id, List.map norm_expr lst)
+type 'lc set =
+  | Abstract_Set of 'lc ident
+  | Concrete_Set of 'lc ident*'lc ident list
 
-type set =
-  | Abstract_Set of ident
-  | Concrete_Set of ident*ident list
-
-let set_eq (s1:set) (s2:set) : bool =
+let set_eq (s1:'lc set) (s2:'lc2 set) : bool =
   match s1, s2 with
   | Abstract_Set id1, Abstract_Set id2 -> ident_eq id1 id2
   | Concrete_Set (id1,lst1), Concrete_Set (id2,lst2) ->
@@ -34,28 +34,28 @@ let list_eq eq l1 l2 =
   try List.for_all2 eq l1 l2
   with Invalid_argument _ -> false
 
-type clause =
-  | Constraints of loc * predicate
-  | Imports of loc * (ident*expression list) list
-  | Sees of loc * ident list
-  | Includes of loc * machine_instanciation list
-  | Extends of loc * machine_instanciation list
-  | Promotes of loc * ident list
-  | Uses of loc * ident list
-  | Sets of loc * set list
-  | Constants of loc * ident list
-  | Abstract_constants of loc * ident list
-  | Properties of loc * predicate
-  | Concrete_variables of loc * ident list
-  | Variables of loc * ident list
-  | Invariant of loc * predicate
-  | Assertions of loc * predicate list
-  | Initialization of loc * substitution
-  | Operations of loc * operation list
-  | Local_Operations of loc * operation list
-  | Values of loc * (ident*expression) list
+type ('lc,'ty) clause =
+  | Constraints of 'lc * ('lc,'ty) predicate
+  | Imports of 'lc * (('lc,'ty) machine_instanciation) list
+  | Sees of 'lc * 'lc ident list
+  | Includes of 'lc * ('lc,'ty) machine_instanciation list
+  | Extends of 'lc * ('lc,'ty) machine_instanciation list
+  | Promotes of 'lc * 'lc ident list
+  | Uses of 'lc * 'lc ident list
+  | Sets of 'lc * 'lc set list
+  | Constants of 'lc * 'lc ident list
+  | Abstract_constants of 'lc * 'lc ident list
+  | Properties of 'lc * ('lc,'ty) predicate
+  | Concrete_variables of 'lc * 'lc ident list
+  | Variables of 'lc * 'lc ident list
+  | Invariant of 'lc * ('lc,'ty) predicate
+  | Assertions of 'lc * ('lc,'ty) predicate list
+  | Initialization of 'lc * ('lc,'ty) substitution
+  | Operations of 'lc * ('lc,'ty) operation list
+  | Local_Operations of 'lc * ('lc,'ty) operation list
+  | Values of 'lc * ('lc ident * ('lc,'ty) expression) list
 
-let clause_eq (cl1:clause) (cl2:clause) : bool =
+let clause_eq : type a b c d. (a,b) clause -> (c,d) clause -> bool = fun cl1 cl2 ->
   match cl1, cl2 with
   | Constraints (_,p1), Constraints (_,p2) -> pred_eq p1 p2
   | Imports (_,lst1), Imports (_,lst2) ->
@@ -82,31 +82,77 @@ let clause_eq (cl1:clause) (cl2:clause) : bool =
     list_eq aux lst1 lst2
   | _, _ -> false
 
-let norm_clause : clause -> clause = function
-  | Constraints (l,p) -> Constraints (l,norm_pred p)
-  | Imports (l,lst) ->
-    let aux (id,lst) = (id,List.map norm_expr lst) in
-    Imports (l,List.map aux lst)
-  | Includes (l,lst) -> Includes (l,List.map norm_minst lst)
-  | Extends (l,lst) -> Extends (l,List.map norm_minst lst)
-  | Properties (l,p) -> Properties (l,norm_pred p)
-  | Invariant (l,p) -> Invariant (l,norm_pred p)
-  | Assertions (l,lst) -> Assertions (l,List.map norm_pred lst)
-  | Initialization (l,s) -> Initialization (l,norm_subst s)
-  | Operations (l,lst) -> Operations (l,List.map norm_op lst)
-  | Local_Operations (l,lst) -> Local_Operations (l,List.map norm_op lst)
-  | Values (l,lst) ->
-    let aux (id,e) = (id,norm_expr e) in Values (l,List.map aux lst)
-  | Sees _
-  | Promotes _
-  | Uses _
-  | Sets _
-  | Constants _
-  | Abstract_constants _
-  | Concrete_variables _
-  | Variables _ as cl -> cl
+type u_clause = (loc,bool) clause
 
-let get_loc (cl:clause) =
+type ('lc,'ty) abstract_machine = {
+  name: 'lc ident;
+  parameters: 'lc ident list;
+  clause_constraints: ('lc * ('lc,'ty) predicate) option;
+  clause_sees: ('lc * 'lc ident list) option;
+  clause_includes: ('lc * ('lc,'ty) machine_instanciation list) option;
+  clause_promotes: ('lc * 'lc ident list) option;
+  clause_extends: ('lc * ('lc,'ty) machine_instanciation list) option;
+  clause_uses: ('lc * 'lc ident list) option;
+  clause_sets: ('lc * 'lc set list) option;
+  clause_concrete_constants: ('lc * 'lc ident list) option;
+  clause_abstract_constants: ('lc * 'lc ident list) option;
+  clause_properties: ('lc * ('lc,'ty) predicate) option;
+  clause_concrete_variables: ('lc * 'lc ident list) option;
+  clause_abstract_variables: ('lc * 'lc ident list) option;
+  clause_invariant: ('lc * ('lc,'ty) predicate) option;
+  clause_assertions: ('lc * ('lc,'ty) predicate list) option;
+  clause_initialisation: ('lc * ('lc,'ty) substitution) option;
+  clause_operations: ('lc * ('lc,'ty) operation list) option;
+}
+
+type u_machine = (loc,bool) abstract_machine
+
+type ('lc,'ty) refinement = {
+  name: 'lc ident;
+  parameters: 'lc ident list;
+  refines: 'lc ident;
+  clause_sees: ('lc*'lc ident list) option;
+  clause_includes: ('lc*('lc,'ty) machine_instanciation list) option;
+  clause_promotes: ('lc*'lc ident list) option;
+  clause_extends: ('lc*('lc,'ty) machine_instanciation list) option;
+  clause_sets: ('lc*'lc set list) option;
+  clause_concrete_constants: ('lc*'lc ident list) option;
+  clause_abstract_constants: ('lc*'lc ident list) option;
+  clause_properties: ('lc*('lc,'ty) predicate) option;
+  clause_concrete_variables: ('lc*'lc ident list) option;
+  clause_abstract_variables: ('lc*'lc ident list) option;
+  clause_invariant: ('lc*('lc,'ty) predicate) option;
+  clause_assertions: ('lc*('lc,'ty) predicate list) option;
+  clause_initialisation: ('lc*('lc,'ty) substitution) option;
+  clause_operations: ('lc*('lc,'ty) operation list) option;
+  clause_local_operations: ('lc*('lc,'ty) operation list) option;
+}
+
+type u_refinement = (loc,bool) refinement
+
+type ('lc,'ty) implementation = {
+  name: 'lc ident;
+  refines: 'lc ident;
+  parameters: 'lc ident list;
+  clause_sees: ('lc*'lc ident list) option;
+  clause_imports: ('lc*('lc,'ty) machine_instanciation list) option;
+  clause_promotes: ('lc*'lc ident list) option;
+  clause_extends_B0: ('lc*('lc,'ty) machine_instanciation list) option;
+  clause_sets: ('lc*'lc set list) option;
+  clause_concrete_constants: ('lc*'lc ident list) option;
+  clause_properties: ('lc*('lc,'ty) predicate) option;
+  clause_values: ('lc*('lc ident*('lc,'ty) expression) list) option;
+  clause_concrete_variables: ('lc*'lc ident list) option;
+  clause_invariant: ('lc*('lc,'ty) predicate) option;
+  clause_assertions: ('lc*('lc,'ty) predicate list) option;
+  clause_initialisation_B0: ('lc*('lc,'ty) substitution) option;
+  clause_operations_B0: ('lc*('lc,'ty) operation list) option;
+  clause_local_operations_B0: ('lc*('lc,'ty) operation list) option;
+}
+
+type u_implementation = (loc,bool) implementation
+
+let get_loc (cl:('lc,'ty) clause) : 'lc =
   match cl with
   | Constraints (lc,_) | Imports (lc,_) | Sees (lc,_) | Includes (lc,_)
   | Extends (lc,_) | Promotes (lc,_) | Uses (lc,_) | Sets (lc,_)
@@ -117,32 +163,11 @@ let get_loc (cl:clause) =
 
 (* ******** *)
 
-type abstract_machine = {
-  name: ident;
-  parameters: ident list;
-  clause_constraints: (loc*predicate) option;
-  clause_sees: (loc*ident list) option;
-  clause_includes: (loc*machine_instanciation list) option;
-  clause_promotes: (loc*ident list) option;
-  clause_extends: (loc*machine_instanciation list) option;
-  clause_uses: (loc*ident list) option;
-  clause_sets: (loc*set list) option;
-  clause_concrete_constants: (loc*ident list) option;
-  clause_abstract_constants: (loc*ident list) option;
-  clause_properties: (loc*predicate) option;
-  clause_concrete_variables: (loc*ident list) option;
-  clause_abstract_variables: (loc*ident list) option;
-  clause_invariant: (loc*predicate) option;
-  clause_assertions: (loc*predicate list) option;
-  clause_initialisation: (loc*substitution) option;
-  clause_operations: (loc*operation list) option;
-}
-
 let add lst f = function
   | None -> lst
   | Some x -> (f x)::lst
 
-let clist_of_mch (mch:abstract_machine) : clause list =
+let clist_of_mch (mch:('lc,'ty) abstract_machine) : ('lc,'ty) clause list =
   let lst = add []  (fun (l,ops) -> Operations (l,ops)) mch.clause_operations in
   let lst = add lst (fun (l,x) -> Initialization(l,x)) mch.clause_initialisation in
   let lst = add lst (fun (l,x) -> Assertions(l,x)) mch.clause_assertions in
@@ -161,59 +186,41 @@ let clist_of_mch (mch:abstract_machine) : clause list =
   let lst = add lst (fun (l,x) -> Constraints(l,x)) mch.clause_constraints in
   lst
 
-let mch_eq mch1 mch2 =
+let mch_eq : type a b c d. (a,b) abstract_machine -> (c,d) abstract_machine -> bool = fun mch1 mch2 ->
   ident_eq mch1.name mch2.name &&
   ident_list_eq mch1.parameters mch2.parameters &&
   (try List.for_all2 clause_eq (clist_of_mch mch1) (clist_of_mch mch2)
    with Invalid_argument _ -> false)
 
-let check_none_exn lc = function
-  | None -> ()
-  | Some _ -> raise (Error.Error (lc,"This clause is defined twice."))
+let check_none_exn (lc:'lc) (opt:'a option) (mch:'b) : ('b,'lc*string) result =
+  match opt with
+  | None -> Ok mch
+  | Some _ ->  Error (lc,"This clause is defined twice.")
 
-let add_clause_mch_exn (co:abstract_machine) (cl:clause) : abstract_machine =
+let add_clause_mch (co:('lc,'ty) abstract_machine) (cl:('lc,'ty) clause) : (('lc,'ty) abstract_machine,'lc*string) result =
   match cl with
-  | Sees (lc,lst) ->
-    ( check_none_exn lc co.clause_sees; { co with clause_sees = Some(lc,lst) } )
-  | Sets (lc,lst) ->
-    ( check_none_exn lc co.clause_sets; { co with clause_sets = Some(lc,lst) } )
-  | Constants (lc,lst) ->
-    ( check_none_exn lc co.clause_concrete_constants; { co with clause_concrete_constants = Some(lc,lst) } )
-  | Abstract_constants (lc,lst) ->
-    ( check_none_exn lc co.clause_abstract_constants; { co with clause_abstract_constants = Some(lc,lst) } )
-  | Properties (lc,p) ->
-    ( check_none_exn lc co.clause_properties; { co with clause_properties = Some (lc,p) } )
-  | Concrete_variables (lc,lst) ->
-    ( check_none_exn lc co.clause_concrete_variables; { co with clause_concrete_variables = Some(lc,lst) } )
-  | Variables (lc,lst) ->
-    ( check_none_exn lc co.clause_abstract_variables; { co with clause_abstract_variables = Some(lc,lst) } )
-  | Invariant (lc,p) ->
-    ( check_none_exn lc co.clause_invariant; { co with clause_invariant = Some (lc,p) } )
-  | Assertions (lc,lst) ->
-    ( check_none_exn lc co.clause_assertions; { co with clause_assertions = Some (lc,lst) } )
-  | Initialization (lc,p) ->
-    ( check_none_exn lc co.clause_initialisation; { co with clause_initialisation = Some (lc,p) } )
-  | Operations (lc,lst) ->
-    ( check_none_exn lc co.clause_operations; { co with clause_operations = Some(lc,lst) } )
-  | Values (lc,_) ->
-    raise (Error.Error (lc, "The clause VALUES is not allowed in abstract machines."))
-  | Local_Operations (lc,_) ->
-    raise (Error.Error (lc, "The clause LOCAL_OPERATIONS is not allowed in abstract machines."))
-  | Promotes (lc,lst) ->
-    ( check_none_exn lc co.clause_promotes; { co with clause_promotes = Some(lc,lst) } )
-  | Imports (lc,_) ->
-    raise (Error.Error (lc, "The clause IMPORTS is not allowed in abstract machines."))
-  | Constraints (lc,lst) ->
-    ( check_none_exn lc co.clause_constraints; { co with clause_constraints = Some(lc,lst) } )
-  | Includes (lc,lst) ->
-    ( check_none_exn lc co.clause_includes; { co with clause_includes = Some(lc,lst) } )
-  | Extends (lc,lst) ->
-    ( check_none_exn lc co.clause_extends; { co with clause_extends = Some(lc,lst) } )
-  | Uses (lc,lst) ->
-    ( check_none_exn lc co.clause_uses; { co with clause_uses = Some(lc,lst) } )
+  | Sees (lc,lst) -> check_none_exn lc co.clause_sees { co with clause_sees = Some(lc,lst) }
+  | Sets (lc,lst) -> check_none_exn lc co.clause_sets { co with clause_sets = Some(lc,lst) }
+  | Constants (lc,lst) -> check_none_exn lc co.clause_concrete_constants { co with clause_concrete_constants = Some(lc,lst) }
+  | Abstract_constants (lc,lst) -> check_none_exn lc co.clause_abstract_constants { co with clause_abstract_constants = Some(lc,lst) }
+  | Properties (lc,p) -> check_none_exn lc co.clause_properties { co with clause_properties = Some (lc,p) }
+  | Concrete_variables (lc,lst) -> check_none_exn lc co.clause_concrete_variables { co with clause_concrete_variables = Some(lc,lst) }
+  | Variables (lc,lst) -> check_none_exn lc co.clause_abstract_variables { co with clause_abstract_variables = Some(lc,lst) }
+  | Invariant (lc,p) -> check_none_exn lc co.clause_invariant { co with clause_invariant = Some (lc,p) }
+  | Assertions (lc,lst) -> check_none_exn lc co.clause_assertions { co with clause_assertions = Some (lc,lst) }
+  | Initialization (lc,p) -> check_none_exn lc co.clause_initialisation { co with clause_initialisation = Some (lc,p) }
+  | Operations (lc,lst) -> check_none_exn lc co.clause_operations { co with clause_operations = Some(lc,lst) }
+  | Values (lc,_) -> Error (lc, "The clause VALUES is not allowed in abstract machines.")
+  | Local_Operations (lc,_) -> Error (lc, "The clause LOCAL_OPERATIONS is not allowed in abstract machines.")
+  | Promotes (lc,lst) -> check_none_exn lc co.clause_promotes { co with clause_promotes = Some(lc,lst) }
+  | Imports (lc,_) -> Error (lc, "The clause IMPORTS is not allowed in abstract machines.")
+  | Constraints (lc,lst) -> check_none_exn lc co.clause_constraints { co with clause_constraints = Some(lc,lst) }
+  | Includes (lc,lst) -> check_none_exn lc co.clause_includes { co with clause_includes = Some(lc,lst) }
+  | Extends (lc,lst) -> check_none_exn lc co.clause_extends { co with clause_extends = Some(lc,lst) }
+  | Uses (lc,lst) -> check_none_exn lc co.clause_uses { co with clause_uses = Some(lc,lst) }
 
-let mk_machine_exn (name:ident) (params:ident list) (clauses:clause list) : abstract_machine =
-  let mch:abstract_machine =
+let mk_machine name params clauses =
+  let mch =
     { name=name;
       parameters=params;
       clause_sees=None;
@@ -233,41 +240,16 @@ let mk_machine_exn (name:ident) (params:ident list) (clauses:clause list) : abst
       clause_initialisation=None;
       clause_operations=None; }
   in
-  List.fold_left add_clause_mch_exn mch clauses
+  Error.fold_left add_clause_mch mch clauses
 
-let mch_of_clist (name:ident) (params:ident list) (clauses:clause list)
-  : (abstract_machine,string) result =
-  try Ok (mk_machine_exn name params clauses)
-  with Error.Error (_,err) -> Error err
-
-let norm_mch (mch: abstract_machine) : abstract_machine =
-  mk_machine_exn mch.name mch.parameters
-    (List.map norm_clause (clist_of_mch mch))
+let mk_machine_exn name params clauses =
+  match mk_machine name params clauses with
+  | Ok x -> x
+  | Error (x,y) -> raise (Error.Error (x,y))
 
 (* ******** *)
 
-type refinement = {
-  name: ident;
-  parameters: ident list;
-  refines: ident;
-  clause_sees: (loc*ident list) option;
-  clause_includes: (loc*machine_instanciation list) option;
-  clause_promotes: (loc*ident list) option;
-  clause_extends: (loc*machine_instanciation list) option;
-  clause_sets: (loc*set list) option;
-  clause_concrete_constants: (loc*ident list) option;
-  clause_abstract_constants: (loc*ident list) option;
-  clause_properties: (loc*predicate) option;
-  clause_concrete_variables: (loc*ident list) option;
-  clause_abstract_variables: (loc*ident list) option;
-  clause_invariant: (loc*predicate) option;
-  clause_assertions: (loc*predicate list) option;
-  clause_initialisation: (loc*substitution) option;
-  clause_operations: (loc*operation list) option;
-  clause_local_operations: (loc*operation list) option;
-}
-
-let clist_of_ref (ref:refinement) : clause list =
+let clist_of_ref (ref:('lc,'ty) refinement) : ('lc,'ty) clause list =
   let lst = add []  (fun (l,x) -> Operations(l,x)) ref.clause_operations in
   let lst = add lst (fun (l,x) -> Local_Operations(l,x)) ref.clause_local_operations in
   let lst = add lst (fun (l,x) -> Initialization(l,x)) ref.clause_initialisation in
@@ -285,56 +267,37 @@ let clist_of_ref (ref:refinement) : clause list =
   let lst = add lst (fun (l,x) -> Sees(l,x)) ref.clause_sees in
   lst
 
-let ref_eq ref1 ref2 =
+let ref_eq: type a b c d. (a,b) refinement -> (c,d) refinement -> bool = fun ref1 ref2 ->
   ident_eq ref1.name ref2.name &&
   ident_list_eq ref1.parameters ref2.parameters &&
   ident_eq ref1.refines ref2.refines &&
   (try List.for_all2 clause_eq (clist_of_ref ref1) (clist_of_ref ref2)
    with Invalid_argument _ -> false)
 
-let add_clause_ref_exn (co:refinement) (cl:clause) : refinement =
+let add_clause_ref (co:('lc,'ty) refinement) (cl:('lc,'ty) clause) : (('lc,'ty) refinement,'lc*string) result =
   match cl with
-  | Sees (lc,lst) ->
-    ( check_none_exn lc co.clause_sees; { co with clause_sees = Some(lc,lst) } )
-  | Sets (lc,lst) ->
-    ( check_none_exn lc co.clause_sets; { co with clause_sets = Some(lc,lst) } )
-  | Constants (lc,lst) ->
-    ( check_none_exn lc co.clause_concrete_constants; { co with clause_concrete_constants = Some(lc,lst) } )
-  | Properties (lc,p) ->
-    ( check_none_exn lc co.clause_properties; { co with clause_properties = Some (lc,p) } )
-  | Concrete_variables (lc,lst) ->
-    ( check_none_exn lc co.clause_concrete_variables; { co with clause_concrete_variables = Some(lc,lst) } )
-  | Invariant (lc,p) ->
-    ( check_none_exn lc co.clause_invariant; { co with clause_invariant = Some (lc,p) } )
-  | Assertions (lc,lst) ->
-    ( check_none_exn lc co.clause_assertions; { co with clause_assertions = Some (lc,lst) } )
-  | Initialization (lc,p) ->
-    ( check_none_exn lc co.clause_initialisation; { co with clause_initialisation = Some (lc,p) } )
-  | Operations (lc,lst) ->
-    ( check_none_exn lc co.clause_operations; { co with clause_operations = Some(lc,lst) } )
-  | Values (lc,lst) ->
-    raise (Error.Error (lc, "The clause VALUES is not allowed in refinements."))
-  | Local_Operations (lc,lst) ->
-    ( check_none_exn lc co.clause_local_operations; { co with clause_local_operations = Some(lc,lst) } )
-  | Promotes (lc,lst) ->
-    ( check_none_exn lc co.clause_promotes; { co with clause_promotes = Some(lc,lst) } )
-  | Imports (lc,lst) ->
-    raise (Error.Error (lc, "The clause IMPORTS is not allowed in refinements."))
-  | Abstract_constants (lc,lst) ->
-    ( check_none_exn lc co.clause_abstract_constants; { co with clause_abstract_constants = Some(lc,lst) } )
-  | Variables (lc,lst) ->
-    ( check_none_exn lc co.clause_abstract_variables; { co with clause_abstract_variables = Some(lc,lst) } )
-  | Constraints (lc,_) ->
-    raise (Error.Error (lc, "The clause CONSTRAINTS is not allowed in refinements."))
-  | Includes (lc,lst) ->
-    ( check_none_exn lc co.clause_includes; { co with clause_includes = Some(lc,lst) } )
-  | Extends (lc,lst) ->
-    ( check_none_exn lc co.clause_extends; { co with clause_extends = Some(lc,lst) } )
-  | Uses (lc,lst) ->
-    raise (Error.Error (lc, "The clause USES is not allowed in refinements."))
+  | Sees (lc,lst) -> check_none_exn lc co.clause_sees { co with clause_sees = Some(lc,lst) }
+  | Sets (lc,lst) -> check_none_exn lc co.clause_sets { co with clause_sets = Some(lc,lst) }
+  | Constants (lc,lst) -> check_none_exn lc co.clause_concrete_constants { co with clause_concrete_constants = Some(lc,lst) }
+  | Properties (lc,p) -> check_none_exn lc co.clause_properties { co with clause_properties = Some (lc,p) }
+  | Concrete_variables (lc,lst) -> check_none_exn lc co.clause_concrete_variables { co with clause_concrete_variables = Some(lc,lst) }
+  | Invariant (lc,p) -> check_none_exn lc co.clause_invariant { co with clause_invariant = Some (lc,p) }
+  | Assertions (lc,lst) -> check_none_exn lc co.clause_assertions { co with clause_assertions = Some (lc,lst) }
+  | Initialization (lc,p) -> check_none_exn lc co.clause_initialisation { co with clause_initialisation = Some (lc,p) }
+  | Operations (lc,lst) -> check_none_exn lc co.clause_operations { co with clause_operations = Some(lc,lst) }
+  | Values (lc,lst) -> Error (lc, "The clause VALUES is not allowed in refinements.")
+  | Local_Operations (lc,lst) -> check_none_exn lc co.clause_local_operations { co with clause_local_operations = Some(lc,lst) }
+  | Promotes (lc,lst) -> check_none_exn lc co.clause_promotes { co with clause_promotes = Some(lc,lst) }
+  | Imports (lc,lst) -> Error (lc, "The clause IMPORTS is not allowed in refinements.")
+  | Abstract_constants (lc,lst) -> check_none_exn lc co.clause_abstract_constants { co with clause_abstract_constants = Some(lc,lst) }
+  | Variables (lc,lst) -> check_none_exn lc co.clause_abstract_variables { co with clause_abstract_variables = Some(lc,lst) }
+  | Constraints (lc,_) -> Error (lc, "The clause CONSTRAINTS is not allowed in refinements.")
+  | Includes (lc,lst) -> check_none_exn lc co.clause_includes { co with clause_includes = Some(lc,lst) }
+  | Extends (lc,lst) -> check_none_exn lc co.clause_extends { co with clause_extends = Some(lc,lst) }
+  | Uses (lc,lst) -> Error (lc, "The clause USES is not allowed in refinements.")
 
-let mk_refinement_exn (name:ident) (params:ident list) (refines:ident) (clauses:clause list) : refinement =
-  let ref:refinement =
+let mk_refinement name params refines clauses =
+  let ref =
     { name=name;
       parameters=params;
       refines=refines;
@@ -354,40 +317,16 @@ let mk_refinement_exn (name:ident) (params:ident list) (refines:ident) (clauses:
       clause_local_operations=None;
       clause_operations=None; }
   in
-  List.fold_left add_clause_ref_exn ref clauses
+  Error.fold_left add_clause_ref ref clauses
 
-let ref_of_clist (name:ident) (params:ident list) (refines:ident) (clauses:clause list)
-  : (refinement,string) result =
-  try Ok (mk_refinement_exn name params refines clauses)
-  with Error.Error (_,err) -> Error err
-
-let norm_ref (ref: refinement) : refinement =
-  mk_refinement_exn ref.name ref.parameters ref.refines
-    (List.map norm_clause (clist_of_ref ref))
+let mk_refinement_exn name params refines clauses =
+  match mk_refinement name params refines clauses with
+  | Ok x -> x
+  | Error (x,y) -> raise (Error.Error (x,y))
 
 (* ******** *)
 
-type implementation = {
-  name: ident;
-  refines: ident;
-  parameters: ident list;
-  clause_sees: (loc*ident list) option;
-  clause_imports: (loc*machine_instanciation list) option;
-  clause_promotes: (loc*ident list) option;
-  clause_extends_B0: (loc*machine_instanciation list) option;
-  clause_sets: (loc*set list) option;
-  clause_concrete_constants: (loc*ident list) option;
-  clause_properties: (loc*predicate) option;
-  clause_values: (loc*(ident*expression) list) option;
-  clause_concrete_variables: (loc*ident list) option;
-  clause_invariant: (loc*predicate) option;
-  clause_assertions: (loc*predicate list) option;
-  clause_initialisation_B0: (loc*substitution) option;
-  clause_operations_B0: (loc*operation list) option;
-  clause_local_operations_B0: (loc*operation list) option;
-}
-
-let clist_of_imp (imp:implementation) : clause list =
+let clist_of_imp (imp:('lc,'ty) implementation) : ('lc,'ty) clause list =
   let lst = add []  (fun (l,x) -> Operations(l,x)) imp.clause_operations_B0 in
   let lst = add lst (fun (l,x) -> Local_Operations(l,x)) imp.clause_local_operations_B0 in
   let lst = add lst (fun (l,x) -> Initialization(l,x)) imp.clause_initialisation_B0 in
@@ -404,56 +343,37 @@ let clist_of_imp (imp:implementation) : clause list =
   let lst = add lst (fun (l,x) -> Sees(l,x)) imp.clause_sees in
   lst
 
-let imp_eq imp1 imp2 =
+let imp_eq: type a b c d. (a,b) implementation -> (c,d) implementation -> bool = fun imp1 imp2 ->
   ident_eq imp1.name imp2.name &&
   ident_list_eq imp1.parameters imp2.parameters &&
   ident_eq imp1.refines imp2.refines &&
   (try List.for_all2 clause_eq (clist_of_imp imp1) (clist_of_imp imp2)
    with Invalid_argument _ -> false)
 
-let add_clause_imp_exn (co:implementation) (cl:clause) : implementation =
+let add_clause_imp (co:('lc,'ty) implementation) (cl:('lc,'ty) clause) : (('lc,'ty) implementation,'lc*string) result =
   match cl with
-  | Sees (lc,lst) ->
-    ( check_none_exn lc co.clause_sees; { co with clause_sees = Some(lc,lst) } )
-  | Sets (lc,lst) ->
-    ( check_none_exn lc co.clause_sets; { co with clause_sets = Some(lc,lst) } )
-  | Constants (lc,lst) ->
-    ( check_none_exn lc co.clause_concrete_constants; { co with clause_concrete_constants = Some(lc,lst) } )
-  | Properties (lc,p) ->
-    ( check_none_exn lc co.clause_properties; { co with clause_properties = Some (lc,p) } )
-  | Concrete_variables (lc,lst) ->
-    ( check_none_exn lc co.clause_concrete_variables; { co with clause_concrete_variables = Some(lc,lst) } )
-  | Invariant (lc,p) ->
-    ( check_none_exn lc co.clause_invariant; { co with clause_invariant = Some (lc,p) } )
-  | Assertions (lc,lst) ->
-    ( check_none_exn lc co.clause_assertions; { co with clause_assertions = Some (lc,lst) } )
-  | Initialization (lc,p) ->
-    ( check_none_exn lc co.clause_initialisation_B0; { co with clause_initialisation_B0 = Some (lc,p) } )
-  | Operations (lc,lst) ->
-    ( check_none_exn lc co.clause_operations_B0; { co with clause_operations_B0 = Some(lc,lst) } )
-  | Values (lc,lst) ->
-    ( check_none_exn lc co.clause_values; { co with clause_values = Some(lc,lst) } )
-  | Local_Operations (lc,lst) ->
-    ( check_none_exn lc co.clause_local_operations_B0; { co with clause_local_operations_B0 = Some(lc,lst) } )
-  | Promotes (lc,lst) ->
-    ( check_none_exn lc co.clause_promotes; { co with clause_promotes = Some(lc,lst) } )
-  | Imports (lc,lst) ->
-    ( check_none_exn lc co.clause_imports; { co with clause_imports = Some(lc,lst) } )
-  | Abstract_constants (lc,lst) ->
-    raise (Error.Error (lc, "The clause ABSTRACT_CONSTANTS is not allowed in implementations."))
-  | Variables (lc,lst) ->
-    raise (Error.Error (lc, "The clause VARIABLES is not allowed in implementations."))
-  | Constraints (lc,_) ->
-    raise (Error.Error (lc, "The clause CONSTRAINTS is not allowed in implementation."))
-  | Includes (lc,lst) ->
-    raise (Error.Error (lc, "The clause INCLUDES is not allowed in implementations."))
-  | Extends (lc,lst) ->
-    ( check_none_exn lc co.clause_extends_B0; { co with clause_extends_B0 = Some(lc,lst) } )
-  | Uses (lc,lst) ->
-    raise (Error.Error (lc, "The clause USES is not allowed in implementations."))
+  | Sees (lc,lst) -> check_none_exn lc co.clause_sees { co with clause_sees = Some(lc,lst) }
+  | Sets (lc,lst) -> check_none_exn lc co.clause_sets { co with clause_sets = Some(lc,lst) }
+  | Constants (lc,lst) -> check_none_exn lc co.clause_concrete_constants { co with clause_concrete_constants = Some(lc,lst) }
+  | Properties (lc,p) -> check_none_exn lc co.clause_properties { co with clause_properties = Some (lc,p) }
+  | Concrete_variables (lc,lst) -> check_none_exn lc co.clause_concrete_variables { co with clause_concrete_variables = Some(lc,lst) }
+  | Invariant (lc,p) -> check_none_exn lc co.clause_invariant { co with clause_invariant = Some (lc,p) }
+  | Assertions (lc,lst) -> check_none_exn lc co.clause_assertions { co with clause_assertions = Some (lc,lst) }
+  | Initialization (lc,p) -> check_none_exn lc co.clause_initialisation_B0 { co with clause_initialisation_B0 = Some (lc,p) }
+  | Operations (lc,lst) -> check_none_exn lc co.clause_operations_B0 { co with clause_operations_B0 = Some(lc,lst) }
+  | Values (lc,lst) -> check_none_exn lc co.clause_values { co with clause_values = Some(lc,lst) }
+  | Local_Operations (lc,lst) -> check_none_exn lc co.clause_local_operations_B0 { co with clause_local_operations_B0 = Some(lc,lst) }
+  | Promotes (lc,lst) -> check_none_exn lc co.clause_promotes { co with clause_promotes = Some(lc,lst) }
+  | Imports (lc,lst) -> check_none_exn lc co.clause_imports { co with clause_imports = Some(lc,lst) }
+  | Abstract_constants (lc,lst) -> Error (lc, "The clause ABSTRACT_CONSTANTS is not allowed in implementations.")
+  | Variables (lc,lst) -> Error (lc, "The clause VARIABLES is not allowed in implementations.")
+  | Constraints (lc,_) -> Error (lc, "The clause CONSTRAINTS is not allowed in implementation.")
+  | Includes (lc,lst) -> Error (lc, "The clause INCLUDES is not allowed in implementations.")
+  | Extends (lc,lst) -> check_none_exn lc co.clause_extends_B0 { co with clause_extends_B0 = Some(lc,lst) }
+  | Uses (lc,lst) -> Error (lc, "The clause USES is not allowed in implementations.")
 
-let mk_implementation_exn (name:ident) (params:ident list) (refines:ident) (clauses:clause list) : implementation =
-  let imp:implementation =
+let mk_implementation name params refines clauses =
+  let imp =
     { name=name;
       parameters=params;
       refines=refines;
@@ -472,32 +392,25 @@ let mk_implementation_exn (name:ident) (params:ident list) (refines:ident) (clau
       clause_local_operations_B0=None;
       clause_operations_B0=None; }
   in
-  List.fold_left add_clause_imp_exn imp clauses
+  Error.fold_left add_clause_imp imp clauses
 
-let imp_of_clist (name:ident) (params:ident list) (refines:ident) (clauses:clause list)
-  : (implementation,string) result =
-  try Ok (mk_implementation_exn name params refines clauses)
-  with Error.Error (_,err) -> Error err
-
-let norm_imp (imp: implementation) : implementation =
-  mk_implementation_exn imp.name imp.parameters imp.refines
-    (List.map norm_clause (clist_of_imp imp))
+let mk_implementation_exn name params refines clauses =
+  match mk_implementation name params refines clauses with
+  | Ok x -> x
+  | Error (x,y) -> raise (Error.Error (x,y))
 
 (* ******** *)
 
-type component = 
-  | Abstract_machine of abstract_machine
-  | Refinement of refinement
-  | Implementation of implementation
+type ('lc,'ty) component = 
+  | Abstract_machine of ('lc,'ty) abstract_machine
+  | Refinement of ('lc,'ty) refinement
+  | Implementation of ('lc,'ty) implementation
 
-let component_eq c1 c2 =
+let component_eq: type a b c d. (a,b) component -> (c,d) component -> bool = fun c1 c2 ->
   match c1, c2 with
   | Abstract_machine mch1, Abstract_machine mch2 -> mch_eq mch1 mch2
   | Refinement ref1, Refinement ref2 -> ref_eq ref1 ref2
   | Implementation imp1, Implementation imp2 -> imp_eq imp1 imp2
   | _, _ -> false
 
-let norm_component : component -> component = function
-  | Abstract_machine x -> Abstract_machine (norm_mch x)
-  | Refinement x -> Refinement (norm_ref x)
-  | Implementation x -> Implementation (norm_imp x)
+type u_comp = (loc,bool) component

@@ -47,8 +47,8 @@ let load_quoted_def_file_exn (lc:loc) (fn:string) : in_channel =
 
 (* ***** *)
 
-type macro_table = (string,loc*ident list*t_token list) Hashtbl.t
-type macro = ( ident * ident list * t_token list )
+type macro_table = (string,loc*u_ident list*t_token list) Hashtbl.t
+type macro = ( u_ident * u_ident list * t_token list )
 
 let find (hsh:macro_table) (id:string) =
   try
@@ -148,13 +148,13 @@ let rec state_1_start_exn (state:state) (def_lst:macro list) : macro list =
     if is_end_of_def_clause tk then def_lst
     else raise_err st tk
 
-and state_2_eqeq_or_lpar_exn (state:state) (def_lst:macro list) (def_name:ident) : macro list =
+and state_2_eqeq_or_lpar_exn (state:state) (def_lst:macro list) (def_name:u_ident) : macro list =
   match get_next_exn state with
   | EQUALEQUAL, _, _ -> state_3_body_exn state def_lst def_name [] []
   | LPAR, _, _ -> state_4_param_lst_exn state def_lst def_name
   | tk, st, _ -> raise_err st tk
 
-and state_3_body_exn state (def_lst:macro list) (def_name:ident) (plst_rev:ident list) (tks_rev:t_token list) : macro list =
+and state_3_body_exn state (def_lst:macro list) (def_name:u_ident) (plst_rev:u_ident list) (tks_rev:t_token list) : macro list =
   match get_next_exn state with
   (* may be a separator *)
   | SEMICOLON, _, _ as next ->
@@ -176,24 +176,24 @@ and state_3_body_exn state (def_lst:macro list) (def_name:ident) (plst_rev:ident
   (* definition body *)
     state_3_body_exn state def_lst def_name plst_rev (next::tks_rev)
 
-and state_4_param_lst_exn (state:state) (def_lst:macro list) (def_name:ident) : macro list =
+and state_4_param_lst_exn (state:state) (def_lst:macro list) (def_name:u_ident) : macro list =
   match get_next_exn state with
   | IDENT id, st, _ -> state_5_comma_or_rpar_exn state def_lst def_name [(st,id)]
   | RPAR, _, _ -> state_7_eqeq_exn state def_lst def_name []
   | tk, st, _ -> raise_err st tk
 
-and state_5_comma_or_rpar_exn (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
+and state_5_comma_or_rpar_exn (state:state) (def_lst:macro list) (def_name:u_ident) (plst_rev:u_ident list) : macro list =
   match get_next_exn state with
   | COMMA, _, _ -> state_6_param_exn state def_lst def_name plst_rev
   | RPAR, _, _ -> state_7_eqeq_exn state def_lst def_name plst_rev
   | tk, st, _ -> raise_err st tk
 
-and state_6_param_exn (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
+and state_6_param_exn (state:state) (def_lst:macro list) (def_name:u_ident) (plst_rev:u_ident list) : macro list =
   match get_next_exn state with
   | IDENT id, lc, _ -> state_5_comma_or_rpar_exn state def_lst def_name ((lc,id)::plst_rev)
   | tk, st, _ -> raise_err st tk
 
-and state_7_eqeq_exn (state:state) (def_lst:macro list) (def_name:ident) (plst_rev:ident list) : macro list =
+and state_7_eqeq_exn (state:state) (def_lst:macro list) (def_name:u_ident) (plst_rev:u_ident list) : macro list =
   match get_next_exn state with
   | EQUALEQUAL, _, _ -> state_3_body_exn state def_lst def_name plst_rev []
   | tk, st, _ -> raise_err st tk
@@ -232,7 +232,7 @@ let mk_macro_table_exn (fname:string) (lb:Lexing.lexbuf) : macro_table =
 
 (* **************** *)
 
-let mk_assoc_exn (loc:loc) (l1:ident list) (l2:t_token list list) : (string*t_token list) list =
+let mk_assoc_exn (loc:loc) (l1:u_ident list) (l2:t_token list list) : (string*t_token list) list =
   let rec aux l1 l2 =
     match l1, l2 with
     | [] , [] -> []

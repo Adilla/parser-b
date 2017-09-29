@@ -4,28 +4,24 @@ open Expression
 open Substitution
 open Component
 
-let mk_infix_app lc (f:expression) (a1:expression) (a2:expression) : expression =
-  Application (lc,f,Couple(lc,Infix,a1,a2))
+let mk_infix_app lc (f:u_expr) (a1:u_expr) (a2:u_expr) : u_expr =
+  Application (lc,false,f,Couple(lc,false,Infix,a1,a2))
 
-let expr_to_list (e:expression) : expression list =
+let expr_to_list (e:u_expr) : u_expr list =
   let rec aux lst = function
-    | Couple (_,Comma,e1,e2) -> aux (e2::lst) e1
+    | Couple (_,b,Comma,e1,e2) as e ->
+      if b then e::lst else aux (e2::lst) e1
     | e -> e::lst
   in
   aux [] e
 
-let rec expr_to_nonempty_list (e:expression): expression non_empty_list =
-  let lst = expr_to_list e in
-  (List.hd lst,List.tl lst)
-(*
-let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
-  let rec aux lst = function
-  | Couple (_,Comma,e1,e2) -> aux e1 ((None,e2)::lst)
-  | e -> [(None,e)]
-  in
-  let lst = aux e in
-  (List.hd lst,List.tl lst)
-*)
+let rec expr_to_nonempty_list (e:u_expr): u_expr non_empty_list =
+  let lst = expr_to_list e in (List.hd lst,List.tl lst)
+
+let set_true = function
+  | Couple (l,_,cm,a,b) -> Couple(l,true,cm,a,b)
+  | e -> e
+
 %}
 
 %token EOF
@@ -193,7 +189,6 @@ let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
 %token LET
 %token BE
 %token BECOMES_ELT
-(* %token BECOMES_SUCH *)
 %token VAR
 %token WHILE
 %token DO
@@ -227,11 +222,13 @@ let expr_to_rfields (e:expression): (ident option * expression) non_empty_list =
 %token VALUES
 
 %start component_eof
-%type <Component.component> component_eof
-%type <Expression.expression> expression
-%type <Expression.predicate> predicate
-%type <Substitution.substitution> substitution
-%type <Component.clause> clause
+%type <Component.u_comp> component_eof
+%type <Expression.u_expr> expression
+%type <Expression.u_pred> predicate
+%type <Substitution.u_subst> substitution
+%type <Substitution.u_subst> level1_substitution
+%type <Component.u_clause> clause
+%type <Component.u_operation> operation
 
 /* 10 */
 /* 20 */
@@ -274,160 +271,157 @@ ident_lst_comma:
         | id=IDENT { [($startpos(id),id)] }
         | id=IDENT COMMA lst=ident_lst_comma { ($startpos(id),id)::lst }
 
+ident_lst_comma2:
+        | id=IDENT { [(false,($startpos(id),id))] }
+        | id=IDENT COMMA lst=ident_lst_comma2 { (false,($startpos(id),id))::lst }
+
 liste_ident:
-  id=IDENT { [($startpos(id),id)] }
-| LPAR lst=ident_lst_comma RPAR { lst }
+  id=IDENT { [(false,($startpos(id),id))] }
+| LPAR lst=ident_lst_comma2 RPAR { lst }
 
 fields:
 | id=IDENT MEMBER_OF e=expression { [(($startpos(id),id),e)] }
 | id=IDENT MEMBER_OF e=expression COMMA lst=fields { (($startpos(id),id),e)::lst }
-(*
-rec_fields:
-(* | e=expression { [None,e] } *)
-(* | e=expression COMMA lst=rec_fields { (None,e)::lst } *)
-| id=IDENT MEMBER_OF e=expression { [(Some ($startpos(id),id),e)] }
-| id=IDENT MEMBER_OF e=expression COMMA lst=rec_fields { (Some ($startpos(id),id),e)::lst }
-   *)
 
 expression:
 (* expression_primaire: *)
-| id=IDENT { Ident ($startpos(id),id) }
-| id=IDENT DOLLAR_ZERO { Dollar ($startpos(id),id) }
-| LPAR e=expression RPAR { Parentheses ($startpos,e) }
-| s=STRING { Builtin ($startpos(s),String s) }
+| id=IDENT { Ident (false,($startpos(id),id)) }
+| id=IDENT DOLLAR_ZERO { Dollar (false,($startpos(id),id)) }
+| LPAR e=expression RPAR { set_true e }
+| s=STRING { Builtin ($startpos(s),false,String s) }
 (* expression_booleenne: *)
-| TRUE { Builtin ($startpos,TRUE) }
-| FALSE { Builtin ($startpos,FALSE) }
-| CBOOL LPAR p=predicate RPAR { Pbool ($startpos,p) }
+| TRUE { Builtin ($startpos,false,TRUE) }
+| FALSE { Builtin ($startpos,false,FALSE) }
+| CBOOL LPAR p=predicate RPAR { Pbool ($startpos,false,p) }
 (* entier_lit: *)
-| i=INTEGER { Builtin ($startpos(i),Integer i) }
-| MAXINT { Builtin ($startpos,MaxInt) }
-| MININT { Builtin ($startpos,MinInt) }
+| i=INTEGER { Builtin ($startpos(i),false,Integer i) }
+| MAXINT { Builtin ($startpos,false,MaxInt) }
+| MININT { Builtin ($startpos,false,MinInt) }
 (* expression_arithmetique: *)
-| e1=expression PLUS e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Addition)) e1 e2 }
-| e1=expression MINUS e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Difference)) e1 e2 }
-| MINUS e=expression { Application ($startpos,Builtin($startpos,Unary_Minus),e) } %prec unary_minus
-| e1=expression STAR e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Product)) e1 e2 }
-| e1=expression DIV e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Division)) e1 e2 }
-| e1=expression MOD e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Modulo)) e1 e2 }
-| e1=expression POWER e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Power)) e1 e2 }
-| SUCC LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Successor),e) }
-| PRED LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Predecessor),e) }
-| MAX LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Max),e) }
-| MIN LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Min),e) }
-| CARD LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Cardinal),e) }
-| SIGMA ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Sum,(List.hd ids,List.tl ids),p,e) }
-| PI ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Prod,(List.hd ids,List.tl ids),p,e) }
+| e1=expression PLUS e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Addition)) e1 e2 }
+| e1=expression MINUS e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Difference)) e1 e2 }
+| MINUS e=expression { Application ($startpos,false,Builtin($startpos,false,Unary_Minus),e) } %prec unary_minus
+| e1=expression STAR e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Product)) e1 e2 }
+| e1=expression DIV e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Division)) e1 e2 }
+| e1=expression MOD e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Modulo)) e1 e2 }
+| e1=expression POWER e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Power)) e1 e2 }
+| SUCC LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Successor),e) }
+| PRED LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Predecessor),e) }
+| MAX LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Max),e) }
+| MIN LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Min),e) }
+| CARD LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Cardinal),e) }
+| SIGMA ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,false,Sum,(List.hd ids,List.tl ids),p,e) }
+| PI ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,false,Prod,(List.hd ids,List.tl ids),p,e) }
 (* expression_de_couples: *)
-| e1=expression MAPLET e2=expression { Couple ($startpos,Maplet,e1,e2) }
-| e1=expression COMMA e2=expression { Couple ($startpos,Comma,e1,e2) }
+| e1=expression MAPLET e2=expression { Couple ($startpos,false,Maplet,e1,e2) }
+| e1=expression COMMA e2=expression { Couple ($startpos,false,Comma,e1,e2) }
 (* expression_d_ensembles: *)
-| EMPTY_SET { Builtin ($startpos,Empty_Set) }
-| Z_SET { Builtin ($startpos,INTEGER) }
-| N_SET { Builtin ($startpos,NATURAL) }
-| N1_SET { Builtin ($startpos,NATURAL1) }
-| NAT_SET { Builtin ($startpos,NAT) }
-| NAT1_SET { Builtin ($startpos,NAT1) }
-| INT_SET { Builtin ($startpos,INT) }
-| BOOL_SET { Builtin ($startpos,BOOLEANS) }
-| STRING_SET { Builtin($startpos,STRINGS) }
+| EMPTY_SET { Builtin ($startpos,false,Empty_Set) }
+| Z_SET { Builtin ($startpos,false,INTEGER) }
+| N_SET { Builtin ($startpos,false,NATURAL) }
+| N1_SET { Builtin ($startpos,false,NATURAL1) }
+| NAT_SET { Builtin ($startpos,false,NAT) }
+| NAT1_SET { Builtin ($startpos,false,NAT1) }
+| INT_SET { Builtin ($startpos,false,INT) }
+| BOOL_SET { Builtin ($startpos,false,BOOLEANS) }
+| STRING_SET { Builtin($startpos,false,STRINGS) }
 (* construction_d_ensembles: *)
-| LBRA_COMP ids=ident_lst_comma BAR p=predicate RBRA  { Comprehension ($startpos,(List.hd ids,List.tl ids),p) }
-| POW LPAR e=expression RPAR { Application($startpos,Builtin ($startpos,Power_Set Full),e) }
-| POW1 LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Power_Set Non_Empty),e) }
-| FPOW LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Power_Set Finite),e) }
-| FPOW1 LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Power_Set Finite_Non_Empty),e) }
-| LBRA e=expression RBRA { Extension ($startpos,expr_to_nonempty_list e) } 
-| e1=expression DOTDOT e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Interval)) e1 e2 }
-| e1=expression B_UNION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Union)) e1 e2 }
-| e1=expression B_INTER e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Intersection)) e1 e2 }
-| G_UNION LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,G_Union),e) }
-| G_INTER LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,G_Intersection),e) }
-| Q_UNION ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Q_Union,(List.hd ids,List.tl ids),p,e) }
-| Q_INTER ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Q_Intersection,(List.hd ids,List.tl ids),p,e) }
+| LBRA_COMP ids=ident_lst_comma2 BAR p=predicate RBRA  { Comprehension ($startpos,false,(List.hd ids,List.tl ids),p) }
+| POW LPAR e=expression RPAR { Application($startpos,false,Builtin ($startpos,false,Power_Set Full),e) }
+| POW1 LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Power_Set Non_Empty),e) }
+| FPOW LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Power_Set Finite),e) }
+| FPOW1 LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Power_Set Finite_Non_Empty),e) }
+| LBRA e=expression RBRA { Extension ($startpos,false,expr_to_nonempty_list e) } 
+| e1=expression DOTDOT e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Interval)) e1 e2 }
+| e1=expression B_UNION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Union)) e1 e2 }
+| e1=expression B_INTER e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Intersection)) e1 e2 }
+| G_UNION LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,G_Union),e) }
+| G_INTER LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,G_Intersection),e) }
+| Q_UNION ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,false,Q_Union,(List.hd ids,List.tl ids),p,e) }
+| Q_INTER ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,false,Q_Intersection,(List.hd ids,List.tl ids),p,e) }
 (* expression_de_records: *)
-| STRUCT LPAR lst=fields RPAR   { Record_Type ($startpos,(List.hd lst,List.tl lst))  }
-| REC LPAR lst=fields RPAR  { Record ($startpos,(List.hd lst,List.tl lst)) }
+| STRUCT LPAR lst=fields RPAR   { Record_Type ($startpos,false,(List.hd lst,List.tl lst))  }
+| REC LPAR lst=fields RPAR  { Record ($startpos,false,(List.hd lst,List.tl lst)) }
 (* | REC LPAR e=expression RPAR  { Record ($startpos,expr_to_rfields e) } *)
-| e=expression SQUOTE id=IDENT   { Record_Field_Access ($startpos,e,($startpos(id),id)) }
+| e=expression SQUOTE id=IDENT   { Record_Field_Access ($startpos,false,e,($startpos(id),id)) }
 (* expression_de_relations: *)
-| e1=expression RELATION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Relations)) e1 e2 }
-| ID LPAR e=expression RPAR { Application ($startpos,Builtin ($startpos,Identity_Relation),e) }
-| e=expression TILDE { Application ($startpos,Builtin ($startpos($2),Inverse_Relation),e) }
-| PROJ1 LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,First_Projection),e) }
-| PROJ2 LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Second_Projection),e) }
-| e1=expression SEMICOLON e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Composition))  e1 e2  }
-| e1=expression DPRODUCT e2=expression { mk_infix_app $startpos  (Builtin ($startpos($2),Direct_Product))  e1 e2 }
-| e1=expression PARALLEL e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Parallel_Product)) e1 e2 }
-| ITERATION LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Iteration),e) }
-| CLOSURE LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Closure),e) }
-| CLOSURE1 LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Transitive_Closure),e) }
-| DOM LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Domain),e) }
-| RAN LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Range),e) }
-| e1=expression LSQU e2=expression RSQU { mk_infix_app $startpos (Builtin ($startpos($2),Image)) e1 e2 }
-| e1=expression RESTRICTION_D e2=expression  { mk_infix_app $startpos (Builtin ($startpos($2),Domain_Restriction)) e1 e2 }
-| e1=expression SOUSTRACTION_D e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Domain_Soustraction)) e1 e2 }
-| e1=expression RESTRICTION_CO e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Codomain_Restriction)) e1 e2 }
-| e1=expression SOUSTRACTION_CO e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Codomain_Soustraction)) e1 e2 }
-| e1=expression SURCHARGE e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Surcharge)) e1 e2 }
+| e1=expression RELATION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Relations)) e1 e2 }
+| ID LPAR e=expression RPAR { Application ($startpos,false,Builtin ($startpos,false,Identity_Relation),e) }
+| e=expression TILDE { Application ($startpos,false,Builtin ($startpos($2),false,Inverse_Relation),e) }
+| PROJ1 LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,First_Projection),e) }
+| PROJ2 LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Second_Projection),e) }
+| e1=expression SEMICOLON e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Composition))  e1 e2  }
+| e1=expression DPRODUCT e2=expression { mk_infix_app $startpos  (Builtin ($startpos($2),false,Direct_Product))  e1 e2 }
+| e1=expression PARALLEL e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Parallel_Product)) e1 e2 }
+| ITERATION LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Iteration),e) }
+| CLOSURE LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Closure),e) }
+| CLOSURE1 LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Transitive_Closure),e) }
+| DOM LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Domain),e) }
+| RAN LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Range),e) }
+| e1=expression LSQU e2=expression RSQU { mk_infix_app $startpos (Builtin ($startpos($2),false,Image)) e1 e2 }
+| e1=expression RESTRICTION_D e2=expression  { mk_infix_app $startpos (Builtin ($startpos($2),false,Domain_Restriction)) e1 e2 }
+| e1=expression SOUSTRACTION_D e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Domain_Soustraction)) e1 e2 }
+| e1=expression RESTRICTION_CO e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Codomain_Restriction)) e1 e2 }
+| e1=expression SOUSTRACTION_CO e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Codomain_Soustraction)) e1 e2 }
+| e1=expression SURCHARGE e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Surcharge)) e1 e2 }
 (* expression_de_fonctions: *)
-| e1=expression PARTIELLE e2=expression   { mk_infix_app $startpos (Builtin ($startpos($2),Functions Partial_Functions)) e1 e2 }
-| e1=expression TOTALE e2=expression      { mk_infix_app $startpos (Builtin ($startpos($2),Functions Total_Functions)) e1 e2 }
-| e1=expression P_INJECTION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Functions Partial_Injections)) e1 e2 }
-| e1=expression T_INJECTION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Functions Total_Injections)) e1 e2 }
-| e1=expression S_PARTIELLE e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),Functions Partial_Surjections)) e1 e2 }
-| e1=expression S_TOTALE e2=expression    { mk_infix_app $startpos (Builtin ($startpos($2),Functions Total_Surjections)) e1 e2 }
-| e1=expression B_TOTALE e2=expression    { mk_infix_app $startpos (Builtin ($startpos($2),Functions Bijections)) e1 e2 }
+| e1=expression PARTIELLE e2=expression   { mk_infix_app $startpos (Builtin ($startpos($2),false,Functions Partial_Functions)) e1 e2 }
+| e1=expression TOTALE e2=expression      { mk_infix_app $startpos (Builtin ($startpos($2),false,Functions Total_Functions)) e1 e2 }
+| e1=expression P_INJECTION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Functions Partial_Injections)) e1 e2 }
+| e1=expression T_INJECTION e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Functions Total_Injections)) e1 e2 }
+| e1=expression S_PARTIELLE e2=expression { mk_infix_app $startpos (Builtin ($startpos($2),false,Functions Partial_Surjections)) e1 e2 }
+| e1=expression S_TOTALE e2=expression    { mk_infix_app $startpos (Builtin ($startpos($2),false,Functions Total_Surjections)) e1 e2 }
+| e1=expression B_TOTALE e2=expression    { mk_infix_app $startpos (Builtin ($startpos($2),false,Functions Bijections)) e1 e2 }
 (* construction_de_fonctions: *)
-| LAMBDA ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,Lambda,(List.hd ids,List.tl ids),p,e) }
-| f=expression LPAR a=expression RPAR { Application ($startpos,f,a) }
-| FNC LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Fnc),e) }
-| REL LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Rel),e) }
+| LAMBDA ids=liste_ident DOT LPAR p=predicate BAR e=expression RPAR { Binder ($startpos,false,Lambda,(List.hd ids,List.tl ids),p,e) }
+| f=expression LPAR a=expression RPAR { Application ($startpos,false,f,a) }
+| FNC LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Fnc),e) }
+| REL LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Rel),e) }
 (* expression_de_suites: *)
-| SEQ LPAR e=expression RPAR   { Application ($startpos,Builtin($startpos,Sequence_Set All_Seq),e) }
-| SEQ1 LPAR e=expression RPAR  { Application ($startpos,Builtin($startpos,Sequence_Set Non_Empty_Seq),e) }
-| ISEQ LPAR e=expression RPAR  { Application ($startpos,Builtin($startpos,Sequence_Set Injective_Seq),e) }
-| ISEQ1 LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Sequence_Set Injective_Non_Empty_Seq),e) }
-| PERM LPAR e=expression RPAR  { Application ($startpos,Builtin($startpos,Sequence_Set Permutations),e) }
-| EMPTY_SEQ { Builtin($startpos,Empty_Seq) }
-| LSQU e=expression RSQU { Sequence($startpos,expr_to_nonempty_list e)  }
+| SEQ LPAR e=expression RPAR   { Application ($startpos,false,Builtin($startpos,false,Sequence_Set All_Seq),e) }
+| SEQ1 LPAR e=expression RPAR  { Application ($startpos,false,Builtin($startpos,false,Sequence_Set Non_Empty_Seq),e) }
+| ISEQ LPAR e=expression RPAR  { Application ($startpos,false,Builtin($startpos,false,Sequence_Set Injective_Seq),e) }
+| ISEQ1 LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Sequence_Set Injective_Non_Empty_Seq),e) }
+| PERM LPAR e=expression RPAR  { Application ($startpos,false,Builtin($startpos,false,Sequence_Set Permutations),e) }
+| EMPTY_SEQ { Builtin($startpos,false,Empty_Seq) }
+| LSQU e=expression RSQU { Sequence($startpos,false,expr_to_nonempty_list e)  }
 (* construction_de_suites: *)
-| SIZE LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Size),e) }
-| FIRST LPAR e=expression RPAR { Application($startpos,Builtin($startpos,First),e) }
-| LAST LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Last),e) }
-| FRONT LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Front),e) }
-| TAIL LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Tail),e) }
-| REV LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Reverse),e) }
-| e1=expression CIRC e2=expression { mk_infix_app $startpos (Builtin($startpos($2),Concatenation)) e1 e2 }
-| e1=expression INSERTION_T e2=expression { mk_infix_app $startpos (Builtin($startpos($2),Head_Insertion)) e1 e2 }
-| e1=expression INSERTION_Q e2=expression { mk_infix_app $startpos (Builtin($startpos($2),Tail_Insertion)) e1 e2 }
-| e1=expression RESTRICTION_T e2=expression { mk_infix_app $startpos (Builtin($startpos($2),Head_Restriction)) e1 e2 }
-| e1=expression RESTRICTION_Q e2=expression { mk_infix_app $startpos (Builtin($startpos($2),Tail_Restriction)) e1 e2 }
-| CONC LPAR e=expression RPAR { Application($startpos,Builtin($startpos,G_Concatenation),e) }
+| SIZE LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Size),e) }
+| FIRST LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,First),e) }
+| LAST LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Last),e) }
+| FRONT LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Front),e) }
+| TAIL LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Tail),e) }
+| REV LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Reverse),e) }
+| e1=expression CIRC e2=expression { mk_infix_app $startpos (Builtin($startpos($2),false,Concatenation)) e1 e2 }
+| e1=expression INSERTION_T e2=expression { mk_infix_app $startpos (Builtin($startpos($2),false,Head_Insertion)) e1 e2 }
+| e1=expression INSERTION_Q e2=expression { mk_infix_app $startpos (Builtin($startpos($2),false,Tail_Insertion)) e1 e2 }
+| e1=expression RESTRICTION_T e2=expression { mk_infix_app $startpos (Builtin($startpos($2),false,Head_Restriction)) e1 e2 }
+| e1=expression RESTRICTION_Q e2=expression { mk_infix_app $startpos (Builtin($startpos($2),false,Tail_Restriction)) e1 e2 }
+| CONC LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,G_Concatenation),e) }
 (* expression_d_arbres: *)
-| TREE LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Tree),e) }
-| BTREE LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Btree),e) }
-| CONST LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Const),e) }
-| TOP LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Top),e) }
-| SONS LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Sons),e) }
-| PREFIX LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Prefix),e) }
-| POSTFIX LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Postfix),e) }
-| SIZET LPAR e=expression RPAR { Application($startpos,Builtin($startpos,SizeT),e) }
-| MIRROR LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Mirror),e) }
-| RANK LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Rank),e) }
-| FATHER LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Father),e) }
-| SON LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Son),e) }
-| SUBTREE LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Subtree),e) }
-| ARITY LPAR e=expression RPAR { Application ($startpos,Builtin($startpos,Arity),e) }
-| BIN LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Bin),e) }
-| LEFT LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Left),e) }
-| RIGHT LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Right),e) }
-| INFIX LPAR e=expression RPAR { Application($startpos,Builtin($startpos,Infix),e) }
+| TREE LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Tree),e) }
+| BTREE LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Btree),e) }
+| CONST LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Const),e) }
+| TOP LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Top),e) }
+| SONS LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Sons),e) }
+| PREFIX LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Prefix),e) }
+| POSTFIX LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Postfix),e) }
+| SIZET LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,SizeT),e) }
+| MIRROR LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Mirror),e) }
+| RANK LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Rank),e) }
+| FATHER LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Father),e) }
+| SON LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Son),e) }
+| SUBTREE LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Subtree),e) }
+| ARITY LPAR e=expression RPAR { Application ($startpos,false,Builtin($startpos,false,Arity),e) }
+| BIN LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Bin),e) }
+| LEFT LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Left),e) }
+| RIGHT LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Right),e) }
+| INFIX LPAR e=expression RPAR { Application($startpos,false,Builtin($startpos,false,Infix),e) }
 
 (* PREDICATES *)
 
 predicate:
-  LPAR p=predicate RPAR { Pparentheses ($startpos,p) }
+  LPAR p=predicate RPAR { p }
 | p=predicate AND q=predicate { Binary_Prop ($startpos,Conjonction,p,q) }
 | NOT LPAR p=predicate RPAR { Negation ($startpos,p) }
 | p=predicate OR q=predicate { Binary_Prop ($startpos,Disjonction,p,q) }
@@ -452,8 +446,8 @@ predicate:
 
 substitution:
   s=level1_substitution { s }
-| s1=substitution SEMICOLON s2=substitution { Sequencement (s1,s2) }
-| s1=substitution PARALLEL s2=substitution { Parallel (s1,s2) }
+| s1=substitution SEMICOLON s2=substitution { Sequencement ($startpos,s1,s2) }
+| s1=substitution PARALLEL s2=substitution { Parallel ($startpos,s1,s2) }
 
 elsif: ELSIF p=predicate THEN s=substitution { (p,s) }
 
@@ -466,35 +460,37 @@ case_or: CASE_OR e=expression THEN s=substitution { (e,s) }
 id_eq_expr: id=IDENT EQUAL e=expression { (($startpos(id),id),e) }
 
 callup_subst:
-| id=IDENT { CallUp ([],($startpos(id),id),[]) }
-| id=IDENT LPAR e=expression RPAR { CallUp ([],($startpos(id),id),expr_to_list e) }
-| ids=ident_lst_comma LEFTARROW id=IDENT { CallUp (ids,($startpos(id),id),[]) }
-| ids=ident_lst_comma LEFTARROW id=IDENT LPAR e=expression RPAR { CallUp (ids,($startpos(id),id),expr_to_list e) }
+| id=IDENT { CallUp ($startpos,[],($startpos(id),id),[]) }
+| id=IDENT LPAR e=expression RPAR { CallUp ($startpos,[],($startpos(id),id),expr_to_list e) }
+| ids=ident_lst_comma LEFTARROW id=IDENT { CallUp ($startpos,ids,($startpos(id),id),[]) }
+| ids=ident_lst_comma LEFTARROW id=IDENT LPAR e=expression RPAR { CallUp ($startpos,ids,($startpos(id),id),expr_to_list e) }
 
 level1_substitution:
   BEGIN s=substitution END { s }
-| SKIP { Skip }
-| ids=ident_lst_comma AFFECTATION e=expression { Affectation ((List.hd ids,List.tl ids),expr_to_nonempty_list e) }
+| SKIP { Skip $startpos }
+| ids=ident_lst_comma AFFECTATION e=expression { Affectation ($startpos,(List.hd ids,List.tl ids),e) }
 | id=IDENT LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
-     { Function_Affectation (($startpos(id),id),(e1,lst),e2) }
-| id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression { Record_Affectation (($startpos(id),id),($startpos(fi),fi),e) }
-| PRE p=predicate THEN s=substitution END { Pre (p,s) }
-| ASSERT p=predicate THEN s=substitution END { Assert (p,s) }
-| CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { Choice (List.hd lst,List.tl lst) }
-| IF p=predicate THEN s=substitution ei=elsif* e=option(els) END { IfThenElse (((p,s),ei),e) }
-| SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { Select (((p,s),w),e) }
+     { Function_Affectation ($startpos,($startpos(id),id),(e1,lst),e2) }
+| id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression { Record_Affectation ($startpos,($startpos(id),id),($startpos(fi),fi),e) }
+| PRE p=predicate THEN s=substitution END { Pre ($startpos,p,s) }
+| ASSERT p=predicate THEN s=substitution END { Assert ($startpos,p,s) }
+| CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { Choice ($startpos,(List.hd lst,List.tl lst)) }
+| IF p=predicate THEN s=substitution ei=elsif* e=option(els) END { IfThenElse ($startpos,((p,s),ei),e) }
+| SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { Select ($startpos,((p,s),w),e) }
 | CASE exp=expression OF
         EITHER e=expression THEN s=substitution
         ors=case_or*
         opt=option(els)
-  END END { Case (exp,((e,s),ors),opt) }
-| ANY ids=ident_lst_comma WHERE p=predicate THEN s=substitution END { Any ((List.hd ids,List.tl ids),p,s) }
-| LET ids=ident_lst_comma BE eqs=separated_nonempty_list(AND,id_eq_expr) IN s=substitution END { Let ((List.hd ids,List.tl ids),(List.hd eqs,List.tl eqs),s) }
-| ids=ident_lst_comma BECOMES_ELT e=expression { BecomesElt ((List.hd ids,List.tl ids),e) }
-| ids=ident_lst_comma MEMBER_OF LPAR p=predicate RPAR { BecomesSuch ((List.hd ids,List.tl ids),p) }
-| VAR ids=ident_lst_comma IN s=substitution END { Var ((List.hd ids,List.tl ids),s) }
+  END END { Case ($startpos,exp,((e,s),ors),opt) }
+| ANY ids=ident_lst_comma WHERE p=predicate THEN s=substitution END { Any ($startpos,(List.hd ids,List.tl ids),p,s) }
+| LET ids=ident_lst_comma BE eqs=separated_nonempty_list(AND,id_eq_expr) IN s=substitution END
+         { Let ($startpos,(List.hd ids,List.tl ids),(List.hd eqs,List.tl eqs),s) }
+| ids=ident_lst_comma BECOMES_ELT e=expression { BecomesElt ($startpos,(List.hd ids,List.tl ids),e) }
+| ids=ident_lst_comma MEMBER_OF LPAR p=predicate RPAR { BecomesSuch ($startpos,(List.hd ids,List.tl ids),p) }
+| VAR ids=ident_lst_comma IN s=substitution END { Var ($startpos,(List.hd ids,List.tl ids),s) }
 | c=callup_subst { c }
-| WHILE cond=predicate DO s=substitution INVARIANT inv=predicate VARIANT var=expression END { While (cond,s,inv,var) }
+| WHILE cond=predicate DO s=substitution INVARIANT inv=predicate VARIANT var=expression END
+         { While ($startpos,cond,s,inv,var) }
 
 (* ABSTRACT MACHINES *)
 
@@ -521,9 +517,9 @@ set :
 
 operation :
 | id=IDENT EQUAL s=level1_substitution { ([],($startpos(id),id),[],s) }
-| id=IDENT LPAR lst=ident_lst_comma RPAR EQUAL s=level1_substitution { ([],($startpos(id),id),lst,s) }
-| ids=ident_lst_comma LEFTARROW id=IDENT LPAR lst=ident_lst_comma RPAR EQUAL s=level1_substitution { (ids,($startpos(id),id),lst,s) }
-| ids=ident_lst_comma LEFTARROW id=IDENT EQUAL s=level1_substitution { (ids,($startpos(id),id),[],s) }
+| id=IDENT LPAR lst=ident_lst_comma2 RPAR EQUAL s=level1_substitution { ([],($startpos(id),id),lst,s) }
+| ids=ident_lst_comma2 LEFTARROW id=IDENT LPAR lst=ident_lst_comma2 RPAR EQUAL s=level1_substitution { (ids,($startpos(id),id),lst,s) }
+| ids=ident_lst_comma2 LEFTARROW id=IDENT EQUAL s=level1_substitution { (ids,($startpos(id),id),[],s) }
 
 semicolon_pred_lst:
 | p=predicate { [p] }

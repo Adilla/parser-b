@@ -1,21 +1,34 @@
-.PHONY: clean printer tags generator test
+.PHONY: clean bformat btags brandom btype b2sexp test_random
 
-all: printer tags generator bdoc
+OCB_OPT=-Is src,tools -use-ocamlfind -plugin-tag 'package(bisect_ppx-ocamlbuild)'
 
-printer:
-	ocamlbuild -Is syntax,lexer,examples -use-ocamlfind -pkgs menhirLib,easy-format -menhir 'menhir --explain --table --unused-token DEFINITIONS --unused-token DEF_FILE --unused-token EQUALEQUAL' pp.native
+all: bformat btags brandom btypecheck #b2sexp
 
-tags:
-	ocamlbuild -Is syntax,lexer,examples/btags -use-ocamlfind -pkgs menhirLib,easy-format -menhir 'menhir --explain --table --unused-token DEFINITIONS --unused-token DEF_FILE --unused-token EQUALEQUAL' btags.native
+bformat:
+	ocamlbuild $(OCB_OPT) bformat.native
 
-generator:
-	ocamlbuild -Is syntax,lexer,examples -use-ocamlfind -pkgs menhirLib,easy-format,qcheck -menhir 'menhir --explain --table --unused-token DEFINITIONS --unused-token DEF_FILE --unused-token EQUALEQUAL' bgen.native
+#b2sexp:
+#	ocamlbuild $(OCB_OPT) b2sexp.native
 
-test:
-	ocamlbuild -Is syntax,lexer,examples -use-ocamlfind -pkgs menhirLib,easy-format,qcheck -menhir 'menhir --explain --table --unused-token DEFINITIONS --unused-token DEF_FILE --unused-token EQUALEQUAL' test.native && ./test.native
+#	BISECT_COVERAGE=YES ocamlbuild -Is lexer,examples -use-ocamlfind -plugin-tag 'package(bisect_ppx-ocamlbuild)' -pkgs menhirLib,easy-format -menhir 'menhir --explain --table --unused-token DEFINITIONS --unused-token DEF_FILE --unused-token EQUALEQUAL' pp.native
 
-bdoc:
-	ocamlbuild -Is syntax,lexer,examples/bdoc -use-ocamlfind -pkgs menhirLib,easy-format,unix -menhir 'menhir --explain --table --unused-token DEFINITIONS --unused-token DEF_FILE --unused-token EQUALEQUAL' bdoc.native
+btypecheck:
+	ocamlbuild $(OCB_OPT) btypecheck.native
+
+btags:
+	ocamlbuild $(OCB_OPT) btags.native
+
+brandom:
+	ocamlbuild $(OCB_OPT) brandom.native
+
+test_random:
+	ocamlbuild $(OCB_OPT) test_random_print_parse.native && ./test_random_print_parse.native
+
+test_bformat_with_coverage:
+	BISECT_COVERAGE=YES ocamlbuild $(OCB_OPT) bformat.native
+	./bformat.native tests/* > /dev/null
+	bisect-ppx-report -I _build/ -html coverage/ `find . -name 'bisect*.out'`
 
 clean:
+	rm -f `find . -name 'bisect*.out'`
 	ocamlbuild -clean

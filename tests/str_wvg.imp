@@ -1,0 +1,2633 @@
+IMPLEMENTATION
+  str_wvg( str_abk )
+
+REFINES
+  str_wzc
+
+OPERATIONS
+  str_fbh (str_uql, str_zlb, str_kfg, str_ltu) =
+  BEGIN
+    BEGIN
+      BEGIN
+        str_igy 
+          (
+            {str_dml,
+             INTEGER,
+             FALSE,
+             struct
+               (str_rtr:
+                { str_udj, str_rzv, str_sww, str_gfo, str_emk, str_mmk
+                  |
+                  #(str_rpz, str_ncd).([NAT, str_kyz, str_jhm] <= str_vtw$0) },
+                str_ica: str_pet),
+             struct
+               (str_nix: TRUE,
+                str_zhn: str_tod$0,
+                str_zuq: str_ezt,
+                str_nuv: str_uoo$0,
+                str_piq: str_kik$0),
+             85,
+             str_mjc$0,
+             str_ewo$0}
+          )
+          (
+            bool(str_tmu <: FALSE) <->
+            struct
+              (str_qkt:
+               rec
+                 (str_egg: FALSE,
+                  str_cdz:
+                  UNION
+                    (str_ifs, str_dnr, str_cab, str_ffg, str_nxx, str_gyj,
+                     str_dlg, str_ccp, str_yru, str_qzi).
+                  (str_dvi$0 = str_blk| str_hte$0),
+                  str_ixz: str_yui$0,
+                  str_tzi: str_wxv,
+                  str_vnh: str_bex$0,
+                  str_fie: str_tog),
+               str_mzw:
+               bool
+                 (#(str_hqm, str_kwk, str_rgw, str_xuc).(str_frx$0 = str_fyq)))
+          )
+          (
+            [{ str_inc, str_dtn, str_dxj, str_hhk
+               |
+               !(str_mvl, str_jsw, str_ooj, str_cqk).(str_vsu$0 <<: str_qwu) },
+             str_ctp$0,
+             (id
+                ({str_msq$0, str_kuh, str_nyw, INT, str_iet, str_dke$0,
+                  INTEGER})),
+             bool(NAT1 /<: str_drl),
+             str_tgt,
+             [str_ybr$0, str_isc$0, str_css$0, [], MININT, str_ezf$0, NATURAL]]
+          )
+          (
+            son
+              (rec
+                 (str_fxw: str_zzd,
+                  str_zvv: (NATURAL1(str_akh$0)),
+                  str_bnc:
+                  SIGMA
+                    (str_uta, str_xdq, str_mpi, str_don, str_zku, str_bsi,
+                     str_jyl, str_hvn, str_okf).
+                  (str_cqa = INTEGER|
+                   { str_jnn, str_vfd, str_zzh | MININT : STRING }),
+                  str_sdz: str_hzh$0'str_bjo'str_jtj,
+                  str_xck: str_rub$0))
+          )
+          (
+            {str_ovh,
+             str_gux$0,
+             str_uam$0,
+             str_bal$0,
+             (rec
+                (str_nfe: {},
+                 str_cbw: str_nss,
+                 str_qlt: NAT1,
+                 str_xzq: str_wtm$0,
+                 str_xyi: str_nen,
+                 str_qhi: (perm(8)),
+                 str_ykv: STRING,
+                 str_ftm: str_cid)
+              ,
+              { str_gcb, str_nst, str_ivh, str_smd
+                |
+                not(not(str_dyo <= str_abn$0)) }),
+             str_axj}
+          )
+          (
+            INTER(str_iep).
+            (str_cka /<: str_azh$0 <=> NAT1 /<<: NAT|
+             rec
+               (str_xst: str_afi,
+                str_ili: str_ljd$0,
+                str_fpn:
+                struct
+                  (str_rrf: str_btu,
+                   str_dme: MAXINT,
+                   str_myg: (str_jsw <-> (str_ecb$0 |-> NATURAL)'str_nzb),
+                   str_sct: NAT1,
+                   str_tot: str_lbj$0,
+                   str_wvz: INT),
+                str_jeh: str_syg$0,
+                str_mzw: INTEGER))
+          )
+          (
+            bool
+              (str_bjq$0 <:
+               str_nvu$0
+                 ({%(str_bzr, str_aaz, str_ugt).
+                   (!
+                      (str_hbt, str_tkv, str_pdy, str_wih, str_vvx, str_nbd,
+                       str_qkh, str_mhp, str_aah).
+                    (#(str_mja, str_jgl, str_xtu, str_bwp, str_hcp, str_qmk).
+                     (str_mdj /= str_ejf$0))|
+                    NATURAL),
+                   NATURAL1,
+                   {},
+                   str_rcp,
+                   INT,
+                   str_xrg$0,
+                   str_bvr}))
+          )
+          (
+            UNION
+              (str_sda, str_jwi, str_sqr, str_oee, str_mez, str_jlv, str_mkd,
+               str_viv, str_fwe, str_pep, str_yuu).
+            (!
+               (str_sih, str_lbl, str_fwj, str_hrd, str_yhr, str_yup,
+                str_gkn, str_zsj).
+             (not
+                (NAT |-> [] :
+                 rec
+                   (str_zed: str_wmd$0,
+                    str_seh: str_usj,
+                    str_bhk: INTEGER,
+                    str_xib: str_qsm)))|
+             { str_xfb | str_ums /<: str_sdm$0 })
+          )
+        
+        :=
+        (right
+           (bool
+              (!(str_pid, str_sfg, str_vuy, str_ezn).
+               (TRUE /<: NAT1 <=> str_lsl$0 /<: str_ywx$0))))
+          (INTER(str_xdm, str_twd, str_sph, str_gdy, str_fmu).
+           ([] <<: {}| str_tor)) ;
+        str_occ, str_jco, str_yvk, str_nsx, str_psw, str_mut, str_dwu,
+        str_ncy, str_ler
+        :=
+        rec
+          (str_wbp: MININT,
+           str_joe: (STRING |-> str_ajh),
+           str_uoi: str_btb$0,
+           str_ylh: str_zkn$0,
+           str_ogg: BOOL)
+        |->
+        UNION
+          (str_ogg, str_eap, str_drt, str_lom, str_dfk, str_uqh, str_yod,
+           str_yqz, str_uvy, str_idx, str_pkg).
+        (str_xvg <<: str_yvg$0|
+         { str_vna, str_oxi, str_pig, str_xqs, str_rqu, str_eth, str_kcc,
+           str_gvh, str_hyo
+           |
+           str_kfy /: str_nru } +->>
+         str_hcg)
+          'str_hkd
+      END ||
+      LET
+        str_zui, str_ier, str_vbk, str_ddp, str_pmx, str_nhf, str_jho,
+        str_fnc, str_wau, str_lsn, str_wty
+      BE
+        str_qew
+        =
+        struct
+          (str_dey: (str_awc$0(str_jgk)),
+           str_wuf:
+           %(str_dio, str_twq).
+           (#
+              (str_hqx, str_idn, str_rmg, str_fxq, str_fdo, str_tqu, str_itc,
+               str_dak).
+            (STRING /<<: str_xjg$0 or INTEGER : TRUE)|
+            str_kcq),
+           str_dqj:
+           %(str_zij, str_ibz, str_dun, str_wbp).
+           (#(str_jew, str_tyb, str_gfb, str_iqj, str_uwp, str_nxn, str_jay).
+            ([] /= NATURAL)|
+            str_sir$0),
+           str_wjk: str_lbz)&
+        str_kjk
+        =
+        SIGMA(str_gkf, str_teg, str_pdl, str_jvf).
+        (#(str_mon, str_igg, str_prw, str_pwh, str_wqs, str_uho, str_pbg).
+         (not({}~ >= {str_ckd, str_lgv, FALSE, (MININT(BOOL))}))|
+         [])&
+        str_jdw
+        =
+        { str_qjo, str_lpk, str_uky, str_iut
+          |
+          !(str_kpw, str_aef, str_vqn, str_rjy, str_rjb).
+          (#
+             (str_eyw, str_hzx, str_yte, str_vpr, str_azd, str_itr, str_gfv,
+              str_eab, str_equ).
+           (not(NAT1 > NATURAL <=> str_xqs /: str_kkb$0) => BOOL /<: str_twe) =>
+           str_ylt /: str_ayj) }&
+        str_ccx
+        =
+        %(str_ndg, str_wyd, str_nex, str_gdf, str_jfg, str_ssl, str_lhc).
+        (str_tet <=
+         (seq
+            (rec
+               (str_toh: str_hqn,
+                str_awr: str_gdr,
+                str_say: str_upj,
+                str_twh: str_gtr,
+                str_vru: INT)))
+           'str_ggy|
+         [str_qsn$0,
+          str_jkk$0,
+          str_mft,
+          str_vwo,
+          INTER
+            (str_uus, str_lbu, str_yxh, str_bnx, str_hqx, str_jrn, str_wxb,
+             str_jdc, str_jgn, str_mgr).
+          (BOOL > str_mnr| str_nnt),
+          str_hif])&
+        str_kua
+        =
+        { str_zoa, str_und, str_zfz
+          |
+          not([] = BOOL) or
+          bool(str_jei = str_abj) >
+          INTER(str_wyn, str_snk, str_uay, str_wjs, str_pjy).
+          (str_fho <<: str_pkv$0|
+           {str_drq, str_bcx$0, str_aim, str_syo$0, str_gvk$0}) }
+      IN
+        str_ooi, str_qkc, str_ndk, str_zas, str_rcz, str_aim, str_atg,
+        str_umz, str_wsf, str_qhu, str_gws
+        :=
+        arity
+          ({str_yyb$0,
+            rec
+              (str_rsa: str_qcx$0,
+               str_jcd: str_cuk,
+               str_fhw: str_wzu$0,
+               str_wol: str_tyt$0,
+               str_auo: str_zzx$0,
+               str_fzz: str_jmb$0,
+               str_ydq: str_qyo),
+            [TRUE,
+             [MININT, str_wko$0, str_cov$0, str_qhn$0, INTEGER],
+             str_zuh$0,
+             TRUE,
+             str_cey$0,
+             [str_nnq$0]],
+            (INT , NATURAL),
+            str_psw$0,
+            str_lhy})
+      END
+    END ;
+    ASSERT
+      UNION
+        (str_plb, str_dsu, str_drq, str_vsi, str_fha, str_ogc, str_cig,
+         str_ott, str_ixp, str_seu).
+      (#(str_kcw, str_ldo, str_ezx, str_btc, str_glh, str_ezk, str_uib).
+       (!
+          (str_src, str_gxy, str_kmi, str_glo, str_xqv, str_khl, str_ykm,
+           str_ecg, str_lht).
+        (not(str_qso < str_uow)))|
+       (str_lro$0(str_fue))(str_nkm$0)) /<<:
+      str_qwf
+    THEN
+      IF
+        not(#(str_cvq).(not(not(not(BOOL <: MAXINT , NAT)))))
+      THEN
+        str_mfz'str_fcq
+        :=
+        (id
+           ({ str_ltx, str_jbn
+              |
+              "str_ufc" = str_you$0 <=>
+              (str_nat = str_sbc <=>
+               !
+                 (str_qri, str_cnb, str_sur, str_mra, str_hgu, str_jve,
+                  str_lcg, str_izk).
+               (INT <= str_xci$0)) }))
+          'str_smv
+          'str_tzs
+      ELSIF
+        !
+          (str_fbr, str_bbp, str_auc, str_swk, str_aig, str_abs, str_ojt,
+           str_ayu, str_yja).
+        (#(str_scb, str_gvs, str_oir).
+         (!
+            (str_lid, str_drm, str_amp, str_jel, str_hbs, str_pgp, str_ajb,
+             str_dyu, str_mri, str_hgd, str_hgz).
+          (!
+             (str_vaf, str_jxj, str_bjj, str_fyh, str_vim, str_tpv, str_tay,
+              str_hgc, str_spn, str_goz, str_mla).
+           (NATURAL
+              (UNION(str_zvj, str_hcy, str_hnh). ({} /<<: str_dki| str_kcx)) <<:
+            str_ige$0))))
+      THEN
+        SELECT
+          not
+            (bool(str_xab$0 <<: str_sta$0) >=
+             struct
+               (str_vzf: str_pkg$0,
+                str_xim: TRUE,
+                str_kwl: str_asq$0,
+                str_gas: str_qxp)) or
+          (str_cmy >= MAXINT <=> (str_kfi > INT & str_vtm > str_mza$0))
+        THEN
+          str_vne, str_jgf
+          ::
+          bool(str_mul : str_jge)
+            ([NATURAL1,
+              (-(ran(rec(str_teb: str_kpe$0, str_aey: str_jrj)))),
+              str_mpw,
+              str_jjv,
+              struct(str_owj: str_dyy$0),
+              str_bir])
+        ELSE
+          str_ujv, str_usu, str_eeh, str_qgt, str_pvk, str_dpl, str_fkj :(
+            str_ynp$0 <: str_njt$0 &
+            not
+              (str_qkf$0 /=
+               rec
+                 (str_hpm:
+                  struct
+                    (str_gfj: str_kgj,
+                     str_tuo: str_bzf$0,
+                     str_pws: [],
+                     str_wii: str_rpo$0,
+                     str_xwf: str_fvt$0,
+                     str_nzj: bool(str_fdt$0 >= str_fst$0),
+                     str_mhb: str_afx,
+                     str_bwz: str_mmo$0),
+                  str_pdi: str_epi,
+                  str_ept: str_fjk,
+                  str_wvy: INTEGER,
+                  str_bxw: rec(str_bxk: str_opa),
+                  str_wcr: NATURAL1,
+                  str_qhd: INTEGER))
+          )
+        END
+      ELSIF
+        rec
+          (str_lhs:
+           { str_ycy, str_uva, str_ryb, str_tll, str_ymu
+             |
+             str_aqx$0 > str_ejt },
+           str_jwl: {},
+           str_izm:
+           rec
+             (str_fuu: str_afb$0,
+              str_aho: str_lyo,
+              str_ngs: str_ywu$0,
+              str_arh: str_pou,
+              str_sfx: str_kkn,
+              str_vmp: str_uvz$0),
+           str_jqa: str_gzn$0,
+           str_lfa: str_jls$0,
+           str_lan: (str_mlr$0'str_god , str_nvc),
+           str_xtw: str_eag) <:
+        str_lxp =>
+        [] /<: FALSE
+      THEN
+        str_jer :(
+          UNION(str_jzj, str_qyw, str_bou). (str_hsq /<<: str_vfh| str_lgd) >
+          str_ihy$0(bool(str_jyj : str_qhi)) <=>
+          str_kob$0 <<: struct(str_xow: str_qsk$0, str_tkn: str_xkg)
+        )
+      END
+    END
+  END
+
+LOCAL_OPERATIONS
+  str_ops, str_xxr, str_vqq, str_bsh, str_diu, str_zny, str_vts, str_osv
+  <--
+  str_jag (str_bqa, str_oyd, str_eln, str_xjx, str_ttr, str_xex, str_xxa)
+  =
+  BEGIN
+    BEGIN
+      BEGIN
+        str_vkm, str_utq, str_raq, str_xiv
+        ::
+        { str_ojb, str_gzg, str_xch, str_wdl, str_fij, str_xhk, str_ghm,
+          str_cjw, str_bam
+          |
+          (str_dgm <<: str_kqo => str_zgd /<: str_tuc$0) &
+          ([] /<<: str_mhl or
+           not(str_gvu$0 > MININT <=> not(str_viu$0 /: str_njt))) } ;
+        str_xue, str_jud, str_hgl, str_lol
+        <--
+        str_nxr
+          (SIGMA(str_uml, str_mtl, str_dfw, str_xzc).
+           (!(str_dct, str_xzr, str_rzv, str_hfk, str_fvy).
+            (!(str_pfr, str_hgp, str_opa, str_hpv, str_phd).
+             (str_ikn : str_caf))|
+            [MININT, str_sqj$0, str_xic, str_giw$0, TRUE, str_bfr$0,
+             str_nlb$0, str_qyl$0]
+              [[(fnc(TRUE)),
+                str_yzz$0,
+                str_nqn$0,
+                str_woq,
+                str_yod$0,
+                NATURAL1]]),
+           struct
+             (str_ylc: NAT,
+              str_sdj: {},
+              str_iyx: str_yzd,
+              str_xmk:
+              SIGMA(str_txu, str_nva, str_qhr, str_cyg, str_def, str_gvq).
+              (str_fkd < str_laq| bin(struct(str_zke: STRING))),
+              str_wli: {INTEGER, str_hdp$0, str_bxq, str_zbf, str_ezo, NAT},
+              str_maa: (INTEGER[str_rtj]),
+              str_nwe: NAT))
+      END ||
+      BEGIN
+        BEGIN
+          str_bfx, str_fzx, str_oai, str_azw, str_jnp, str_mtx, str_rig :(
+            {(mirror(str_fcw$0))} /: str_dag or
+            #(str_rkn).([]'str_kjp /<: str_zik)
+          ) ;
+          str_qbg, str_zrp, str_xss, str_rug, str_bah
+          ::
+          %(str_ixg, str_tcu, str_zgf, str_hny, str_vgu, str_wod).
+          (!(str_xvm, str_ewa, str_tor, str_trq, str_aqk, str_jhd, str_vgm).
+           (SIGMA(str_gjn).
+            (str_rkt /<: str_stz|
+             struct
+               (str_ufx: [],
+                str_fjb: str_osd,
+                str_ofd: NATURAL,
+                str_xdi: str_ruo,
+                str_edm: {},
+                str_kqv: str_czc$0,
+                str_myh: str_mwt$0,
+                str_lah: MININT)) <:
+            str_did)|
+           str_dao |> str_rjv$0)
+        END ||
+        str_onc'str_lki
+        :=
+        struct
+          (str_cxu:
+           bool
+             (not
+                (#
+                   (str_fuj, str_mht, str_hvt, str_zrz, str_oqd, str_xnp,
+                    str_any, str_rtj, str_guf, str_afs).
+                 (#(str_ahz, str_vty, str_mlo, str_hea, str_crq, str_vkq).
+                  (not(str_umz <= "str_yqj" or str_ctq$0 = str_ibk))))))
+      END
+    END ;
+    SELECT
+      #
+        (str_zse, str_loo, str_xys, str_sce, str_shc, str_unr, str_xlz,
+         str_wqs, str_uqg).
+      (!(str_njx, str_sfw).
+       (bool(str_snt(str_gij) <<: NATURAL'str_cmn) <= str_fhs$0))
+    THEN
+      skip
+    WHEN
+      #
+        (str_wur, str_njw, str_xyz, str_fkt, str_mqj, str_vxm, str_qgy,
+         str_rjm, str_zus, str_ddr, str_gju).
+      (#(str_ytc, str_csr, str_tbu, str_xvh, str_qrn, str_kgg).
+       (str_fkr <<: INTEGER <=>
+        UNION(str_fah, str_ynm, str_xdx, str_hhi, str_tdb, str_exy, str_oqa).
+        (str_zmq > str_hnz| str_oeg) >
+        rec
+          (str_acq: str_cbe,
+           str_ipd: MININT,
+           str_ofk: str_pds,
+           str_nrv: str_ohy)))
+    THEN
+      str_agy 
+        (
+          bool
+            (not
+               (not
+                  (!
+                     (str_xph, str_kqm, str_ibw, str_wpx, str_dkt, str_lkd,
+                      str_kkj, str_how, str_ijp, str_vsi, str_ydj).
+                   (not(str_mkw$0 /<<: str_rjg$0)) <=>
+                   (str_atw$0 /= str_vln or MININT : MININT))))
+        )
+        (
+          (tree
+             (PI(str_owv, str_vud, str_wbe). ({} /: str_ptd| str_ghn$0)
+              ,
+              ((MININT , str_piu$0) |>>
+               {MININT, str_tog$0, str_xqy, str_esg, str_ado})))
+            'str_wbc
+        )
+        (
+          closure
+            (bool
+               (rec
+                  (str_lvg: FALSE,
+                   str_cte: [],
+                   str_khy:
+                   {str_rcr,
+                    str_lis$0,
+                    [INT, str_ekp, str_vga, TRUE, str_rdb, str_tyh],
+                    NATURAL1,
+                    "str_itb",
+                    STRING,
+                    (str_eid$0(str_vui))}) =
+                str_dnb$0))
+        )
+        (
+          bool
+            (rec(str_vxl: [(TRUE(str_vzj$0)), str_sov, INTEGER]) =
+             (MININT'str_csx || INT))
+        )
+        (
+          { str_swx, str_xde, str_bkk, str_kgc, str_zmi, str_wju, str_gko,
+            str_ego, str_uki, str_uaa, str_wqa
+            |
+            not
+              (!(str_rpe, str_xrn).
+               (#(str_yjq, str_szy).
+                (not
+                   (str_xgu >= NAT1 or
+                    !
+                      (str_xja, str_qnk, str_mpr, str_dzu, str_ucc, str_vbq,
+                       str_pfk, str_lto).
+                    (str_azo <<: BOOL))))) }
+        )
+      
+      :=
+      { str_dlb, str_ult, str_yql, str_ybc, str_ddb, str_xwt, str_idw,
+        str_irn
+        |
+        #(str_ahv, str_iaf, str_fal).
+        (#
+           (str_xgq, str_rhf, str_jeq, str_edn, str_mre, str_eli, str_oxy,
+            str_dta, str_jri, str_txo, str_btn).
+         (NAT = str_tyq$0) or
+         not(#(str_xja).(#(str_gty, str_duh, str_ija).(NATURAL < str_zcc)))) }
+    WHEN
+      not
+        ((((!
+              (str_ueb, str_gid, str_aea, str_rvy, str_vro, str_wda, str_ulh,
+               str_nwm).
+            (INTEGER /: str_taz$0) =>
+            str_tqj >= str_tuo) =>
+           str_mhd <= str_lnu) =>
+          #(str_tsh, str_akr, str_mly, str_btf).(str_tex < INTEGER)) &
+         str_ztw <= TRUE)
+    THEN
+      str_smf, str_brr, str_jgr, str_jta
+      :=
+      (((str_vtt <| str_qrt)(str_lfq$0))'str_qcw
+         (struct
+            (str_fsv: str_gul$0,
+             str_wmj: str_njg$0,
+             str_joy: [],
+             str_epx: str_eue,
+             str_trp: str_kpy,
+             str_nsf: str_dpx,
+             str_ycl: str_xpn$0)))
+        (str_jlg$0 ** BOOL)
+    WHEN
+      #(str_yra, str_exb, str_fid, str_xub, str_fka, str_fva).
+      (!
+         (str_udt, str_jfa, str_ikr, str_ath, str_mgf, str_wit, str_kyi,
+          str_zop, str_twj).
+       (str_cnc$0 /= str_hhk & str_msv <= str_ahp$0)) <=>
+      not
+        (not
+           (!
+              (str_hxs, str_sen, str_ggm, str_ycc, str_eqr, str_yax, str_joe,
+               str_hpg).
+            (str_dzj >= str_zqp)))
+    THEN
+      PRE
+        !
+          (str_kxs, str_riq, str_cxe, str_nqn, str_hvb, str_xsn, str_fyy,
+           str_ilg, str_ymy).
+        (str_njx$0 >
+         ((str_nws$0 , NAT1) ||
+          ({ str_jka, str_ueu, str_zfv, str_lir, str_klo, str_alb, str_vow
+             |
+             str_mdl$0 /<: str_mkk } <|
+           (str_udu$0(str_jar$0)))))
+      THEN
+        skip
+      END
+    WHEN
+      not(NATURAL1 >= [] <=> str_bje <: MININT) or
+      #(str_knr, str_hgo, str_oan, str_zxr, str_int, str_roi, str_rif).
+      (str_fyk /: str_duv$0 or str_pli$0 < {})
+    THEN
+      str_ivm'str_jsc
+      :=
+      { str_oae, str_zla, str_ajv, str_uwi, str_bgc, str_lvs
+        |
+        str_vja(str_ctm$0) <:
+        {(prj2
+            (rec(str_vxc: str_fmp$0, str_awl: MININT, str_jpc: FALSE)'str_swe))} }
+    WHEN
+      not
+        (#(str_qbz).
+         ({ str_bxj, str_zow, str_aic, str_gyt, str_irj
+            |
+            !
+              (str_enm, str_ian, str_lbo, str_hgk, str_cqo, str_tha, str_mqx,
+               str_lld).
+            (!(str_lux).(str_efl < str_ezm$0)) } <<:
+          str_liy$0))
+    THEN
+      str_fus, str_duc, str_wld, str_pgo <-- str_aey
+    WHEN
+      [str_eox,
+       ["str_gtz",
+        str_edh,
+        str_kbn$0,
+        str_cbb,
+        INTER(str_sbc, str_tiv, str_yjs, str_kll).
+        (str_dif$0 > str_oio| str_ybs$0),
+        str_icj,
+        str_abw$0,
+        str_xrk],
+       str_hzk,
+       {str_bmv$0, str_uep$0, str_qru, str_bhw$0},
+       str_awy,
+       str_wfs$0]
+        'str_chp <:
+      str_nbi(FALSE)
+    THEN
+      str_hjc 
+        (
+          struct
+            (str_oil: (sons(TRUE(str_oss))),
+             str_xhd: (MAXINT , MAXINT),
+             str_tob: (INT'str_yer([str_ljo$0, INTEGER, str_xrs])))
+        )
+        (
+          [([str_hvo,
+             rec
+               (str_mar: BOOL,
+                str_mch: {},
+                str_hnn: str_fvk,
+                str_jax: str_axd$0,
+                str_hdz: NATURAL),
+             str_ozz$0,
+             struct
+               (str_udm: FALSE,
+                str_nyg:
+                rec
+                  (str_dqu: INT,
+                   str_mld: STRING,
+                   str_cgn:
+                   SIGMA
+                     (str_fee, str_xdj, str_itz, str_bvo, str_xcc, str_gum,
+                      str_srk, str_xxq, str_lqe).
+                   (TRUE /<<: MININT| str_izk$0),
+                   str_eqa: str_hny$0,
+                   str_jyn: str_qcx$0,
+                   str_zhn: str_mhk),
+                str_nel: str_odu,
+                str_yhn: STRING,
+                str_upz: NATURAL1,
+                str_zwk: str_hin,
+                str_etm: str_dsx$0)]
+            |->
+            INTEGER)]
+        )
+        (
+          bool
+            (not
+               (#(str_zfj).
+                (#(str_mfv, str_ixu, str_mds, str_pob, str_fsi).
+                 (str_lkq$0 /: str_bgk or not(TRUE <= str_ppb$0)))))
+        )
+        (
+          %(str_fnc, str_vsf, str_rsc, str_urd, str_bns, str_pym, str_osa).
+          (str_jbo$0 = str_jib$0|
+           bool(str_mbn$0 ** BOOL /<<: bool(INT > BOOL) , str_sec$0))
+            'str_fni
+        )
+        (
+          { str_cfn, str_tqc, str_gfs, str_kge, str_ezt, str_gpg, str_etw
+            |
+            #(str_cwz, str_uzj, str_nul, str_nxj).
+            (not(str_aly <= str_tun$0'str_izi'str_hbo) & BOOL /<<: str_bhy) }
+        )
+        (
+          (INTER
+             (str_abn, str_jaf, str_gda, str_ecu, str_wxs, str_lqk, str_dus,
+              str_vzc).
+           (#
+              (str_dej, str_xoh, str_kim, str_raq, str_nsc, str_mfn, str_vad,
+               str_ynq, str_ghh).
+            (NAT /<: NAT)|
+            str_urv$0)
+           ,
+           (INTER
+              (str_qnw, str_arp, str_pcm, str_jrz, str_zwa, str_ohl, str_rnw,
+               str_gys).
+            ({} <: str_ftc$0| MININT)
+            |->
+            NAT1)
+             'str_lhw)
+            (str_cdy)
+        )
+        (
+          { str_mje, str_ypm, str_fcw
+            |
+            !
+              (str_tku, str_jnh, str_klb, str_eyd, str_nci, str_dpt, str_hwd,
+               str_hub, str_xja).
+            (!
+               (str_bgu, str_bwr, str_frb, str_abr, str_izc, str_los,
+                str_mof, str_lys, str_rar).
+             (str_svv /= STRING) =>
+             ((str_xue > str_udk$0 => NATURAL < str_rbw) =>
+              not(str_bfz$0 <= str_jig$0))) }
+        )
+        (
+          INTER(str_xrg, str_wxy, str_klo, str_kzh, str_cfy).
+          (str_cnp$0 /<<: str_jcp$0 <=>
+           !(str_tfk, str_art, str_dxp, str_rml, str_fpi, str_ceh).
+           (str_fdj$0 : str_eqz)|
+           str_roo)
+            ([str_oet$0,
+              str_sou,
+              {str_knx$0,
+               str_fgt$0,
+               str_wnt$0,
+               str_jec$0,
+               { str_qmn, str_npn, str_gjf, str_kgt, str_lkt, str_wbh,
+                 str_tsi, str_ktm
+                 |
+                 str_idd > str_erm$0 },
+               str_uof,
+               str_ogg$0,
+               FALSE},
+              INTEGER,
+              NATURAL,
+              NAT1,
+              STRING])
+        )
+        (
+          struct
+            (str_gcn: str_can,
+             str_bdl: STRING,
+             str_ryv: STRING,
+             str_cgf: str_uec$0,
+             str_zei: ((INT |-> str_ipw$0) , NATURAL1)'str_scn,
+             str_dmb: str_snf$0,
+             str_kks:
+             [str_cdc$0,
+              (MININT -->> str_xnr),
+              str_ajh,
+              (str_pra |-> str_xcu),
+              str_trc,
+              NAT1])
+        )
+      
+      :=
+      [NAT,
+       str_cfi,
+       str_ana,
+       NAT1,
+       [str_lyy, (({} || str_eyt$0)), str_ace$0, NATURAL1],
+       SIGMA
+         (str_nud, str_qhi, str_uuw, str_trk, str_xkh, str_fnn, str_bzn,
+          str_lml, str_ear).
+       (STRING <= NAT| {STRING, str_kym$0, str_css} .. NATURAL1)]
+    END
+  END;
+
+  str_jlp (str_mcy, str_rdg, str_ngm) =
+  SELECT
+    #(str_xoz, str_yan, str_dtx).
+    (rec
+       (str_eqn: str_dbk$0,
+        str_ajl: bool(str_rik /<<: str_fid),
+        str_mgi: str_hgn$0,
+        str_amj: ([str_uvm, str_ofm] |-> (bin(str_ssy$0)))) <=
+     str_nyp)
+  THEN
+    LET
+      str_jzl, str_mnk, str_tjq, str_ihz, str_bwh, str_bal
+    BE
+      str_dzy
+      =
+      ((NATURAL1'str_iig +-> MININT)(str_bic$0))'str_qna
+      ,
+      [{}, str_ixc, {str_hyc}, str_hcp]&
+      str_vmx
+      =
+      bool
+        (%(str_qta).
+         (str_xna$0 < str_cld$0|
+          { str_koe, str_lbz, str_fmp, str_jri, str_uzl, str_ecl, str_vif,
+            str_zzf
+            |
+            INTEGER /<: str_iaw }) <:
+         struct(str_nzz: BOOL, str_zkq: str_iml, str_llv: str_lxp) =>
+         str_mkv$0 <: str_stc)
+        'str_ykh&
+      str_xlu
+      =
+      %
+        (str_nhj, str_gkn, str_htc, str_dsx, str_meb, str_nyr, str_gaa,
+         str_bkd, str_vqy, str_olk, str_qmx).
+      (#(str_pbw).
+       (str_ayk |> {str_rlc$0, (postfix([]))} <: str_pzn =>
+        str_gpd$0 <= str_ooi)|
+       str_qjf$0)&
+      str_wyz
+      =
+      (FIN1(INTEGER)) *
+      {str_uyb,
+       [(BOOL(str_pqr)),
+        str_xvd$0,
+        str_asd,
+        TRUE,
+        [str_qab$0, str_pjf$0, str_xts$0, INT, str_zkj],
+        {}],
+       "str_ral",
+       [],
+       str_cuk,
+       str_dmt'str_ily}
+    IN
+      IF
+        #(str_jdu, str_jvi, str_ntx, str_qsr, str_xtt, str_zby).
+        (str_ike /: str_gox) or
+        #(str_yuo, str_srl, str_gbr).
+        (not(rec(str_zsg: str_ypy$0)'str_wqn <= STRING))
+      THEN
+        IF
+          not
+            (#(str_tmb, str_rtr).
+             (str_elh$0 <= INT <=>
+              !
+                (str_sbr, str_jcd, str_uro, str_snn, str_rhh, str_wyk,
+                 str_llt, str_mcf, str_gib).
+              (!(str_dyv, str_upr, str_tzd, str_aji, str_eei).
+               (STRING /<<:
+                rec
+                  (str_jrl: str_fge,
+                   str_mwb: MININT,
+                   str_kfd: str_lfl$0,
+                   str_ndd: str_lpw$0)))))
+        THEN
+          skip
+        ELSIF
+          !(str_yzn, str_dxq, str_kss).
+          ({ str_tke, str_rpf, str_rgt, str_euf, str_xpz, str_zpu, str_mop,
+             str_jvc, str_pbq, str_kjg
+             |
+             rec
+               (str_kzi: {},
+                str_dul: TRUE,
+                str_xmc: str_dal$0,
+                str_rzm: str_aoa$0,
+                str_zsf: str_djr$0,
+                str_grx: str_tlk$0) >
+             str_mzc$0(str_ldk) }
+             'str_qmo <<:
+           "str_boz")
+        THEN
+          skip
+        ELSIF
+          not
+            (not
+               (#(str_dyd, str_eso).
+                ((INT /= NAT & STRING <: str_pen) => str_xon <<: str_xnk))) <=>
+          (NATURAL1 /: str_vzd & INTEGER /<<: str_kls)
+        THEN
+          str_jps, str_gdm, str_kwu, str_kgh, str_xjy, str_zfk, str_pnq,
+          str_jpg :(
+            #
+              (str_jyl, str_pah, str_hnu, str_hir, str_zio, str_hdj, str_qnk,
+               str_faj, str_dwk, str_pit).
+            (!
+               (str_qzi, str_dww, str_kck, str_jqq, str_cpj, str_ivv,
+                str_dpx, str_goq, str_jgo).
+             (str_xsy$0 <
+              struct
+                (str_jmv: TRUE,
+                 str_kfk: (MININT(NAT1)),
+                 str_xlm: str_oik$0,
+                 str_okm: str_cfh$0) &
+              (NAT1 : NATURAL1 => str_ewr$0 <<: str_wbd)))
+          )
+        ELSIF
+          !
+            (str_bfa, str_kxf, str_bgc, str_gbr, str_tpl, str_zus, str_ufo,
+             str_nym).
+          (!(str_nua, str_hnh, str_onp, str_xti, str_prc, str_yxy, str_kou).
+           (not
+              (!
+                 (str_ton, str_xfj, str_uyk, str_npp, str_qqt, str_rne,
+                  str_wxv, str_wts, str_tuc, str_udd, str_hsg).
+               (not(str_ztv /= []))))) or
+          (str_lhe$0 /<: str_znp$0 & str_mpz$0 /: str_ibr$0)
+        THEN
+          str_mgi 
+            (
+              str_kcg$0'str_azp
+              ,
+              bool
+                (bool(str_orm /: str_arn) :
+                 UNION(str_xoj, str_qhx, str_pqz, str_efs).
+                 (str_gwm /: str_xme or str_acq < FALSE| str_mjl))
+            )
+            (
+              {NATURAL1,
+               (last(STRING)),
+               NATURAL,
+               NATURAL,
+               "str_hcs",
+               (STRING , ((INT |-> (str_jxk({})))(str_gjz$0))),
+               rec
+                 (str_dac: str_cib,
+                  str_ebv: str_rii$0,
+                  str_ouq: FALSE,
+                  str_obf: str_mfn$0),
+               str_hvn$0}
+            )
+            (
+              {{ str_txn, str_ero, str_hew, str_xvd, str_oec
+                 |
+                 #
+                   (str_jdg, str_mda, str_xno, str_rub, str_zod, str_dzr,
+                    str_iyz, str_pis, str_zai, str_btj, str_coj).
+                 (str_frk$0 /: str_zvg$0) },
+               %
+                 (str_xgw, str_gea, str_hko, str_gjr, str_anj, str_jhn,
+                  str_ovb, str_pug).
+               (!(str_bpu, str_tql, str_kgx, str_hjk).
+                (#(str_nke).(str_vtq$0 <= str_qkd))|
+                str_twm$0 |-> str_yug$0),
+               str_aps$0,
+               str_tdz$0,
+               str_plz$0,
+               TRUE,
+               str_sug,
+               str_cdy$0}
+            )
+            (
+              {struct
+                 (str_hgi:
+                  {rec(str_wbw: str_chw$0, str_spb: NAT, str_tif: str_qbv$0),
+                   struct
+                     (str_yjm: str_jqj$0, str_ydd: (inter(str_efv))'str_awn)})}
+            )
+            (
+              struct
+                (str_uep:
+                 bool([str_zrn$0, str_bic$0, TRUE, str_twm$0] <= str_cxz),
+                 str_hez: (ran(prefix(str_eib))),
+                 str_tdg: (str_bhp$0 , str_rft))
+            )
+            (
+              [{},
+               str_cmy$0,
+               [],
+               NATURAL1,
+               (NATURAL
+                |->
+                ((INTER(str_bzh). (str_zyc <= str_hap| str_npd$0) |>
+                  str_vyr$0)
+                   ({ str_sfc, str_vbd, str_tpt, str_llt, str_epr, str_zuf,
+                      str_rrf, str_maf, str_lzw
+                      |
+                      str_yry$0 >= str_aig$0 }))),
+               str_vru$0,
+               MININT,
+               str_ynv]
+            )
+            (
+              %
+                (str_awl, str_jih, str_xhw, str_lwz, str_fmc, str_fjx,
+                 str_kux, str_bve, str_ktd, str_bam).
+              (#
+                 (str_tez, str_pkv, str_ich, str_jcf, str_feb, str_vwb,
+                  str_cui, str_xxt, str_nom, str_rsj).
+               (str_lbe$0 /<: str_acw)|
+               bool
+                 (not
+                    (!(str_dye, str_lud, str_hfy, str_ixj, str_kno, str_ela).
+                     (str_cel >= []))))
+            )
+            (
+              INTER
+                (str_ouz, str_dzr, str_ayn, str_cct, str_syt, str_hpa,
+                 str_pih, str_osl, str_iuo).
+              (#(str_mko, str_lty, str_auc, str_jcm, str_qwn).
+               (#(str_xvj, str_xfd, str_hvp, str_ttw, str_wzt, str_kwe).
+                (MININT <: str_zow))|
+               [struct
+                  (str_hhz:
+                   bool
+                     (!
+                        (str_lja, str_got, str_nat, str_tzx, str_ssl,
+                         str_igs, str_wpd, str_nvp, str_wnv, str_pgn, str_xrz).
+                      (NATURAL1 /<: [])))])
+            )
+            (
+              PI(str_yet).
+              ({ str_qnw, str_afa, str_ahq | str_gxl$0 <<: str_zav$0 }
+                 'str_kaa :
+               UNION(str_vbv, str_hqg, str_dtj).
+               (NATURAL <: str_hxu$0 & str_uto < str_hle| str_zib)|
+               struct(str_hcx: str_hub$0, str_pmo: str_yjw))
+            )
+            (
+              PI
+                (str_vns, str_sfp, str_iuj, str_yyd, str_jqr, str_siw,
+                 str_hyg, str_nsh).
+              (!
+                 (str_tyn, str_olr, str_czy, str_bib, str_reu, str_ygr,
+                  str_ryx, str_tbq, str_ygr, str_xoq, str_cvh).
+               (not(str_uok$0 /= str_ltl) &
+                (str_vpa$0 : NAT <=>
+                 !
+                   (str_ivv, str_woz, str_ytj, str_vka, str_hoa, str_zsd,
+                    str_bql, str_vcq).
+                 (not(MININT = NAT))))|
+               str_qve)
+            )
+            (
+              struct
+                (str_glo:
+                 (NAT'str_wuz
+                    (closure
+                       (INTER
+                          (str_eqf, str_wsu, str_tdq, str_yxt, str_myj,
+                           str_qks, str_brh, str_nuq, str_dau, str_cxn,
+                           str_wac).
+                        (not
+                           (!
+                              (str_lnk, str_pwb, str_wwg, str_dhp, str_jsr,
+                               str_dyx, str_ovr, str_hma).
+                            (str_est$0 /<<: str_rxz))|
+                         MININT)))))
+            )
+          
+          :=
+          struct
+            (str_jvm: str_twk$0,
+             str_nfr: {},
+             str_gqd: str_rcu,
+             str_kec:
+             UNION(str_fkr, str_mwd, str_gwi).
+             ({} : str_yhr$0 => str_qji$0 /= str_ruu$0| STRING),
+             str_qaf: NAT,
+             str_pur: BOOL,
+             str_rsc: str_fwr$0)
+          ,
+          (bool(str_ark = str_mdt$0) , str_lvj$0'str_hbv)
+        ELSIF
+          not
+            ((tail(bool(str_jxt /= str_ork$0)))
+             |->
+             (INT /|\ str_ikh$0'str_tjv) >=
+             str_dot)
+        THEN
+          str_vof, str_ogy, str_hoi, str_jhe, str_gkg, str_phf, str_fwu
+          <--
+          str_ftj
+            ({ str_lxi, str_oha, str_pno, str_lqz, str_bvd, str_iot, str_dum
+               |
+               (bool(BOOL /= NATURAL1) |-> [str_pti$0, str_cdd, str_tlj]) -
+               INTEGER =
+               prefix(str_cca$0) })
+        END
+      ELSIF
+        {str_puy, str_pqr, bool(TRUE <: str_myb$0), NATURAL1, str_sce$0} <<:
+        rec
+          (str_roh: {str_dts$0, str_eov, NAT1},
+           str_fin: FALSE,
+           str_jak: str_ecj,
+           str_boc: str_itd$0,
+           str_pll: (conc(str_vty$0)),
+           str_ehs: str_vph)
+          'str_kqp
+      THEN
+        skip
+      ELSIF
+        { str_zyf, str_dyr, str_zpo, str_pub, str_woa, str_ata, str_uzo,
+          str_xaz, str_cxe
+          |
+          not(str_fdm$0 /= str_mrf) }
+          (bool(str_szj <: str_hdt)) =
+        (str_ntx mod str_ddl$0) <-> str_awi
+      THEN
+        str_myn, str_vcr, str_dmd, str_snv, str_ggh, str_tnh, str_stb
+        ::
+        rec
+          (str_lkf:
+           INTER
+             (str_ush, str_zhf, str_ysy, str_avu, str_djb, str_rvo, str_dew,
+              str_zzn, str_bmi, str_ewi).
+           (str_ean > str_lsy$0| str_egm),
+           str_xwu: MININT,
+           str_tri:
+           (struct
+              (str_dzd: MININT,
+               str_udh: str_dpe$0,
+               str_ewu: str_chm$0,
+               str_kpk: str_oty)
+              ({ str_xho, str_mah, str_emt, str_lrh, str_qpo, str_hqk,
+                 str_ocm, str_byw, str_nqv
+                 |
+                 str_sik : str_ima }))
+             'str_lrc)
+      ELSIF
+        !
+          (str_xvt, str_vac, str_zzr, str_tbb, str_hvd, str_phy, str_vjt,
+           str_ofc, str_tec, str_zgh).
+        (rec
+           (str_sxc: str_zxu,
+            str_eat: str_fmf$0,
+            str_dkr: str_nbi$0,
+            str_lhx: str_byw,
+            str_aip: "str_ibt",
+            str_heg: str_whe$0,
+            str_bho: str_aat$0,
+            str_rya: str_chk$0) >->>
+         { str_ozv, str_rpd, str_wmv, str_epw | str_cvm > str_ldx$0 } /<:
+         {str_vyi,
+          str_stv,
+          str_fnc$0,
+          INTEGER,
+          NATURAL1,
+          str_orq,
+          (str_zkb >->> BOOL),
+          str_cob})
+      THEN
+        str_yrr, str_tkh :(
+          #(str_whm, str_gct, str_jjw, str_wwd).
+          ({ str_ebp, str_rmw, str_uym, str_fpr, str_swk, str_pjz, str_ihj,
+             str_gtz, str_bon, str_jkj, str_iwe
+             |
+             MININT <= str_wwl$0 } >
+           %(str_rfx, str_ttk).
+           (str_lcb < str_ipx|
+            PI(str_vyw, str_glc, str_tnu, str_mae).
+            (str_rxh /<<: str_zng|
+             {str_yqo$0, str_poz, FALSE, str_axh, str_xdi$0, str_jfg, str_asf})) |>
+           str_lqm$0)
+        )
+      END
+    END
+  WHEN
+    POW1
+      ({{ str_hdd, str_ocy, str_yfj, str_qar, str_eba, str_cpl
+          |
+          INT /<<: str_ofk$0 },
+        str_dse$0,
+        str_irx,
+        INT,
+        ({} >+> bool(NAT /<: str_idl$0)),
+        bool(str_obv >= str_aed)}) /<<:
+    str_csz$0
+  THEN
+    str_mvf, str_pgr, str_nrl, str_mdm, str_rgi, str_jsm, str_yem, str_rek,
+    str_tdz
+    :=
+    struct
+      (str_ftg: INT,
+       str_pqq: str_nib$0,
+       str_isw:
+       (([str_rnf, str_urg, [], str_ymo, str_tjt, FALSE, str_bwn] , MININT) /|\
+        ([str_gmi$0, FALSE, str_btb$0, [], [], str_dfr$0, STRING] -->>
+         bool(NATURAL1 <<: str_zpc$0))))
+  WHEN
+    str_sfu$0 < str_aae$0 or
+    (str_xhs$0 /= BOOL(str_nvt) or
+     not
+       (#
+          (str_zkm, str_rqn, str_tvp, str_fnt, str_nom, str_ggz, str_rak,
+           str_kwq, str_wzq, str_iqc).
+        (not(str_ath$0 < NATURAL))))
+  THEN
+    SELECT
+      #(str_jcj, str_bgb, str_zfu, str_fvj, str_box, str_cpv).
+      (not
+         (#(str_jrl, str_pcy, str_xdm, str_trh, str_zgx).
+          (not
+             (!
+                (str_wmu, str_hwx, str_fqs, str_scz, str_lkc, str_jra,
+                 str_otd, str_mhz, str_ady, str_dqd).
+              (!
+                 (str_sxf, str_hei, str_xch, str_fmr, str_tzi, str_mcd,
+                  str_udb, str_cnf, str_ljr, str_vth).
+               (#
+                  (str_cpj, str_ohy, str_okz, str_ngi, str_bwq, str_flq,
+                   str_lsc).
+                (str_edb > str_kse$0)))))))
+    THEN
+      str_obc 
+        (
+          [[],
+           [str_igr$0, NATURAL1, str_fdz],
+           (struct
+              (str_gol: INTEGER,
+               str_vef: str_djv$0,
+               str_kyu:
+               struct
+                 (str_akn: BOOL,
+                  str_dps: "str_muk",
+                  str_bmg: str_zvu$0,
+                  str_akr: str_xxg,
+                  str_qec: NATURAL1),
+               str_gpf: str_mfn$0,
+               str_hvm: str_aod$0)
+              'str_clz
+            |->
+            str_hoh),
+           { str_lhm, str_syg, str_ubr, str_veh, str_beh, str_udc
+             |
+             NATURAL = "str_ylq" }]
+        )
+        (
+          rec
+            (str_lir:
+             struct
+               (str_xoe:
+                rec
+                  (str_lae: str_nbl$0,
+                   str_vpd: MININT,
+                   str_jcc: str_ebw,
+                   str_ilp: str_sni),
+                str_mvd: str_nuu,
+                str_lcc: rec(str_qtg: NATURAL1, str_ktu: str_ndz)),
+             str_bzd: str_wqr$0,
+             str_osz:
+             SIGMA(str_wmb, str_glm, str_sje). (not(str_gin : {})| str_kco),
+             str_kol: str_ngc)
+            'str_nxi
+        )
+        (
+          bool
+            (#(str_geo, str_mpm, str_zno).
+             (!
+                (str_azd, str_hgl, str_mea, str_vzm, str_gvq, str_aov,
+                 str_rmj, str_yak, str_scr).
+              (not(not(str_vzn > str_jcw)))) <=>
+             str_fdo$0 <= str_nhr$0)
+        )
+        (
+          {(left(({ str_eql, str_jss, str_egp | str_vqi = 3 } >< {})(TRUE))),
+           (prj2(str_ufi$0)),
+           str_uzd,
+           SIGMA
+             (str_ynu, str_mzn, str_wwo, str_igr, str_ces, str_hpg, str_svq).
+           (str_yfj$0 /: NAT| str_tqx$0)}
+        )
+        (
+          bool
+            ([{str_qhh,
+               MININT,
+               str_mjn$0,
+               {str_szb, FALSE, str_kyr, str_bdc, str_kxd},
+               str_fll$0},
+              str_jcs$0,
+              {bool(908 <<: str_ogk)}] /=
+             MAXINT)
+        )
+        (
+          { str_ptz, str_loq, str_qlv, str_hvs, str_orh, str_ars, str_dvn
+            |
+            #
+              (str_smb, str_xmg, str_mry, str_tvn, str_wqe, str_jvz, str_oeq,
+               str_tav, str_jmg, str_syl, str_wuo).
+            (#
+               (str_oni, str_qsp, str_gse, str_wjk, str_uzb, str_awn,
+                str_ozv, str_dxb, str_lmr).
+             (#
+                (str_lrs, str_xpj, str_qys, str_tls, str_qoz, str_sdl,
+                 str_nju, str_pdl).
+              (not
+                 (#
+                    (str_hui, str_bng, str_ihp, str_kaw, str_mal, str_qon,
+                     str_pyc, str_pvs, str_vnv, str_czd).
+                  (str_mqt$0 /= str_hbe))))) }
+        )
+        (
+          seq
+            (struct
+               (str_jeh: str_htx$0,
+                str_uca:
+                { str_muq, str_whv, str_ryb, str_rjd, str_otd, str_pck,
+                  str_rhq, str_fts, str_rdj, str_bcg, str_zyd
+                  |
+                  !(str_htp, str_huc).
+                  (not
+                     (str_otn$0 >= str_sjr &
+                      !(str_wjq, str_mrq, str_qnv).(str_hsm /<: str_mgh$0))) },
+                str_olh: [],
+                str_bfu: TRUE,
+                str_nad: {},
+                str_fxf: str_xws$0,
+                str_ywk: FALSE))
+        )
+        (
+          bool
+            (not
+               ((str_zsl$0 <: str_ouq &
+                 !
+                   (str_yox, str_pyw, str_ojc, str_zvm, str_nqh, str_jfm,
+                    str_obw, str_tae, str_dsq, str_nag).
+                 (str_wmp$0 /: TRUE)) <=>
+                str_dpu = str_anz))
+        )
+        (
+          bool
+            (!(str_hkb, str_iez, str_gge, str_jde, str_tyk, str_ylf).
+             (!(str_jap, str_osj).
+              (str_arx$0 /:
+               struct
+                 (str_yeo: INTEGER,
+                  str_pgd: str_mtv$0,
+                  str_usy: str_mss,
+                  str_wpn: FALSE,
+                  str_tvq: str_gzk,
+                  str_kje: str_cmg$0,
+                  str_gih: FALSE,
+                  str_lcb: str_hrt))))
+            'str_xul
+            'str_qnc
+        )
+      
+      :=
+      struct
+        (str_tmg: {{}, NATURAL},
+         str_hec:
+         struct
+           (str_gat: str_nid,
+            str_suj: str_kjs$0,
+            str_ukn: str_ufq$0,
+            str_uav: str_xsq$0,
+            str_tdu: str_hls$0,
+            str_asj:
+            UNION
+              (str_lkm, str_zwj, str_sok, str_hrs, str_tae, str_erb, str_egb).
+            (str_wem <: str_cfw$0| str_qnw$0),
+            str_uai: str_mlw$0),
+         str_jki:
+         [str_ixh$0,
+          NATURAL,
+          TRUE,
+          {},
+          str_sxm,
+          "str_dnx"'str_hcg,
+          str_xjf$0,
+          str_cmw],
+         str_qrx:
+         [str_njm, TRUE, str_rqv, str_kxa, FALSE, str_vcp, TRUE, str_nce])
+    WHEN
+      not(#(str_ajp, str_vae).(NATURAL1 <<: str_qfx$0)) =>
+      not(not(not(str_qzh$0 /<: MAXINT)))
+    THEN
+      str_hqd, str_usf
+      :=
+      str_zjb
+      |->
+      INTER(str_lmu, str_jgo, str_otq).
+      ([MININT, str_vfa, str_deo$0, str_mvj$0, str_zzx, str_bmj$0, MININT] <
+       [str_pfk, str_jbn$0, str_xjs$0, str_qlm$0]|
+       struct
+         (str_idp: str_rnn,
+          str_myp: (str_sua$0(str_ojc$0)),
+          str_vrk: str_cem$0,
+          str_jsz: str_nwl$0,
+          str_frg: str_agt))
+    WHEN
+      #(str_vjp, str_ubx, str_ndl, str_rms, str_prx, str_unk).
+      ([NATURAL,
+        str_csz$0,
+        str_xiw,
+        str_gdc$0,
+        PI(str_qua, str_sso, str_via). (str_ebc /<: str_rxu$0| NAT)] >=
+       struct
+         (str_ebt: str_him$0,
+          str_sbc: STRING,
+          str_enh: str_dzz,
+          str_ezg: str_ofz,
+          str_duj:
+          %(str_zru, str_xvl).
+          (str_ivb$0 /<<: NAT|
+           { str_vqv, str_pgs, str_ist, str_ggf, str_vnh, str_oar, str_ebj,
+             str_clg, str_jdg
+             |
+             NAT = BOOL }),
+          str_rll: STRING))
+    THEN
+      str_xst, str_lbh, str_kll, str_ahr :(
+        { str_nxp, str_sxv, str_nji, str_dls, str_xun, str_zll, str_dhn,
+          str_wxk, str_zca, str_slq
+          |
+          #(str_zol, str_wdw, str_gop, str_pts, str_zdx, str_ssv, str_btk).
+          (INT : STRING & [] /<<: MAXINT) } /<:
+        struct(str_boc: str_pwm$0, str_kic: (MININT , (BOOL(str_afn))))
+      )
+    WHEN
+      not
+        (not
+           (#(str_wnp, str_tti, str_wsc).(MAXINT : str_kws) or
+            !(str_drp, str_vzo).
+            (!(str_jku, str_cbn, str_txt, str_apt, str_pwz).
+             (str_htg <= str_jfy$0 => str_rjc <= NAT))))
+    THEN
+      str_olg'str_jei
+      :=
+      FIN1
+        (struct
+           (str_quf: str_fnk,
+            str_zrr:
+            SIGMA(str_vjg, str_yhe, str_atb, str_byk, str_juo).
+            (not(INTEGER : str_epw => str_lpa$0 <= str_ikz$0) &
+             str_dvy /: str_jza$0|
+             str_zyl),
+            str_gut: NAT,
+            str_vbx: MAXINT,
+            str_yoj: (seq(TRUE)),
+            str_duh: str_kie,
+            str_enz: NAT1))
+    WHEN
+      !(str_fib, str_ayw, str_ppy).
+      (!
+         (str_rtq, str_mco, str_gdv, str_wdo, str_tli, str_quj, str_rdd,
+          str_kqd).
+       (%(str_xpi, str_bkh, str_znr, str_hlf).
+        (NATURAL : {}| [str_dit$0, str_axb$0]) /<:
+        struct
+          (str_wxw: str_mqq$0,
+           str_vaq: str_yce,
+           str_eeb: str_icf$0,
+           str_iyh: str_pyu,
+           str_oio: str_zzi$0,
+           str_vzx:
+           PI(str_uey, str_prz, str_rdn, str_tev, str_imt, str_yel).
+           ([] < str_uoh| INT),
+           str_jvo: MAXINT)))
+    THEN
+      str_wxr, str_xvd, str_vaz, str_uof, str_mlh, str_ncz :(
+        str_peq : str_bxm <=>
+        (not(str_leq$0 /: INTEGER) &
+         #(str_mpv).
+         (!(str_kxw, str_ixv, str_npc, str_ptq, str_uwo).
+          (!
+             (str_wng, str_wjs, str_asd, str_hyx, str_imn, str_ync, str_xzz,
+              str_vgx, str_gad).
+           (!(str_fxp, str_dzw, str_sua, str_eeq, str_qhk, str_chp).
+            (str_hep$0 /<<: str_pcu)))))
+      )
+    WHEN
+      #(str_len, str_rcd, str_lnp, str_cgx, str_atx, str_yuh, str_lbc).
+      (FALSE , MININT /<: bool(bin(str_lng$0) < str_bqb$0(MAXINT)))
+    THEN
+      str_ktj 
+        (
+          FIN1
+            (PI(str_kce, str_ffx, str_enp).
+             (#(str_teb, str_hsz, str_jwc, str_btt).(str_ltv$0 >= "str_cdg") or
+              !
+                (str_avr, str_qlp, str_ptw, str_tbp, str_vca, str_jxa,
+                 str_etd, str_bzq, str_twf).
+              (!(str_hwa, str_jco, str_oxy, str_yiz, str_lzq, str_uht).
+               (str_wxr >= NATURAL1))|
+              struct
+                (str_icr: str_svc$0,
+                 str_nee: {},
+                 str_yzb: NAT,
+                 str_rgr: str_pdq$0,
+                 str_qxs: str_lmk)))
+        )
+        (
+          struct
+            (str_shz: INT,
+             str_smp: INT,
+             str_geh:
+             (str_jvx$0 ->
+              (iterate
+                 (bool
+                    (not
+                       (str_mis$0 : str_qmu =>
+                        !(str_paj, str_xds, str_psd, str_rft).
+                        (str_myr$0 > str_iqp$0)))))))
+        )
+        (
+          bool({} <= TRUE)
+            ((bool(str_dmq : str_uzq$0) , MININT)
+             ,
+             [SIGMA
+                (str_ybq, str_kyy, str_heg, str_ruf, str_inh, str_cyk,
+                 str_giv, str_ikv, str_qze, str_nde).
+              (NAT1 >= str_veb$0| str_son$0)])
+        )
+      
+      :=
+      struct
+        (str_jbb:
+         rec
+           (str_aoy: str_bpy$0,
+            str_rzx: NAT1,
+            str_opw: FALSE,
+            str_krh: str_rni$0,
+            str_swh: NAT,
+            str_kge: NAT,
+            str_frv: str_fyi),
+         str_hfy:
+         [INTER
+            (str_jky, str_wgu, str_fse, str_zwd, str_chl, str_rcu, str_niw).
+          (str_rwh <=
+           { str_pyg, str_xxq, str_vvj, str_nnh, str_kwy, str_vyf
+             |
+             str_fnq$0 > {} }|
+           str_xvb),
+          str_eav],
+         str_ydf: (str_exi(str_sey$0)))
+    WHEN
+      !(str_eei, str_dee, str_lje, str_qdn, str_fjh, str_zvt).
+      (not
+         (!(str_ggw, str_tnu, str_rfa, str_ual, str_wnz, str_dwk, str_sod).
+          (str_bwt /= str_xlv$0) <=>
+          #(str_yag, str_ewx, str_eob, str_awq, str_bfk, str_qgi, str_dkn).
+          ([str_ule, str_jkz$0, NAT1, str_rov, {}, NAT, []] >= str_tyw)))
+    THEN
+      IF
+        not
+          (#(str_jdg, str_nks, str_jvd, str_kbj, str_hkk).
+           (str_rlr <= {} &
+            not
+              (not
+                 (!
+                    (str_nqi, str_kib, str_euw, str_pvs, str_ztz, str_iea,
+                     str_vfn, str_pbj).
+                  (str_pfd$0 <<: str_sqh$0)))))
+      THEN
+        str_wie'str_hig
+        :=
+        {bool
+           (not
+              (!
+                 (str_vki, str_pni, str_opu, str_vlw, str_lvh, str_lio,
+                  str_jaq, str_bet, str_mwj, str_xsv).
+               (#(str_udo, str_ybq, str_ews, str_pfu, str_abo, str_vni).
+                (str_clb /<<: INT & str_ppk$0 <<: FALSE))))}
+      ELSIF
+        struct
+          (str_ssc: str_dvd,
+           str_sbn: str_oko$0,
+           str_xyb: str_ayf$0,
+           str_meg: [],
+           str_raz: TRUE,
+           str_wwi: INTEGER,
+           str_dfh: NAT1) -
+        (MININT <+ str_qun) /=
+        { str_wyc, str_izj, str_grd
+          |
+          #
+            (str_zxh, str_igc, str_jro, str_qrz, str_ncg, str_ecm, str_eoy,
+             str_ric).
+          (!(str_imr, str_voj, str_osy, str_nuo, str_qar, str_nkz).
+           (str_iva : str_zyu)) }
+      THEN
+        skip
+      ELSIF
+        MAXINT <<: MININT or
+        #
+          (str_jhg, str_dtk, str_ily, str_ony, str_mpv, str_hrf, str_jng,
+           str_vms, str_wxg, str_sea, str_eks).
+        (#(str_kbs, str_xhq, str_ibi, str_eln, str_xln).
+         (#
+            (str_hjb, str_rub, str_aow, str_tsf, str_yok, str_cls, str_yht,
+             str_qzy, str_rsd).
+          (not(str_zvr$0 > str_sgc$0)) =>
+          !(str_zux, str_nvg).(FALSE <= str_xio)))
+      THEN
+        str_uwz, str_evc, str_zec, str_kak
+        ::
+        son
+          (((postfix(rec(str_uxb: NAT, str_yjf: str_lro, str_tlh: str_qon)))
+              'str_zob
+              (bool(str_ojh$0 /<<: str_yfj)))
+             'str_umo)
+      ELSIF
+        (str_eug$0 <: TRUE => not(str_fyf /= str_vvx$0)) or
+        not
+          (#(str_hci).(!(str_idc, str_ydz, str_wgv).(not(str_ovr <= STRING))))
+      THEN
+        str_kru, str_jln, str_lws :(
+          rec
+            (str_qhu: rec(str_vjb: ((str_nis$0(str_rrz$0)) , {str_lqp})),
+             str_owi: str_vba$0,
+             str_sfg: str_pfk$0,
+             str_kbn: NAT1,
+             str_fuf: str_awk,
+             str_ysq: STRING,
+             str_iou: str_lqi,
+             str_ztq: MININT) <
+          INT >->> INT
+        )
+      ELSIF
+        #(str_hdd, str_fzz, str_mhv, str_wch, str_mqx, str_ekf, str_sbu).
+        (str_fps$0 = {} =>
+         !
+           (str_voj, str_hpl, str_xqp, str_nkg, str_ukt, str_grs, str_vto,
+            str_psa, str_yhh, str_ohn, str_rgb).
+         (str_jms >= bool(not(str_hws > str_vba$0 or str_ibe : {}))))
+      THEN
+        str_wru, str_gaq, str_moh, str_xqc, str_pew, str_jht, str_byd,
+        str_bfx, str_tff, str_cvh
+        ::
+        tail
+          ([({MININT, str_ujf$0} mod FALSE), str_uac]
+           |->
+           { str_uti, str_moz, str_vau, str_iaf | NAT1 /= NATURAL })
+      ELSIF
+        !(str_qrq, str_iuq, str_azz, str_jkj, str_nrc, str_iku, str_wfl).
+        (#
+           (str_ahs, str_dvc, str_lnc, str_kbx, str_ksl, str_qml, str_doz,
+            str_ydh, str_rny, str_isj, str_wsz).
+         (str_qmh < NATURAL1) <=>
+         not({str_oev, str_klt$0} /= NATURAL1 |>> str_vfn))
+      THEN
+        ANY
+          str_obw, str_ehr, str_shx, str_urj, str_vfb, str_kcu, str_abu,
+          str_dfp, str_fkv
+        WHERE
+          #(str_ewr, str_cuu, str_jop, str_sxz, str_sdz, str_zpo, str_yyv).
+          (!
+             (str_zer, str_wzu, str_xru, str_axm, str_itn, str_dgz, str_lls,
+              str_pkf, str_amd, str_ahv).
+           (str_kwl < str_wir &
+            (!(str_btb, str_nln, str_qkf, str_ulb).
+             (not
+                (!
+                   (str_ipq, str_ahv, str_rqu, str_tif, str_gjp, str_pdw,
+                    str_rgy, str_sry).
+                 (INTEGER < str_cux))) <=>
+             str_hux <: str_ufj$0)))
+        THEN
+          skip
+        END
+      END
+    WHEN
+      %
+        (str_kfr, str_ast, str_thd, str_uia, str_gkp, str_wld, str_nbt,
+         str_fvo, str_ies, str_xuh, str_yvb).
+      (not(str_lvo$0 /<: str_hda$0)| str_tkt) /<<:
+      seq
+        (UNION
+           (str_zsd, str_nhb, str_nfg, str_hpi, str_fgf, str_den, str_njh,
+            str_jct, str_pbw, str_mto).
+         (#
+            (str_ufc, str_lop, str_mfi, str_mmk, str_cun, str_iuu, str_saq,
+             str_zzw, str_jgq).
+          (84 /<<: [])|
+          str_avy$0))
+    THEN
+      str_vkv'str_dei
+      :=
+      struct
+        (str_rca: str_ewt,
+         str_uej:
+         {(NATURAL , str_zli$0),
+          {str_qwf$0,
+           str_fru$0,
+           { str_kki, str_eqp, str_aew, str_dvd | str_hme$0 > str_erf },
+           TRUE},
+          str_hmy$0,
+          str_qrv$0},
+         str_jgk: str_tqd,
+         str_kqa:
+         { str_rhj, str_jqd, str_hek, str_lfy, str_tho, str_wgm, str_bzk,
+           str_xav, str_cfi
+           |
+           NATURAL1 > str_sti },
+         str_yqo: bool(INTEGER <: str_jcl$0),
+         str_hud: NATURAL,
+         str_jqp: NAT)
+    ELSE
+      skip
+    END
+  END
+
+INITIALISATION
+  ASSERT
+    not(not(FALSE /= str_qqf) <=> str_rfn$0 /= BOOL) &
+    !(str_btu, str_gqo, str_rtf).
+    (not(str_jdk$0 >= str_tdr => str_pgu /<: str_fsf$0))
+  THEN
+    WHILE
+      !(str_opi, str_iom, str_joq).
+      (str_ogg <: MININT &
+       not
+         (#(str_hib, str_ysf, str_ygw, str_fsz).
+          (!(str_ssx, str_zry, str_ijo, str_tvv).(STRING /= NATURAL1))))
+    DO
+      CHOICE
+        WHILE
+          #(str_nxa, str_gdk, str_vue, str_sun, str_cmt, str_esv).
+          (!(str_sku, str_bnn, str_ukz).(str_xop /<<: str_sjj$0)) <=>
+          #(str_fet, str_vsa, str_jtc, str_gfz, str_foo, str_log).
+          (str_nmk$0 , str_zvf /: str_enf$0 \|/ str_eok)
+        DO
+          str_yin 
+            (
+              ((min
+                  ([(str_loh$0 - (str_oym$0 >< str_ltg$0)), MININT, str_hyt])) |>
+               rec
+                 (str_jyo: str_kzb,
+                  str_dot: {},
+                  str_puq: NAT1,
+                  str_xeg: NAT1,
+                  str_rwl: str_ipg$0,
+                  str_mxp: []))
+              ,
+              MAXINT
+            )
+            (
+              [{str_gcj},
+               [str_qtx$0,
+                NATURAL1,
+                str_xwc,
+                {},
+                bool(str_uva$0 /: str_zgl$0)],
+               str_kpb$0,
+               struct
+                 (str_zfl: str_jus,
+                  str_thg: str_mua$0,
+                  str_sae: str_orz$0,
+                  str_vyd: str_kua$0,
+                  str_qxm: str_wxw,
+                  str_okw: str_iib$0,
+                  str_mes: FALSE),
+               [NATURAL,
+                PI(str_nmf, str_lnz, str_ipv, str_cjc). ([] = str_seu$0| NAT),
+                {},
+                str_cfc,
+                str_mbg$0,
+                str_qng$0,
+                MAXINT,
+                str_qos],
+               str_nxy$0]
+            )
+            (
+              struct
+                (str_dpc:
+                 { str_ozp, str_lat, str_tqw, str_uli, str_dpk
+                   |
+                   #
+                     (str_soj, str_tpu, str_lsw, str_mdx, str_bln, str_voa,
+                      str_wpz, str_pih, str_wnp, str_ogu, str_uux).
+                   (BOOL <: str_xwc$0) =>
+                   NATURAL /<<: str_trn },
+                 str_mun:
+                 { str_sai | [] = str_tlb$0 <=> str_agf < "str_afv" },
+                 str_bhd:
+                 rec
+                   (str_qun: TRUE,
+                    str_kyz: str_dqf,
+                    str_grn: str_dct,
+                    str_ubw: str_fth$0,
+                    str_fvd: NAT,
+                    str_xcq: BOOL,
+                    str_feg: str_vyl,
+                    str_xcl: INT),
+                 str_hcb: str_tqq$0)
+            )
+            (
+              (bool
+                 ([str_zll$0,
+                   str_tjf,
+                   bool(FALSE > str_wwx$0),
+                   str_krj,
+                   [],
+                   str_udx] :
+                  str_baj)
+               ,
+               ((str_oyr$0 ; NAT1)))
+                'str_thz
+            )
+            (
+              sizet
+                (INTER(str_qvj, str_kdb, str_ixe, str_ecd, str_pet).
+                 (str_jcv$0 > "str_roo" <=>
+                  #(str_emi, str_vwz, str_hqv, str_kpi, str_tpi).
+                  (str_ayl$0 < str_jbu)|
+                  SIGMA
+                    (str_nyu, str_pki, str_cer, str_jxu, str_dud, str_wec,
+                     str_igg).
+                  (INTEGER /: INTEGER|
+                   rec
+                     (str_wrg: str_oxc,
+                      str_xcl: NATURAL,
+                      str_pjc: str_otc,
+                      str_ebo: {STRING},
+                      str_omx: str_bdn,
+                      str_ruc: NATURAL1))))
+            )
+            (
+              last
+                ([str_bmh$0,
+                  rec(str_ggn: TRUE, str_wkj: str_sxi, str_zhc: str_pnl$0),
+                  str_met$0,
+                  ((str_khb
+                    ,
+                    struct
+                      (str_biz: str_zpj$0,
+                       str_wyt: str_dqs,
+                       str_zwh: str_whe,
+                       str_ayq: str_sye,
+                       str_qtb: BOOL)) <|
+                   NATURAL1),
+                  [],
+                  str_gak,
+                  (str_djw$0(str_vml$0)),
+                  str_hhn])
+            )
+            (
+              bool
+                (!(str_dwx, str_fdy, str_rpi).
+                 (#
+                    (str_mlv, str_jdw, str_asr, str_nsy, str_pvw, str_lyz,
+                     str_rmj, str_nlp).
+                  (not(#(str_hvj).(str_ycv$0 /= str_awf$0)) or
+                   (NAT1 <= str_qhd$0 <=> BOOL <<: str_jwb$0))))
+            )
+          
+          :=
+          { str_xpi, str_rsv
+            |
+            MAXINT(str_cca$0) <= bool(str_ogo$0 /= str_yie) }
+            (rec
+               (str_hru:
+                SIGMA
+                  (str_kmf, str_kgo, str_ktk, str_ntf, str_eiz, str_aov,
+                   str_ily, str_zco, str_oon, str_kqi, str_skv).
+                (str_mdq$0 <= str_oel$0| str_beg)))
+        INVARIANT
+          #(str_ouw, str_vhu).
+          (not
+             (str_jch <
+              %(str_eai, str_syi, str_jox). (str_hdy$0 /<: str_cga| str_zhk) <=>
+              not(NAT : str_kzu => TRUE > NAT)))
+        VARIANT
+          {str_vzq,
+           (BOOL
+              (rec
+                 (str_ejx: str_akv,
+                  str_ntr:
+                  {str_qiv$0,
+                   NATURAL,
+                   [],
+                   NAT,
+                   rec(str_svn: str_kwu$0, str_tcv: NAT, str_nrz: NATURAL1)},
+                  str_pnm: (MAXINT .. str_zwk$0)))),
+           (str_ayd / str_jec),
+           str_kik}
+        END
+      OR
+        str_kyt, str_hmb, str_qqo, str_lmi, str_oet, str_fjm, str_knj
+        :=
+        rec
+          (str_lzx:
+           (iseq(((str_edw$0 >< (arity(str_vrn$0))) |-> str_uub)'str_foa)),
+           str_qis: bool(INT > str_mhk$0))
+      OR
+        ASSERT
+          str_qkn$0 /<:
+          right
+            (bool
+               (bool
+                  (#
+                     (str_mvx, str_ngw, str_jmu, str_fms, str_mrl, str_yhi,
+                      str_hwh, str_mlr, str_kmt, str_atr, str_ick).
+                   (str_kzx >= STRING))
+                  'str_tqy <=
+                str_ick$0))
+        THEN
+          LET
+            str_als, str_hdf, str_jvn, str_ulg, str_uwx, str_mnf, str_yia
+          BE
+            str_uqn
+            =
+            {MAXINT,
+             str_iym,
+             (arity([INT])),
+             ["str_gii",
+              INT,
+              FALSE,
+              str_fhv$0,
+              str_xmc,
+              NATURAL1,
+              str_gnp,
+              { str_tle, str_aud, str_tmn, str_yyr, str_vwr, str_jhp,
+                str_ffb, str_wim, str_ske, str_ayx
+                |
+                str_lyd /: str_gng$0 }]} ..
+            SIGMA
+              (str_dpb, str_gyx, str_bjs, str_reu, str_sjj, str_njg, str_eld,
+               str_hpz, str_sgu, str_zim).
+            (str_kbh$0 = str_fvc$0| [])&
+            str_foe
+            =
+            subtree
+              (struct
+                 (str_ely: MAXINT,
+                  str_anr: ((str_voq <-> INT)(str_ixz)),
+                  str_atw: [str_czx],
+                  str_flj: (str_rbe , str_yks),
+                  str_cim:
+                  rec(str_bzy: TRUE, str_iio: str_rbt$0, str_agf: {})))&
+            str_ehg
+            =
+            ((bool(str_iqa , str_hqw$0 /<: str_qnq) ||
+              { str_ncs, str_ulo, str_eos, str_glp, str_cvu, str_cci,
+                str_aci, str_tzm, str_eir, str_hna, str_nml
+                |
+                str_eif <<: str_wgs$0 }))
+              'str_sij
+              'str_exg&
+            str_ozv
+            =
+            {(infix((str_rgv$0 ; str_wgd))),
+             str_bsx$0,
+             {({} , TRUE)},
+             (FIN(bool(str_tet$0 > str_bgq$0)))}&
+            str_sjw
+            =
+            SIGMA(str_ghl, str_fxj, str_rpn, str_cbk, str_nla, str_gqd).
+            ({} < str_jty$0 =>
+             #(str_isd).
+             (not
+                ({} = str_qnn <=> (str_kif = str_wig => str_voa /<: str_ltt)))|
+             [] , str_nkl)&
+            str_fjj
+            =
+            {{ str_rpj, str_alu, str_not, str_ono, str_ixz, str_pkd, str_abp,
+               str_uuy, str_vib
+               |
+               rec
+                 (str_lvx: STRING,
+                  str_xfm: str_bjc$0,
+                  str_avb: str_ano$0,
+                  str_bic: str_emz$0,
+                  str_ndv: str_wdc$0,
+                  str_agu: 6,
+                  str_byx: str_wch$0) /<:
+               MAXINT |-> bool(str_vjf <: str_ijr$0 <=> str_bfq$0 <: str_fiq) }}&
+            str_mbs
+            =
+            [str_lxu,
+             ((PI
+                 (str_eso, str_mqk, str_cdm, str_tjx, str_iyi, str_rly,
+                  str_jvp, str_bad, str_cgc).
+               (str_rfa < FALSE| iseq(str_tvm)) **
+               MININT) *
+              [str_xqt$0,
+               BOOL,
+               str_hil$0,
+               str_idb$0,
+               ((str_idz || str_gft$0))])]&
+            str_jfu
+            =
+            rec
+              (str_viu: str_buo,
+               str_qvq:
+               { str_jhf, str_msz, str_vfq, str_iqm, str_hpp, str_qem,
+                 str_ydz, str_bce, str_dcv, str_upp
+                 |
+                 str_gvs /= str_ckg => NAT /: str_tiz },
+               str_udj: bool(str_dzc$0 /<<: str_gny),
+               str_ive:
+               (struct
+                  (str_arc: str_rdq$0,
+                   str_baq: str_gwx$0,
+                   str_srl: str_wsc,
+                   str_xtq: str_ovf$0,
+                   str_amh: INTEGER,
+                   str_rtu: TRUE)
+                  (BOOL))
+                 'str_rbz)&
+            str_lnb
+            =
+            {str_dqf,
+             (str_xod$0
+              ,
+              [rec(str_eqx: str_wtg$0, str_wwt: INT, str_lsk: MININT),
+               str_zmg]),
+             ({ str_qhn, str_vse, str_rzb, str_ccs | str_zrb$0 > str_trf } \|/
+              [NATURAL, BOOL, STRING, str_mid$0, str_fus$0, str_fkg])}&
+            str_nuu
+            =
+            (str_oms
+             |->
+             ({str_kmr, NAT1, NAT1, str_dzk$0, FALSE, MAXINT, [], str_een} >->
+              ({}
+                 (rec
+                    (str_xsa: str_wuc,
+                     str_ifs: NAT1,
+                     str_pul: str_etn,
+                     str_blz: str_cmm,
+                     str_zim: FALSE,
+                     str_kgz: BOOL,
+                     str_gyv: BOOL))))
+               'str_nks) -
+            str_viy$0&
+            str_fwn
+            =
+            rec
+              (str_gja: str_ckn$0,
+               str_bcu: [NATURAL1, FALSE],
+               str_jrh: str_utr) mod
+            {str_plk,
+             MAXINT,
+             { str_qbs | bool(STRING /<: str_gzx) /= {} },
+             str_evm$0}
+          IN
+            str_wjf 
+              (
+                INTER
+                  (str_hfv, str_cad, str_mja, str_mbg, str_svx, str_fjp,
+                   str_ctm, str_lxf, str_qke).
+                (TRUE >= str_sgj|
+                 [str_sfc,
+                  (str_lpg +->
+                   struct
+                     (str_hxz: NAT1,
+                      str_dfr: [],
+                      str_jha: str_wvf,
+                      str_con: FALSE,
+                      str_che: str_ydf$0,
+                      str_xqy: NAT1,
+                      str_pdc:
+                      bool(str_mpq$0 /: str_wyu$0 & str_zrm$0 /: NAT1))),
+                  str_xow$0,
+                  str_hab,
+                  MAXINT]
+                   'str_xwt)
+              )
+              (
+                (prj1
+                   (struct
+                      (str_dya: {str_srp$0, STRING, str_vut},
+                       str_caw: (POW(str_wet)),
+                       str_dei: str_rnl,
+                       str_znl: NATURAL))) *
+                struct
+                  (str_tzl: TRUE,
+                   str_ajx: str_pjz$0,
+                   str_xeb: NAT,
+                   str_ehg: BOOL,
+                   str_wjf: TRUE,
+                   str_swt:
+                   struct
+                     (str_ffe: str_vbe,
+                      str_prt: MININT,
+                      str_yip: INT,
+                      str_ijt: INT,
+                      str_jha: MININT))
+              )
+            
+            :=
+            struct
+              (str_sbu: str_ztg$0,
+               str_cck: str_xpc$0,
+               str_xql: str_cuu$0,
+               str_vyh: str_xkd$0,
+               str_rxf:
+               UNION(str_vil, str_ygq).
+               (#
+                  (str_fzd, str_siz, str_yil, str_jyq, str_ywv, str_ojx,
+                   str_pnv, str_qlg, str_xti, str_mfm).
+                (NATURAL1 >= INTEGER or str_xqc$0 >= str_wtv)|
+                FALSE)
+                 'str_ebt,
+               str_bxv:
+               {BOOL,
+                str_wws$0,
+                str_qov$0,
+                MININT,
+                str_xrv,
+                str_aex,
+                [str_pro$0, str_zda, NATURAL, str_jve, {}, NATURAL, INT]},
+               str_zzv: str_dbm,
+               str_vkv: str_kxw$0)
+          END
+        END
+      OR
+        LET
+          str_qvg, str_nld, str_fld, str_xxh, str_spb, str_hhn
+        BE
+          str_fmb
+          =
+          rec
+            (str_pww:
+             { str_wle, str_dza
+               |
+               #(str_tne).
+               (!
+                  (str_xkm, str_xwl, str_xgv, str_xhl, str_bpj, str_cnx,
+                   str_uop, str_zxa).
+                (not(str_kah$0 /<: str_tqv$0))) or
+               #
+                 (str_rue, str_ijw, str_hwf, str_nij, str_nwv, str_fpg,
+                  str_jmr, str_aeu, str_bjb, str_acc, str_enu).
+               (str_lcb >= NATURAL1) })&
+          str_qga
+          =
+          { str_gok, str_rvt, str_rnq, str_ouk, str_bob
+            |
+            !(str_mku, str_phz, str_whr, str_uob, str_rsi, str_kfd).
+            (NAT /= str_cae) }
+            (tail(str_qzl$0'str_efr |-> ({}(BOOL))))&
+          str_kdw
+          =
+          SIGMA
+            (str_dak, str_knd, str_eiz, str_duz, str_uzp, str_omc, str_rja,
+             str_tfa, str_seo, str_dho).
+          (not(bool(not(BOOL = str_erb$0)) > father(str_lhd))| NATURAL1) -
+          MAXINT
+        IN
+          str_kcc, str_bdw, str_kcj, str_rra, str_cri
+          <--
+          str_zix
+            ((sons
+                (FIN1
+                   ([str_vba$0,
+                     bool(NAT /<<: str_icv)'str_bta,
+                     [NATURAL1, FALSE, str_yik, NATURAL1, NAT, str_nqi,
+                      str_pjr],
+                     struct
+                       (str_djh: MAXINT,
+                        str_wzm: INTEGER,
+                        str_rlv: INTEGER,
+                        str_qqe: str_amy),
+                     str_ago]))),
+             rec
+               (str_pbo: NATURAL,
+                str_yaf:
+                rec
+                  (str_lgr: INT,
+                   str_ape: 95,
+                   str_plu: str_dfe$0,
+                   str_whp:
+                   ({ str_kbz, str_hxw, str_kjx, str_sjb, str_cws, str_kkw,
+                      str_jfc, str_rwx, str_shm, str_alw
+                      |
+                      str_eqr <: str_ypp }
+                    |->
+                    []),
+                   str_lty: str_tbz,
+                   str_noa: str_hgw$0,
+                   str_ruq: str_cds,
+                   str_ifm: str_bgw$0),
+                str_ciw:
+                SIGMA(str_vun, str_lsq, str_pmj, str_lzn).
+                (str_qup <: str_udw$0|
+                 bool(str_wlg <= NATURAL1 <=> str_mca /= MAXINT))),
+             {(str_vmh$0 --> NAT1),
+              {str_orp,
+               str_fvx$0,
+               {NATURAL, str_tla$0, NATURAL, NATURAL, str_nhq$0, str_oli,
+                str_pwm$0},
+               str_nku$0,
+               str_wfq$0},
+              TRUE,
+              str_lvt$0,
+              NAT1,
+              { str_loy, str_szv, str_tzz, str_sas, str_mrn, str_thw,
+                str_ylc, str_kvr, str_nja, str_hlv
+                |
+                !
+                  (str_qfc, str_uaj, str_ejc, str_jem, str_gws, str_qbv,
+                   str_psa).
+                (!
+                   (str_dgj, str_pcn, str_umq, str_kkm, str_vgz, str_pdu,
+                    str_otx, str_dcw).
+                 (str_ofs /<<: str_vxo)) }},
+             (({ str_ele, str_jro, str_etj, str_pcb
+                 |
+                 #
+                   (str_qet, str_jpn, str_mln, str_qid, str_yax, str_hry,
+                    str_ylp, str_wap, str_gkf, str_dbw, str_oqs).
+                 (str_odb'str_xqa <= str_uck$0) }
+               ,
+               str_ozk$0)
+                'str_cjg
+              ,
+              str_nhc),
+             ((min(NATURAL1 <| str_oeu$0)) ..
+              {{TRUE,
+                { str_ezg, str_pfx, str_huq, str_fbs, str_vhw, str_awj,
+                  str_ugc, str_vgr
+                  |
+                  str_whh$0 /<<: str_pmn$0 or str_cud /= str_yyy }}}),
+             [str_jdl,
+              str_jij,
+              [str_omf, str_hfl, FALSE, str_qvr$0, str_mll],
+              NAT1,
+              (rev(((str_loh , str_smv) <-> str_afn$0) , str_lir$0)),
+              INTEGER]
+               'str_ldv)
+        END
+      END
+    INVARIANT
+      max({ str_svd | str_gtw$0 = FALSE }) >=
+      struct
+        (str_oyn: str_mqo$0,
+         str_pej: NATURAL1,
+         str_atj: INT,
+         str_crj: {str_mhv$0, str_smh, str_zpu$0},
+         str_drj: 1,
+         str_xvu: (tree(str_uvk$0)),
+         str_vxs: bool(FALSE /: str_fia))
+    VARIANT
+      str_jty |>>
+      { str_ryy, str_xfo, str_rbt
+        |
+        not
+          (!
+             (str_yvd, str_iwk, str_mpo, str_lky, str_djk, str_sbd, str_pvi,
+              str_vqf).
+           (!(str_ags, str_owp, str_vzv, str_zgf).
+            (#(str_pdx, str_jjn, str_nue, str_azr).
+             (!(str_rvl, str_fxg, str_gzr, str_clf).(str_neq$0 <= str_lxq$0))))) }
+    END
+  END
+
+ASSERTIONS
+  str_zai |-> INTEGER /:
+  ([str_fae$0, str_zir]
+   |->
+   { str_tep, str_avr, str_kqr, str_qtr, str_smh | str_dsx$0 >= str_een$0 }
+     'str_bug)
+    'str_xdt;
+  str_flj <<: BOOL <=>
+  not
+    (#(str_byy, str_vvd, str_urz, str_slj, str_pbp, str_wlr).
+     (#
+        (str_hur, str_zgn, str_dfe, str_vfg, str_gky, str_oot, str_bkj,
+         str_zhv).
+      (not(str_ibt$0 <= MAXINT & str_dac = str_wgk))));
+  !(str_mhy, str_vpj, str_sgg, str_bwi, str_yhr, str_ccc).
+  (!(str_jem, str_ojh, str_hqm, str_pmf, str_pta, str_xli).
+   (str_tap$0 /<<: prefix(((FIN1(str_ett)) , str_lwn$0)(str_wai))));
+  !
+    (str_apq, str_min, str_ybs, str_pnl, str_kxn, str_dqg, str_lay, str_xrd,
+     str_frt, str_mti).
+  ((str_nmq < str_ouv => str_xot : bool(FALSE >= str_jpt)) or
+   UNION
+     (str_ixe, str_bhx, str_fna, str_zma, str_eyf, str_vmw, str_gqw, str_nwm,
+      str_tra).
+   (str_umb$0 /<<: str_nvf$0| NATURAL) =
+   NAT);
+  not
+    (#
+       (str_jpj, str_qrz, str_zzn, str_dvs, str_fqy, str_luh, str_gvu,
+        str_hll, str_igl, str_aaw).
+     (rec
+        (str_xbd: (infix(str_yog$0)),
+         str_muw: str_wzy,
+         str_tpv: BOOL,
+         str_uom: (fnc(rec(str_dbk: TRUE)))) /:
+      str_cuc));
+  not
+    (#(str_syj, str_cea, str_vpu).
+     (#(str_qmg, str_vet, str_uij, str_cpj, str_ywc, str_meu).
+      (#(str_rfa, str_kxs, str_vol, str_ofc, str_phy, str_oyb).
+       (struct
+          (str_lnx: str_okp$0,
+           str_hbo: str_qzu,
+           str_ypq: {},
+           str_nlj: bool(NAT1 /: TRUE)) <
+        str_odt$0))));
+  not(not((bool([] /<<: NAT) , str_mdr$0)'str_cva > str_qsc));
+  str_wre$0 <<:
+  bool
+    (#(str_hbn).
+     (#
+        (str_edi, str_fks, str_rpv, str_zyc, str_lib, str_prk, str_tyl,
+         str_iuo).
+      (#(str_qld).(str_yev /<<: str_neh => str_qvu : INT))))
+    'str_kyl;
+  not
+    (not
+       (!(str_lcw, str_jwe, str_spv, str_fyq).
+        (!
+           (str_ycp, str_qjk, str_biw, str_vcv, str_llc, str_dst, str_mxm,
+            str_fwc, str_qmf, str_huw, str_hqd).
+         (str_kfp /<<: str_acn({INTEGER, str_zrg$0, str_zep$0})))));
+  #(str_puw, str_xit, str_yvv, str_bzp).
+  (!
+     (str_pph, str_ryb, str_zyl, str_kkc, str_lre, str_uri, str_efe, str_wxj,
+      str_phc, str_zqh, str_rup).
+   ([{str_ree, str_bmu$0, str_kjk$0, (right(str_pxf$0)), FALSE, str_wan$0},
+     {},
+     str_gsi,
+     str_dpa,
+     str_gbv$0]
+    |->
+    str_dfd$0 <=
+    str_eqn))
+
+INVARIANT
+  !(str_uej).
+  (str_caq <<:
+   struct
+     (str_unt: MAXINT,
+      str_oan:
+      SIGMA(str_ffq, str_jwn, str_wnk, str_cug).
+      (#(str_kiw, str_faa).(str_wuj$0 >= INTEGER)| STRING(str_xcm)),
+      str_gzs: str_loh$0,
+      str_tsd: NAT'str_rbf,
+      str_vxa: str_jqy))
+
+CONCRETE_VARIABLES
+  str_kjk, str_iwt
+
+PROPERTIES
+  not
+    (not
+       (#(str_kxy, str_fao, str_pam, str_mvr, str_oei, str_tyv).
+        (#(str_utm, str_eoh, str_onl).(NAT1 : str_fgj$0))) or
+     str_xtc$0 <= str_cpe$0) or
+  !(str_pcl).(NATURAL >= str_nzi$0)
+
+CONSTANTS
+  str_pvl, str_qzq, str_lbw
+
+SETS
+  str_obi; str_nqd
+
+EXTENDS
+  str_dzf (
+    UNION
+      (str_dhk, str_idg, str_cbl, str_pxo, str_vap, str_jcz, str_jsw,
+       str_qpx, str_gol).
+    ([] /= str_eqy|
+     [str_nbs$0,
+      (str_poi'str_nnx
+       |->
+       { str_dqs, str_umi, str_yxd, str_jcl, str_ean, str_ekr, str_kus,
+         str_bit
+         |
+         str_uuq <= str_jzz$0 <=> not(STRING > str_djw) })]),
+    ((str_nyg
+        (struct
+           (str_nxg: str_tic$0'str_kwr, str_zol: (str_wzv$0 |-> (union([]))))))
+       'str_pvy ..
+     str_vez$0),
+    struct
+      (str_gxc: str_kvr,
+       str_pgu: MININT,
+       str_zpc: str_yzy$0,
+       str_fgo: str_zcl$0,
+       str_cfq:
+       (struct
+          (str_wiz: INTEGER,
+           str_kwe: str_llz$0,
+           str_hmg: str_tfd$0,
+           str_cxu: MININT) >->
+        str_xvb'str_ofs),
+       str_ium: str_pwf,
+       str_ihj:
+       ({ str_dpw, str_udu, str_fvv, str_prh, str_gky, str_faq, str_ydc,
+          str_dab, str_xim, str_urb, str_ymo
+          |
+          FALSE <<: str_kua$0 }
+        ,
+        (str_bel , str_iws$0)))
+  ),
+  str_lnw,
+  str_cbe,
+  str_jvo (
+    struct
+      (str_dnl: (card(str_dpe |-> str_kga)),
+       str_okm: str_iyn$0,
+       str_upr: str_cci$0,
+       str_jza: str_wid,
+       str_hso:
+       %
+         (str_jei, str_lpm, str_ecp, str_qeu, str_orm, str_uen, str_bji,
+          str_sbp).
+       (!(str_pvm, str_hur).(MININT : str_keh$0) <=> NAT1 > str_ytp|
+        UNION(str_xry). ([] < str_lnl$0| MININT)),
+       str_dsf: str_vmj),
+    ([str_uqc$0, str_put, rec(str_shh: FALSE, str_khb: str_luw$0), str_uuq]
+       (bool([str_xso, (str_ezz <-> str_twn), str_chw] <<: 693)))
+  ),
+  str_glq,
+  str_wbu (
+    struct
+      (str_mdz: str_vqf,
+       str_wqn: INT,
+       str_ria: NATURAL1,
+       str_hcz:
+       (prj2
+          (rec
+             (str_oeh: str_ddi$0,
+              str_xsg: INTEGER,
+              str_isd: str_wsd$0,
+              str_ogq: TRUE,
+              str_sln:
+              struct
+                (str_ogd: TRUE,
+                 str_ktd: TRUE,
+                 str_jct: MININT,
+                 str_qot: bool(str_nip$0 /= str_ykp$0),
+                 str_pdw: str_iii),
+              str_sgv: bool(str_olv$0 > INTEGER),
+              str_tan: str_prw))),
+       str_zxb: TRUE,
+       str_eub: NATURAL)
+  ),
+  str_eee,
+  str_lrf (
+    %(str_une, str_znb, str_run, str_oxh).
+    (not
+       (str_oak <<: str_ldp => not(#(str_ihb, str_ric).(NAT /<<: str_pdx$0)))|
+     struct
+       (str_bxi: str_bkg,
+        str_eff: {},
+        str_tgp: str_lgl,
+        str_kbr: rec(str_ami: NATURAL1, str_qxm: str_wzt$0, str_yif: BOOL))),
+    struct
+      (str_ibr:
+       (str_mdy
+          (rec(str_yax: FALSE, str_iln: str_ybw$0)
+             [{ str_aom, str_tbt, str_icm, str_kru, str_ply, str_yrt,
+                str_dke, str_dnr, str_olx
+                |
+                !
+                  (str_jey, str_jfz, str_swy, str_cia, str_bqj, str_zrz,
+                   str_fvm, str_yrp, str_czi).
+                (str_kxb <<: str_tgg$0) }
+                'str_dce]))),
+    { str_bkb, str_qqa, str_xgx, str_pzi, str_pqt
+      |
+      ((MAXINT ||
+        struct
+          (str_yxy: str_rdx$0,
+           str_bvg: "str_mkp",
+           str_mjc: str_tnf,
+           str_ceb: str_bkz,
+           str_rgd: str_mxp,
+           str_fpu: str_ofg)))
+        'str_dkc <
+      struct(str_xsb: (str_cim |-> str_unj$0)) }
+  ),
+  str_hyv (
+    {{ str_bzo, str_eyl, str_oct, str_rrb, str_czc, str_rwb
+       |
+       #(str_xkn, str_hlj, str_zey, str_fqj, str_iyz, str_skg).
+       (#(str_xyf).
+        (str_fgl$0 >= str_puy <=>
+         !
+           (str_tux, str_suv, str_wvp, str_ima, str_axb, str_gyi, str_gqg,
+            str_xbr).
+         (not([] >= NAT)))) }},
+    struct
+      (str_mdc: FALSE,
+       str_kmc:
+       PI
+         (str_pmn, str_xtf, str_ybg, str_hag, str_doq, str_jbv, str_iat,
+          str_iar, str_ysc, str_tbq, str_qlo).
+       (str_rlt$0 <= str_eil| str_sry$0),
+       str_yph: [],
+       str_kil: str_yvx,
+       str_spu: str_egn$0,
+       str_lfm:
+       SIGMA(str_mdf).
+       (bool(NATURAL1 : INT) /= str_zmi$0| str_ccq$0 |-> str_gha'str_rua)),
+    ((rec(str_elj: str_ycv$0)'str_epm ;
+      ((fnc(rec(str_xka: str_ucz$0)(str_ifg$0)))(str_bxv))))
+  )
+
+PROMOTES
+  str_qpw
+
+IMPORTS
+  str_jic (
+    { str_tet, str_hso, str_yfm, str_nhp, str_kuj, str_fjb, str_mza, str_cbi,
+      str_pjr, str_jli
+      |
+      !(str_vwp, str_xfa, str_hqh, str_khu).
+      (not(bool(str_xzx$0 <= NATURAL1) <= str_rke'str_kwg |-> str_tbr$0)) },
+    ((STRING
+        (struct
+           (str_yzp: str_udh,
+            str_veo: INT,
+            str_leg:
+            { str_nkx, str_eso, str_pnp, str_csn, str_etf, str_hrf, str_ekp
+              |
+              str_kad$0 <: NATURAL },
+            str_zeg: str_nzw,
+            str_lmc: str_jcw$0,
+            str_ymn: str_glu)
+           (str_mqk$0)))
+     ,
+     struct
+       (str_jul: str_yki$0,
+        str_stg: str_umw,
+        str_vli: INTEGER,
+        str_qwl: str_zmr$0,
+        str_htw: str_cwt$0,
+        str_gts: str_zni$0,
+        str_jbn: STRING,
+        str_udu: INTEGER))
+      'str_zns
+  ),
+  str_xtx (
+    bool
+      (not
+         (str_gal(str_fmd({str_rif$0})) <=
+          %(str_rkm). (str_yml$0 /<<: str_eia| str_jlv$0)))
+  ),
+  str_tef (
+    struct
+      (str_ndq: MAXINT,
+       str_huc: TRUE,
+       str_nqf: (str_mid$0 |-> str_hce),
+       str_bed:
+       struct
+         (str_rfy: (str_mjv , str_std$0),
+          str_zke: []'str_tfb,
+          str_gyj:
+          struct
+            (str_hio: str_hnh$0,
+             str_qjs:
+             PI
+               (str_dix, str_rkj, str_sjs, str_ceu, str_dhf, str_cdy,
+                str_czc, str_jrz, str_vvv).
+             (str_wgi <= str_ppw| str_nqr),
+             str_phv: FALSE),
+          str_eer: str_oab$0,
+          str_iwp: NAT1),
+       str_gof: FALSE,
+       str_rsd: [],
+       str_wzt: str_rsa$0,
+       str_nwa: str_gzt)
+  ),
+  str_iku (
+    (max
+       (bool
+          (!(str_xzf, str_nus, str_tzw, str_jrz, str_tev, str_ebg).
+           (not
+              (!(str_yjf, str_dfo).
+               (str_rbh <<: str_bth => INTEGER = str_pab$0)))))),
+    rec
+      (str_mzd: MININT,
+       str_bjm:
+       (rec
+          (str_aij:
+           { str_htl, str_svq, str_oag, str_ikc, str_ubs, str_syo, str_eol,
+             str_sos, str_qde, str_nla, str_omj
+             |
+             str_zmh >= str_luu },
+           str_gpc: str_czc,
+           str_phb: str_nea,
+           str_zuo: str_xop,
+           str_qmt: str_qey$0,
+           str_byy: str_tan$0,
+           str_uvo: MININT,
+           str_man: BOOL) \/
+        TRUE),
+       str_zpw: bool(str_ehx$0 /<: str_ezc$0'str_chg),
+       str_crl: str_xyy$0),
+    (size
+       ({ str_fbj, str_bls, str_ovm, str_cdt
+          |
+          not
+            (#
+               (str_uyp, str_lwg, str_hvj, str_hkv, str_txy, str_app,
+                str_kcr, str_kzi).
+             (not(str_ixo /<: str_rap$0) or
+              (str_xdo = str_ehf$0 => str_zdn = str_nlo$0))) }))
+  ),
+  str_pok (
+    [bool(!(str_eeg, str_chs, str_nyz, str_luc).(BOOL > str_tyl$0)),
+     str_ikc,
+     NAT,
+     str_plf$0,
+     {str_bui, str_ecf$0},
+     str_ddd$0,
+     (({}(str_kje$0))
+        (rec
+           (str_bjk: INT,
+            str_bmv: str_yxw,
+            str_fmp: str_clz,
+            str_mct: str_vdj$0,
+            str_tky: str_lti))),
+     {}]
+  ),
+  str_afa (
+    rec
+      (str_rzo: str_yrk,
+       str_tkd: str_bex'str_qqa,
+       str_nzb:
+       SIGMA(str_dwx, str_rnv, str_uws, str_apc, str_wpg).
+       (not(INTEGER /<<: MAXINT)| str_fyj),
+       str_yux: STRING,
+       str_pzr: str_qyl,
+       str_lhf: str_yrv$0,
+       str_awi: str_umt,
+       str_vqp:
+       bool
+         (!
+            (str_ahy, str_wdh, str_aky, str_hmc, str_ivz, str_rgf, str_kzh,
+             str_oaj).
+          (str_awm < str_vlg)))
+  ),
+  str_nav
+
+SEES
+  str_jaq, str_vqy, str_tij, str_qmg, str_fyk, str_lgi, str_tqz
+
+END 

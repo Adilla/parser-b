@@ -1,7 +1,4 @@
-S syntax
-S lexer
-S examples
-S examples/btags
+S src
 PKG easy-format
 PKG qcheck
 B _build/**

@@ -47,8 +47,8 @@ let split_int n rd =
   let k = Random.State.int rd (n + 1) in
   (k, n - k)
 
-let gen_var_nelist rd : var non_empty_list =
-  (gen_var rd, Gen.small_list gen_var rd)
+let gen_var_nelist rd : var Nlist.t =
+  Nlist.make (gen_var rd) (Gen.small_list gen_var rd)
 
 let split_int_into_nel n rd =
   let rec aux n k = (*returns a list of size (k+1) which sum is n *)
@@ -59,16 +59,16 @@ let split_int_into_nel n rd =
   in
   let s = Gen.int_bound 7 rd in
   let lst = Gen.shuffle_l (aux n s) rd in
-  (List.hd lst, List.tl lst)
+  Nlist.from_list_exn lst
 
 let sized_pair (split:(int*int) Gen.sized) (gen1:'a Gen.sized) (gen2:'b Gen.sized)
   : ('a*'b) Gen.sized = fun n rd ->
   let f1, f2 = split n rd in (gen1 f1 rd, gen2 f2 rd)
 
-let sized_nel (split:int non_empty_list Gen.sized) (gen:'a Gen.sized)
-  : 'a non_empty_list Gen.sized = fun n rd ->
-  let (f,flst) = split n rd in
-  (gen f rd, List.map (fun f -> gen f rd) flst)
+let sized_nel (split:int Nlist.t Gen.sized) (gen:'a Gen.sized)
+  : 'a Nlist.t Gen.sized = fun n rd ->
+  let flst = split n rd in
+  Nlist.make (gen (Nlist.hd flst) rd) (List.map (fun f -> gen f rd) (Nlist.tl flst))
 
 let mk_expr exp_desc = { exp_loc=(); exp_typ=(); exp_desc }
 let mk_pred prd_desc = { prd_loc=(); prd_desc }
@@ -160,11 +160,11 @@ and sized_pred : predicate Gen.sized = fun n ->
 let gen_expr : expression Gen.t = sized_expr 7
 let gen_pred : predicate Gen.t = sized_pred 7
 
-let gen_nel (gen:'a Gen.t) : ('a non_empty_list) Gen.t = fun rd ->
-  (gen rd, Gen.small_list gen rd)
+let gen_nel (gen:'a Gen.t) : ('a Nlist.t) Gen.t = fun rd ->
+  Nlist.make (gen rd) (Gen.small_list gen rd)
 
 let sized_nel_and_opt (gen1:'a Gen.sized) (gen2:'b Gen.sized) :
-  ('a non_empty_list * 'b option) Gen.sized = fun n rd ->
+  ('a Nlist.t * 'b option) Gen.sized = fun n rd ->
   if Gen.bool rd then
     let rec aux n k = (*returns a list of size (k+2) which sum is n *)
       if k == 0 then
@@ -176,7 +176,7 @@ let sized_nel_and_opt (gen1:'a Gen.sized) (gen2:'b Gen.sized) :
     in
     let s = Gen.int_bound 7 rd in
     match Gen.shuffle_l (aux n s) rd with
-    | x::y::z -> ((gen1 y rd,List.map (fun f -> gen1 f rd) z),Some (gen2 x rd))
+    | x::y::z -> Nlist.make (gen1 y rd) (List.map (fun f -> gen1 f rd) z),Some (gen2 x rd)
     | _ -> assert false
   else
     Gen.pair
@@ -247,9 +247,9 @@ let gen_minst : machine_instanciation Gen.t = fun rd ->
 let small_list (gen:'a Gen.t) : ('a list) Gen.t =
   Gen.list_size Gen.(1 -- 10) gen
 
-let small_nelist (gen:'a Gen.t) : ('a non_empty_list) Gen.t = fun rd ->
+let small_nelist (gen:'a Gen.t) : ('a Nlist.t) Gen.t = fun rd ->
   let lst = small_list gen rd in
-  (List.hd lst, List.tl lst)
+  Nlist.from_list_exn lst
 
 let gen_set : set Gen.t =
   Gen.oneof [ Gen.map (fun id -> Abstract_Set id) gen_var;

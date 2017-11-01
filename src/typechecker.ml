@@ -207,19 +207,19 @@ let declare_list (ctx:Local.t) (lst:p_var list) : Local.t * t_var0 list =
   in
   (ctx,List.rev tvars)
 
-let declare_nelist (ctx:Local.t) (hd,tl:p_var Utils.non_empty_list) : Local.t * t_var0 Utils.non_empty_list =
-  let (ctx,lst) = declare_list ctx (hd::tl) in
-  (ctx,(List.hd lst,List.tl lst))
+let declare_nelist (ctx:Local.t) (xlst:p_var Nlist.t) : Local.t * t_var0 Nlist.t =
+  let (ctx,lst) = declare_list ctx (Nlist.to_list xlst) in
+  (ctx,Nlist.from_list_exn lst)
 
-let ids_to_product (ctx:Local.t) (x,xlst:p_var Utils.non_empty_list) : opn_btype =
+let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : opn_btype =
   let aux pr v =
     match Local.get ctx v.var_id with
     | None -> assert false
     | Some ty -> T_Product (pr,ty)
   in
-  match Local.get ctx x.var_id with
+  match Local.get ctx (Nlist.hd xlst).var_id with
   | None -> assert false
-  | Some ty -> List.fold_left aux ty xlst
+  | Some ty -> List.fold_left aux ty (Nlist.tl xlst)
 
 let get_builtin_type_exn (ctx:Local.t) (lc:Utils.loc) : e_builtin -> opn_btype = function
     (* Booleans *)
@@ -496,30 +496,30 @@ let rec type_expression_exn (env:Global.t) (ctx:Local.t) (e:p_expression) : t_ex
     let te2 = type_expression_exn env ctx e2 in
     mk_expr e.exp_loc (T_Product (te1.exp_typ,te2.exp_typ)) (Couple (cm,te1,te2))
 
-  | Sequence ((e0,lst)) ->
+  | Sequence nlst ->
     begin
-      let te = type_expression_exn env ctx e0 in
+      let te = type_expression_exn env ctx (Nlist.hd nlst) in
       let aux (elt:p_expression) : t_expression0 =
         let t_elt = type_expression_exn env ctx elt in
         match Local.get_stype ctx t_elt.exp_typ te.exp_typ with
         | Some ty -> t_elt
         | None -> unexpected_type_exn ctx elt.exp_loc t_elt.exp_typ te.exp_typ
       in
-      let tlst = List.map aux lst in
-      mk_expr e.exp_loc (T_Power (T_Product (t_int,te.exp_typ))) (Sequence (te,tlst))
+      let tlst = List.map aux (Nlist.tl nlst) in
+      mk_expr e.exp_loc (T_Power (T_Product (t_int,te.exp_typ))) (Sequence (Nlist.make te tlst))
     end
 
-  | Extension ((e0,lst)) ->
+  | Extension nlst ->
     begin
-      let te0 = type_expression_exn env ctx e0 in
+      let te0 = type_expression_exn env ctx (Nlist.hd nlst) in
       let aux (elt:p_expression) : t_expression0 =
         let t_elt = type_expression_exn env ctx elt in
         match Local.get_stype ctx t_elt.exp_typ te0.exp_typ with
         | Some _ -> t_elt
         | None -> unexpected_type_exn ctx elt.exp_loc t_elt.exp_typ te0.exp_typ
       in
-      let tlst = List.map aux lst in
-      mk_expr e.exp_loc (T_Power te0.exp_typ) (Extension (te0,tlst))
+      let tlst = List.map aux (Nlist.tl nlst) in
+      mk_expr e.exp_loc (T_Power te0.exp_typ) (Extension (Nlist.make te0 tlst))
     end
 
   | Comprehension (ids,p) ->
@@ -557,14 +557,13 @@ let rec type_expression_exn (env:Global.t) (ctx:Local.t) (e:p_expression) : t_ex
         end
     end
 
-  | Record ((hd,tl)) ->
+  | Record nlst ->
     let aux (id,e) = (id,type_expression_exn env ctx e) in
-    let thd = aux hd in
-    let ttl = List.map aux tl in
-    let ty = T_Record (List.map (fun (id,e) -> (id.lid_str,e.exp_typ)) (thd::ttl)) in
-    mk_expr e.exp_loc ty (Record (thd,ttl))
+    let tnlst = Nlist.map aux nlst in
+    let ty = T_Record (Nlist.to_list (Nlist.map (fun (id,e) -> (id.lid_str,e.exp_typ)) tnlst)) in
+    mk_expr e.exp_loc ty (Record tnlst)
 
-  | Record_Type ((hd,tl)) ->
+  | Record_Type nlst ->
     let aux (id,e) = (id,type_expression_exn env ctx e) in
     let get_type (id,te) =
       let ty_exp = T_Power (Local.new_meta ctx) in
@@ -572,10 +571,9 @@ let rec type_expression_exn (env:Global.t) (ctx:Local.t) (e:p_expression) : t_ex
       | Some (T_Power ty) -> (id.lid_str,ty)
       | _ -> unexpected_type_exn ctx e.exp_loc te.exp_typ ty_exp
     in
-    let thd = aux hd in
-    let ttl = List.map aux tl in
-    let ty = T_Power (T_Record (List.map get_type (thd::ttl))) in
-    mk_expr e.exp_loc ty (Record_Type (thd,ttl))
+    let tlst = Nlist.map aux nlst in
+    let ty = T_Power (T_Record (Nlist.to_list (Nlist.map get_type tlst))) in
+    mk_expr e.exp_loc ty (Record_Type tlst)
 
   | Record_Field_Access (e0,fd) ->
     let te = type_expression_exn env ctx e0 in
@@ -673,29 +671,29 @@ let rec type_substitution_exn (env:Global.t) (ctx:Local.t) (s0:p_substitution) :
 
   | Assert (p,s) -> mk_subst s0.sub_loc (Assert(type_predicate_exn env ctx p, type_substitution_exn env ctx s))
 
-  | Affectation ((x,xlst),e) ->
+  | Affectation (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
         | [] -> mk_expr x.var_loc () (Ident x.var_id)
         | hd::tl ->
           mk_expr x.var_loc ()
             (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
     in
-    let tuple = mk_tuple x xlst in
+    let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
     let ttuple = type_expression_exn env ctx tuple in
     let te = type_expression_exn env ctx e in
     let () = match Local.get_stype ctx te.exp_typ ttuple.exp_typ with
       | None -> unexpected_type_exn ctx e.exp_loc te.exp_typ ttuple.exp_typ
       | Some _ -> ()
     in
-    let tlst = (type_var_exn env ctx x,List.map (type_var_exn env ctx) xlst) in
+    let tlst = Nlist.map (type_var_exn env ctx) xlst in
     mk_subst s0.sub_loc (Affectation (tlst,te))
 
-  | Function_Affectation (f,(hd,tl),e) -> 
+  | Function_Affectation (f,nlst,e) -> 
     let rec mk_app (lc:Utils.loc) f = function
       | [] -> f
       | x::tl -> mk_app lc (mk_expr lc () (Application (f,x))) tl
     in
-    let lhs = mk_app f.var_loc (mk_expr f.var_loc () (Ident f.var_id)) (hd::tl) in
+    let lhs = mk_app f.var_loc (mk_expr f.var_loc () (Ident f.var_id)) (Nlist.to_list nlst) in
     let tlhs = type_expression_exn env ctx lhs in
     let te = type_expression_exn env ctx e in
     let () = match Local.get_stype ctx te.exp_typ tlhs.exp_typ with
@@ -703,7 +701,7 @@ let rec type_substitution_exn (env:Global.t) (ctx:Local.t) (s0:p_substitution) :
       | Some _ -> ()
     in
     let tf = type_var_exn env ctx f in
-    let tlst = (type_expression_exn env ctx hd,List.map (type_expression_exn env ctx) tl) in
+    let tlst = Nlist.map (type_expression_exn env ctx) nlst in
     mk_subst s0.sub_loc (Function_Affectation (tf,tlst,te))
 
   | Record_Affectation (rc,fd,e) ->
@@ -717,28 +715,28 @@ let rec type_substitution_exn (env:Global.t) (ctx:Local.t) (s0:p_substitution) :
     in
     mk_subst s0.sub_loc (Record_Affectation (type_var_exn env ctx rc,fd,te))
 
-  | Choice ((s,slst)) ->
-   mk_subst s0.sub_loc (Choice (type_substitution_exn env ctx s,List.map (type_substitution_exn env ctx) slst))
+  | Choice slst ->
+   mk_subst s0.sub_loc (Choice (Nlist.map (type_substitution_exn env ctx) slst))
 
-  | IfThenElse ((ps,pslst),s_else) ->
+  | IfThenElse (pslst,s_else) ->
     let aux (p,s) = (type_predicate_exn env ctx p, type_substitution_exn env ctx s) in
-    let tps = (aux ps, List.map aux pslst) in
+    let tps = Nlist.map aux pslst in
     let t_else = match s_else with
       | None -> None
       | Some s -> Some (type_substitution_exn env ctx s)
     in
     mk_subst s0.sub_loc (IfThenElse (tps,t_else))
 
-  | Select ((ps,pslst),s_else) ->
+  | Select (pslst,s_else) ->
     let aux (p,s) = (type_predicate_exn env ctx p, type_substitution_exn env ctx s) in
-    let tps = (aux ps, List.map aux pslst) in
+    let tps = Nlist.map aux pslst in
     let t_else = match s_else with
       | None -> None
       | Some s -> Some (type_substitution_exn env ctx s)
     in
     mk_subst s0.sub_loc (Select (tps,t_else))
 
-  | Case (e,(hd,tl),c_else) ->
+  | Case (e,nlst,c_else) ->
     let te = type_expression_exn env ctx e in
     let aux (elt,s) =
       let telt =  type_expression_exn env ctx elt in
@@ -750,7 +748,7 @@ let rec type_substitution_exn (env:Global.t) (ctx:Local.t) (s0:p_substitution) :
       | None -> None
       | Some s -> Some (type_substitution_exn env ctx s)
     in
-    mk_subst s0.sub_loc (Case(te,(aux hd,List.map aux tl),t_else))
+    mk_subst s0.sub_loc (Case(te,Nlist.map aux nlst,t_else))
 
   | Any (ids,p,s) ->
     let (ctx,tids) = declare_nelist ctx ids in
@@ -758,7 +756,7 @@ let rec type_substitution_exn (env:Global.t) (ctx:Local.t) (s0:p_substitution) :
     let ts = type_substitution_exn env ctx s in
     mk_subst s0.sub_loc (Any (tids,tp,ts))
 
-  | Let (ids,(hd,tl),s) ->
+  | Let (ids,nlst,s) ->
     let (ctx,tids) = declare_nelist ctx ids in
     let aux (v,e) =
       let te = type_expression_exn env ctx e in
@@ -770,14 +768,14 @@ let rec type_substitution_exn (env:Global.t) (ctx:Local.t) (s0:p_substitution) :
           | Some var_typ -> ({var_loc=v.var_loc;var_typ;var_id=v.var_id},te)
         end
     in
-    mk_subst s0.sub_loc (Let (tids,(aux hd,List.map aux tl),type_substitution_exn env ctx s))
+    mk_subst s0.sub_loc (Let (tids,Nlist.map aux nlst,type_substitution_exn env ctx s))
 
-  | BecomesElt ((x,xlst),e) ->
+  | BecomesElt (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
       | [] -> mk_expr x.var_loc () (Ident x.var_id)
       | hd::tl -> mk_expr x.var_loc () (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
     in
-    let tuple = mk_tuple x xlst in
+    let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
     let ttuple = type_expression_exn env ctx tuple in
     let ty_exp = T_Power ttuple.exp_typ in
     let te = type_expression_exn env ctx e in
@@ -785,11 +783,11 @@ let rec type_substitution_exn (env:Global.t) (ctx:Local.t) (s0:p_substitution) :
       | None -> unexpected_type_exn ctx e.exp_loc te.exp_typ ty_exp
       | Some _ -> ()
     in
-    let tlst = (type_var_exn env ctx x,List.map (type_var_exn env ctx) xlst) in
+    let tlst = (Nlist.map (type_var_exn env ctx) xlst) in
     mk_subst s0.sub_loc (BecomesElt (tlst,te))
 
-  | BecomesSuch ((x,xlst),p) ->
-    let tlst = (type_var_exn env ctx x,List.map (type_var_exn env ctx) xlst) in
+  | BecomesSuch (xlst,p) ->
+    let tlst = Nlist.map (type_var_exn env ctx) xlst in
     mk_subst s0.sub_loc (BecomesSuch (tlst,type_predicate_exn env ctx p))
 
   | Var (vars,s) ->
@@ -865,7 +863,7 @@ let close_var (ctx:Local.t) (v:t_var0) : t_var =
        to_string (Local.normalize ctx v.var_typ)^"'.")
   | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
 
-let close_var_nlist ctx (hd,tl) = (close_var ctx hd,List.map (close_var ctx) tl)
+let close_var_nlist ctx = Nlist.map (close_var ctx)
 
 let mk_expr ctx exp_loc exp_typ exp_desc =
   let exp_typ = close_exn exp_loc ctx exp_typ in
@@ -885,12 +883,12 @@ let rec close_expr (ctx:Local.t) (e:t_expression0) : t_expression =
   | Couple (cm,e1,e2) -> 
     mk_expr ctx e.exp_loc e.exp_typ
       (Couple (cm,close_expr ctx e1,close_expr ctx e2))
-  | Sequence (hd,tl) ->
+  | Sequence nlst ->
     mk_expr ctx e.exp_loc e.exp_typ
-      (Sequence (close_expr ctx hd,List.map (close_expr ctx) tl))
-  | Extension (hd,tl) ->
+      (Sequence (Nlist.map (close_expr ctx) nlst))
+  | Extension nlst ->
     mk_expr ctx e.exp_loc e.exp_typ
-      (Extension (close_expr ctx hd,List.map (close_expr ctx) tl))
+      (Extension (Nlist.map (close_expr ctx) nlst))
   | Comprehension (xlst,p) ->
     mk_expr ctx e.exp_loc e.exp_typ
       (Comprehension (close_var_nlist ctx xlst,close_pred ctx p))
@@ -900,12 +898,12 @@ let rec close_expr (ctx:Local.t) (e:t_expression0) : t_expression =
   | Record_Field_Access (e0,id) ->
     mk_expr ctx e.exp_loc e.exp_typ
       (Record_Field_Access (close_expr ctx e0,id))
-  | Record (hd,tl) ->
+  | Record nlst ->
     let aux (id,e) = (id,close_expr ctx e) in
-    mk_expr ctx e.exp_loc e.exp_typ (Record(aux hd,List.map aux tl))
-  | Record_Type (hd,tl) ->
+    mk_expr ctx e.exp_loc e.exp_typ (Record(Nlist.map aux nlst))
+  | Record_Type nlst ->
     let aux (id,e) = (id,close_expr ctx e) in
-    mk_expr ctx e.exp_loc e.exp_typ (Record_Type(aux hd,List.map aux tl))
+    mk_expr ctx e.exp_loc e.exp_typ (Record_Type(Nlist.map aux nlst))
 
 and close_pred (ctx:Local.t) (p:t_predicate0) : t_predicate =
   match p.prd_desc with
@@ -920,39 +918,39 @@ let rec close_subst (ctx:Local.t) (s:t_substitution0) : t_substitution =
   match s.sub_desc with
   | Skip -> mk_subst s.sub_loc Skip
   | Affectation (xlst,e) -> mk_subst s.sub_loc (Affectation(close_var_nlist ctx xlst,close_expr ctx e))
-  | Function_Affectation (v,(hd,tl),e) ->
-    mk_subst s.sub_loc (Function_Affectation (close_var ctx v,(close_expr ctx hd,List.map (close_expr ctx) tl),close_expr ctx e))
+  | Function_Affectation (v,nlst,e) ->
+    mk_subst s.sub_loc (Function_Affectation (close_var ctx v,Nlist.map (close_expr ctx) nlst,close_expr ctx e))
   | Record_Affectation (v,id,e) ->
     mk_subst s.sub_loc (Record_Affectation (close_var ctx v,id,close_expr ctx e))
   | Pre (p,s0) -> mk_subst s.sub_loc (Pre(close_pred ctx p,close_subst ctx s0))
   | Assert (p,s0) -> mk_subst s.sub_loc (Assert(close_pred ctx p,close_subst ctx s0))
-  | Choice (hd,tl) -> mk_subst s.sub_loc (Choice(close_subst ctx hd,List.map (close_subst ctx) tl))
-  | IfThenElse ((hd,tl),opt) ->
+  | Choice nlst -> mk_subst s.sub_loc (Choice(Nlist.map (close_subst ctx) nlst))
+  | IfThenElse (nlst,opt) ->
     let aux (p,s) = (close_pred ctx p,close_subst ctx s) in
     let topt = match opt with
       | None -> None
       | Some s0 -> Some (close_subst ctx s0)
     in
-    mk_subst s.sub_loc (IfThenElse ((aux hd,List.map aux tl),topt))
-  | Select ((hd,tl),opt) ->
+    mk_subst s.sub_loc (IfThenElse (Nlist.map aux nlst,topt))
+  | Select (nlst,opt) ->
     let aux (p,s) = (close_pred ctx p,close_subst ctx s) in
     let topt = match opt with
       | None -> None
       | Some s0 -> Some (close_subst ctx s0)
     in
-    mk_subst s.sub_loc (Select ((aux hd,List.map aux tl),topt))
-  | Case (e,(hd,tl),opt) -> 
+    mk_subst s.sub_loc (Select (Nlist.map aux nlst,topt))
+  | Case (e,nlst,opt) -> 
     let aux (e,s) = (close_expr ctx e,close_subst ctx s) in
     let topt = match opt with
       | None -> None
       | Some s0 -> Some (close_subst ctx s0)
     in
-    mk_subst s.sub_loc (Case (close_expr ctx e,(aux hd,List.map aux tl),topt))
+    mk_subst s.sub_loc (Case (close_expr ctx e,Nlist.map aux nlst,topt))
   | Any (xlst,p,s0) ->
     mk_subst s.sub_loc (Any (close_var_nlist ctx xlst,close_pred ctx p,close_subst ctx s0))
-  | Let (xlst,(hd,tl),s0) ->
+  | Let (xlst,nlst,s0) ->
     let aux (v,e) = (close_var ctx v,close_expr ctx e) in
-    mk_subst s.sub_loc (Let (close_var_nlist ctx xlst,(aux hd,List.map aux tl),close_subst ctx s0))
+    mk_subst s.sub_loc (Let (close_var_nlist ctx xlst,Nlist.map aux nlst,close_subst ctx s0))
   | BecomesElt (xlst,e) -> mk_subst s.sub_loc (BecomesElt (close_var_nlist ctx xlst,close_expr ctx e))
   | BecomesSuch (xlst,p) -> mk_subst s.sub_loc (BecomesSuch (close_var_nlist ctx xlst,close_pred ctx p))
   | Var (xlst,s0) -> mk_subst s.sub_loc (Var (close_var_nlist ctx xlst,close_subst ctx s0))
@@ -997,15 +995,15 @@ let map_clause f = function
 
 let map_list_clause f = function
   | None -> None
-  | Some (l,(hd,tl)) -> Some(l,(f hd,List.map f tl))
+  | Some (l,nlst) -> Some(l,Nlist.map f nlst)
 
 let iter_list_clause f = function
   | None -> ()
-  | Some (_,(hd,tl)) -> List.iter f (hd::tl)
+  | Some (_,nlst) -> List.iter f (Nlist.to_list nlst)
 
 let fold_list_clause f accu = function
   | None -> accu
-  | Some (_,(hd,tl)) -> List.fold_left f accu (hd::tl)
+  | Some (_,nlst) -> List.fold_left f accu (Nlist.to_list nlst)
 
 let type_set : p_set -> t_set = function
   | Abstract_Set v -> Abstract_Set { var_loc=v.var_loc; var_id=v.var_id; var_typ=T_Power (T_Atomic v.var_id) }

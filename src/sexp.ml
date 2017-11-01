@@ -38,24 +38,24 @@ let rec sexp_of_expr : ('lc,'ty) expression -> t = fun e ->
       | Infix -> "Pair_infix"
     in
     List [Atom atm;sexp_of_expr e1;sexp_of_expr e2]
-  | Sequence ((e,elst)) ->
-    List ((Atom "Seq")::(sexp_of_expr e)::(List.map sexp_of_expr elst))
-  | Extension ((e,elst)) ->
-    List ((Atom "Ext")::(sexp_of_expr e)::(List.map sexp_of_expr elst))
-  | Comprehension ((id,idlst),p) ->
-    let ids = List ((sexp_of_var id)::(List.map sexp_of_var idlst)) in
+  | Sequence elst ->
+    List ((Atom "Seq")::(List.map sexp_of_expr (Nlist.to_list elst)))
+  | Extension elst ->
+    List ((Atom "Ext")::(List.map sexp_of_expr (Nlist.to_list elst)))
+  | Comprehension (ids,p) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list ids)) in
     List [Atom "Compr";ids;sexp_of_pred p]
-  | Binder (bi,(x,xlst),p,e) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | Binder (bi,xlst,p,e) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     List [Atom (Print.binder_to_string bi);ids;sexp_of_pred p;sexp_of_expr e]
   | Record_Field_Access (e,id) ->
     List [Atom "Record_Field_Access";sexp_of_expr e;sexp_of_record_field id]
-  | Record ((x,xlst)) ->
+  | Record nlst ->
     let aux (id,e) = List [sexp_of_record_field id;sexp_of_expr e] in
-    List ((Atom "Rec")::(aux x)::(List.map aux xlst))
-  | Record_Type ((x,xlst)) ->
+    List ((Atom "Rec")::(List.map aux (Nlist.to_list nlst)))
+  | Record_Type nlst ->
     let aux (id,e) = List [sexp_of_record_field id;sexp_of_expr e] in
-    List ((Atom "Rec")::(aux x)::(List.map aux xlst))
+    List ((Atom "Rec")::(List.map aux (Nlist.to_list nlst)))
 
 and sexp_of_pred : ('lc,'ty) predicate -> t = fun p ->
   match p.prd_desc with
@@ -66,66 +66,66 @@ and sexp_of_pred : ('lc,'ty) predicate -> t = fun p ->
   | Binary_Pred (bop,e1,e2) ->
     List [Atom (Print.pred_bop_to_string bop);sexp_of_expr e1;sexp_of_expr e2]
   | Negation p -> List [Atom "Neg";sexp_of_pred p]
-  | Universal_Q ((x,xlst),p) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | Universal_Q (xlst,p) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     List [Atom "!";ids;sexp_of_pred p]
-  | Existential_Q ((x,xlst),p) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | Existential_Q (xlst,p) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     List [Atom "#";ids;sexp_of_pred p]
 
 let rec sexp_of_subst : ('lc,'ty) substitution -> t = fun s ->
   match s.sub_desc with
   | Skip -> Atom "SKIP"
-  | Affectation ((x,xlst),e) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | Affectation (xlst,e) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     let exprs = List [sexp_of_expr e] in
     List [Atom "AFF1";ids;exprs]
-  | Function_Affectation (f,(e,elst),a) ->
-    let exprs = List ((sexp_of_expr e)::(List.map sexp_of_expr elst)) in
+  | Function_Affectation (f,elst,a) ->
+    let exprs = List (List.map sexp_of_expr (Nlist.to_list elst)) in
     List [Atom "AFF2";sexp_of_var f;exprs;sexp_of_expr a]
   | Record_Affectation (id,fd,e) ->
     List [Atom "AFF3";sexp_of_var id;sexp_of_record_field fd;sexp_of_expr e]
   | Pre (p,s) -> List [Atom "PRE"; sexp_of_pred p; sexp_of_subst s]
   | Assert (p,s) -> List [Atom "ASSERT"; sexp_of_pred p; sexp_of_subst s]
-  | Choice ((s,slst)) ->
-    List ( (Atom "CHOICE")::(sexp_of_subst s)::(List.map sexp_of_subst slst))
-  | IfThenElse ((y,ylst),s_opt) ->
+  | Choice slst ->
+    List ( (Atom "CHOICE")::(List.map sexp_of_subst (Nlist.to_list slst)))
+  | IfThenElse (ylst,s_opt) ->
     let aux (p,s) = List [sexp_of_pred p;sexp_of_subst s] in
-    let yy = List ((aux y)::(List.map aux ylst)) in
+    let yy = List (List.map aux (Nlist.to_list ylst)) in
     begin match s_opt with
       | None -> List [Atom "IF";yy]
       | Some els -> List [Atom "IF";yy;sexp_of_subst els]
     end
-  | Select ((y,ylst),s_opt) ->
+  | Select (ylst,s_opt) ->
    let aux (p,s) = List [sexp_of_pred p;sexp_of_subst s] in
-    let yy = List ((aux y)::(List.map aux ylst)) in
+    let yy = List (List.map aux (Nlist.to_list ylst)) in
     begin match s_opt with
       | None -> List [Atom "SELECT";yy]
       | Some els -> List [Atom "SELECT";yy;sexp_of_subst els]
     end
-  | Case (e,(y,ylst),s_opt) ->
+  | Case (e,ylst,s_opt) ->
     let aux (e,s) = List [sexp_of_expr e;sexp_of_subst s] in
-    let yy = List ((aux y)::(List.map aux ylst)) in
+    let yy = List (List.map aux (Nlist.to_list ylst)) in
     begin match s_opt with
       | None -> List [Atom "SELECT";sexp_of_expr e;yy]
       | Some els -> List [Atom "SELECT";sexp_of_expr e;yy;sexp_of_subst els]
     end
-  | Any ((x,xlst),p,s) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | Any (xlst,p,s) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     List [Atom "ANY";ids;sexp_of_pred p;sexp_of_subst s]
-  | Let ((x,xlst),(y,ylst),s) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | Let (xlst,ylst,s) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     let aux (id,e) = List [sexp_of_var id;sexp_of_expr e] in
-    let exprs = List ((aux y)::(List.map aux ylst)) in
+    let exprs = List (List.map aux (Nlist.to_list ylst)) in
     List [Atom "LET";ids;exprs;sexp_of_subst s]
-  | BecomesElt ((x,xlst),e) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | BecomesElt (xlst,e) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     List [Atom "BECOMESELT";ids;sexp_of_expr e]
-  | BecomesSuch ((x,xlst),p) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | BecomesSuch (xlst,p) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     List [Atom "BECOMESSUCH";ids;sexp_of_pred p]
-  | Var ((x,xlst),s) ->
-    let ids = List ((sexp_of_var x)::(List.map sexp_of_var xlst)) in
+  | Var (xlst,s) ->
+    let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     List [Atom "VAR";ids;sexp_of_subst s]
   | CallUp (outs,f,args) ->
     List ( ((Atom "CALL")::(List.map sexp_of_var outs))@
@@ -160,25 +160,25 @@ let sexp_of_op (op:_ operation) : t =
 let sexp_of_clause : ('lc,'ty) clause -> t = fun c ->
   match c.cl_desc with
   | Constraints p -> List [Atom "CONSTRAINTS";sexp_of_pred p]
-  | Imports (hd,tl) -> List ( (Atom "IMPORTS")::(List.map sexp_of_minst (hd::tl)) )
-  | Includes (hd,tl) -> List ( (Atom "INCLUDES")::(List.map sexp_of_minst (hd::tl)) )
-  | Extends (hd,tl) -> List ( (Atom "EXTENDS")::(List.map sexp_of_minst (hd::tl)) )
+  | Imports nlst -> List ( (Atom "IMPORTS")::(List.map sexp_of_minst (Nlist.to_list nlst)) )
+  | Includes nlst -> List ( (Atom "INCLUDES")::(List.map sexp_of_minst (Nlist.to_list nlst)) )
+  | Extends nlst -> List ( (Atom "EXTENDS")::(List.map sexp_of_minst (Nlist.to_list nlst)) )
   | Properties p -> List [Atom "PROPERTIES";sexp_of_pred p]
   | Invariant p -> List [Atom "INVARIANT";sexp_of_pred p]
-  | Assertions (hd,tl) -> List ((Atom "ASSERTIONS")::(List.map sexp_of_pred (hd::tl)))
+  | Assertions nlst -> List ((Atom "ASSERTIONS")::(List.map sexp_of_pred (Nlist.to_list nlst)))
   | Initialization s -> List [Atom "INITIALISATION";sexp_of_subst s]
-  | Operations (hd,tl) -> List ( (Atom "OPERATIONS")::(List.map sexp_of_op (hd::tl)) )
-  | Local_Operations (hd,tl) -> List ( (Atom "LOCAL_OPERATIONS")::(List.map sexp_of_op (hd::tl)) )
-  | Values (hd,tl) -> let aux (id,e) = List [sexp_of_var id;sexp_of_expr e] in
-    List ( (Atom "VALUES")::(List.map aux (hd::tl)) )
-  | Sees (hd,tl) -> List ( (Atom "SEES")::(List.map sexp_of_mch_name (hd::tl)) )
-  | Promotes (hd,tl) -> List ( (Atom "PROMOTES")::(List.map sexp_of_op_name (hd::tl)) )
-  | Uses (hd,tl) -> List ( (Atom "USES")::(List.map sexp_of_mch_name (hd::tl)) )
-  | Sets (hd,tl) -> List ( (Atom "SETS")::(List.map sexp_of_set (hd::tl)) )
-  | Constants (hd,tl) -> List ( (Atom "CONSTANTS")::(List.map sexp_of_var (hd::tl)) )
-  | Abstract_constants (hd,tl) -> List ( (Atom "ABSTRACT_CONSTANTS")::(List.map sexp_of_var (hd::tl)) )
-  | Concrete_variables (hd,tl) -> List ( (Atom "CONCRETE_VARIABLES")::(List.map sexp_of_var (hd::tl)) )
-  | Variables (hd,tl) -> List ( (Atom "VARIABLES")::(List.map sexp_of_var (hd::tl)) )
+  | Operations nlst -> List ( (Atom "OPERATIONS")::(List.map sexp_of_op (Nlist.to_list nlst)) )
+  | Local_Operations nlst -> List ( (Atom "LOCAL_OPERATIONS")::(List.map sexp_of_op (Nlist.to_list nlst)) )
+  | Values nlst -> let aux (id,e) = List [sexp_of_var id;sexp_of_expr e] in
+    List ( (Atom "VALUES")::(List.map aux (Nlist.to_list nlst)) )
+  | Sees nlst -> List ( (Atom "SEES")::(List.map sexp_of_mch_name (Nlist.to_list nlst)) )
+  | Promotes nlst -> List ( (Atom "PROMOTES")::(List.map sexp_of_op_name (Nlist.to_list nlst)) )
+  | Uses nlst -> List ( (Atom "USES")::(List.map sexp_of_mch_name (Nlist.to_list nlst)) )
+  | Sets nlst -> List ( (Atom "SETS")::(List.map sexp_of_set (Nlist.to_list nlst)) )
+  | Constants nlst -> List ( (Atom "CONSTANTS")::(List.map sexp_of_var (Nlist.to_list nlst)) )
+  | Abstract_constants nlst -> List ( (Atom "ABSTRACT_CONSTANTS")::(List.map sexp_of_var (Nlist.to_list nlst)) )
+  | Concrete_variables nlst -> List ( (Atom "CONCRETE_VARIABLES")::(List.map sexp_of_var (Nlist.to_list nlst)) )
+  | Variables nlst -> List ( (Atom "VARIABLES")::(List.map sexp_of_var (Nlist.to_list nlst)) )
 
 let sexp_of_mch name parameters clauses : t =
   List ( (Atom "MACHINE")::(Atom ("ident_" ^ name))::

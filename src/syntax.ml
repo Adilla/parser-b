@@ -91,13 +91,13 @@ type ('lc,'ty) expression_desc =
   | Pbool of ('lc,'ty) predicate
   | Application of ('lc,'ty) expression * ('lc,'ty) expression
   | Couple of c_or_m  * ('lc,'ty) expression * ('lc,'ty) expression
-  | Sequence of (('lc,'ty) expression) Utils.non_empty_list
-  | Extension of (('lc,'ty) expression) Utils.non_empty_list
-  | Comprehension of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
-  | Binder of expr_binder * ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate * ('lc,'ty) expression
+  | Sequence of (('lc,'ty) expression) Nlist.t
+  | Extension of (('lc,'ty) expression) Nlist.t
+  | Comprehension of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Binder of expr_binder * ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) expression
   | Record_Field_Access of ('lc,'ty) expression * 'lc lident
-  | Record of ('lc lident * ('lc,'ty) expression) Utils.non_empty_list
-  | Record_Type of ('lc lident * ('lc,'ty) expression) Utils.non_empty_list
+  | Record of ('lc lident * ('lc,'ty) expression) Nlist.t
+  | Record_Type of ('lc lident * ('lc,'ty) expression) Nlist.t
 
 and ('lc,'ty) expression = { exp_loc:'lc; exp_typ:'ty; exp_desc:('lc,'ty) expression_desc }
 
@@ -106,8 +106,8 @@ and ('lc,'ty) predicate_desc =
   | Binary_Prop of prop_bop * ('lc,'ty) predicate * ('lc,'ty) predicate
   | Binary_Pred of pred_bop * ('lc,'ty) expression * ('lc,'ty) expression
   | Negation of ('lc,'ty) predicate
-  | Universal_Q of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
-  | Existential_Q of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
+  | Universal_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Existential_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
 
 and ('lc,'ty) predicate = { prd_loc:'lc; prd_desc:('lc,'ty) predicate_desc }
 
@@ -118,18 +118,18 @@ let rec expr_eq : type a b c d. (a,b) expression -> (c,d) expression -> bool = f
   | Pbool p1, Pbool p2 -> pred_eq p1 p2
   | Application (f1,a1), Application (f2,a2) -> expr_eq f1 f2 && expr_eq a1 a2
   | Couple (_,x1,y1), Couple (_,x2,y2) -> expr_eq x1 x2 && expr_eq y1 y2
-  | Sequence lst1, Sequence lst2 -> Utils.nelist_eq expr_eq lst1 lst2
-  | Extension lst1, Extension lst2 -> Utils.nelist_eq expr_eq lst1 lst2
+  | Sequence lst1, Sequence lst2 -> Nlist.equal expr_eq lst1 lst2
+  | Extension lst1, Extension lst2 -> Nlist.equal expr_eq lst1 lst2
   | Comprehension (lst1,p1), Comprehension(lst2,p2) ->
-    Utils.nelist_eq var_eq lst1 lst2 && pred_eq p1 p2
+    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
   | Binder (bi1,lst1,p1,e1), Binder (bi2,lst2,p2,e2) ->
-    bi1 = bi2 && Utils.nelist_eq var_eq lst1 lst2 && pred_eq p1 p2 && expr_eq e1 e2
+    bi1 = bi2 && Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2 && expr_eq e1 e2
   | Record_Field_Access (e1,f1), Record_Field_Access(e2,f2) ->
     expr_eq e1 e2 && ident_eq f1.lid_str f2.lid_str
   | Record lst1, Record lst2
   | Record_Type lst1, Record_Type lst2 ->
     let aux (id1,e1) (id2,e2) = ident_eq id1.lid_str id2.lid_str && expr_eq e1 e2 in
-    Utils.nelist_eq aux lst1 lst2
+    Nlist.equal aux lst1 lst2
   | _, _ -> false
 
 and pred_eq : type a b c d. (a,b) predicate -> (c,d) predicate -> bool = fun p1 p2 ->
@@ -141,27 +141,27 @@ and pred_eq : type a b c d. (a,b) predicate -> (c,d) predicate -> bool = fun p1 
     b1 = b2 && expr_eq p1 p2 && expr_eq q1 q2
   | Negation p1, Negation p2 -> pred_eq p1 p2
   | Universal_Q (lst1,p1), Universal_Q (lst2,p2) ->
-    Utils.nelist_eq var_eq lst1 lst2 && pred_eq p1 p2
+    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
   | Existential_Q (lst1,p1), Existential_Q (lst2,p2) ->
-    Utils.nelist_eq var_eq lst1 lst2 && pred_eq p1 p2
+    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
   | _, _ -> false
 
 type ('lc,'ty) substitution_desc =
   | Skip
-  | Affectation of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) expression
-  | Function_Affectation of ('lc,'ty) var * ('lc,'ty) expression Utils.non_empty_list * ('lc,'ty) expression
+  | Affectation of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
+  | Function_Affectation of ('lc,'ty) var * ('lc,'ty) expression Nlist.t * ('lc,'ty) expression
   | Record_Affectation of ('lc,'ty) var * 'lc lident * ('lc,'ty) expression
   | Pre of ('lc,'ty) predicate * ('lc,'ty) substitution
   | Assert of ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Choice of ('lc,'ty) substitution Utils.non_empty_list
-  | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Utils.non_empty_list * ('lc,'ty) substitution option
-  | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Utils.non_empty_list * ('lc,'ty) substitution option
-  | Case of ('lc,'ty) expression * (('lc,'ty) expression * ('lc,'ty) substitution) Utils.non_empty_list * ('lc,'ty) substitution option
-  | Any of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Let of ('lc,'ty) var Utils.non_empty_list * (('lc,'ty) var * ('lc,'ty) expression) Utils.non_empty_list * ('lc,'ty) substitution
-  | BecomesElt of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) expression
-  | BecomesSuch of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
-  | Var of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) substitution
+  | Choice of ('lc,'ty) substitution Nlist.t
+  | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Case of ('lc,'ty) expression * (('lc,'ty) expression * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Any of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) substitution
+  | Let of ('lc,'ty) var Nlist.t * (('lc,'ty) var * ('lc,'ty) expression) Nlist.t * ('lc,'ty) substitution
+  | BecomesElt of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
+  | BecomesSuch of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Var of ('lc,'ty) var Nlist.t * ('lc,'ty) substitution
   | CallUp of ('lc,'ty) var list * 'lc lident * ('lc,'ty) expression list
   | While of ('lc,'ty) predicate * ('lc,'ty) substitution * ('lc,'ty) predicate * ('lc,'ty) expression
   | Sequencement of ('lc,'ty) substitution * ('lc,'ty) substitution
@@ -172,18 +172,18 @@ and ('lc,'ty) substitution = { sub_loc:'lc; sub_desc:('lc,'ty) substitution_desc
 let rec subst_eq : type a b c d. (a,b) substitution -> (c,d) substitution -> bool = fun s1 s2 ->
   match s1.sub_desc ,s2.sub_desc  with
   | Skip, Skip -> true
-  | Affectation (xlst1,e1), Affectation (xlst2,e2) -> Utils.nelist_eq var_eq xlst1 xlst2 && expr_eq e1 e2
+  | Affectation (xlst1,e1), Affectation (xlst2,e2) -> Nlist.equal var_eq xlst1 xlst2 && expr_eq e1 e2
   | Function_Affectation (f1,lst1,a1), Function_Affectation (f2,lst2,a2) ->
-    var_eq f1 f2 && Utils.nelist_eq expr_eq lst1 lst2 && expr_eq a1 a1
+    var_eq f1 f2 && Nlist.equal expr_eq lst1 lst2 && expr_eq a1 a1
   | Record_Affectation (id1,fd1,e1), Record_Affectation (id2,fd2,e2) ->
     var_eq id1 id2 && ident_eq fd1.lid_str fd2.lid_str && expr_eq e1 e2
   | Pre (p1,s1), Pre (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
   | Assert (p1,s1), Assert (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
-  | Choice lst1, Choice lst2 -> Utils.nelist_eq subst_eq lst1 lst2
+  | Choice lst1, Choice lst2 -> Nlist.equal subst_eq lst1 lst2
   | IfThenElse (lst1,opt1), IfThenElse (lst2,opt2)
   | Select (lst1,opt1), Select (lst2,opt2) ->
     let aux (p1,s1) (p2,s2) = pred_eq p1 p2 && subst_eq s1 s2 in
-    Utils.nelist_eq aux lst1 lst2 &&
+    Nlist.equal aux lst1 lst2 &&
     begin match opt1, opt2 with
       | None, None -> true
       | Some s1, Some s2 -> subst_eq s1 s2
@@ -191,21 +191,21 @@ let rec subst_eq : type a b c d. (a,b) substitution -> (c,d) substitution -> boo
     end
   | Case (e1,lst1,opt1), Case (e2,lst2,opt2) ->
     let aux (e1,s1) (e2,s2) = expr_eq e1 e2 && subst_eq s1 s2 in
-    expr_eq e1 e2 && Utils.nelist_eq aux lst1 lst2 &&
+    expr_eq e1 e2 && Nlist.equal aux lst1 lst2 &&
     begin match opt1, opt2 with
       | None, None -> true
       | Some s1, Some s2 -> subst_eq s1 s2
       | _, _ -> false
     end
   | Any (lst1,p1,s1), Any (lst2,p2,s2) ->
-    Utils.nelist_eq var_eq lst1 lst2 && pred_eq p1 p2 && subst_eq s1 s2
+    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2 && subst_eq s1 s2
   | Let (xlst1,ylst1,s1), Let (xlst2,ylst2,s2) ->
     let aux (v1,e1) (v2,e2) = var_eq v1 v2 && expr_eq e1 e2 in
-    Utils.nelist_eq var_eq xlst1 xlst2 &&
-    Utils.nelist_eq aux ylst1 ylst2 && subst_eq s1 s2
-  | BecomesElt (lst1,e1), BecomesElt (lst2,e2) -> Utils.nelist_eq var_eq lst1 lst2 && expr_eq e1 e2
-  | BecomesSuch (lst1,p1), BecomesSuch (lst2,p2) -> Utils.nelist_eq var_eq lst1 lst2 && pred_eq p1 p2
-  | Var (lst1,s1), Var (lst2,s2) -> Utils.nelist_eq var_eq lst1 lst2 && subst_eq s1 s2
+    Nlist.equal var_eq xlst1 xlst2 &&
+    Nlist.equal aux ylst1 ylst2 && subst_eq s1 s2
+  | BecomesElt (lst1,e1), BecomesElt (lst2,e2) -> Nlist.equal var_eq lst1 lst2 && expr_eq e1 e2
+  | BecomesSuch (lst1,p1), BecomesSuch (lst2,p2) -> Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
+  | Var (lst1,s1), Var (lst2,s2) -> Nlist.equal var_eq lst1 lst2 && subst_eq s1 s2
   | CallUp (xlst1,op1,elst1), CallUp (xlst2,op2,elst2) ->
     Utils.list_eq var_eq xlst1 xlst2 && lident_eq op1 op2 && Utils.list_eq expr_eq elst1 elst2
   | While (p1,s1,q1,e1), While (p2,s2,q2,e2) ->
@@ -232,81 +232,81 @@ type ('lc,'ty) set =
 
 type ('lc,'ty) clause_desc =
   | Constraints of ('lc,'ty) predicate
-  | Imports of (('lc,'ty) machine_instanciation) Utils.non_empty_list
-  | Sees of 'lc lident Utils.non_empty_list
-  | Includes of ('lc,'ty) machine_instanciation Utils.non_empty_list
-  | Extends of ('lc,'ty) machine_instanciation Utils.non_empty_list
-  | Promotes of 'lc lident Utils.non_empty_list
-  | Uses of 'lc lident Utils.non_empty_list
-  | Sets of ('lc,'ty) set Utils.non_empty_list
-  | Constants of ('lc,'ty) var Utils.non_empty_list
-  | Abstract_constants of ('lc,'ty) var Utils.non_empty_list
+  | Imports of (('lc,'ty) machine_instanciation) Nlist.t
+  | Sees of 'lc lident Nlist.t
+  | Includes of ('lc,'ty) machine_instanciation Nlist.t
+  | Extends of ('lc,'ty) machine_instanciation Nlist.t
+  | Promotes of 'lc lident Nlist.t
+  | Uses of 'lc lident Nlist.t
+  | Sets of ('lc,'ty) set Nlist.t
+  | Constants of ('lc,'ty) var Nlist.t
+  | Abstract_constants of ('lc,'ty) var Nlist.t
   | Properties of ('lc,'ty) predicate
-  | Concrete_variables of ('lc,'ty) var Utils.non_empty_list
-  | Variables of ('lc,'ty) var Utils.non_empty_list
+  | Concrete_variables of ('lc,'ty) var Nlist.t
+  | Variables of ('lc,'ty) var Nlist.t
   | Invariant of ('lc,'ty) predicate
-  | Assertions of ('lc,'ty) predicate Utils.non_empty_list
+  | Assertions of ('lc,'ty) predicate Nlist.t
   | Initialization of ('lc,'ty) substitution
-  | Operations of ('lc,'ty) operation Utils.non_empty_list
-  | Local_Operations of ('lc,'ty) operation Utils.non_empty_list
-  | Values of (('lc,'ty) var * ('lc,'ty) expression) Utils.non_empty_list
+  | Operations of ('lc,'ty) operation Nlist.t
+  | Local_Operations of ('lc,'ty) operation Nlist.t
+  | Values of (('lc,'ty) var * ('lc,'ty) expression) Nlist.t
 
 and ('lc,'ty) clause = { cl_loc:'lc; cl_desc:('lc,'ty) clause_desc }
 
 type ('lc,'ty) machine_desc = {
   mch_constraints: ('lc * ('lc,'ty) predicate) option;
-  mch_sees: ('lc * 'lc lident Utils.non_empty_list) option;
-  mch_includes: ('lc * ('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  mch_promotes: ('lc * 'lc lident Utils.non_empty_list) option;
-  mch_extends: ('lc * ('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  mch_uses: ('lc * 'lc lident Utils.non_empty_list) option;
-  mch_sets: ('lc * ('lc,'ty) set Utils.non_empty_list) option;
-  mch_concrete_constants: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
-  mch_abstract_constants: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
+  mch_sees: ('lc * 'lc lident Nlist.t) option;
+  mch_includes: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
+  mch_promotes: ('lc * 'lc lident Nlist.t) option;
+  mch_extends: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
+  mch_uses: ('lc * 'lc lident Nlist.t) option;
+  mch_sets: ('lc * ('lc,'ty) set Nlist.t) option;
+  mch_concrete_constants: ('lc * ('lc,'ty) var Nlist.t) option;
+  mch_abstract_constants: ('lc * ('lc,'ty) var Nlist.t) option;
   mch_properties: ('lc * ('lc,'ty) predicate) option;
-  mch_concrete_variables: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
-  mch_abstract_variables: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
+  mch_concrete_variables: ('lc * ('lc,'ty) var Nlist.t) option;
+  mch_abstract_variables: ('lc * ('lc,'ty) var Nlist.t) option;
   mch_invariant: ('lc * ('lc,'ty) predicate) option;
-  mch_assertions: ('lc * ('lc,'ty) predicate Utils.non_empty_list) option;
+  mch_assertions: ('lc * ('lc,'ty) predicate Nlist.t) option;
   mch_initialisation: ('lc * ('lc,'ty) substitution) option;
-  mch_operations: ('lc * ('lc,'ty) operation Utils.non_empty_list) option;
+  mch_operations: ('lc * ('lc,'ty) operation Nlist.t) option;
 }
 
 type ('lc,'ty) refinement_desc = {
   ref_refines: 'lc lident;
-  ref_sees: ('lc*'lc lident Utils.non_empty_list) option;
-  ref_includes: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  ref_promotes: ('lc*'lc lident Utils.non_empty_list) option;
-  ref_extends: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  ref_sets: ('lc*('lc,'ty) set Utils.non_empty_list) option;
-  ref_concrete_constants: ('lc*('lc,'ty) var Utils.non_empty_list) option;
-  ref_abstract_constants: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  ref_sees: ('lc*'lc lident Nlist.t) option;
+  ref_includes: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  ref_promotes: ('lc*'lc lident Nlist.t) option;
+  ref_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  ref_sets: ('lc*('lc,'ty) set Nlist.t) option;
+  ref_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
+  ref_abstract_constants: ('lc*('lc,'ty) var Nlist.t) option;
   ref_properties: ('lc*('lc,'ty) predicate) option;
-  ref_concrete_variables: ('lc*('lc,'ty) var Utils.non_empty_list) option;
-  ref_abstract_variables: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  ref_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
+  ref_abstract_variables: ('lc*('lc,'ty) var Nlist.t) option;
   ref_invariant: ('lc*('lc,'ty) predicate) option;
-  ref_assertions: ('lc*('lc,'ty) predicate Utils.non_empty_list) option;
+  ref_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
   ref_initialisation: ('lc*('lc,'ty) substitution) option;
-  ref_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
-  ref_local_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
+  ref_operations: ('lc*('lc,'ty) operation Nlist.t) option;
+  ref_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
 }
 
 type ('lc,'ty) implementation_desc = {
   imp_refines: 'lc lident;
-  imp_sees: ('lc*'lc lident Utils.non_empty_list) option;
-  imp_imports: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  imp_promotes: ('lc*'lc lident Utils.non_empty_list) option;
-  imp_extends: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  imp_sets: ('lc*('lc,'ty) set Utils.non_empty_list) option;
-  imp_concrete_constants: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  imp_sees: ('lc*'lc lident Nlist.t) option;
+  imp_imports: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  imp_promotes: ('lc*'lc lident Nlist.t) option;
+  imp_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  imp_sets: ('lc*('lc,'ty) set Nlist.t) option;
+  imp_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
   imp_properties: ('lc*('lc,'ty) predicate) option;
-  imp_values: ('lc*(('lc,'ty) var*('lc,'ty) expression) Utils.non_empty_list) option;
-  imp_concrete_variables: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  imp_values: ('lc*(('lc,'ty) var*('lc,'ty) expression) Nlist.t) option;
+  imp_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
   imp_invariant: ('lc*('lc,'ty) predicate) option;
-  imp_assertions: ('lc*('lc,'ty) predicate Utils.non_empty_list) option;
+  imp_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
   imp_initialisation: ('lc*('lc,'ty) substitution) option;
-  imp_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
-  imp_local_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
+  imp_operations: ('lc*('lc,'ty) operation Nlist.t) option;
+  imp_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
 }
 
 type ('lc,'ty) component_desc = 
@@ -338,26 +338,26 @@ let set_eq (s1:('lc,'ty) set) (s2:('lc2,'ty2) set) : bool =
 let clause_eq : type a b c d. (a,b) clause -> (c,d) clause -> bool = fun cl1 cl2 ->
   match cl1.cl_desc, cl2.cl_desc with
   | Constraints p1, Constraints p2 -> pred_eq p1 p2
-  | Imports lst1, Imports lst2 -> Utils.nelist_eq minst_eq lst1 lst2
-  | Sees lst1, Sees lst2 -> Utils.nelist_eq lident_eq lst1 lst2
-  | Includes lst1, Includes lst2 -> Utils.nelist_eq minst_eq lst1 lst2
-  | Extends lst1, Extends lst2 -> Utils.nelist_eq minst_eq lst1 lst2
-  | Promotes lst1, Promotes lst2 -> Utils.nelist_eq lident_eq lst1 lst2
-  | Uses lst1, Uses lst2 -> Utils.nelist_eq lident_eq lst1 lst2
-  | Sets lst1, Sets lst2 -> Utils.nelist_eq set_eq lst1 lst2
-  | Constants lst1, Constants lst2 -> Utils.nelist_eq var_eq lst1 lst2
-  | Abstract_constants lst1, Abstract_constants lst2 -> Utils.nelist_eq var_eq lst1 lst2
+  | Imports lst1, Imports lst2 -> Nlist.equal minst_eq lst1 lst2
+  | Sees lst1, Sees lst2 -> Nlist.equal lident_eq lst1 lst2
+  | Includes lst1, Includes lst2 -> Nlist.equal minst_eq lst1 lst2
+  | Extends lst1, Extends lst2 -> Nlist.equal minst_eq lst1 lst2
+  | Promotes lst1, Promotes lst2 -> Nlist.equal lident_eq lst1 lst2
+  | Uses lst1, Uses lst2 -> Nlist.equal lident_eq lst1 lst2
+  | Sets lst1, Sets lst2 -> Nlist.equal set_eq lst1 lst2
+  | Constants lst1, Constants lst2 -> Nlist.equal var_eq lst1 lst2
+  | Abstract_constants lst1, Abstract_constants lst2 -> Nlist.equal var_eq lst1 lst2
   | Properties p1, Properties p2 -> pred_eq p1 p2
-  | Concrete_variables lst1, Concrete_variables lst2 -> Utils.nelist_eq var_eq lst1 lst2
-  | Variables lst1, Variables lst2 -> Utils.nelist_eq var_eq lst1 lst2
+  | Concrete_variables lst1, Concrete_variables lst2 -> Nlist.equal var_eq lst1 lst2
+  | Variables lst1, Variables lst2 -> Nlist.equal var_eq lst1 lst2
   | Invariant p1, Invariant p2 -> pred_eq p1 p2
-  | Assertions p1, Assertions p2 -> Utils.nelist_eq pred_eq p1 p2
+  | Assertions p1, Assertions p2 -> Nlist.equal pred_eq p1 p2
   | Initialization s1, Initialization s2 -> subst_eq s1 s2
-  | Operations lst1, Operations lst2 -> Utils.nelist_eq operation_eq lst1 lst2
-  | Local_Operations lst1, Local_Operations lst2 -> Utils.nelist_eq operation_eq lst1 lst2
+  | Operations lst1, Operations lst2 -> Nlist.equal operation_eq lst1 lst2
+  | Local_Operations lst1, Local_Operations lst2 -> Nlist.equal operation_eq lst1 lst2
   | Values lst1, Values lst2 ->
     let aux (i1,x1) (i2,x2) = var_eq i1 i2 && expr_eq x1 x2 in
-    Utils.nelist_eq aux lst1 lst2
+    Nlist.equal aux lst1 lst2
   | _, _ -> false
 
 (* ******** *)

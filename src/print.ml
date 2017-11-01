@@ -157,11 +157,11 @@ let mk_var_list_comma (lst:_ var list) : Easy_format.t =
   let lst = List.map (fun (v:_ var) -> mk_atom v.var_id) lst in
   List (("",",","",list_1), lst)
 
-let mk_var_nelist_comma (hd,tl:_ var non_empty_list) : Easy_format.t =
-  mk_var_list_comma (hd::tl)
+let mk_var_nelist_comma (nlst:_ var Nlist.t) : Easy_format.t =
+  mk_var_list_comma (Nlist.to_list nlst)
 
-let mk_var_nelist_comma2 (hd,tl:_ var non_empty_list) : Easy_format.t =
-  let lst = List.map (fun (v:_ var) -> mk_atom v.var_id) (hd::tl) in
+let mk_var_nelist_comma2 (nlst:_ var Nlist.t) : Easy_format.t =
+  let lst = List.map (fun (v:_ var) -> mk_atom v.var_id) (Nlist.to_list nlst) in
   List (("(",",",")",list_1), lst)
 
 let rec ef_expr : ('lc,'ty) expression -> Easy_format.t = fun e ->
@@ -192,11 +192,11 @@ let rec ef_expr : ('lc,'ty) expression -> Easy_format.t = fun e ->
     let x = mk_label (mk_atom (binder_to_string bi)) lst in
     let y = List(("(","|",")",list_1), [ef_pred p;ef_expr e]) in
     List (("",".","",list_1),[x;y])
-  | Sequence ((e,lst)) ->
-    let lst = List.map (fun e -> ef_expr_wp e) (e::lst) in
+  | Sequence nlst ->
+    let lst = List.map (fun e -> ef_expr_wp e) (Nlist.to_list nlst) in
     List (("[",",","]",list_1),lst)
-  | Extension ((e,lst)) ->
-    let lst = List.map (fun e -> ef_expr_wp e) (e::lst) in
+  | Extension nlst ->
+    let lst = List.map (fun e -> ef_expr_wp e) (Nlist.to_list nlst) in
     List (("{",",","}",list_1),lst)
   | Couple (Infix,e1,e2) -> assert false
   | Couple (Maplet,e1,e2) ->
@@ -205,12 +205,12 @@ let rec ef_expr : ('lc,'ty) expression -> Easy_format.t = fun e ->
     List(("","","",list_1),[ef_expr_wp e1;mk_atom ",";ef_expr_wp e2])
   | Record_Field_Access (e,fd) ->
     mk_label (ef_expr_wp e) (mk_atom ("'" ^ fd.lid_str))
-  | Record ((f,lst)) ->
-    let flst = List.map ef_struct_field (f::lst) in
+  | Record nlst ->
+    let flst = List.map ef_struct_field (Nlist.to_list nlst) in
     let lst = List (("(",",",")",list_1),flst) in
     mk_label (mk_atom "rec") lst
-  | Record_Type ((f,lst)) ->
-    let flst = List.map ef_struct_field (f::lst) in
+  | Record_Type nlst ->
+    let flst = List.map ef_struct_field (Nlist.to_list nlst) in
     let lst = List (("(",",",")",list_1),flst) in
     mk_label (mk_atom "struct") lst
 
@@ -286,9 +286,9 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
   | Affectation (xlst,e) ->
     mk_sequence [mk_var_nelist_comma xlst;mk_atom ":=";ef_expr e]
 
-  | Function_Affectation (f,(a,alst),e) ->
+  | Function_Affectation (f,alst,e) ->
     let aux e = List(("(","",")",list),[ef_expr e]) in
-    let lst_args = List(("","","",list),List.map aux (a::alst)) in
+    let lst_args = List(("","","",list),List.map aux (Nlist.to_list alst)) in
     let lf = Label ((mk_atom f.var_id,label), lst_args) in
     mk_sequence [lf;mk_atom ":=";ef_expr e]
 
@@ -309,15 +309,16 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
                      Label((mk_atom "THEN",lb),ef_subst s);
                      mk_atom "END"]
 
-  | Choice ((s,slst)) ->
+  | Choice slst ->
     let lb = {label with label_break=`Always} in
     mk_sequence_nl (
-      Label((mk_atom "CHOICE",lb),ef_subst s)::
-      (List.map (fun s -> Label((mk_atom "OR",lb),ef_subst s)) slst)
+      Label((mk_atom "CHOICE",lb),ef_subst (Nlist.hd slst))::
+      (List.map (fun s -> Label((mk_atom "OR",lb),ef_subst s)) (Nlist.tl slst))
       @[mk_atom "END"])
 
-  | IfThenElse (((p,s),pslst),opt) ->
+  | IfThenElse (pslst,opt) ->
     let lb = {label with label_break=`Always_rec; space_after_label=false} in
+    let (p,s) = Nlist.hd pslst in
     let clst =
       [ [Label((mk_atom "IF",lb),ef_pred p);
          Label((mk_atom "THEN",lb),ef_subst s)] ]
@@ -325,7 +326,7 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
       (List.map (fun (p,s) ->
            [Label((mk_atom "ELSIF",lb),ef_pred p);
             Label((mk_atom "THEN",lb),ef_subst s)]
-         ) pslst)
+         ) (Nlist.tl pslst))
       @ (match opt with
           | None -> []
           | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
@@ -333,8 +334,9 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
     in
     mk_sequence_nl (List.concat clst)
 
-  | Select (((p,s),pslst),opt) ->
+  | Select (pslst,opt) ->
     let lb = {label with label_break=`Always} in
+    let (p,s) = Nlist.hd pslst in
     let clst =
       [ [Label((mk_atom "SELECT",lb),ef_pred p);
          Label((mk_atom "THEN",lb),ef_subst s)] ]
@@ -342,7 +344,7 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
       (List.map (fun (p,s) ->
            [Label((mk_atom "WHEN",lb),ef_pred p);
             Label((mk_atom "THEN",lb),ef_subst s)]
-         ) pslst)
+         ) (Nlist.tl pslst))
       @ (match opt with
           | None -> []
           | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
@@ -350,8 +352,9 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
     in
     mk_sequence_nl (List.concat clst)
 
-  | Case (c,((e,s),eslst),opt) ->
+  | Case (c,eslst,opt) ->
     let lb = {label with label_break=`Always} in
+    let (e,s) = Nlist.hd eslst in
     let clst =
       [ [ (mk_atom "OF");
           Label((mk_atom "EITHER",lb),ef_expr e);
@@ -360,7 +363,7 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
       (List.map (fun (e,s) ->
            [Label((mk_atom "OR",lb),ef_expr e);
             Label((mk_atom "THEN",lb),ef_subst s)]
-         ) eslst)
+         ) (Nlist.tl eslst))
       @ (match opt with
           | None -> []
           | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
@@ -378,11 +381,11 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
                      Label((mk_atom "THEN",lb),ef_subst s);
                      mk_atom "END"]
 
-  | Let (xlst,(ie,ielst),s) ->
+  | Let (xlst,ielst,s) ->
     let lb = { label with label_break=`Always } in
     let lst = { list with space_after_opening=false; space_before_closing=false; align_closing=false; } in
     let ef_eq (v,e:_ var*_ expression) = mk_sequence [mk_atom v.var_id;mk_atom "=";ef_expr e] in
-    let defs = List(("","&","",lst),List.map ef_eq (ie::ielst)) in
+    let defs = List(("","&","",lst),List.map ef_eq (Nlist.to_list ielst)) in
     mk_sequence_nl [ Label((mk_atom "LET",lb),mk_var_nelist_comma xlst);
                      Label((mk_atom "BE",lb),defs);
                      Label((mk_atom "IN",lb),ef_subst s);
@@ -500,26 +503,26 @@ let ef_operation (op:_ operation) : Easy_format.t =
                         space_after_label=false } in
   Label((spec, lbl), ef_subst_wbe op.op_body)
 
-let ef_op_nelist (hd,tl) =
+let ef_op_nelist nlst =
   List(("",";\n","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_operation (hd::tl))
+       List.map ef_operation (Nlist.to_list nlst))
 
-let ef_pred_nelist (hd,tl) =
+let ef_pred_nelist nlst =
   List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_pred (hd::tl))
+       List.map ef_pred (Nlist.to_list nlst))
 
-let ef_set_nelist (hd,tl) =
+let ef_set_nelist nlst =
   List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_set (hd::tl))
+       List.map ef_set (Nlist.to_list nlst))
 
-let ef_minst_nelist (hd,tl) =
+let ef_minst_nelist nlst =
   List(("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_minst (hd::tl))
+       List.map ef_minst (Nlist.to_list nlst))
 
-let ef_value_nelist (hd,tl) =
+let ef_value_nelist nlst =
   let ef (v,e:_ var*_ expression) = mk_sequence [mk_atom v.var_id;mk_atom "=";ef_expr e] in
   (List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-        List.map ef (hd::tl)))
+        List.map ef (Nlist.to_list nlst)))
 
 let mk_machine_name (name:ident) (params:_ var list) : Easy_format.t =
   match params with
@@ -535,12 +538,12 @@ let mk_clause_list lst =
                     align_closing=false}),
         lst)
 
-let mk_mch_name_nelist_comma (hd,tl) : Easy_format.t =
-  let lst = List.map (fun (v:_ lident) -> mk_atom v.lid_str) (hd::tl) in
+let mk_mch_name_nelist_comma nlst : Easy_format.t =
+  let lst = List.map (fun (v:_ lident) -> mk_atom v.lid_str) (Nlist.to_list nlst) in
   List (("",",","",list_1), lst)
 
-let mk_op_name_nelist_comma (hd,tl) : Easy_format.t =
-  let lst = List.map (fun (v:_ lident) -> mk_atom v.lid_str) (hd::tl) in
+let mk_op_name_nelist_comma nlst : Easy_format.t =
+  let lst = List.map (fun (v:_ lident) -> mk_atom v.lid_str) (Nlist.to_list nlst) in
   List (("",",","",list_1), lst)
 
 let ef_clause : ('lc,'ty) clause -> Easy_format.t = fun c ->

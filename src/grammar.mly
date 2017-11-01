@@ -32,8 +32,7 @@ let expr_to_list (e:p_expression) : p_expression list =
   in
   aux [] e
 
-let rec expr_to_nonempty_list e =
-  let lst = expr_to_list e in (List.hd lst,List.tl lst)
+let rec expr_to_nonempty_list e = Nlist.from_list_exn (expr_to_list e)
 
 let set_true (e:p_expression) : p_expression =
   match e.exp_desc with
@@ -308,12 +307,12 @@ var_list_comma:
         | id=IDENT COMMA lst=var_list_comma { (mk_var $startpos(id) id)::lst }
 
 var_nelist_comma:
-| id=IDENT { (mk_var $startpos(id) id,[]) }
-| id=IDENT COMMA lst=var_list_comma { (mk_var $startpos(id) id,lst) }
+| id=IDENT { Nlist.make1 (mk_var $startpos(id) id) }
+| id=IDENT COMMA lst=var_list_comma { Nlist.make (mk_var $startpos(id) id) lst }
 
 fields:
-| id=IDENT MEMBER_OF e=expression { ((mk_lident $startpos(id) id,e),[]) }
-| id=IDENT MEMBER_OF e=expression COMMA lst=fields { ((mk_lident $startpos(id) id,e),(fst lst)::(snd lst)) }
+| id=IDENT MEMBER_OF e=expression { Nlist.make1 (mk_lident $startpos(id) id,e) }
+| id=IDENT MEMBER_OF e=expression COMMA lst=fields { Nlist.cons (mk_lident $startpos(id) id,e) lst }
 
 constant:
 | s=STRING { String s }
@@ -441,7 +440,7 @@ expression:
 | f=expression LPAR a=expression RPAR { mk_expr $startpos (Application (f,a)) }
 | LSQU e=expression RSQU { mk_expr $startpos (Sequence(expr_to_nonempty_list e)) }
 | op=prefix_op LPAR e=expression RPAR { mk_prefix $startpos op e }
-| b=binder id=IDENT DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b (mk_var $startpos(id) id,[]) p e }
+| b=binder id=IDENT DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b (Nlist.make1 (mk_var $startpos(id) id)) p e }
 | b=binder LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b ids p e }
 | LBRA_COMP ids=var_nelist_comma BAR p=predicate RBRA { mk_expr $startpos (Comprehension (ids,p)) }
 | STRUCT LPAR lst=fields RPAR { mk_expr $startpos (Record_Type lst)  }
@@ -476,9 +475,9 @@ predicate:
 | NOT LPAR p=predicate RPAR { mk_pred $startpos (Negation p) }
 | p=predicate op=b_prop q=predicate { mk_pred $startpos (Binary_Prop (op,p,q)) }
 | e1=expression op=b_pred e2=expression { mk_pred $startpos (Binary_Pred (op,e1,e2)) }
-| FORALL id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Universal_Q ((mk_var $startpos(id) id,[]),p)) }
+| FORALL id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Universal_Q (Nlist.make1 (mk_var $startpos(id) id),p)) }
 | FORALL LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate RPAR { mk_pred $startpos (Universal_Q (ids,p)) }
-| EXISTS id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q ((mk_var $startpos(id) id,[]),p)) }
+| EXISTS id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q (Nlist.make1 (mk_var $startpos(id) id),p)) }
 | EXISTS LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q (ids,p)) }
 
 
@@ -519,7 +518,7 @@ level1_substitution:
 | ids=var_nelist_comma AFFECTATION e=expression { mk_subst $startpos (Affectation (ids,e)) }
 
 | id=IDENT LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
-     { mk_subst $startpos (Function_Affectation (mk_var $startpos(id) id,(e1,lst),e2)) }
+     { mk_subst $startpos (Function_Affectation (mk_var $startpos(id) id,Nlist.make e1 lst,e2)) }
 
 | id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression
 { mk_subst $startpos (Record_Affectation (mk_var $startpos(id) id,mk_lident $startpos(fi) fi,e)) }
@@ -528,22 +527,22 @@ level1_substitution:
 
 | ASSERT p=predicate THEN s=substitution END { mk_subst $startpos (Assert (p,s)) }
 
-| CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { mk_subst $startpos (Choice (List.hd lst,List.tl lst)) }
+| CHOICE lst=separated_nonempty_list(CASE_OR,substitution) END { mk_subst $startpos (Choice (Nlist.from_list_exn lst)) }
 
-| IF p=predicate THEN s=substitution ei=elsif* e=option(els) END { mk_subst $startpos (IfThenElse (((p,s),ei),e)) }
+| IF p=predicate THEN s=substitution ei=elsif* e=option(els) END { mk_subst $startpos (IfThenElse (Nlist.make (p,s) ei,e)) }
 
-| SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { mk_subst $startpos (Select (((p,s),w),e)) }
+| SELECT p=predicate THEN s=substitution w=whn* e=option(els) END { mk_subst $startpos (Select (Nlist.make (p,s) w,e)) }
 
 | CASE exp=expression OF
         EITHER e=expression THEN s=substitution
         ors=case_or*
         opt=option(els)
-  END END { mk_subst $startpos (Case (exp,((e,s),ors),opt)) }
+  END END { mk_subst $startpos (Case (exp,Nlist.make (e,s) ors,opt)) }
 
 | ANY ids=var_nelist_comma WHERE p=predicate THEN s=substitution END { mk_subst $startpos (Any (ids,p,s)) }
 
 | LET ids=var_nelist_comma BE eqs=separated_nonempty_list(AND,id_eq_expr) IN s=substitution END
- { mk_subst $startpos (Let (ids,(List.hd eqs,List.tl eqs),s)) }
+ { mk_subst $startpos (Let (ids,Nlist.from_list_exn eqs,s)) }
 
 | ids=var_nelist_comma BECOMES_ELT e=expression { mk_subst $startpos (BecomesElt (ids,e)) }
 
@@ -561,12 +560,12 @@ level1_substitution:
  * ************************************************************************** *)
 
 mch_name_nelist:
-        | id=IDENT { (mk_lident $startpos(id) id,[]) }
-        | id=IDENT COMMA lst=mch_name_nelist { (mk_lident $startpos(id) id,(fst lst)::(snd lst)) }
+        | id=IDENT { Nlist.make1 (mk_lident $startpos(id) id) }
+        | id=IDENT COMMA lst=mch_name_nelist { Nlist.cons (mk_lident $startpos(id) id) lst }
 
 op_name_nelist:
-        | id=IDENT { (mk_lident $startpos(id) id,[]) }
-        | id=IDENT COMMA lst=op_name_nelist { (mk_lident $startpos(id) id,(fst lst)::(snd lst)) }
+        | id=IDENT { Nlist.make1 (mk_lident $startpos(id) id) }
+        | id=IDENT COMMA lst=op_name_nelist { Nlist.cons (mk_lident $startpos(id) id) lst }
 
 component_eof: a=component EOF { a }
 
@@ -593,11 +592,11 @@ operation :
 | id=IDENT EQUAL s=level1_substitution
  { mk_operation [] (mk_lident $startpos(id) id) [] s }
 | id=IDENT LPAR lst=var_nelist_comma RPAR EQUAL s=level1_substitution
- { mk_operation [] (mk_lident $startpos(id) id) ((fst lst)::(snd lst)) s }
+ { mk_operation [] (mk_lident $startpos(id) id) (Nlist.to_list lst) s }
 | ids=var_nelist_comma LEFTARROW id=IDENT LPAR lst=var_nelist_comma RPAR EQUAL s=level1_substitution
- { mk_operation ((fst ids)::(snd ids)) (mk_lident $startpos(id) id) ((fst lst)::(snd lst)) s }
+ { mk_operation (Nlist.to_list ids) (mk_lident $startpos(id) id) (Nlist.to_list lst) s }
 | ids=var_nelist_comma LEFTARROW id=IDENT EQUAL s=level1_substitution
- { mk_operation ((fst ids)::(snd ids)) (mk_lident $startpos(id) id) [] s }
+ { mk_operation (Nlist.to_list ids) (mk_lident $startpos(id) id) [] s }
 
 semicolon_pred_lst:
 | p=predicate { [p] }
@@ -609,11 +608,11 @@ valuation:
 clause:
   CONSTRAINTS p=predicate { mk_clause $startpos (Constraints p) }
 | SEES lst=mch_name_nelist { mk_clause $startpos (Sees lst) }
-| INCLUDES lst=separated_nonempty_list ( COMMA, machine_instanciation ) { mk_clause $startpos (Includes (List.hd lst,List.tl lst)) }
-| EXTENDS lst=separated_nonempty_list ( COMMA, machine_instanciation ) { mk_clause $startpos (Extends (List.hd lst,List.tl lst)) }
+| INCLUDES lst=separated_nonempty_list ( COMMA, machine_instanciation ) { mk_clause $startpos (Includes (Nlist.from_list_exn lst)) }
+| EXTENDS lst=separated_nonempty_list ( COMMA, machine_instanciation ) { mk_clause $startpos (Extends (Nlist.from_list_exn lst)) }
 | PROMOTES lst=op_name_nelist { mk_clause $startpos (Promotes lst) }
 | USES lst=mch_name_nelist { mk_clause $startpos (Uses lst) }
-| SETS lst=separated_nonempty_list( SEMICOLON, set ) { mk_clause $startpos (Sets (List.hd lst,List.tl lst)) }
+| SETS lst=separated_nonempty_list( SEMICOLON, set ) { mk_clause $startpos (Sets (Nlist.from_list_exn lst)) }
 | CONCRETE_CONSTANTS lst=var_nelist_comma { mk_clause $startpos (Constants lst) }
 | CONSTANTS lst=var_nelist_comma { mk_clause $startpos (Constants lst) }
 | ABSTRACT_CONSTANTS lst=var_nelist_comma { mk_clause $startpos (Abstract_constants lst) }
@@ -622,12 +621,12 @@ clause:
 | ABSTRACT_VARIABLES lst=var_nelist_comma { mk_clause $startpos (Variables lst) }
 | VARIABLES lst=var_nelist_comma { mk_clause $startpos (Variables lst) }
 | INVARIANT p=predicate { mk_clause $startpos (Invariant p) }
-| ASSERTIONS lst=semicolon_pred_lst { mk_clause $startpos (Assertions (List.hd lst,List.tl lst)) }
+| ASSERTIONS lst=semicolon_pred_lst { mk_clause $startpos (Assertions (Nlist.from_list_exn lst)) }
 | INITIALISATION s=substitution { mk_clause $startpos (Initialization s) }
-| OPERATIONS lst=separated_nonempty_list( SEMICOLON, operation ) { mk_clause $startpos (Operations (List.hd lst,List.tl lst)) }
-| LOCAL_OPERATIONS lst=separated_nonempty_list( SEMICOLON, operation ) { mk_clause $startpos (Local_Operations (List.hd lst,List.tl lst)) }
-| IMPORTS lst=separated_nonempty_list(COMMA,machine_instanciation) { mk_clause $startpos (Imports (List.hd lst,List.tl lst)) }
-| VALUES lst=separated_nonempty_list(SEMICOLON,valuation) { mk_clause $startpos (Values (List.hd lst,List.tl lst)) }
+| OPERATIONS lst=separated_nonempty_list( SEMICOLON, operation ) { mk_clause $startpos (Operations (Nlist.from_list_exn lst)) }
+| LOCAL_OPERATIONS lst=separated_nonempty_list( SEMICOLON, operation ) { mk_clause $startpos (Local_Operations (Nlist.from_list_exn lst)) }
+| IMPORTS lst=separated_nonempty_list(COMMA,machine_instanciation) { mk_clause $startpos (Imports (Nlist.from_list_exn lst)) }
+| VALUES lst=separated_nonempty_list(SEMICOLON,valuation) { mk_clause $startpos (Values (Nlist.from_list_exn lst)) }
 
 no_warning: DEFINITIONS EQUALEQUAL DEF_FILE { () }
 %%

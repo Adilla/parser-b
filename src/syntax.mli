@@ -67,13 +67,13 @@ type ('lc,'ty) expression_desc =
   | Pbool of ('lc,'ty) predicate
   | Application of ('lc,'ty) expression * ('lc,'ty) expression
   | Couple of c_or_m  * ('lc,'ty) expression * ('lc,'ty) expression
-  | Sequence of (('lc,'ty) expression) Utils.non_empty_list
-  | Extension of (('lc,'ty) expression) Utils.non_empty_list
-  | Comprehension of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
-  | Binder of expr_binder * ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate * ('lc,'ty) expression
+  | Sequence of (('lc,'ty) expression) Nlist.t
+  | Extension of (('lc,'ty) expression) Nlist.t
+  | Comprehension of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Binder of expr_binder * ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) expression
   | Record_Field_Access of ('lc,'ty) expression * 'lc lident
-  | Record of ('lc lident * ('lc,'ty) expression) Utils.non_empty_list
-  | Record_Type of ('lc lident * ('lc,'ty) expression) Utils.non_empty_list
+  | Record of ('lc lident * ('lc,'ty) expression) Nlist.t
+  | Record_Type of ('lc lident * ('lc,'ty) expression) Nlist.t
 
 and ('lc,'ty) expression = {
   exp_loc:'lc;
@@ -86,8 +86,8 @@ and ('lc,'ty) predicate_desc =
   | Binary_Prop of prop_bop * ('lc,'ty) predicate * ('lc,'ty) predicate
   | Binary_Pred of pred_bop * ('lc,'ty) expression * ('lc,'ty) expression
   | Negation of ('lc,'ty) predicate
-  | Universal_Q of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
-  | Existential_Q of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
+  | Universal_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Existential_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
 
 and ('lc,'ty) predicate = {
   prd_loc:'lc;
@@ -99,20 +99,20 @@ val pred_eq : ('lc,'ty) predicate -> ('lc2,'ty2) predicate -> bool
 
 type ('lc,'ty) substitution_desc =
   | Skip
-  | Affectation of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) expression
-  | Function_Affectation of ('lc,'ty) var * ('lc,'ty) expression Utils.non_empty_list * ('lc,'ty) expression
+  | Affectation of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
+  | Function_Affectation of ('lc,'ty) var * ('lc,'ty) expression Nlist.t * ('lc,'ty) expression
   | Record_Affectation of ('lc,'ty) var * 'lc lident * ('lc,'ty) expression
   | Pre of ('lc,'ty) predicate * ('lc,'ty) substitution
   | Assert of ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Choice of ('lc,'ty) substitution Utils.non_empty_list
-  | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Utils.non_empty_list * ('lc,'ty) substitution option
-  | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Utils.non_empty_list * ('lc,'ty) substitution option
-  | Case of ('lc,'ty) expression * (('lc,'ty) expression * ('lc,'ty) substitution) Utils.non_empty_list * ('lc,'ty) substitution option
-  | Any of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Let of ('lc,'ty) var Utils.non_empty_list * (('lc,'ty) var * ('lc,'ty) expression) Utils.non_empty_list * ('lc,'ty) substitution
-  | BecomesElt of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) expression
-  | BecomesSuch of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) predicate
-  | Var of ('lc,'ty) var Utils.non_empty_list * ('lc,'ty) substitution
+  | Choice of ('lc,'ty) substitution Nlist.t
+  | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Case of ('lc,'ty) expression * (('lc,'ty) expression * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Any of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) substitution
+  | Let of ('lc,'ty) var Nlist.t * (('lc,'ty) var * ('lc,'ty) expression) Nlist.t * ('lc,'ty) substitution
+  | BecomesElt of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
+  | BecomesSuch of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Var of ('lc,'ty) var Nlist.t * ('lc,'ty) substitution
   | CallUp of ('lc,'ty) var list * 'lc lident * ('lc,'ty) expression list
   | While of ('lc,'ty) predicate * ('lc,'ty) substitution * ('lc,'ty) predicate * ('lc,'ty) expression
   | Sequencement of ('lc,'ty) substitution * ('lc,'ty) substitution
@@ -149,24 +149,24 @@ val set_eq: ('lc,'ty) set -> ('lc2,'ty2) set -> bool
 
 type ('lc,'ty) clause_desc =
   | Constraints of ('lc,'ty) predicate
-  | Imports of (('lc,'ty) machine_instanciation) Utils.non_empty_list
-  | Sees of 'lc lident Utils.non_empty_list
-  | Includes of ('lc,'ty) machine_instanciation Utils.non_empty_list
-  | Extends of ('lc,'ty) machine_instanciation Utils.non_empty_list
-  | Promotes of 'lc lident Utils.non_empty_list
-  | Uses of 'lc lident Utils.non_empty_list
-  | Sets of ('lc,'ty) set Utils.non_empty_list
-  | Constants of ('lc,'ty) var Utils.non_empty_list
-  | Abstract_constants of ('lc,'ty) var Utils.non_empty_list
+  | Imports of (('lc,'ty) machine_instanciation) Nlist.t
+  | Sees of 'lc lident Nlist.t
+  | Includes of ('lc,'ty) machine_instanciation Nlist.t
+  | Extends of ('lc,'ty) machine_instanciation Nlist.t
+  | Promotes of 'lc lident Nlist.t
+  | Uses of 'lc lident Nlist.t
+  | Sets of ('lc,'ty) set Nlist.t
+  | Constants of ('lc,'ty) var Nlist.t
+  | Abstract_constants of ('lc,'ty) var Nlist.t
   | Properties of ('lc,'ty) predicate
-  | Concrete_variables of ('lc,'ty) var Utils.non_empty_list
-  | Variables of ('lc,'ty) var Utils.non_empty_list
+  | Concrete_variables of ('lc,'ty) var Nlist.t
+  | Variables of ('lc,'ty) var Nlist.t
   | Invariant of ('lc,'ty) predicate
-  | Assertions of ('lc,'ty) predicate Utils.non_empty_list
+  | Assertions of ('lc,'ty) predicate Nlist.t
   | Initialization of ('lc,'ty) substitution
-  | Operations of ('lc,'ty) operation Utils.non_empty_list
-  | Local_Operations of ('lc,'ty) operation Utils.non_empty_list
-  | Values of (('lc,'ty) var * ('lc,'ty) expression) Utils.non_empty_list
+  | Operations of ('lc,'ty) operation Nlist.t
+  | Local_Operations of ('lc,'ty) operation Nlist.t
+  | Values of (('lc,'ty) var * ('lc,'ty) expression) Nlist.t
 
 and ('lc,'ty) clause = {
   cl_loc:'lc;
@@ -177,58 +177,58 @@ val clause_eq: ('lc,'ty) clause -> ('lc2,'ty2) clause -> bool
 
 type ('lc,'ty) machine_desc = {
   mch_constraints: ('lc * ('lc,'ty) predicate) option;
-  mch_sees: ('lc * 'lc lident Utils.non_empty_list) option;
-  mch_includes: ('lc * ('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  mch_promotes: ('lc * 'lc lident Utils.non_empty_list) option;
-  mch_extends: ('lc * ('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  mch_uses: ('lc * 'lc lident Utils.non_empty_list) option;
-  mch_sets: ('lc * ('lc,'ty) set Utils.non_empty_list) option;
-  mch_concrete_constants: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
-  mch_abstract_constants: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
+  mch_sees: ('lc * 'lc lident Nlist.t) option;
+  mch_includes: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
+  mch_promotes: ('lc * 'lc lident Nlist.t) option;
+  mch_extends: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
+  mch_uses: ('lc * 'lc lident Nlist.t) option;
+  mch_sets: ('lc * ('lc,'ty) set Nlist.t) option;
+  mch_concrete_constants: ('lc * ('lc,'ty) var Nlist.t) option;
+  mch_abstract_constants: ('lc * ('lc,'ty) var Nlist.t) option;
   mch_properties: ('lc * ('lc,'ty) predicate) option;
-  mch_concrete_variables: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
-  mch_abstract_variables: ('lc * ('lc,'ty) var Utils.non_empty_list) option;
+  mch_concrete_variables: ('lc * ('lc,'ty) var Nlist.t) option;
+  mch_abstract_variables: ('lc * ('lc,'ty) var Nlist.t) option;
   mch_invariant: ('lc * ('lc,'ty) predicate) option;
-  mch_assertions: ('lc * ('lc,'ty) predicate Utils.non_empty_list) option;
+  mch_assertions: ('lc * ('lc,'ty) predicate Nlist.t) option;
   mch_initialisation: ('lc * ('lc,'ty) substitution) option;
-  mch_operations: ('lc * ('lc,'ty) operation Utils.non_empty_list) option;
+  mch_operations: ('lc * ('lc,'ty) operation Nlist.t) option;
 }
 
 type ('lc,'ty) refinement_desc = {
   ref_refines: 'lc lident;
-  ref_sees: ('lc*'lc lident Utils.non_empty_list) option;
-  ref_includes: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  ref_promotes: ('lc*'lc lident Utils.non_empty_list) option;
-  ref_extends: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  ref_sets: ('lc*('lc,'ty) set Utils.non_empty_list) option;
-  ref_concrete_constants: ('lc*('lc,'ty) var Utils.non_empty_list) option;
-  ref_abstract_constants: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  ref_sees: ('lc*'lc lident Nlist.t) option;
+  ref_includes: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  ref_promotes: ('lc*'lc lident Nlist.t) option;
+  ref_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  ref_sets: ('lc*('lc,'ty) set Nlist.t) option;
+  ref_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
+  ref_abstract_constants: ('lc*('lc,'ty) var Nlist.t) option;
   ref_properties: ('lc*('lc,'ty) predicate) option;
-  ref_concrete_variables: ('lc*('lc,'ty) var Utils.non_empty_list) option;
-  ref_abstract_variables: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  ref_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
+  ref_abstract_variables: ('lc*('lc,'ty) var Nlist.t) option;
   ref_invariant: ('lc*('lc,'ty) predicate) option;
-  ref_assertions: ('lc*('lc,'ty) predicate Utils.non_empty_list) option;
+  ref_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
   ref_initialisation: ('lc*('lc,'ty) substitution) option;
-  ref_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
-  ref_local_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
+  ref_operations: ('lc*('lc,'ty) operation Nlist.t) option;
+  ref_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
 }
 
 type ('lc,'ty) implementation_desc = {
   imp_refines: 'lc lident;
-  imp_sees: ('lc*'lc lident Utils.non_empty_list) option;
-  imp_imports: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  imp_promotes: ('lc*'lc lident Utils.non_empty_list) option;
-  imp_extends: ('lc*('lc,'ty) machine_instanciation Utils.non_empty_list) option;
-  imp_sets: ('lc*('lc,'ty) set Utils.non_empty_list) option;
-  imp_concrete_constants: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  imp_sees: ('lc*'lc lident Nlist.t) option;
+  imp_imports: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  imp_promotes: ('lc*'lc lident Nlist.t) option;
+  imp_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
+  imp_sets: ('lc*('lc,'ty) set Nlist.t) option;
+  imp_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
   imp_properties: ('lc*('lc,'ty) predicate) option;
-  imp_values: ('lc*(('lc,'ty) var*('lc,'ty) expression) Utils.non_empty_list) option;
-  imp_concrete_variables: ('lc*('lc,'ty) var Utils.non_empty_list) option;
+  imp_values: ('lc*(('lc,'ty) var*('lc,'ty) expression) Nlist.t) option;
+  imp_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
   imp_invariant: ('lc*('lc,'ty) predicate) option;
-  imp_assertions: ('lc*('lc,'ty) predicate Utils.non_empty_list) option;
+  imp_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
   imp_initialisation: ('lc*('lc,'ty) substitution) option;
-  imp_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
-  imp_local_operations: ('lc*('lc,'ty) operation Utils.non_empty_list) option;
+  imp_operations: ('lc*('lc,'ty) operation Nlist.t) option;
+  imp_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
 }
 
 type ('lc,'ty) component_desc = 

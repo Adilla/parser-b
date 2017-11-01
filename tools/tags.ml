@@ -82,31 +82,31 @@ let get_tags_mch (tags:tags) loc name parameters desc : tags =
   let tags = List.fold_left add_params tags parameters in
   let tags = match desc.mch_promotes with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_promotes tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_promotes tags (Nlist.to_list nlst)
   in
   let tags = match desc.mch_sets with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_sets tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_sets tags (Nlist.to_list nlst)
   in
   let tags = match desc.mch_concrete_constants with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_constant tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_constant tags (Nlist.to_list nlst)
   in
   let tags = match desc.mch_abstract_constants with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_abstract_constant tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_abstract_constant tags (Nlist.to_list nlst)
   in
   let tags = match desc.mch_concrete_variables with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_concrete_variable tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_concrete_variable tags (Nlist.to_list nlst)
   in
   let tags = match desc.mch_abstract_variables with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_variable tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_variable tags (Nlist.to_list nlst)
   in
   let tags = match desc.mch_operations with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_operation tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_operation tags (Nlist.to_list nlst)
   in
   tags
 
@@ -115,35 +115,35 @@ let get_tags_ref (tags:tags) loc name parameters desc : tags =
   let tags = List.fold_left add_params tags parameters in
   let tags = match desc.ref_promotes with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_promotes tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_promotes tags (Nlist.to_list nlst)
   in
   let tags = match desc.ref_sets with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_sets tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_sets tags (Nlist.to_list nlst)
   in
   let tags = match desc.ref_concrete_constants with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_constant tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_constant tags (Nlist.to_list nlst)
   in
   let tags = match desc.ref_abstract_constants with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_abstract_constant tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_abstract_constant tags (Nlist.to_list nlst)
   in
   let tags = match desc.ref_concrete_variables with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_concrete_variable tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_concrete_variable tags (Nlist.to_list nlst)
   in
   let tags = match desc.ref_abstract_variables with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_variable tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_variable tags (Nlist.to_list nlst)
   in
   let tags = match desc.ref_operations with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_operation tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_operation tags (Nlist.to_list nlst)
   in
   let tags = match desc.ref_local_operations with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_local_operation tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_local_operation tags (Nlist.to_list nlst)
   in
   tags
 
@@ -152,27 +152,27 @@ let get_tags_imp (tags:tags) loc name parameters desc : tags =
   let tags = List.fold_left add_params tags parameters in
   let tags = match desc.imp_promotes with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_promotes tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_promotes tags (Nlist.to_list nlst)
   in
   let tags = match desc.imp_sets with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_sets tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_sets tags (Nlist.to_list nlst)
   in
   let tags = match desc.imp_concrete_constants with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_constant tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_constant tags (Nlist.to_list nlst)
   in
   let tags = match desc.imp_concrete_variables with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_concrete_variable tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_concrete_variable tags (Nlist.to_list nlst)
   in
   let tags = match desc.imp_operations with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_operation tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_operation tags (Nlist.to_list nlst)
   in
   let tags = match desc.imp_local_operations with
     | None -> tags
-    | Some (_,(hd,tl)) -> List.fold_left add_local_operation tags (hd::tl)
+    | Some (_,nlst) -> List.fold_left add_local_operation tags (Nlist.to_list nlst)
   in
   tags
 

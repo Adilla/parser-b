@@ -1336,7 +1336,8 @@ let type_component (f:string -> MachineInterface.t option) (env:Global.t) (co:p_
   with
   | Error.Error err -> Error err
 
-let get_interface (f:string -> MachineInterface.t option) (co:p_component) : MachineInterface.t =
+let get_interface (f:string -> MachineInterface.t option) (co:p_component) : MachineInterface.t Error.t_result =
   let env = Global.create () in
-  let _ = type_component f env co in
-  Global.to_interface env
+  match type_component f env co with
+  | Ok _ -> Ok (Global.to_interface env)
+  | Error err -> Error err

@@ -34,9 +34,10 @@ let rec type_component_from_filename (ht:interface_table) (filename:string) : Ma
           | Ok c ->
             let () = close_in input in
             let () = Hashtbl.add ht filename InProgress in
-            let itf = get_interface (f ht) c in
-            let () = Hashtbl.add ht filename (Done itf) in
-            Some itf
+            begin match get_interface (f ht) c with
+              | Ok itf -> ( Hashtbl.add ht filename (Done itf); Some itf )
+              | Error err -> (print_error err; None )
+            end
           | Error err -> ( print_error err; None )
         end
     end

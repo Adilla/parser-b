@@ -66,6 +66,7 @@ let rec occurs : type a. int -> a typ -> bool = fun n t ->
   | T_Meta m -> n=m
   | T_Record lst ->  List.exists (fun (_,t) -> occurs n t) lst
 
+
 let rec subst : type a. int -> a typ -> a typ -> a typ = fun n rep ty ->
   match ty with
   | T_Atomic _ as ty -> ty
@@ -95,6 +96,8 @@ module Unif : sig
   val new_meta : t -> opn typ
   val get_stype : t -> opn typ -> opn typ -> (opn typ) option
   val normalize : t -> opn typ -> opn typ
+  val add_alias : t -> string -> cls typ -> bool
+  val is_equal_modulo_alias : t -> 'a typ -> 'a typ -> bool
 end = struct
 
   module I = Map.Make(
@@ -103,13 +106,19 @@ end = struct
       let compare = compare
     end )
 
-  type t = { mutable fvar: int; mutable subst: (opn typ) I.t }
+  type t = { mutable fvar: int;
+             mutable subst: (opn typ) I.t;
+             mutable alias:(string*opn typ) list }
 
-  let create () : t = { fvar=0; subst=I.empty }
+  let create () : t = { fvar=0; subst=I.empty; alias=[] }
 
   let new_meta (env:t) : opn typ =
     env.fvar <- env.fvar+1;
     T_Meta env.fvar
+
+  let rec safe_assoc a = function
+    | [] -> None
+    | (x,y)::tl -> if String.equal a x then Some y else safe_assoc a tl
 
   let rec normalize (s:t) (ty:opn typ) : opn typ =
     match ty with
@@ -120,13 +129,47 @@ end = struct
     | T_Meta _ as ty -> ty
     | T_Record lst -> T_Record (List.map (fun (x,ty) -> (x,normalize s ty)) lst)
 
+  let rec occurs_atm str t =
+    match t with
+    | T_Atomic str2 -> String.equal str str2
+    | T_Power ty -> occurs_atm str ty
+    | T_Product (ty1,ty2) -> ( occurs_atm str ty1 || occurs_atm str ty2 )
+    | T_Meta m -> false
+    | T_Record lst ->  List.exists (fun (_,t) -> occurs_atm str t) lst
+  
   let update_subst (env:t) (n:int) (rep:opn typ) : unit =
     env.subst <- I.map (subst n rep) env.subst;
     env.subst <- I.add n rep env.subst
 
+  let rec normalize_alias : type a. t -> a typ -> opn typ = fun env ty ->
+    match ty with
+    | T_Atomic s as ty ->
+      begin match safe_assoc s env.alias with
+        | None -> ty
+        | Some ty' -> ty'
+      end
+    | T_Power ty -> T_Power (normalize_alias env ty)
+    | T_Product (ty1,ty2) ->
+      T_Product (normalize_alias env ty1,normalize_alias env ty2)
+    | T_Meta _ as ty -> ty
+    | T_Record lst ->
+      T_Record (List.map (fun (x,ty) -> (x,normalize_alias env ty)) lst)
+
+  let add_alias (s:t) (alias:string) (ty:cls typ) : bool =
+    let aux (x,y) = (x,normalize_alias s y) in
+    let ty = to_open ty in
+    let ty = normalize_alias s ty in
+    if occurs_atm alias ty then false
+    else
+      ( s.alias <- (alias,ty)::(List.map aux s.alias);
+        true )
+
+  let is_equal_modulo_alias: type a. t -> a typ -> a typ -> bool = fun env t1 t2 ->
+    is_equal (normalize_alias env t1) (normalize_alias env t2)
+
   let rec get_stype (env:t) (t1:opn typ) (t2:opn typ) : (opn typ) option =
     match normalize env t1, normalize env t2 with
-    | T_Atomic s1, T_Atomic s2 when String.equal s1 s2 -> Some (T_Atomic s1)
+    | (T_Atomic s1) as ty1 , T_Atomic s2 when String.equal s1 s2 -> Some ty1
     | T_Power p1, T_Power p2 ->
       begin
         match get_stype env p1 p2 with
@@ -156,6 +199,8 @@ end = struct
     | T_Meta n, ty | ty, T_Meta n ->
       if occurs n ty then None
       else (update_subst env n ty; Some ty)
+    | (T_Atomic _ as ty1 , ty2) | (ty1 , (T_Atomic _ as ty2)) ->
+      if is_equal_modulo_alias env ty1 ty2 then Some ty1 else None
     | _, _ -> None
 
 end

@@ -33,4 +33,6 @@ module Unif : sig
   val new_meta : t -> opn typ
   val get_stype : t -> opn typ -> opn typ -> (opn typ) option
   val normalize : t -> opn typ -> opn typ
+  val add_alias : t -> string -> cls typ -> bool
+  val is_equal_modulo_alias : t -> 'a typ -> 'a typ -> bool
 end

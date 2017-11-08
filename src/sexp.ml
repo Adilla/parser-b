@@ -28,7 +28,7 @@ let rec sexp_of_expr : ('lc,'ty) expression -> t = fun e ->
   match e.exp_desc with
   | Ident id ->  Atom ("ident_" ^ id)
   | Dollar id -> Atom ("ident_" ^ id ^ "$0")
-  | Builtin bi -> Atom (Print.builtin_to_string bi)
+  | Builtin bi -> Atom (builtin_to_string bi)
   | Pbool p -> List [Atom "bool"; (sexp_of_pred p)]
   | Application (e1,e2) -> List [Atom "App";sexp_of_expr e1;sexp_of_expr e2]
   | Couple (cm,e1,e2) ->
@@ -47,7 +47,7 @@ let rec sexp_of_expr : ('lc,'ty) expression -> t = fun e ->
     List [Atom "Compr";ids;sexp_of_pred p]
   | Binder (bi,xlst,p,e) ->
     let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
-    List [Atom (Print.binder_to_string bi);ids;sexp_of_pred p;sexp_of_expr e]
+    List [Atom (binder_to_string bi);ids;sexp_of_pred p;sexp_of_expr e]
   | Record_Field_Access (e,id) ->
     List [Atom "Record_Field_Access";sexp_of_expr e;sexp_of_record_field id]
   | Record nlst ->
@@ -62,9 +62,9 @@ and sexp_of_pred : ('lc,'ty) predicate -> t = fun p ->
   | P_Builtin Btrue -> Atom "btrue"
   | P_Builtin Bfalse -> Atom "bfalse"
   | Binary_Prop (bop,p,q) ->
-    List [Atom (Print.prop_bop_to_string bop);sexp_of_pred p;sexp_of_pred q]
+    List [Atom (prop_bop_to_string bop);sexp_of_pred p;sexp_of_pred q]
   | Binary_Pred (bop,e1,e2) ->
-    List [Atom (Print.pred_bop_to_string bop);sexp_of_expr e1;sexp_of_expr e2]
+    List [Atom (pred_bop_to_string bop);sexp_of_expr e1;sexp_of_expr e2]
   | Negation p -> List [Atom "Neg";sexp_of_pred p]
   | Universal_Q (xlst,p) ->
     let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in

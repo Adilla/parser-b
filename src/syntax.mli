@@ -4,8 +4,12 @@ type inequality = Smaller_or_Equal | Strictly_Smaller | Greater_or_Equal | Stric
 
 type prop_bop = Conjonction | Disjonction | Implication | Equivalence
 
+val prop_bop_to_string : prop_bop -> string
+
 type pred_bop = Equality | Disequality | Membership | Non_Membership
              | Inclusion of inclusion | Inequality of inequality
+
+val pred_bop_to_string : pred_bop -> string
 
 type power_set = Full | Non_Empty | Finite | Finite_Non_Empty
 
@@ -34,6 +38,8 @@ type e_builtin =
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 
+val builtin_to_string : e_builtin -> string
+
 val e_builtin_eq: e_builtin -> e_builtin -> bool
 
 type p_builtin = Btrue | Bfalse
@@ -49,6 +55,8 @@ type 'lc lident = { lid_loc:'lc; lid_str:ident }
 val lident_eq: 'lc lident -> 'lc2 lident -> bool
 
 type expr_binder = Sum | Prod | Q_Union | Q_Intersection | Lambda
+
+val binder_to_string : expr_binder -> string
 
 type c_or_m = Maplet | Comma of bool | Infix
 

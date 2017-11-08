@@ -1,8 +1,7 @@
-open Typechecker
-
 let continue_on_error = ref false
 
-type t_item = Done of MachineInterface.t | InProgress
+type machine_interface = Typechecker.MachineInterface.t
+type t_item = Done of machine_interface | InProgress
 
 let open_in (fn:string) : in_channel option =
   try Some (open_in fn) with Sys_error _ -> None
@@ -21,7 +20,7 @@ let print_error_no_loc msg =
   Printf.fprintf stderr "%s\n" msg;
   if not !continue_on_error then exit(1)
 
-let rec type_component_from_filename (ht:interface_table) (filename:string) : MachineInterface.t option =
+let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface option =
   match safe_find ht filename with
   | Some (Done itf) -> Some itf
   | Some InProgress ->
@@ -30,26 +29,33 @@ let rec type_component_from_filename (ht:interface_table) (filename:string) : Ma
     begin match open_in filename with
       | None -> None
       | Some input ->
+        let () = Log.write "Parsing file '%s'...\n%!" filename in
         begin match Parser.parse_component filename input with
           | Ok c ->
             let () = close_in input in
+            let () = Log.write "Typing file '%s'...\n%!" filename in
             let () = Hashtbl.add ht filename InProgress in
-            begin match get_interface (f ht) c with
-              | Ok itf -> ( Hashtbl.add ht filename (Done itf); Some itf )
+            begin match Typechecker.get_interface (f ht) c with
+              | Ok itf ->
+                let () = Hashtbl.add ht filename (Done itf) in
+                Some itf
               | Error err -> (print_error err; None )
             end
           | Error err -> ( print_error err; None )
         end
     end
 
-and f (ht:interface_table) (mch_name:string) : MachineInterface.t option =
+and f (ht:interface_table) (mch_name:string) : machine_interface option =
   match File.get_fullname_comp mch_name with
   | None -> None
   | Some fn -> type_component_from_filename ht fn
 
+let ht:interface_table = Hashtbl.create 47
+
 let run_on_file (filename:string) : unit =
   try 
-    match type_component_from_filename (Hashtbl.create 47) filename with
+    let () = Log.write "Processing file '%s'...\n%!" filename in
+    match type_component_from_filename ht filename with
     | None -> print_error_no_loc ("Cannot find file '"^filename^"'.")
     | Some _ -> ()
   with

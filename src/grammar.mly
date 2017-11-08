@@ -62,6 +62,16 @@ let mk_implementation_exn id params ref clauses =
 %token WHERE
 %token THEN
 %token SELECT
+%token <Syntax.e_builtin> CONSTANT 
+%token <Syntax.e_builtin> E_PREFIX
+%token <Syntax.pred_bop> PREDICATE
+%token <Syntax.expr_binder> E_BINDER
+%token <Syntax.e_builtin> E_INFIX_125
+%token <Syntax.e_builtin> E_INFIX_160
+%token <Syntax.e_builtin> E_INFIX_170
+%token <Syntax.e_builtin> E_INFIX_180
+%token <Syntax.e_builtin> E_INFIX_190
+%token <Syntax.e_builtin> E_INFIX_200
 %token <string> STRING
 %token AFFECTATION
 %token COMMA
@@ -69,81 +79,19 @@ let mk_implementation_exn id params ref clauses =
 %token DOLLAR_ZERO
 %token RPAR
 %token LPAR
-%token TRUE
-%token FALSE
 %token CBOOL
-%token <int> INTEGER
-%token MAXINT
-%token MININT
-%token PLUS
 %token MINUS
-%token STAR
-%token DIV
-%token MOD
-%token POWER
-%token SUCC
-%token PRED
-%token MAX
-%token MIN
-%token CARD
-%token SIGMA
 %token DOT
 %token BAR
-%token PI
 %token MAPLET
-%token EMPTY_SET
-%token Z_SET
-%token N_SET
-%token N1_SET
-%token NAT_SET
-%token NAT1_SET
-%token INT_SET
-%token BOOL_SET
-%token STRING_SET
 %token LBRA
 %token LBRA_COMP
 %token RBRA
-%token POW
-%token POW1
-%token FPOW
-%token FPOW1
-%token DOTDOT
-%token B_UNION
-%token B_INTER
-%token G_UNION
-%token G_INTER
-%token Q_UNION
-%token Q_INTER
-%token RELATION
-%token ID
 %token TILDE
-%token PROJ1
-%token PROJ2
 %token SEMICOLON
-%token DPRODUCT
 %token PARALLEL
-%token ITERATION
-%token CLOSURE
-%token CLOSURE1
-%token DOM
-%token RAN
 %token LSQU
 %token RSQU
-%token RESTRICTION_D
-%token SOUSTRACTION_D
-%token RESTRICTION_CO
-%token SOUSTRACTION_CO
-%token SURCHARGE
-%token PARTIELLE
-%token TOTALE
-%token P_INJECTION
-%token T_INJECTION
-%token S_PARTIELLE
-%token S_TOTALE
-%token B_TOTALE
-%token LAMBDA
-%token FNC
-%token REL
 %token AND
 %token NOT
 %token OR
@@ -152,56 +100,10 @@ let mk_implementation_exn id params ref clauses =
 %token FORALL
 %token EXISTS
 %token EQUAL
-%token NOT_EQUAL
 %token MEMBER_OF
-%token NOT_MEMBER_OF
-%token INCLUDED
-%token S_INCLUDED
-%token NOT_INCLUDED
-%token NOT_S_INCLUDED
-%token SMALLER_OR_EQUAL
-%token S_SMALLER
-%token GREATER_OR_EQUAL
-%token S_GREATER
 %token STRUCT
 %token REC
 %token SQUOTE
-%token SEQ
-%token SEQ1
-%token ISEQ
-%token ISEQ1
-%token PERM
-%token EMPTY_SEQ
-%token SIZE
-%token FIRST
-%token LAST
-%token FRONT
-%token TAIL
-%token REV
-%token CIRC
-%token INSERTION_T
-%token INSERTION_Q
-%token RESTRICTION_T
-%token RESTRICTION_Q
-%token CONC
-%token TREE
-%token BTREE
-%token CONST
-%token TOP
-%token SONS
-%token PREFIX
-%token POSTFIX
-%token SIZET
-%token MIRROR
-%token RANK
-%token FATHER
-%token SON
-%token ARITY
-%token BIN
-%token LEFT
-%token RIGHT
-%token INFIX
-%token SUBTREE
 %token ELSIF
 %token ELSE
 %token WHEN
@@ -277,17 +179,17 @@ let mk_implementation_exn id params ref clauses =
 %left COMMA
 /* 120 */
 /* 125 */
-%left PARTIELLE S_PARTIELLE TOTALE S_TOTALE RELATION P_INJECTION T_INJECTION B_TOTALE
+%left E_INFIX_125
 /* 160 */
-%left B_INTER SURCHARGE SOUSTRACTION_D RESTRICTION_D DPRODUCT B_UNION MAPLET RESTRICTION_CO SOUSTRACTION_CO INSERTION_T RESTRICTION_T INSERTION_Q RESTRICTION_Q CIRC EQUAL S_SMALLER S_GREATER SMALLER_OR_EQUAL GREATER_OR_EQUAL INCLUDED NOT_EQUAL MEMBER_OF NOT_INCLUDED NOT_MEMBER_OF NOT_S_INCLUDED S_INCLUDED BECOMES_ELT AFFECTATION
+%left E_INFIX_160 MAPLET PREDICATE EQUAL MEMBER_OF BECOMES_ELT AFFECTATION
 /* 170 */
-%left DOTDOT
+%left E_INFIX_170
 /* 180 */
-%left PLUS MINUS
+%left E_INFIX_180 MINUS
 /* 190 */
-%left STAR DIV MOD
+%left E_INFIX_190
 /* 200 */
-%right POWER
+%right E_INFIX_200 
 /* 210 */
 %nonassoc unary_minus
 /* 220 */
@@ -314,118 +216,20 @@ fields:
 | id=IDENT MEMBER_OF e=expression { Nlist.make1 (mk_lident $startpos(id) id,e) }
 | id=IDENT MEMBER_OF e=expression COMMA lst=fields { Nlist.cons (mk_lident $startpos(id) id,e) lst }
 
-constant:
-| s=STRING { String s }
-| TRUE { TRUE }
-| FALSE { FALSE }
-| i=INTEGER { Integer i }
-| MAXINT { MaxInt }
-| MININT { MinInt }
-| EMPTY_SET { Empty_Set }
-| Z_SET { INTEGER }
-| N_SET { NATURAL }
-| N1_SET { NATURAL1 }
-| NAT_SET { NAT }
-| NAT1_SET { NAT1 }
-| INT_SET { INT }
-| BOOL_SET { BOOLEANS }
-| STRING_SET { STRINGS }
-| EMPTY_SEQ { Empty_Seq }
-
 %inline infix_op:
-| PLUS { Addition }
-| MINUS { Difference }
-| STAR { Product }
-| DIV { Division }
-| MOD { Modulo }
-| POWER { Power }
-| SEMICOLON { Composition  }
-| DPRODUCT { Direct_Product }
-| PARALLEL { Parallel_Product }
-| RESTRICTION_D { Domain_Restriction }
-| SOUSTRACTION_D { Domain_Soustraction }
-| RESTRICTION_CO { Codomain_Restriction }
-| SOUSTRACTION_CO { Codomain_Soustraction }
-| SURCHARGE { Surcharge }
-| PARTIELLE   { Functions Partial_Functions }
-| TOTALE      { Functions Total_Functions }
-| P_INJECTION { Functions Partial_Injections }
-| T_INJECTION { Functions Total_Injections }
-| S_PARTIELLE { Functions Partial_Surjections }
-| S_TOTALE    { Functions Total_Surjections }
-| B_TOTALE    { Functions Bijections }
-| DOTDOT { Interval }
-| B_UNION { Union }
-| B_INTER { Intersection }
-| RELATION { Relations }
-| CIRC { Concatenation }
-| INSERTION_T { Head_Insertion }
-| INSERTION_Q { Tail_Insertion }
-| RESTRICTION_T { Head_Restriction }
-| RESTRICTION_Q { Tail_Restriction }
-
-prefix_op:
-| SUCC { Successor }
-| PRED { Predecessor }
-| MAX { Max }
-| MIN { Min }
-| ITERATION { Iteration }
-| CLOSURE { Closure }
-| CLOSURE1 { Transitive_Closure }
-| DOM { Domain }
-| RAN { Range }
-| POW { Power_Set Full }
-| POW1 { Power_Set Non_Empty }
-| FPOW { Power_Set Finite }
-| FPOW1 { Power_Set Finite_Non_Empty }
-| ID { Identity_Relation }
-| PROJ1 { First_Projection }
-| PROJ2 { Second_Projection }
-| FNC { Fnc }
-| REL { Rel }
-| SEQ   { Sequence_Set All_Seq }
-| SEQ1  { Sequence_Set Non_Empty_Seq }
-| ISEQ  { Sequence_Set Injective_Seq }
-| ISEQ1 { Sequence_Set Injective_Non_Empty_Seq }
-| PERM  { Sequence_Set Permutations }
-| TREE { Tree }
-| BTREE { Btree }
-| CONST { Const }
-| TOP { Top }
-| SONS { Sons }
-| PREFIX { Prefix }
-| POSTFIX { Postfix }
-| SIZET { SizeT }
-| MIRROR { Mirror }
-| RANK { Rank }
-| FATHER { Father }
-| SON { Son }
-| SUBTREE { Subtree }
-| ARITY { Arity }
-| BIN { Bin }
-| LEFT { Left }
-| RIGHT { Right }
-| INFIX { Infix }
-| CARD { Cardinal }
-| SIZE { Size }
-| FIRST { First }
-| LAST { Last }
-| FRONT { Front }
-| TAIL { Tail }
-| REV { Reverse }
-| CONC { G_Concatenation }
-| G_UNION { G_Union }
-| G_INTER { G_Intersection }
-
-%inline binder:
-| SIGMA { Sum }
-| PI { Prod }
-| Q_UNION { Q_Union }
-| Q_INTER { Q_Intersection }
-| LAMBDA { Lambda }
+  | i=E_INFIX_125 { i }
+  | i=E_INFIX_160 { i }
+  | i=E_INFIX_170 { i }
+  | i=E_INFIX_180 { i }
+  | i=E_INFIX_190 { i }
+  | i=E_INFIX_200 { i }
+  | MINUS { Difference }
+  | SEMICOLON { Composition  }
+  | PARALLEL { Parallel_Product }
 
 expression:
-| c=constant { mk_expr $startpos (Builtin c) }
+  c=CONSTANT { mk_expr $startpos (Builtin c) }
+| s=STRING { mk_expr $startpos (Builtin (String s)) }
 | id=IDENT { mk_expr $startpos (Ident id) }
 | id=IDENT DOLLAR_ZERO { mk_expr $startpos (Dollar id) }
 | LPAR e=expression RPAR { set_true e }
@@ -439,9 +243,9 @@ expression:
 | LBRA e=expression RBRA { mk_expr $startpos (Extension (expr_to_nonempty_list e)) } 
 | f=expression LPAR a=expression RPAR { mk_expr $startpos (Application (f,a)) }
 | LSQU e=expression RSQU { mk_expr $startpos (Sequence(expr_to_nonempty_list e)) }
-| op=prefix_op LPAR e=expression RPAR { mk_prefix $startpos op e }
-| b=binder id=IDENT DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b (Nlist.make1 (mk_var $startpos(id) id)) p e }
-| b=binder LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b ids p e }
+| op=E_PREFIX LPAR e=expression RPAR { mk_prefix $startpos op e }
+| b=E_BINDER id=IDENT DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b (Nlist.make1 (mk_var $startpos(id) id)) p e }
+| b=E_BINDER LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b ids p e }
 | LBRA_COMP ids=var_nelist_comma BAR p=predicate RBRA { mk_expr $startpos (Comprehension (ids,p)) }
 | STRUCT LPAR lst=fields RPAR { mk_expr $startpos (Record_Type lst)  }
 | REC LPAR lst=fields RPAR { mk_expr $startpos (Record lst) }
@@ -457,18 +261,9 @@ expression:
 | EQUIV { Equivalence }
 
 %inline b_pred:
-| EQUAL { Equality }
-| NOT_EQUAL { Disequality }
 | MEMBER_OF { Membership }
-| NOT_MEMBER_OF { Non_Membership }
-| INCLUDED { Inclusion Not_Strict }
-| S_INCLUDED { Inclusion Strict }
-| NOT_INCLUDED { Inclusion Non_Inclusion }
-| NOT_S_INCLUDED { Inclusion Non_Strict_Inclusion }
-| SMALLER_OR_EQUAL { Inequality Smaller_or_Equal }
-| S_SMALLER { Inequality Strictly_Smaller }
-| GREATER_OR_EQUAL { Inequality Greater_or_Equal }
-| S_GREATER { Inequality Strictly_Greater }
+| EQUAL { Equality }
+| p=PREDICATE { p }
 
 predicate:
   LPAR p=predicate RPAR { p }
@@ -479,7 +274,6 @@ predicate:
 | FORALL LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate RPAR { mk_pred $startpos (Universal_Q (ids,p)) }
 | EXISTS id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q (Nlist.make1 (mk_var $startpos(id) id),p)) }
 | EXISTS LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q (ids,p)) }
-
 
 (* *****************************************************************************
  * ***** SUBSTITUTIONS

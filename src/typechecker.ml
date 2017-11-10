@@ -50,14 +50,6 @@ module Global :
     val promote_operation : t -> loc -> ident -> bool
     val load_interface : t -> MachineInterface.t -> t_source -> unit
     val to_interface : t -> MachineInterface.t
-
-(*
-    val new_meta : t -> opn typ
-    val get_stype : t -> opn typ -> opn typ -> (opn typ) option
-    val normalize : t -> opn typ -> opn typ
-    val close : t -> opn typ -> btype option
-*)
-
   end = struct
 
   type t = { symb:(string,t_symb*t_source) Hashtbl.t; ops:(string,t_op*t_source) Hashtbl.t }
@@ -144,6 +136,9 @@ module Global :
 
 end
 
+type visibility = V_Invariant | V_Properties | V_Operations | V_Local_Operations | V_Values | V_Assert
+type env = { gl: Global.t; uf:Unif.t; vi:visibility }
+
 (* *****************************************************************************
  * Local contexts 
  * ************************************************************************** *)
@@ -152,7 +147,6 @@ module Local :
 sig
   type t
   val create : unit -> t
-(*   val declare : t -> ident -> t * opn typ *)
   val add : t -> ident -> opn typ -> t
   val get : t -> ident -> (opn typ) option
   val iter : (string -> opn typ -> unit) -> t -> unit
@@ -169,12 +163,6 @@ sig
 
   let create () = M.empty
 
-(*
-  let declare (ctx:t) (id:ident) : t * opn typ =
-    let mt = Unif.new_meta ctx.unif in
-    ( { map=M.add id mt ctx.map; unif=ctx.unif }, mt )
-*)
-
   let add (ctx:t) (id:ident) (ty:opn typ) : t =
     M.add id ty ctx
 
@@ -183,12 +171,6 @@ sig
     with Not_found -> None
 
   let iter = M.iter
-
-(*
-  let new_meta ctx = Unif.new_meta ctx.unif 
-  let get_stype ctx = Unif.get_stype ctx.unif 
-  let normalize ctx = Unif.normalize ctx.unif 
-*)
 end
 
 (* *****************************************************************************
@@ -379,13 +361,34 @@ let get_builtin_type_exn (uf:Unif.t) (lc:Utils.loc) : e_builtin -> opn_btype = f
     | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
       Error.raise_exn lc "Not implemented (tree operators)."
 
-let get_ident_type (env:Global.t) (ctx:Local.t) (id:ident) : opn_btype option =
+let compatibility_check_exn lc vis kind src = (*FIXME*)
+  match vis, kind, src with
+  | V_Properties, (K_Abstract_Variable|K_Concrete_Variable), _ ->
+    Error.raise_exn lc "Variables are not visible in the clause PROPERTIES."
+  | V_Properties, _, _ -> ()
+  | V_Invariant, (K_Abstract_Variable|K_Concrete_Variable), From_Seen_Mch _ ->
+    Error.raise_exn lc "Variables from seen machines are not visible in the clause INVARIANT."
+  | V_Invariant, _, _ -> ()
+  | V_Operations, (K_Abstract_Constant|K_Abstract_Variable), (From_Refined_Mch _|From_Imported_Mch _) ->
+    Error.raise_exn lc "Abstract symbols from refined or imported machines are not visible in the clause OPERATIONS."
+  | V_Operations, _, _ -> ()
+  | V_Local_Operations, (K_Abstract_Constant|K_Abstract_Variable), From_Refined_Mch _ ->
+    Error.raise_exn lc "Abstract symbols from refined machines are not visible in the clause LOCAL_OPERATIONS."
+  | V_Local_Operations, _, _ -> ()
+  | V_Values, (K_Abstract_Constant|K_Abstract_Variable|K_Concrete_Variable), _ ->
+    Error.raise_exn lc "Variables and abstract constants are not visible in the clause VALUES."
+  | V_Values, _, _ -> ()
+  | V_Assert, _, _ -> ()
+  
+let get_ident_type_exn (env:env) (ctx:Local.t) (lc:loc) (id:ident) : opn_btype =
   match Local.get ctx id with
-  | Some _ as opt -> opt
+  | Some ty -> ty
   | None ->
-    begin match Global.get_symbol env id with
-      | Some (s,_) -> Some (to_open s.typ)
-      | None -> None
+    begin match Global.get_symbol env.gl id with
+      | Some (symb,src) ->
+        let () = compatibility_check_exn lc env.vi symb.kind src in
+        to_open symb.typ
+      | None -> Error.raise_exn lc ("Unknown identifier '"^id^"'.")
     end
 
 let unexpected_type_exn (uf:Unif.t) (lc:Utils.loc) (inf:opn_btype) (exp:opn_btype) =
@@ -459,62 +462,60 @@ let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (ar
     let op = mk_expr op_lc op_ty_exp (Builtin Difference) in
     mk_expr app_lc (T_Power mt) (Application (op,arg))
 
-let rec type_expression_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (e:p_expression) : t_expression0 =
+let rec type_expression_exn (env:env) (ctx:Local.t) (e:p_expression) : t_expression0 =
   match e.exp_desc with
 
   | Ident id | Dollar id as d ->
-    begin match get_ident_type env ctx id with
-      | Some ty -> mk_expr e.exp_loc ty d
-      | None -> Error.raise_exn e.exp_loc ("Unknown identifier '"^id^"'.")
-    end
+    let ty = get_ident_type_exn env ctx e.exp_loc id in
+    mk_expr e.exp_loc ty d
 
-  | Builtin bi as d -> mk_expr e.exp_loc (get_builtin_type_exn uf e.exp_loc bi) d
+  | Builtin bi as d -> mk_expr e.exp_loc (get_builtin_type_exn env.uf e.exp_loc bi) d
 
   | Pbool p ->
-    let tp = type_predicate_exn env uf ctx p in
+    let tp = type_predicate_exn env ctx p in
     mk_expr e.exp_loc t_bool (Pbool tp)
 
   | Application (e1,e2) ->
     begin
       match e1.exp_desc with
       | Builtin Product ->
-        let te2 = type_expression_exn env uf ctx e2 in
-        begin match is_int_or_power_exn e1.exp_loc uf te2 with
-          | C_Int -> type_int_product_exn e.exp_loc e1.exp_loc uf te2
-          | C_Power -> type_set_product_exn e.exp_loc e1.exp_loc uf te2
+        let te2 = type_expression_exn env ctx e2 in
+        begin match is_int_or_power_exn e1.exp_loc env.uf te2 with
+          | C_Int -> type_int_product_exn e.exp_loc e1.exp_loc env.uf te2
+          | C_Power -> type_set_product_exn e.exp_loc e1.exp_loc env.uf te2
         end
       | Builtin Difference ->
-        let te2 = type_expression_exn env uf ctx e2 in
-        begin match is_int_or_power_exn e1.exp_loc uf te2 with
-          | C_Int -> type_int_difference_exn e.exp_loc e1.exp_loc uf te2
-          | C_Power -> type_set_difference_exn e.exp_loc e1.exp_loc uf te2
+        let te2 = type_expression_exn env ctx e2 in
+        begin match is_int_or_power_exn e1.exp_loc env.uf te2 with
+          | C_Int -> type_int_difference_exn e.exp_loc e1.exp_loc env.uf te2
+          | C_Power -> type_set_difference_exn e.exp_loc e1.exp_loc env.uf te2
         end
       | _ ->
-        let te1 = type_expression_exn env uf ctx e1 in
-        let ty_fun_exp = type_of_unary_fun (Unif.new_meta uf) (Unif.new_meta uf) in
-        begin match Unif.get_stype uf te1.exp_typ ty_fun_exp with
+        let te1 = type_expression_exn env ctx e1 in
+        let ty_fun_exp = type_of_unary_fun (Unif.new_meta env.uf) (Unif.new_meta env.uf) in
+        begin match Unif.get_stype env.uf te1.exp_typ ty_fun_exp with
           | Some (T_Power (T_Product (a,b))) ->
-            let te2 = type_expression_exn env uf ctx e2 in
-            ( match Unif.get_stype uf te2.exp_typ a with
+            let te2 = type_expression_exn env ctx e2 in
+            ( match Unif.get_stype env.uf te2.exp_typ a with
               | Some _ -> mk_expr e.exp_loc b (Application (te1,te2))
-              | None -> unexpected_type_exn uf e2.exp_loc te2.exp_typ a )
-          | _ -> unexpected_type_exn uf e1.exp_loc te1.exp_typ ty_fun_exp
+              | None -> unexpected_type_exn env.uf e2.exp_loc te2.exp_typ a )
+          | _ -> unexpected_type_exn env.uf e1.exp_loc te1.exp_typ ty_fun_exp
         end
     end
 
   | Couple (cm,e1,e2) ->
-    let te1 = type_expression_exn env uf ctx e1 in
-    let te2 = type_expression_exn env uf ctx e2 in
+    let te1 = type_expression_exn env ctx e1 in
+    let te2 = type_expression_exn env ctx e2 in
     mk_expr e.exp_loc (T_Product (te1.exp_typ,te2.exp_typ)) (Couple (cm,te1,te2))
 
   | Sequence nlst ->
     begin
-      let te = type_expression_exn env uf ctx (Nlist.hd nlst) in
+      let te = type_expression_exn env ctx (Nlist.hd nlst) in
       let aux (elt:p_expression) : t_expression0 =
-        let t_elt = type_expression_exn env uf ctx elt in
-        match Unif.get_stype uf t_elt.exp_typ te.exp_typ with
+        let t_elt = type_expression_exn env ctx elt in
+        match Unif.get_stype env.uf t_elt.exp_typ te.exp_typ with
         | Some ty -> t_elt
-        | None -> unexpected_type_exn uf elt.exp_loc t_elt.exp_typ te.exp_typ
+        | None -> unexpected_type_exn env.uf elt.exp_loc t_elt.exp_typ te.exp_typ
       in
       let tlst = List.map aux (Nlist.tl nlst) in
       mk_expr e.exp_loc (T_Power (T_Product (t_int,te.exp_typ))) (Sequence (Nlist.make te tlst))
@@ -522,73 +523,73 @@ let rec type_expression_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (e:p_expres
 
   | Extension nlst ->
     begin
-      let te0 = type_expression_exn env uf ctx (Nlist.hd nlst) in
+      let te0 = type_expression_exn env ctx (Nlist.hd nlst) in
       let aux (elt:p_expression) : t_expression0 =
-        let t_elt = type_expression_exn env uf ctx elt in
-        match Unif.get_stype uf t_elt.exp_typ te0.exp_typ with
+        let t_elt = type_expression_exn env ctx elt in
+        match Unif.get_stype env.uf t_elt.exp_typ te0.exp_typ with
         | Some _ -> t_elt
-        | None -> unexpected_type_exn uf elt.exp_loc t_elt.exp_typ te0.exp_typ
+        | None -> unexpected_type_exn env.uf elt.exp_loc t_elt.exp_typ te0.exp_typ
       in
       let tlst = List.map aux (Nlist.tl nlst) in
       mk_expr e.exp_loc (T_Power te0.exp_typ) (Extension (Nlist.make te0 tlst))
     end
 
   | Comprehension (ids,p) ->
-    let (ctx,tids) = declare_nelist uf ctx ids in
-    let tp = type_predicate_exn env uf ctx p in
+    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    let tp = type_predicate_exn env ctx p in
     mk_expr e.exp_loc (T_Power (ids_to_product ctx ids)) (Comprehension (tids,tp))
 
   | Binder (bi,ids,p,e0) ->
     begin
       match bi with
       | Sum | Prod ->
-        let (ctx,tids) = declare_nelist uf ctx ids in
-        let tp = type_predicate_exn env uf ctx p in
-        let te = type_expression_exn env uf ctx e0 in
-        begin match Unif.get_stype uf te.exp_typ t_int with
+        let (ctx,tids) = declare_nelist env.uf ctx ids in
+        let tp = type_predicate_exn env ctx p in
+        let te = type_expression_exn env ctx e0 in
+        begin match Unif.get_stype env.uf te.exp_typ t_int with
           | Some _ -> mk_expr e.exp_loc t_int (Binder (bi,tids,tp,te)) 
-          | None -> unexpected_type_exn uf e0.exp_loc te.exp_typ t_int
+          | None -> unexpected_type_exn env.uf e0.exp_loc te.exp_typ t_int
         end
       | Q_Union | Q_Intersection ->
-        let (ctx,tids) = declare_nelist uf ctx ids in
-        let tp = type_predicate_exn env uf ctx p in
-        let te = type_expression_exn env uf ctx e0 in
-        let ty_exp = T_Power (Unif.new_meta uf) in
-        begin match Unif.get_stype uf te.exp_typ ty_exp with
+        let (ctx,tids) = declare_nelist env.uf ctx ids in
+        let tp = type_predicate_exn env ctx p in
+        let te = type_expression_exn env ctx e0 in
+        let ty_exp = T_Power (Unif.new_meta env.uf) in
+        begin match Unif.get_stype env.uf te.exp_typ ty_exp with
           | Some ty -> mk_expr e.exp_loc ty (Binder (bi,tids,tp,te))
-          | _ -> unexpected_type_exn uf e0.exp_loc te.exp_typ ty_exp
+          | _ -> unexpected_type_exn env.uf e0.exp_loc te.exp_typ ty_exp
         end
       | Lambda ->
         begin
-          let (ctx,tids) = declare_nelist uf ctx ids in
-          let tp = type_predicate_exn env uf ctx p in
-          let te = type_expression_exn env uf ctx e0 in
+          let (ctx,tids) = declare_nelist env.uf ctx ids in
+          let tp = type_predicate_exn env ctx p in
+          let te = type_expression_exn env ctx e0 in
           mk_expr e.exp_loc (T_Power (T_Product (ids_to_product ctx ids,te.exp_typ)))
             (Binder (bi,tids,tp,te))
         end
     end
 
   | Record nlst ->
-    let aux (id,e) = (id,type_expression_exn env uf ctx e) in
+    let aux (id,e) = (id,type_expression_exn env ctx e) in
     let tnlst = Nlist.map aux nlst in
     let ty = T_Record (Nlist.to_list (Nlist.map (fun (id,e) -> (id.lid_str,e.exp_typ)) tnlst)) in
     mk_expr e.exp_loc ty (Record tnlst)
 
   | Record_Type nlst ->
-    let aux (id,e) = (id,type_expression_exn env uf ctx e) in
+    let aux (id,e) = (id,type_expression_exn env ctx e) in
     let get_type (id,te) =
-      let ty_exp = T_Power (Unif.new_meta uf) in
-      match Unif.get_stype uf te.exp_typ ty_exp with
+      let ty_exp = T_Power (Unif.new_meta env.uf) in
+      match Unif.get_stype env.uf te.exp_typ ty_exp with
       | Some (T_Power ty) -> (id.lid_str,ty)
-      | _ -> unexpected_type_exn uf e.exp_loc te.exp_typ ty_exp
+      | _ -> unexpected_type_exn env.uf e.exp_loc te.exp_typ ty_exp
     in
     let tlst = Nlist.map aux nlst in
     let ty = T_Power (T_Record (Nlist.to_list (Nlist.map get_type tlst))) in
     mk_expr e.exp_loc ty (Record_Type tlst)
 
   | Record_Field_Access (e0,fd) ->
-    let te = type_expression_exn env uf ctx e0 in
-    begin match Unif.normalize uf te.exp_typ with
+    let te = type_expression_exn env ctx e0 in
+    begin match Unif.normalize env.uf te.exp_typ with
       | T_Record lst as ty ->
         begin
           let aux (s,_) = String.equal s fd.lid_str in
@@ -603,88 +604,87 @@ let rec type_expression_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (e:p_expres
                  ^"' but is expected to be a record.")
     end
 
-and type_predicate_exn (env:Global.t) (uf: Unif.t) (ctx:Local.t) (p:p_predicate) : t_predicate0 =
+and type_predicate_exn (env:env) (ctx:Local.t) (p:p_predicate) : t_predicate0 =
   match p.prd_desc with
   | P_Builtin _ as d -> mk_pred p.prd_loc d
   | Binary_Prop (op,p1,p2) ->
-    let tp1 = type_predicate_exn env uf ctx p1 in
-    let tp2 = type_predicate_exn env uf ctx p2 in
+    let tp1 = type_predicate_exn env ctx p1 in
+    let tp2 = type_predicate_exn env ctx p2 in
     mk_pred p.prd_loc (Binary_Prop (op,tp1,tp2))
-  | Negation p -> mk_pred p.prd_loc (Negation (type_predicate_exn env uf ctx p))
+  | Negation p -> mk_pred p.prd_loc (Negation (type_predicate_exn env ctx p))
   | Binary_Pred (bop,e1,e2) ->
     begin
       match bop with
       | Equality | Disequality ->
         begin
-          let te1 = type_expression_exn env uf ctx e1 in
-          let te2 = type_expression_exn env uf ctx e2 in
-          match Unif.get_stype uf te1.exp_typ te2.exp_typ with
+          let te1 = type_expression_exn env ctx e1 in
+          let te2 = type_expression_exn env ctx e2 in
+          match Unif.get_stype env.uf te1.exp_typ te2.exp_typ with
           | Some _ -> mk_pred p.prd_loc (Binary_Pred (bop,te1,te2))
-          | None -> unexpected_type_exn uf e2.exp_loc te1.exp_typ te2.exp_typ
+          | None -> unexpected_type_exn env.uf e2.exp_loc te1.exp_typ te2.exp_typ
         end
       | Membership | Non_Membership ->
         begin
-          let te1 = type_expression_exn env uf ctx e1 in
-          let te2 = type_expression_exn env uf ctx e2 in
+          let te1 = type_expression_exn env ctx e1 in
+          let te2 = type_expression_exn env ctx e2 in
           begin
-            match Unif.get_stype uf (T_Power te1.exp_typ) te2.exp_typ with
+            match Unif.get_stype env.uf (T_Power te1.exp_typ) te2.exp_typ with
             | Some _ -> mk_pred p.prd_loc (Binary_Pred (bop,te1,te2))
-            | None -> unexpected_type_exn uf e2.exp_loc te2.exp_typ (T_Power te1.exp_typ)
+            | None -> unexpected_type_exn env.uf e2.exp_loc te2.exp_typ (T_Power te1.exp_typ)
           end
         end
       | Inclusion _ ->
         begin
-          let ty0 = T_Power (Unif.new_meta uf) in
-          let te1 = type_expression_exn env uf ctx e1 in
-          let te2 = type_expression_exn env uf ctx e2 in
-          begin match Unif.get_stype uf te1.exp_typ ty0 with
+          let ty0 = T_Power (Unif.new_meta env.uf) in
+          let te1 = type_expression_exn env ctx e1 in
+          let te2 = type_expression_exn env ctx e2 in
+          begin match Unif.get_stype env.uf te1.exp_typ ty0 with
             | Some ty1_bis ->
-              begin match Unif.get_stype uf ty1_bis te2.exp_typ with
+              begin match Unif.get_stype env.uf ty1_bis te2.exp_typ with
                 | Some _ -> mk_pred p.prd_loc (Binary_Pred (bop,te1,te2))
-                | None -> unexpected_type_exn uf e2.exp_loc te2.exp_typ ty1_bis
+                | None -> unexpected_type_exn env.uf e2.exp_loc te2.exp_typ ty1_bis
               end
-            | None -> unexpected_type_exn uf e1.exp_loc te1.exp_typ ty0
+            | None -> unexpected_type_exn env.uf e1.exp_loc te1.exp_typ ty0
           end
         end
       | Inequality _ ->
         begin
-          let te1 = type_expression_exn env uf ctx e1 in
-          let te2 = type_expression_exn env uf ctx e2 in
-          begin match Unif.get_stype uf te1.exp_typ t_int with
+          let te1 = type_expression_exn env ctx e1 in
+          let te2 = type_expression_exn env ctx e2 in
+          begin match Unif.get_stype env.uf te1.exp_typ t_int with
             | Some _ ->
-              begin match Unif.get_stype uf te2.exp_typ t_int with
+              begin match Unif.get_stype env.uf te2.exp_typ t_int with
                 | Some _ -> mk_pred p.prd_loc (Binary_Pred (bop,te1,te2))
-                | None -> unexpected_type_exn uf e2.exp_loc te2.exp_typ t_int
+                | None -> unexpected_type_exn env.uf e2.exp_loc te2.exp_typ t_int
               end
-            | None -> unexpected_type_exn uf e1.exp_loc te1.exp_typ t_int
+            | None -> unexpected_type_exn env.uf e1.exp_loc te1.exp_typ t_int
           end
         end
     end
 
   | Universal_Q (ids,p) ->
-    let (ctx,tids) = declare_nelist uf ctx ids in
-    mk_pred p.prd_loc (Universal_Q (tids,type_predicate_exn env uf ctx p))
+    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    mk_pred p.prd_loc (Universal_Q (tids,type_predicate_exn env ctx p))
 
   | Existential_Q (ids,p) ->
-    let (ctx,tids) = declare_nelist uf ctx ids in
-    mk_pred p.prd_loc (Existential_Q (tids,type_predicate_exn env uf ctx p))
+    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    mk_pred p.prd_loc (Existential_Q (tids,type_predicate_exn env ctx p))
 
-let type_var_exn (env:Global.t) (ctx:Local.t) (v:p_var) : t_var0 =
-  match get_ident_type env ctx v.var_id with
-  | None -> Error.raise_exn v.var_loc ("Unknown identifier '"^v.var_id^"'.")
-  | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
+let type_var_exn (env:env) (ctx:Local.t) (v:p_var) : t_var0 =
+  let var_typ = get_ident_type_exn env ctx v.var_loc v.var_id in
+  { var_loc=v.var_loc; var_id=v.var_id; var_typ }
 
-let rec type_substitution_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s0:p_substitution) : t_substitution0 =
+let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_substitution0 =
   match s0.sub_desc with
   | Skip -> mk_subst s0.sub_loc Skip
 
   | Pre (p,s) ->
-    mk_subst s0.sub_loc (Pre (type_predicate_exn env uf ctx p,
-                              type_substitution_exn env uf ctx s))
+    mk_subst s0.sub_loc (Pre (type_predicate_exn env ctx p,
+                              type_substitution_exn env ctx s))
 
   | Assert (p,s) ->
-    mk_subst s0.sub_loc (Assert(type_predicate_exn env uf ctx p,
-                                type_substitution_exn env uf ctx s))
+    mk_subst s0.sub_loc (Assert(type_predicate_exn {env with vi=V_Assert} ctx p,
+                                type_substitution_exn env ctx s))
 
   | Affectation (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
@@ -694,10 +694,10 @@ let rec type_substitution_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s0:p_sub
             (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
     in
     let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
-    let ttuple = type_expression_exn env uf ctx tuple in
-    let te = type_expression_exn env uf ctx e in
-    let () = match Unif.get_stype uf te.exp_typ ttuple.exp_typ with
-      | None -> unexpected_type_exn uf e.exp_loc te.exp_typ ttuple.exp_typ
+    let ttuple = type_expression_exn env ctx tuple in
+    let te = type_expression_exn env ctx e in
+    let () = match Unif.get_stype env.uf te.exp_typ ttuple.exp_typ with
+      | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ ttuple.exp_typ
       | Some _ -> ()
     in
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
@@ -709,85 +709,85 @@ let rec type_substitution_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s0:p_sub
       | x::tl -> mk_app lc (mk_expr lc () (Application (f,x))) tl
     in
     let lhs = mk_app f.var_loc (mk_expr f.var_loc () (Ident f.var_id)) (Nlist.to_list nlst) in
-    let tlhs = type_expression_exn env uf ctx lhs in
-    let te = type_expression_exn env uf ctx e in
-    let () = match Unif.get_stype uf te.exp_typ tlhs.exp_typ with
-      | None -> unexpected_type_exn uf e.exp_loc te.exp_typ tlhs.exp_typ
+    let tlhs = type_expression_exn env ctx lhs in
+    let te = type_expression_exn env ctx e in
+    let () = match Unif.get_stype env.uf te.exp_typ tlhs.exp_typ with
+      | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ tlhs.exp_typ
       | Some _ -> ()
     in
     let tf = type_var_exn env ctx f in
-    let tlst = Nlist.map (type_expression_exn env uf ctx) nlst in
+    let tlst = Nlist.map (type_expression_exn env ctx) nlst in
     mk_subst s0.sub_loc (Function_Affectation (tf,tlst,te))
 
   | Record_Affectation (rc,fd,e) ->
     let rf_access = mk_expr rc.var_loc ()
         (Record_Field_Access (mk_expr rc.var_loc () (Ident rc.var_id),fd)) in
-    let trf_access = type_expression_exn env uf ctx rf_access in
-    let te = type_expression_exn env uf ctx e in
-    let () = match Unif.get_stype uf te.exp_typ trf_access.exp_typ with
-      | None -> unexpected_type_exn uf e.exp_loc te.exp_typ trf_access.exp_typ 
+    let trf_access = type_expression_exn env ctx rf_access in
+    let te = type_expression_exn env ctx e in
+    let () = match Unif.get_stype env.uf te.exp_typ trf_access.exp_typ with
+      | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ trf_access.exp_typ 
       | Some _ -> ()
     in
     mk_subst s0.sub_loc (Record_Affectation (type_var_exn env ctx rc,fd,te))
 
   | Choice slst ->
-   mk_subst s0.sub_loc (Choice (Nlist.map (type_substitution_exn env uf ctx) slst))
+   mk_subst s0.sub_loc (Choice (Nlist.map (type_substitution_exn env ctx) slst))
 
   | IfThenElse (pslst,s_else) ->
     let aux (p,s) =
-      (type_predicate_exn env uf ctx p, type_substitution_exn env uf ctx s)
+      (type_predicate_exn env ctx p, type_substitution_exn env ctx s)
     in
     let tps = Nlist.map aux pslst in
     let t_else = match s_else with
       | None -> None
-      | Some s -> Some (type_substitution_exn env uf ctx s)
+      | Some s -> Some (type_substitution_exn env ctx s)
     in
     mk_subst s0.sub_loc (IfThenElse (tps,t_else))
 
   | Select (pslst,s_else) ->
     let aux (p,s) =
-      (type_predicate_exn env uf ctx p, type_substitution_exn env uf ctx s)
+      (type_predicate_exn env ctx p, type_substitution_exn env ctx s)
     in
     let tps = Nlist.map aux pslst in
     let t_else = match s_else with
       | None -> None
-      | Some s -> Some (type_substitution_exn env uf ctx s)
+      | Some s -> Some (type_substitution_exn env ctx s)
     in
     mk_subst s0.sub_loc (Select (tps,t_else))
 
   | Case (e,nlst,c_else) ->
-    let te = type_expression_exn env uf ctx e in
+    let te = type_expression_exn env ctx e in
     let aux (elt,s) =
-      let telt =  type_expression_exn env uf ctx elt in
-      match Unif.get_stype uf te.exp_typ telt.exp_typ with
-      | None -> unexpected_type_exn uf e.exp_loc telt.exp_typ te.exp_typ 
-      | Some _ -> (telt,type_substitution_exn env uf ctx s)
+      let telt =  type_expression_exn env ctx elt in
+      match Unif.get_stype env.uf te.exp_typ telt.exp_typ with
+      | None -> unexpected_type_exn env.uf e.exp_loc telt.exp_typ te.exp_typ 
+      | Some _ -> (telt,type_substitution_exn env ctx s)
     in
     let t_else = match c_else with
       | None -> None
-      | Some s -> Some (type_substitution_exn env uf ctx s)
+      | Some s -> Some (type_substitution_exn env ctx s)
     in
     mk_subst s0.sub_loc (Case(te,Nlist.map aux nlst,t_else))
 
   | Any (ids,p,s) ->
-    let (ctx,tids) = declare_nelist uf ctx ids in
-    let tp = type_predicate_exn env uf ctx p in
-    let ts = type_substitution_exn env uf ctx s in
+    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    let tp = type_predicate_exn env ctx p in
+    let ts = type_substitution_exn env ctx s in
     mk_subst s0.sub_loc (Any (tids,tp,ts))
 
   | Let (ids,nlst,s) ->
-    let (ctx,tids) = declare_nelist uf ctx ids in
+    let (ctx,tids) = declare_nelist env.uf ctx ids in
     let aux (v,e) =
-      let te = type_expression_exn env uf ctx e in
+      let te = type_expression_exn env ctx e in
       match Local.get ctx v.var_id with
       | None -> Error.raise_exn v.var_loc ("Unknown symbol '"^v.var_id^"'.")
       | Some ty_exp ->
-        begin match Unif.get_stype uf te.exp_typ ty_exp with
-          | None -> unexpected_type_exn uf e.exp_loc te.exp_typ ty_exp
+        begin match Unif.get_stype env.uf te.exp_typ ty_exp with
+          | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ ty_exp
           | Some var_typ -> ({var_loc=v.var_loc;var_typ;var_id=v.var_id},te)
         end
     in
-    mk_subst s0.sub_loc (Let (tids,Nlist.map aux nlst,type_substitution_exn env uf ctx s))
+    mk_subst s0.sub_loc (Let (tids,Nlist.map aux nlst,type_substitution_exn env ctx s))
 
   | BecomesElt (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
@@ -795,11 +795,11 @@ let rec type_substitution_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s0:p_sub
       | hd::tl -> mk_expr x.var_loc () (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
     in
     let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
-    let ttuple = type_expression_exn env uf ctx tuple in
+    let ttuple = type_expression_exn env ctx tuple in
     let ty_exp = T_Power ttuple.exp_typ in
-    let te = type_expression_exn env uf ctx e in
-    let () = match Unif.get_stype uf te.exp_typ ty_exp with
-      | None -> unexpected_type_exn uf e.exp_loc te.exp_typ ty_exp
+    let te = type_expression_exn env ctx e in
+    let () = match Unif.get_stype env.uf te.exp_typ ty_exp with
+      | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ ty_exp
       | Some _ -> ()
     in
     let tlst = (Nlist.map (type_var_exn env ctx) xlst) in
@@ -807,22 +807,22 @@ let rec type_substitution_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s0:p_sub
 
   | BecomesSuch (xlst,p) ->
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
-    mk_subst s0.sub_loc (BecomesSuch (tlst,type_predicate_exn env uf ctx p))
+    mk_subst s0.sub_loc (BecomesSuch (tlst,type_predicate_exn env ctx p))
 
   | Var (vars,s) ->
-    let (ctx,tvars) = declare_nelist uf ctx vars in
-   mk_subst s0.sub_loc (Var(tvars,type_substitution_exn env uf ctx s))
+    let (ctx,tvars) = declare_nelist env.uf ctx vars in
+   mk_subst s0.sub_loc (Var(tvars,type_substitution_exn env ctx s))
 
   | CallUp (ids,op,params) ->
-    begin match Global.get_operation env op.lid_str with
+    begin match Global.get_operation env.gl op.lid_str with
       | None -> Error.raise_exn op.lid_loc ("Unknown operation '"^op.lid_str^"'.")
       | Some (ope,_) ->
         let tids = List.map (type_var_exn env ctx) ids in
-        let tparams = List.map (type_expression_exn env uf ctx) params in
+        let tparams = List.map (type_expression_exn env ctx) params in
         let aux te (_,ty_arg) =
           let ty_exp = to_open ty_arg in
-          match Unif.get_stype uf te.exp_typ ty_exp with
-          | None -> unexpected_type_exn uf te.exp_loc te.exp_typ ty_exp
+          match Unif.get_stype env.uf te.exp_typ ty_exp with
+          | None -> unexpected_type_exn env.uf te.exp_loc te.exp_typ ty_exp
           | Some _ -> ()
         in
         begin try
@@ -835,24 +835,24 @@ let rec type_substitution_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s0:p_sub
     end
 
   | While (p,s,inv,var) ->
-    let tp = type_predicate_exn env uf ctx p in
-    let ts = type_substitution_exn env uf ctx s in
-    let t_inv = type_predicate_exn env uf ctx inv in
-    let t_var = type_expression_exn env uf ctx var in
+    let tp = type_predicate_exn env ctx p in
+    let ts = type_substitution_exn env ctx s in
+    let t_inv = type_predicate_exn { env with vi=V_Assert } ctx inv in
+    let t_var = type_expression_exn { env with vi=V_Assert } ctx var in
     let exp = t_int in
-    let () = match Unif.get_stype uf t_var.exp_typ exp with
-      | None -> unexpected_type_exn uf var.exp_loc t_var.exp_typ exp
+    let () = match Unif.get_stype env.uf t_var.exp_typ exp with
+      | None -> unexpected_type_exn env.uf var.exp_loc t_var.exp_typ exp
       | Some _ -> ()
     in
     mk_subst s0.sub_loc (While (tp,ts,t_inv,t_var))
 
   | Sequencement (s1,s2) ->
-    mk_subst s0.sub_loc (Sequencement(type_substitution_exn env uf ctx s1,
-                                      type_substitution_exn env uf ctx s2))
+    mk_subst s0.sub_loc (Sequencement(type_substitution_exn env ctx s1,
+                                      type_substitution_exn env ctx s2))
 
   | Parallel (s1,s2) ->
-    mk_subst s0.sub_loc (Parallel(type_substitution_exn env uf ctx s1,
-                                  type_substitution_exn env uf ctx s2))
+    mk_subst s0.sub_loc (Parallel(type_substitution_exn env ctx s1,
+                                  type_substitution_exn env ctx s2))
 
 (* *****************************************************************************
  * Type Inference (closed types)
@@ -979,26 +979,26 @@ let rec close_subst (uf:Unif.t) (s:t_substitution0) : t_substitution =
   | Sequencement (s1,s2) -> mk_subst s.sub_loc (Sequencement (close_subst uf s1,close_subst uf s2))
   | Parallel (s1,s2) -> mk_subst s.sub_loc (Parallel (close_subst uf s1,close_subst uf s2))
 
-let type_expression (env:Global.t) (uf:Unif.t) (ctx:Local.t) (e:p_expression) : t_expression Error.t_result =
-  try Ok (close_expr uf (type_expression_exn env uf ctx e))
+let type_expression (env:env) (ctx:Local.t) (e:p_expression) : t_expression Error.t_result =
+  try Ok (close_expr env.uf (type_expression_exn env ctx e))
   with Error.Error err -> Error err
 
-let type_predicate (env:Global.t) (uf:Unif.t) (ctx:Local.t) (p:p_predicate) : t_predicate Error.t_result =
-  try Ok (close_pred uf (type_predicate_exn env uf ctx p))
+let type_predicate (env:env) (ctx:Local.t) (p:p_predicate) : t_predicate Error.t_result =
+  try Ok (close_pred env.uf (type_predicate_exn env ctx p))
   with Error.Error err -> Error err
 
-let type_substitution (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s:p_substitution) : t_substitution Error.t_result =
-  try Ok (close_subst uf (type_substitution_exn env uf ctx s))
+let type_substitution (env:env) (ctx:Local.t) (s:p_substitution) : t_substitution Error.t_result =
+  try Ok (close_subst env.uf (type_substitution_exn env ctx s))
   with Error.Error err -> Error err
 
-let type_expression2_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (e:p_expression) : t_expression =
-  close_expr uf (type_expression_exn env uf ctx e)
+let type_expression2_exn (env:env) (ctx:Local.t) (e:p_expression) : t_expression =
+  close_expr env.uf (type_expression_exn env ctx e)
 
-let type_predicate2_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (p:p_predicate) : t_predicate =
-  close_pred uf (type_predicate_exn env uf ctx p)
+let type_predicate2_exn (env:env) (ctx:Local.t) (p:p_predicate) : t_predicate =
+  close_pred env.uf (type_predicate_exn env ctx p)
 
-let type_substitution2_exn (env:Global.t) (uf:Unif.t) (ctx:Local.t) (s:p_substitution) : t_substitution =
-  close_subst uf (type_substitution_exn env uf ctx s)
+let type_substitution2_exn (env:env) (ctx:Local.t) (s:p_substitution) : t_substitution =
+  close_subst env.uf (type_substitution_exn env ctx s)
 
 (* *****************************************************************************
  * Type Checking for Components
@@ -1108,26 +1108,26 @@ let promote_symb (env:Global.t) (ctx:Local.t) (k:t_kind) (v:t_var) : unit =
   if Global.mem_symbol env v.var_id then Global.redeclare_symbol env v.var_id
   else Global.add_symbol env v.var_loc v.var_id v.var_typ k
 
-let declare_constants (env:Global.t) (uf:Unif.t) cconst aconst prop =
+let declare_constants (gl:Global.t) (uf:Unif.t) cconst aconst prop =
   let ctx = Local.create () in
-  let ctx = fold_list_clause (declare_symb env uf K_Concrete_Constant) ctx cconst in
-  let ctx = fold_list_clause (declare_symb env uf K_Abstract_Constant) ctx aconst in
-  let t_prop = map_clause (type_predicate2_exn env uf ctx) prop in
-  let t_cconst = map_list_clause (type_var_exn env uf ctx) cconst in
-  let t_aconst = map_list_clause (type_var_exn env uf ctx) aconst in
-  let _ = iter_list_clause (promote_symb env ctx K_Concrete_Constant) t_cconst in
-  let _ = iter_list_clause (promote_symb env ctx K_Abstract_Constant) t_aconst in
+  let ctx = fold_list_clause (declare_symb gl uf K_Concrete_Constant) ctx cconst in
+  let ctx = fold_list_clause (declare_symb gl uf K_Abstract_Constant) ctx aconst in
+  let t_prop = map_clause (type_predicate2_exn {gl;uf;vi=V_Properties} ctx) prop in
+  let t_cconst = map_list_clause (type_var_exn gl uf ctx) cconst in
+  let t_aconst = map_list_clause (type_var_exn gl uf ctx) aconst in
+  let _ = iter_list_clause (promote_symb gl ctx K_Concrete_Constant) t_cconst in
+  let _ = iter_list_clause (promote_symb gl ctx K_Abstract_Constant) t_aconst in
   (t_cconst,t_aconst,t_prop)
 
-let declare_variables (env:Global.t) (uf:Unif.t) cvars avars inv =
+let declare_variables (gl:Global.t) (uf:Unif.t) cvars avars inv =
   let ctx = Local.create () in
-  let ctx = fold_list_clause (declare_symb env uf K_Concrete_Variable) ctx cvars in
-  let ctx = fold_list_clause (declare_symb env uf K_Abstract_Variable) ctx avars in
-  let t_inv = map_clause (type_predicate2_exn env uf ctx) inv in
-  let t_cvars = map_list_clause (type_var_exn env uf ctx) cvars in
-  let t_avars = map_list_clause (type_var_exn env uf ctx) avars in
-  let _ = iter_list_clause (promote_symb env ctx K_Concrete_Variable) t_cvars in
-  let _ = iter_list_clause (promote_symb env ctx K_Abstract_Variable) t_avars in
+  let ctx = fold_list_clause (declare_symb gl uf K_Concrete_Variable) ctx cvars in
+  let ctx = fold_list_clause (declare_symb gl uf K_Abstract_Variable) ctx avars in
+  let t_inv = map_clause (type_predicate2_exn {gl;uf;vi=V_Invariant} ctx) inv in
+  let t_cvars = map_list_clause (type_var_exn gl uf ctx) cvars in
+  let t_avars = map_list_clause (type_var_exn gl uf ctx) avars in
+  let _ = iter_list_clause (promote_symb gl ctx K_Concrete_Variable) t_cvars in
+  let _ = iter_list_clause (promote_symb gl ctx K_Abstract_Variable) t_avars in
   (t_cvars,t_avars,t_inv)
 
 let declare_list (uf:Unif.t) (ctx:Local.t) (lst:p_var list) : Local.t * (Utils.loc,opn_btype) var list =
@@ -1179,20 +1179,20 @@ let get_operation_context (env:Global.t) (uf:Unif.t) (op:p_operation) : Local.t*
     let () = check_signature op s in
     (ctx,false)
 
-let declare_local_operation (env:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
-  match Global.get_operation env op.op_name.lid_str with
+let declare_local_operation (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
+  match Global.get_operation gl op.op_name.lid_str with
   | None ->
     let ctx = Local.create () in
     let (ctx,op_out) = declare_list uf ctx op.op_out in
     let (ctx,op_in) = declare_list uf ctx op.op_in in
-    let body = type_substitution_exn env uf ctx op.op_body in
-    let op_in = List.map (type_var_exn env uf ctx) op.op_in in
-    let op_out = List.map (type_var_exn env uf ctx) op.op_out in
+    let body = type_substitution_exn {gl;uf;vi=V_Local_Operations} ctx op.op_body in
+    let op_in = List.map (type_var_exn gl uf ctx) op.op_in in
+    let op_out = List.map (type_var_exn gl uf ctx) op.op_out in
     let op_body = close_subst uf body in
     let aux v = (v.var_id, v.var_typ) in
     let args_out = List.map aux op_out in
     let args_in  = List.map aux op_in in
-    let () = Global.add_operation env op.op_name.lid_loc op.op_name.lid_str args_in args_out true in
+    let () = Global.add_operation gl op.op_name.lid_loc op.op_name.lid_str args_in args_out true in
     { op_name=op.op_name; op_in; op_out; op_body }
   | Some (_,src) ->
     begin match src with
@@ -1204,42 +1204,42 @@ let declare_local_operation (env:Global.t) (uf:Unif.t) (op:p_operation) : t_oper
           ("An operation with the same name is already declared in machine '"^mch.lid_str^"'.")
     end
 
-let declare_operation (env:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
-  let (ctx,is_new) = get_operation_context env uf op in
-  let body = type_substitution_exn env uf ctx op.op_body in
-  let op_in = List.map (type_var_exn env uf ctx) op.op_in in
-  let op_out = List.map (type_var_exn env uf ctx) op.op_out in
+let declare_operation (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
+  let (ctx,is_new) = get_operation_context gl uf op in
+  let body = type_substitution_exn {gl;uf;vi=V_Operations} ctx op.op_body in
+  let op_in = List.map (type_var_exn gl uf ctx) op.op_in in
+  let op_out = List.map (type_var_exn gl uf ctx) op.op_out in
   let op_body = close_subst uf body in
   let aux v = (v.var_id, v.var_typ) in
   let args_out = List.map aux op_out in
   let args_in  = List.map aux op_in in
   ( if is_new then
-      Global.add_operation env op.op_name.lid_loc op.op_name.lid_str args_in args_out false
+      Global.add_operation gl op.op_name.lid_loc op.op_name.lid_str args_in args_out false
     else
-      Global.redefine_operation env op.op_name.lid_str );
+      Global.redefine_operation gl op.op_name.lid_str );
   { op_name=op.op_name; op_in; op_out; op_body }
 
-let type_machine_exn (f:string -> MachineInterface.t option) env (mch:_ machine_desc) : (Utils.loc,btype) machine_desc =
+let type_machine_exn (f:string -> MachineInterface.t option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,btype) machine_desc =
   let uf = Unif.create () in
   let mch_constraints = clause_some_err "Not implemented: machine with clause CONSTRAINTS." mch.mch_constraints in
   let mch_includes = clause_some_err "Not implemented: clause INCLUDES." mch.mch_includes in
   let mch_promotes = clause_some_err "Not implemented: clause PROMOTES." mch.mch_promotes in
   let mch_extends = clause_some_err "Not implemented: clause EXTENDS." mch.mch_extends in
   let mch_uses = clause_some_err "Not implemented: clause USES." mch.mch_uses in
-  let () = iter_list_clause (load_seen_mch f env) mch.mch_sees in
-  let mch_sets = map_list_clause (declare_set env) mch.mch_sets in
+  let () = iter_list_clause (load_seen_mch f gl) mch.mch_sees in
+  let mch_sets = map_list_clause (declare_set gl) mch.mch_sets in
   let (mch_concrete_constants,mch_abstract_constants,mch_properties) =
-    declare_constants env uf mch.mch_concrete_constants
+    declare_constants gl uf mch.mch_concrete_constants
       mch.mch_abstract_constants mch.mch_properties
   in
   let (mch_concrete_variables,mch_abstract_variables,mch_invariant) =
-    declare_variables env uf mch.mch_concrete_variables
+    declare_variables gl uf mch.mch_concrete_variables
       mch.mch_abstract_variables mch.mch_invariant
   in
   let ctx = Local.create () in
-  let mch_assertions = map_list_clause (type_predicate2_exn env uf ctx) mch.mch_assertions in
-  let mch_initialisation = map_clause (type_substitution2_exn env uf ctx) mch.mch_initialisation in
-  let mch_operations = map_list_clause (declare_operation env uf) mch.mch_operations in
+  let mch_assertions = map_list_clause (type_predicate2_exn {gl;uf;vi=V_Invariant} ctx) mch.mch_assertions in
+  let mch_initialisation = map_clause (type_substitution2_exn {gl;uf;vi=V_Operations} ctx) mch.mch_initialisation in
+  let mch_operations = map_list_clause (declare_operation gl uf) mch.mch_operations in
   { mch_constraints; mch_sees=mch.mch_sees; mch_includes; mch_promotes; mch_extends;
     mch_uses; mch_sets; mch_concrete_constants; mch_abstract_constants;
     mch_properties; mch_concrete_variables; mch_abstract_variables;
@@ -1250,38 +1250,38 @@ let load_refines f env mch =
   | None -> Error.raise_exn mch.lid_loc ("Unknown machine '"^mch.lid_str^"'.")
   | Some itf -> Global.load_interface env itf (From_Refined_Mch mch)
 
-let type_refinement_exn (f:string->MachineInterface.t option) env ref : (Utils.loc,btype) refinement_desc =
+let type_refinement_exn (f:string->MachineInterface.t option) (gl:Global.t) ref : (Utils.loc,btype) refinement_desc =
   let uf = Unif.create () in
-  let () = load_refines f env ref.ref_refines in
+  let () = load_refines f gl ref.ref_refines in
   let ref_includes = clause_some_err "Not implemented: clause INCLUDES." ref.ref_includes in
   let ref_promotes = clause_some_err "Not implemented: clause PROMOTES." ref.ref_promotes in
   let ref_extends = clause_some_err "Not implemented: clause EXTENDS."ref.ref_extends in
-  let () = iter_list_clause (load_seen_mch f env) ref.ref_sees in
-  let ref_sets = map_list_clause (declare_set env) ref.ref_sets in
+  let () = iter_list_clause (load_seen_mch f gl) ref.ref_sees in
+  let ref_sets = map_list_clause (declare_set gl) ref.ref_sets in
   let (ref_concrete_constants,ref_abstract_constants,ref_properties) =
-    declare_constants env uf ref.ref_concrete_constants
+    declare_constants gl uf ref.ref_concrete_constants
       ref.ref_abstract_constants ref.ref_properties
   in
   let (ref_concrete_variables,ref_abstract_variables,ref_invariant) =
-    declare_variables env uf ref.ref_concrete_variables
+    declare_variables gl uf ref.ref_concrete_variables
       ref.ref_abstract_variables ref.ref_invariant
   in
   let ctx = Local.create () in
-  let ref_assertions = map_list_clause (type_predicate2_exn env uf ctx) ref.ref_assertions in
-  let ref_initialisation = map_clause (type_substitution2_exn env uf ctx) ref.ref_initialisation in
-  let ref_local_operations = map_list_clause (declare_local_operation env uf) ref.ref_local_operations in
-  let ref_operations = map_list_clause (declare_operation env uf) ref.ref_operations in
+  let ref_assertions = map_list_clause (type_predicate2_exn {gl;uf;vi=V_Invariant} ctx) ref.ref_assertions in
+  let ref_initialisation = map_clause (type_substitution2_exn {gl;uf;vi=V_Operations} ctx) ref.ref_initialisation in
+  let ref_local_operations = map_list_clause (declare_local_operation gl uf) ref.ref_local_operations in
+  let ref_operations = map_list_clause (declare_operation gl uf) ref.ref_operations in
   { ref_refines=ref.ref_refines; ref_sees=ref.ref_sees; ref_includes; ref_promotes;
     ref_extends; ref_sets; ref_concrete_constants; ref_abstract_constants;
     ref_properties; ref_concrete_variables; ref_abstract_variables; ref_invariant;
     ref_assertions; ref_initialisation; ref_operations; ref_local_operations; }
 
-let type_value env uf (v,e:p_var*p_expression) : t_var*t_expression =
-  match Global.get_symbol env v.var_id with
+let type_value (gl:Global.t) (uf:Unif.t) (v,e:p_var*p_expression) : t_var*t_expression =
+  match Global.get_symbol gl v.var_id with
   | None -> Error.raise_exn v.var_loc ("Unknown symbol '"^v.var_id^"'.")
   | Some (s,_) ->
     let ctx = Local.create () in
-    let te = type_expression2_exn env uf ctx e in
+    let te = type_expression2_exn {gl;uf;vi=V_Values} ctx e in
     if Unif.is_equal_modulo_alias uf te.exp_typ s.typ then
       ( {var_loc=v.var_loc;var_id=v.var_id;var_typ=s.typ},te)
     else
@@ -1321,9 +1321,9 @@ let is_abstract_set env v =
   | None -> false
   | Some (x,_) -> (x.kind = K_Abstract_Set)
 
-let manage_set_concretisation_exn env uf (v,e) =
-  if is_abstract_set env v then
-    let te = type_expression2_exn env uf (Local.create ()) e in
+let manage_set_concretisation_exn (gl:Global.t) (uf:Unif.t) (v,e) =
+  if is_abstract_set gl v then
+    let te = type_expression2_exn {gl;uf;vi=V_Values} (Local.create ()) e in
     match te.exp_typ with
     | T_Power ty ->
       if not (Unif.add_alias uf v.var_id ty) then
@@ -1335,28 +1335,28 @@ let manage_set_concretisation_exn env uf (v,e) =
       in
       Error.raise_exn e.exp_loc str
 
-let type_implementation_exn (f:string -> MachineInterface.t option) env imp : (Utils.loc,btype) implementation_desc =
+let type_implementation_exn (f:string -> MachineInterface.t option) (gl:Global.t) imp : (Utils.loc,btype) implementation_desc =
   let uf = Unif.create () in
-  let () = load_refines f env imp.imp_refines in
-  let () = iter_list_clause (load_seen_mch f env) imp.imp_sees in
-  let imp_sets = map_list_clause (declare_set env) imp.imp_sets in
-  let () = iter_list_clause (manage_set_concretisation_exn env uf) imp.imp_values in
-  let imp_imports = map_list_clause (load_imported_mch f env) imp.imp_imports in
-  let imp_extends = map_list_clause (load_extended_mch f env) imp.imp_extends in
-  let () = iter_list_clause (promote_op env) imp.imp_promotes in
+  let () = load_refines f gl imp.imp_refines in
+  let () = iter_list_clause (load_seen_mch f gl) imp.imp_sees in
+  let imp_sets = map_list_clause (declare_set gl) imp.imp_sets in
+  let () = iter_list_clause (manage_set_concretisation_exn gl uf) imp.imp_values in
+  let imp_imports = map_list_clause (load_imported_mch f gl) imp.imp_imports in
+  let imp_extends = map_list_clause (load_extended_mch f gl) imp.imp_extends in
+  let () = iter_list_clause (promote_op gl) imp.imp_promotes in
   let (imp_concrete_constants,imp_abstract_constants,imp_properties) =
-    declare_constants env uf imp.imp_concrete_constants
+    declare_constants gl uf imp.imp_concrete_constants
       None imp.imp_properties
   in
   let (imp_concrete_variables,imp_abstract_variables,imp_invariant) =
-    declare_variables env uf imp.imp_concrete_variables None imp.imp_invariant
+    declare_variables gl uf imp.imp_concrete_variables None imp.imp_invariant
   in
-  let imp_values = map_list_clause (type_value env uf) imp.imp_values in
+  let imp_values = map_list_clause (type_value gl uf) imp.imp_values in
   let ctx = Local.create () in
-  let imp_assertions = map_list_clause (type_predicate2_exn env uf ctx) imp.imp_assertions in
-  let imp_initialisation = map_clause (type_substitution2_exn env uf ctx) imp.imp_initialisation in
-  let imp_local_operations = map_list_clause (declare_local_operation env uf) imp.imp_local_operations in
-  let imp_operations = map_list_clause (declare_operation env uf) imp.imp_operations in
+  let imp_assertions = map_list_clause (type_predicate2_exn {gl;uf;vi=V_Invariant} ctx) imp.imp_assertions in
+  let imp_initialisation = map_clause (type_substitution2_exn {gl;uf;vi=V_Operations} ctx) imp.imp_initialisation in
+  let imp_local_operations = map_list_clause (declare_local_operation gl uf) imp.imp_local_operations in
+  let imp_operations = map_list_clause (declare_operation gl uf) imp.imp_operations in
   { imp_refines=imp.imp_refines; imp_sees=imp.imp_sees; imp_imports;
     imp_promotes=imp.imp_promotes; imp_extends; imp_sets; imp_concrete_constants;
     imp_properties; imp_values; imp_concrete_variables; imp_invariant;

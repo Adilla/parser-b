@@ -361,22 +361,26 @@ let get_builtin_type_exn (uf:Unif.t) (lc:Utils.loc) : e_builtin -> opn_btype = f
     | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
       Error.raise_exn lc "Not implemented (tree operators)."
 
-let compatibility_check_exn lc vis kind src = (*FIXME*)
+let compatibility_check_exn lc vis kind src =
   match vis, kind, src with
   | V_Properties, (K_Abstract_Variable|K_Concrete_Variable), _ ->
     Error.raise_exn lc "Variables are not visible in the clause PROPERTIES."
   | V_Properties, _, _ -> ()
   | V_Invariant, (K_Abstract_Variable|K_Concrete_Variable), From_Seen_Mch _ ->
-    Error.raise_exn lc "Variables from seen machines are not visible in the clause INVARIANT."
+    Error.raise_exn lc "Variables from seen machines are not visible in the clauses INVARIANT or ASSERTIONS."
   | V_Invariant, _, _ -> ()
-  | V_Operations, (K_Abstract_Constant|K_Abstract_Variable), (From_Refined_Mch _|From_Imported_Mch _) ->
-    Error.raise_exn lc "Abstract symbols from refined or imported machines are not visible in the clause OPERATIONS."
+  | V_Operations, K_Abstract_Constant, (From_Refined_Mch _|From_Imported_Mch _) ->
+    Error.raise_exn lc "Abstract constants from refined or imported machines are not visible in the clause OPERATIONS or INITIALISATION."
+  | V_Operations, K_Abstract_Variable, (From_Refined_Mch _|From_Imported_Mch _) ->
+    Error.raise_exn lc "Abstract variables from refined or imported machines are not visible in the clause OPERATIONS or INITIALISATION."
   | V_Operations, _, _ -> ()
   | V_Local_Operations, (K_Abstract_Constant|K_Abstract_Variable), From_Refined_Mch _ ->
-    Error.raise_exn lc "Abstract symbols from refined machines are not visible in the clause LOCAL_OPERATIONS."
+    Error.raise_exn lc "Abstract constants or variables from refined machines are not visible in the clause LOCAL_OPERATIONS."
   | V_Local_Operations, _, _ -> ()
-  | V_Values, (K_Abstract_Constant|K_Abstract_Variable|K_Concrete_Variable), _ ->
-    Error.raise_exn lc "Variables and abstract constants are not visible in the clause VALUES."
+  | V_Values, K_Abstract_Constant, _ ->
+    Error.raise_exn lc "Abstract constants are not visible in the clause VALUES."
+  | V_Values, (K_Abstract_Variable|K_Concrete_Variable), _ ->
+    Error.raise_exn lc "Variables are not visible in the clause VALUES."
   | V_Values, _, _ -> ()
   | V_Assert, _, _ -> ()
   

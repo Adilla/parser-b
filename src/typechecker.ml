@@ -19,7 +19,7 @@ type t_source =
   | From_Imported_Mch of p_lident
 
 type t_symb = { loc:loc; typ:btype; kind:t_kind; }
-type t_op  = { loc:loc; args_in: (string*btype) list; args_out: (string*btype) list; }
+type t_op  = { loc:loc; args_in: (string*btype) list; args_out: (string*btype) list; is_readonly:bool; }
 
 module MachineInterface :
 sig
@@ -42,10 +42,10 @@ module Global :
     val get_symbol : t -> ident -> (t_symb*t_source) option
     val get_operation : t -> ident -> (t_op*t_source) option
     val add_symbol : t -> loc -> ident -> btype -> t_kind -> unit
-    val add_operation : t -> loc -> ident -> (ident*btype) list -> (ident*btype) list -> bool -> unit
+    val add_operation : t -> ident -> t_op -> bool -> unit
     val mem_symbol : t -> ident -> bool
     val mem_operation : t -> ident -> bool
-    val redefine_operation : t -> ident -> unit
+    val redefine_operation : t -> ident -> bool -> unit
     val redeclare_symbol : t -> ident -> unit
     val promote_operation : t -> loc -> ident -> bool
     val load_interface : t -> MachineInterface.t -> t_source -> unit
@@ -69,15 +69,15 @@ module Global :
 
   let mem_symbol (env:t) (id:ident) : bool = Hashtbl.mem env.symb id
 
-  let add_operation (env:t) (loc:loc) (id:ident) (args_in:(ident*btype) list) (args_out:(ident*btype) list) (is_local:bool) : unit =
-    Hashtbl.add env.ops id ( { loc; args_in; args_out; }, From_Current_Mch is_local)
+  let add_operation (env:t) (id:ident) (op:t_op) (is_local:bool) : unit =
+    Hashtbl.add env.ops id ( op, From_Current_Mch is_local)
 
   let mem_operation (env:t)(id:ident) : bool = Hashtbl.mem env.ops id
 
-  let redefine_operation (env:t) (id:ident) : unit =
+  let redefine_operation (env:t) (id:ident) (is_ro:bool) : unit =
     if Hashtbl.mem env.ops id then
       let (op,_) = Hashtbl.find env.ops id in
-      Hashtbl.replace env.ops id (op,From_Current_Mch false)
+      Hashtbl.replace env.ops id ({op with is_readonly=is_ro},From_Current_Mch false)
     else
       failwith "Internal error (Global.redefine_operation)."
 
@@ -92,7 +92,8 @@ module Global :
     if Hashtbl.mem env.ops id then
       let (op,src) = Hashtbl.find env.ops id in
       match src with
-      | From_Imported_Mch _ -> ( Hashtbl.replace env.ops id (op,From_Current_Mch false); true )
+      | From_Imported_Mch _ ->
+        ( Hashtbl.replace env.ops id (op,From_Current_Mch false); true )
       | _ -> false
     else
       false
@@ -142,7 +143,7 @@ type env = { gl: Global.t; uf:Unif.t; vi:visibility }
 (* *****************************************************************************
  * Local contexts 
  * ************************************************************************** *)
-
+ (*TODO write permission*)
 module Local :
 sig
   type t
@@ -150,6 +151,7 @@ sig
   val add : t -> ident -> opn typ -> t
   val get : t -> ident -> (opn typ) option
   val iter : (string -> opn typ -> unit) -> t -> unit
+  val get_vars: t -> ident list
 
   end = struct
 
@@ -171,6 +173,9 @@ sig
     with Not_found -> None
 
   let iter = M.iter
+
+  let get_vars ctx =
+    List.map fst (M.bindings ctx)
 end
 
 (* *****************************************************************************
@@ -683,14 +688,15 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
   | Skip -> mk_subst s0.sub_loc Skip
 
   | Pre (p,s) ->
-    mk_subst s0.sub_loc (Pre (type_predicate_exn env ctx p,
-                              type_substitution_exn env ctx s))
+    mk_subst s0.sub_loc
+      (Pre (type_predicate_exn env ctx p, type_substitution_exn env ctx s))
 
   | Assert (p,s) ->
-    mk_subst s0.sub_loc (Assert(type_predicate_exn {env with vi=V_Assert} ctx p,
-                                type_substitution_exn env ctx s))
+    mk_subst s0.sub_loc
+      (Assert(type_predicate_exn {env with vi=V_Assert} ctx p,
+              type_substitution_exn env ctx s))
 
-  | Affectation (xlst,e) ->
+  | Affectation (xlst,e) -> (*FIXME write permission*)
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
         | [] -> mk_expr x.var_loc () (Ident x.var_id)
         | hd::tl ->
@@ -707,7 +713,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
     mk_subst s0.sub_loc (Affectation (tlst,te))
 
-  | Function_Affectation (f,nlst,e) -> 
+  | Function_Affectation (f,nlst,e) ->  (*FIXME write permission*)
     let rec mk_app (lc:Utils.loc) f = function
       | [] -> f
       | x::tl -> mk_app lc (mk_expr lc () (Application (f,x))) tl
@@ -723,7 +729,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     let tlst = Nlist.map (type_expression_exn env ctx) nlst in
     mk_subst s0.sub_loc (Function_Affectation (tf,tlst,te))
 
-  | Record_Affectation (rc,fd,e) ->
+  | Record_Affectation (rc,fd,e) -> (*FIXME write permission*)
     let rf_access = mk_expr rc.var_loc ()
         (Record_Field_Access (mk_expr rc.var_loc () (Ident rc.var_id),fd)) in
     let trf_access = type_expression_exn env ctx rf_access in
@@ -793,7 +799,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     in
     mk_subst s0.sub_loc (Let (tids,Nlist.map aux nlst,type_substitution_exn env ctx s))
 
-  | BecomesElt (xlst,e) ->
+  | BecomesElt (xlst,e) -> (*FIXME write permission*)
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
       | [] -> mk_expr x.var_loc () (Ident x.var_id)
       | hd::tl -> mk_expr x.var_loc () (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
@@ -809,18 +815,34 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     let tlst = (Nlist.map (type_var_exn env ctx) xlst) in
     mk_subst s0.sub_loc (BecomesElt (tlst,te))
 
-  | BecomesSuch (xlst,p) ->
+  | BecomesSuch (xlst,p) -> (*FIXME write permission*)
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
     mk_subst s0.sub_loc (BecomesSuch (tlst,type_predicate_exn env ctx p))
 
   | Var (vars,s) ->
     let (ctx,tvars) = declare_nelist env.uf ctx vars in
-   mk_subst s0.sub_loc (Var(tvars,type_substitution_exn env ctx s))
+    mk_subst s0.sub_loc (Var(tvars,type_substitution_exn env ctx s))
 
-  | CallUp (ids,op,params) ->
+  | CallUp (ids,op,params) -> (*FIXME write permission*)
     begin match Global.get_operation env.gl op.lid_str with
       | None -> Error.raise_exn op.lid_loc ("Unknown operation '"^op.lid_str^"'.")
-      | Some (ope,_) ->
+      | Some (ope,src) ->
+        let () = match src with
+          | From_Current_Mch false ->
+            Error.raise_exn s0.sub_loc
+              "This operation is defined in the machine; it cannot be used here."
+          | From_Current_Mch true -> ()
+          | From_Seen_Mch mch_name ->
+            if not ope.is_readonly then
+              Error.raise_exn s0.sub_loc
+                ("This operation is defined is the seen machine '"^
+                 mch_name.lid_str ^"' but it is not read-only.")
+          | From_Refined_Mch mch_name ->
+            Error.raise_exn s0.sub_loc
+              ("This operation is defined in refined machine '"^
+               mch_name.lid_str^"'; it cannot be used here.")
+          | From_Imported_Mch _ -> ()
+        in
         let tids = List.map (type_var_exn env ctx) ids in
         let tparams = List.map (type_expression_exn env ctx) params in
         let aux te (_,ty_arg) =
@@ -851,12 +873,14 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     mk_subst s0.sub_loc (While (tp,ts,t_inv,t_var))
 
   | Sequencement (s1,s2) ->
-    mk_subst s0.sub_loc (Sequencement(type_substitution_exn env ctx s1,
-                                      type_substitution_exn env ctx s2))
+    mk_subst s0.sub_loc
+      (Sequencement(type_substitution_exn env ctx s1,
+                    type_substitution_exn env ctx s2))
 
   | Parallel (s1,s2) ->
-    mk_subst s0.sub_loc (Parallel(type_substitution_exn env ctx s1,
-                                  type_substitution_exn env ctx s2))
+    mk_subst s0.sub_loc
+      (Parallel(type_substitution_exn env ctx s1,
+                type_substitution_exn env ctx s2))
 
 (* *****************************************************************************
  * Type Inference (closed types)
@@ -1174,7 +1198,7 @@ let get_operation_context (env:Global.t) (uf:Unif.t) (op:p_operation) : Local.t*
         Error.raise_exn op.op_name.lid_loc
           ("An operation with the same name is already declared in machine '"^mch.lid_str^"'.")
       | From_Refined_Mch _ -> ()
-      | From_Imported_Mch _ -> ()
+      | From_Imported_Mch _ -> () (*FIXME*)
     in
     let ctx = Local.create () in
     let aux ctx (s,ty) = Local.add ctx s (to_open ty) in
@@ -1182,6 +1206,46 @@ let get_operation_context (env:Global.t) (uf:Unif.t) (op:p_operation) : Local.t*
     let ctx = List.fold_left aux ctx s.args_out in
     let () = check_signature op s in
     (ctx,false)
+
+let mem id = List.exists (Syntax.ident_eq id)
+
+let rec is_read_only (gl:Global.t) (ctx:ident list) (s:p_substitution) : bool =
+  match s.sub_desc with
+  | Skip -> true
+  | Affectation (xlst,_) | BecomesElt (xlst,_) | BecomesSuch (xlst,_) ->
+    let aux v = mem v.var_id ctx in
+    List.for_all aux (Nlist.to_list xlst)
+  | Function_Affectation (v,_,_) | Record_Affectation (v,_,_) ->
+    mem v.var_id ctx
+  | CallUp (args_out,id,args_in) ->
+    let aux v = mem v.var_id ctx in
+    List.for_all aux args_out &&
+    ( match Global.get_operation gl id.lid_str with
+      | None -> assert false
+      | Some (op,_) -> op.is_readonly )
+  | Pre (p,s0) -> is_read_only gl ctx s0
+  | Assert (p,s0) -> is_read_only gl ctx s0
+  | Choice nlst -> List.for_all (is_read_only gl ctx) (Nlist.to_list nlst)
+  | IfThenElse (nlst,opt) | Select (nlst,opt) ->
+    let aux (_,s0) = is_read_only gl ctx s0 in
+    let opt_ro = match opt with
+      | None -> true
+      | Some s0 -> is_read_only gl ctx s0
+    in
+    opt_ro && List.for_all aux (Nlist.to_list nlst)
+  | Case (_,nlst,opt) ->
+    let aux (_,s0) = is_read_only gl ctx s0 in
+    let opt_ro = match opt with
+      | None -> true
+      | Some s0 -> is_read_only gl ctx s0
+    in
+    opt_ro && List.for_all aux (Nlist.to_list nlst)
+  | Any (xlst,_,s0) | Let (xlst,_,s0) | Var (xlst,s0) ->
+    let ctx = List.fold_left (fun ctx v -> v.var_id::ctx) ctx (Nlist.to_list xlst) in
+    is_read_only gl ctx s0
+  | While (p1,s0,p2,e) -> is_read_only gl ctx s0
+  | Sequencement (s1,s2) | Parallel (s1,s2) ->
+    is_read_only gl ctx s1 && is_read_only gl ctx s2
 
 let declare_local_operation (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
   match Global.get_operation gl op.op_name.lid_str with
@@ -1196,7 +1260,9 @@ let declare_local_operation (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_opera
     let aux v = (v.var_id, v.var_typ) in
     let args_out = List.map aux op_out in
     let args_in  = List.map aux op_in in
-    let () = Global.add_operation gl op.op_name.lid_loc op.op_name.lid_str args_in args_out true in
+    let loc = op.op_name.lid_loc in
+    let is_readonly = is_read_only gl (Local.get_vars ctx) op.op_body in
+    let () = Global.add_operation gl op.op_name.lid_str {loc; args_in; args_out; is_readonly} true in
     { op_name=op.op_name; op_in; op_out; op_body }
   | Some (_,src) ->
     begin match src with
@@ -1210,17 +1276,19 @@ let declare_local_operation (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_opera
 
 let declare_operation (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
   let (ctx,is_new) = get_operation_context gl uf op in
-  let body = type_substitution_exn {gl;uf;vi=V_Operations} ctx op.op_body in
+  let body = type_substitution_exn {gl;uf;vi=V_Operations} ctx op.op_body in (*TODO no op_out in PRE?*)
   let op_in = List.map (type_var_exn gl uf ctx) op.op_in in
   let op_out = List.map (type_var_exn gl uf ctx) op.op_out in
   let op_body = close_subst uf body in
   let aux v = (v.var_id, v.var_typ) in
   let args_out = List.map aux op_out in
   let args_in  = List.map aux op_in in
+  let is_readonly = is_read_only gl (Local.get_vars ctx) op.op_body in
   ( if is_new then
-      Global.add_operation gl op.op_name.lid_loc op.op_name.lid_str args_in args_out false
+      let loc = op.op_name.lid_loc in
+      Global.add_operation gl op.op_name.lid_str { loc; args_in; args_out; is_readonly } false
     else
-      Global.redefine_operation gl op.op_name.lid_str );
+      Global.redefine_operation gl op.op_name.lid_str is_readonly );
   { op_name=op.op_name; op_in; op_out; op_body }
 
 let type_machine_exn (f:string -> MachineInterface.t option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,btype) machine_desc =

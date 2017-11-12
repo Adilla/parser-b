@@ -148,9 +148,10 @@ module Local :
 sig
   type t
   val create : unit -> t
-  val add : t -> ident -> opn typ -> t
-  val get : t -> ident -> (opn typ) option
-  val iter : (string -> opn typ -> unit) -> t -> unit
+  val add : t -> ident -> opn typ -> bool -> t
+  val get : t -> ident -> opn typ option
+  val is_readonly : t -> ident -> bool option
+(*   val iter : (string -> (opn typ*bool) -> unit) -> t -> unit *)
   val get_vars: t -> ident list
 
   end = struct
@@ -161,15 +162,19 @@ sig
       let compare = String.compare
     end )
 
-  type t = opn typ M.t
+  type t = (opn typ*bool) M.t
 
   let create () = M.empty
 
-  let add (ctx:t) (id:ident) (ty:opn typ) : t =
-    M.add id ty ctx
+  let add (ctx:t) (id:ident) (ty:opn typ) (ro:bool) : t =
+    M.add id (ty,ro) ctx
 
-  let get (ctx:t) (id:ident) : (opn typ) option =
-    try Some (M.find id ctx)
+  let get (ctx:t) (id:ident) : opn typ option =
+    try Some (fst (M.find id ctx))
+    with Not_found -> None
+
+  let is_readonly (ctx:t) (id:ident) : bool option =
+    try Some (snd (M.find id ctx))
     with Not_found -> None
 
   let iter = M.iter
@@ -191,21 +196,21 @@ let mk_expr exp_loc exp_typ exp_desc = { exp_loc; exp_typ; exp_desc }
 let mk_pred prd_loc prd_desc = { prd_loc; prd_desc }
 let mk_subst sub_loc sub_desc = { sub_loc; sub_desc;  }
 
-let declare (uf:Unif.t) (ctx:Local.t) (id:string) : Local.t * opn typ = 
+let declare (uf:Unif.t) (ctx:Local.t) (id:string) (ro:bool) : Local.t * opn typ = 
   let mt = Unif.new_meta uf in
-  ( Local.add ctx id mt, mt )
+  ( Local.add ctx id mt ro, mt )
 
-let declare_list (uf:Unif.t) (ctx:Local.t) (lst:p_var list) : Local.t * t_var0 list =
+let declare_list (uf:Unif.t) (ctx:Local.t) (lst:p_var list) (ro:bool) : Local.t * t_var0 list =
   let (ctx,tvars) = List.fold_left
       (fun (ctx,tvars) v ->
-         let (ctx,var_typ) = declare uf ctx v.var_id in
+         let (ctx,var_typ) = declare uf ctx v.var_id ro in
          ( ctx, { var_loc=v.var_loc; var_typ; var_id=v.var_id }::tvars )
       ) (ctx,[]) lst
   in
   (ctx,List.rev tvars)
 
-let declare_nelist (uf:Unif.t) (ctx:Local.t) (xlst:p_var Nlist.t) : Local.t * t_var0 Nlist.t =
-  let (ctx,lst) = declare_list uf ctx (Nlist.to_list xlst) in
+let declare_nelist (uf:Unif.t) (ctx:Local.t) (xlst:p_var Nlist.t) (ro:bool) : Local.t * t_var0 Nlist.t =
+  let (ctx,lst) = declare_list uf ctx (Nlist.to_list xlst) ro in
   (ctx,Nlist.from_list_exn lst)
 
 let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : opn_btype =
@@ -544,7 +549,7 @@ let rec type_expression_exn (env:env) (ctx:Local.t) (e:p_expression) : t_express
     end
 
   | Comprehension (ids,p) ->
-    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    let (ctx,tids) = declare_nelist env.uf ctx ids true in
     let tp = type_predicate_exn env ctx p in
     mk_expr e.exp_loc (T_Power (ids_to_product ctx ids)) (Comprehension (tids,tp))
 
@@ -552,7 +557,7 @@ let rec type_expression_exn (env:env) (ctx:Local.t) (e:p_expression) : t_express
     begin
       match bi with
       | Sum | Prod ->
-        let (ctx,tids) = declare_nelist env.uf ctx ids in
+        let (ctx,tids) = declare_nelist env.uf ctx ids true in
         let tp = type_predicate_exn env ctx p in
         let te = type_expression_exn env ctx e0 in
         begin match Unif.get_stype env.uf te.exp_typ t_int with
@@ -560,7 +565,7 @@ let rec type_expression_exn (env:env) (ctx:Local.t) (e:p_expression) : t_express
           | None -> unexpected_type_exn env.uf e0.exp_loc te.exp_typ t_int
         end
       | Q_Union | Q_Intersection ->
-        let (ctx,tids) = declare_nelist env.uf ctx ids in
+        let (ctx,tids) = declare_nelist env.uf ctx ids true in
         let tp = type_predicate_exn env ctx p in
         let te = type_expression_exn env ctx e0 in
         let ty_exp = T_Power (Unif.new_meta env.uf) in
@@ -570,7 +575,7 @@ let rec type_expression_exn (env:env) (ctx:Local.t) (e:p_expression) : t_express
         end
       | Lambda ->
         begin
-          let (ctx,tids) = declare_nelist env.uf ctx ids in
+          let (ctx,tids) = declare_nelist env.uf ctx ids true in
           let tp = type_predicate_exn env ctx p in
           let te = type_expression_exn env ctx e0 in
           mk_expr e.exp_loc (T_Power (T_Product (ids_to_product ctx ids,te.exp_typ)))
@@ -672,16 +677,38 @@ and type_predicate_exn (env:env) (ctx:Local.t) (p:p_predicate) : t_predicate0 =
     end
 
   | Universal_Q (ids,p) ->
-    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    let (ctx,tids) = declare_nelist env.uf ctx ids true in
     mk_pred p.prd_loc (Universal_Q (tids,type_predicate_exn env ctx p))
 
   | Existential_Q (ids,p) ->
-    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    let (ctx,tids) = declare_nelist env.uf ctx ids true in
     mk_pred p.prd_loc (Existential_Q (tids,type_predicate_exn env ctx p))
 
 let type_var_exn (env:env) (ctx:Local.t) (v:p_var) : t_var0 =
   let var_typ = get_ident_type_exn env ctx v.var_loc v.var_id in
   { var_loc=v.var_loc; var_id=v.var_id; var_typ }
+
+let check_write_permission (gl:Global.t) (ctx:Local.t) (v:p_var) : unit =
+  match Local.is_readonly ctx v.var_id with
+  | Some true -> Error.raise_exn v.var_loc "This variable is read-only."
+  | Some false -> ()
+  | None ->
+    begin match Global.get_symbol gl v.var_id with
+      | Some (ts,src) ->
+        begin match ts.kind, src with
+          | (K_Concrete_Variable|K_Abstract_Variable), From_Current_Mch _ -> ()
+          | K_Concrete_Variable, From_Refined_Mch _ -> ()
+          | K_Abstract_Variable, From_Refined_Mch _ -> assert false (*not visible*)
+          | (K_Concrete_Variable|K_Abstract_Variable), (From_Seen_Mch _|From_Imported_Mch _) ->
+            Error.raise_exn v.var_loc "Variables from seen or imported machine are read-only"
+          | (K_Abstract_Constant|K_Abstract_Set|K_Concrete_Constant|K_Concrete_Set|K_Enumerate), _ ->
+            Error.raise_exn v.var_loc "Constants cannot be written."
+        end
+      | None -> assert false
+    end
+
+let check_write_permission_nel (gl:Global.t) (ctx:Local.t) (lst:p_var Nlist.t) : unit =
+  List.iter (check_write_permission gl ctx) (Nlist.to_list lst)
 
 let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_substitution0 =
   match s0.sub_desc with
@@ -696,7 +723,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       (Assert(type_predicate_exn {env with vi=V_Assert} ctx p,
               type_substitution_exn env ctx s))
 
-  | Affectation (xlst,e) -> (*FIXME write permission*)
+  | Affectation (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
         | [] -> mk_expr x.var_loc () (Ident x.var_id)
         | hd::tl ->
@@ -711,9 +738,10 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       | Some _ -> ()
     in
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
+    let () = check_write_permission_nel env.gl ctx xlst in
     mk_subst s0.sub_loc (Affectation (tlst,te))
 
-  | Function_Affectation (f,nlst,e) ->  (*FIXME write permission*)
+  | Function_Affectation (f,nlst,e) ->
     let rec mk_app (lc:Utils.loc) f = function
       | [] -> f
       | x::tl -> mk_app lc (mk_expr lc () (Application (f,x))) tl
@@ -727,9 +755,10 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     in
     let tf = type_var_exn env ctx f in
     let tlst = Nlist.map (type_expression_exn env ctx) nlst in
+    let () = check_write_permission_nel env.gl ctx (Nlist.make1 f) in
     mk_subst s0.sub_loc (Function_Affectation (tf,tlst,te))
 
-  | Record_Affectation (rc,fd,e) -> (*FIXME write permission*)
+  | Record_Affectation (rc,fd,e) ->
     let rf_access = mk_expr rc.var_loc ()
         (Record_Field_Access (mk_expr rc.var_loc () (Ident rc.var_id),fd)) in
     let trf_access = type_expression_exn env ctx rf_access in
@@ -738,6 +767,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ trf_access.exp_typ 
       | Some _ -> ()
     in
+    let () = check_write_permission_nel env.gl ctx (Nlist.make1 rc) in
     mk_subst s0.sub_loc (Record_Affectation (type_var_exn env ctx rc,fd,te))
 
   | Choice slst ->
@@ -780,13 +810,13 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     mk_subst s0.sub_loc (Case(te,Nlist.map aux nlst,t_else))
 
   | Any (ids,p,s) ->
-    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    let (ctx,tids) = declare_nelist env.uf ctx ids false in
     let tp = type_predicate_exn env ctx p in
     let ts = type_substitution_exn env ctx s in
     mk_subst s0.sub_loc (Any (tids,tp,ts))
 
   | Let (ids,nlst,s) ->
-    let (ctx,tids) = declare_nelist env.uf ctx ids in
+    let (ctx,tids) = declare_nelist env.uf ctx ids true in
     let aux (v,e) =
       let te = type_expression_exn env ctx e in
       match Local.get ctx v.var_id with
@@ -799,7 +829,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     in
     mk_subst s0.sub_loc (Let (tids,Nlist.map aux nlst,type_substitution_exn env ctx s))
 
-  | BecomesElt (xlst,e) -> (*FIXME write permission*)
+  | BecomesElt (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
       | [] -> mk_expr x.var_loc () (Ident x.var_id)
       | hd::tl -> mk_expr x.var_loc () (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
@@ -813,17 +843,19 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       | Some _ -> ()
     in
     let tlst = (Nlist.map (type_var_exn env ctx) xlst) in
+    let () = check_write_permission_nel env.gl ctx xlst in
     mk_subst s0.sub_loc (BecomesElt (tlst,te))
 
-  | BecomesSuch (xlst,p) -> (*FIXME write permission*)
+  | BecomesSuch (xlst,p) ->
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
+    let () = check_write_permission_nel env.gl ctx xlst in
     mk_subst s0.sub_loc (BecomesSuch (tlst,type_predicate_exn env ctx p))
 
   | Var (vars,s) ->
-    let (ctx,tvars) = declare_nelist env.uf ctx vars in
+    let (ctx,tvars) = declare_nelist env.uf ctx vars false in
     mk_subst s0.sub_loc (Var(tvars,type_substitution_exn env ctx s))
 
-  | CallUp (ids,op,params) -> (*FIXME write permission*)
+  | CallUp (ids,op,params) ->
     begin match Global.get_operation env.gl op.lid_str with
       | None -> Error.raise_exn op.lid_loc ("Unknown operation '"^op.lid_str^"'.")
       | Some (ope,src) ->
@@ -854,6 +886,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
         begin try
             let () = List.iter2 (fun v -> aux (mk_expr v.var_loc v.var_typ (Ident v.var_id))) tids ope.args_out in
             let () = List.iter2 aux tparams ope.args_in in
+            let () = match ids with [] -> () | hd::tl -> check_write_permission_nel env.gl ctx (Nlist.make hd tl) in
             mk_subst s0.sub_loc (CallUp (tids,op,tparams))
           with Invalid_argument _ ->
             Error.raise_exn op.lid_loc ("Incorrect number of in/out parameters.")
@@ -1097,7 +1130,7 @@ let are_kind_compatible k1 k2 =
 
 let declare_symb (env:Global.t) (uf:Unif.t) (k:t_kind) (ctx:Local.t) (v:p_var) : Local.t =
   match Global.get_symbol env v.var_id with
-  | None -> fst (declare uf ctx v.var_id)
+  | None -> fst (declare uf ctx v.var_id false)
   | Some (ts,src) ->
     let mch = match src with
       | From_Current_Mch _ -> 
@@ -1158,10 +1191,10 @@ let declare_variables (gl:Global.t) (uf:Unif.t) cvars avars inv =
   let _ = iter_list_clause (promote_symb gl ctx K_Abstract_Variable) t_avars in
   (t_cvars,t_avars,t_inv)
 
-let declare_list (uf:Unif.t) (ctx:Local.t) (lst:p_var list) : Local.t * (Utils.loc,opn_btype) var list =
+let declare_list (uf:Unif.t) (ctx:Local.t) (lst:p_var list) (ro:bool) : Local.t * (Utils.loc,opn_btype) var list =
   let (ctx,tvars) = List.fold_left
       (fun (ctx,tvars) v ->
-         let (ctx,var_typ) = declare uf ctx v.var_id in
+         let (ctx,var_typ) = declare uf ctx v.var_id ro in
          ( ctx, { var_loc=v.var_loc; var_typ; var_id=v.var_id }::tvars )
       ) (ctx,[]) lst
   in
@@ -1185,8 +1218,8 @@ let get_operation_context (env:Global.t) (uf:Unif.t) (op:p_operation) : Local.t*
   match Global.get_operation env op.op_name.lid_str with
   | None ->
     let ctx = Local.create () in
-    let (ctx,op_out) = declare_list uf ctx op.op_out in
-    let (ctx,op_in) = declare_list uf ctx op.op_in in
+    let (ctx,op_out) = declare_list uf ctx op.op_out false in
+    let (ctx,op_in) = declare_list uf ctx op.op_in true in
     (ctx,true)
   | Some (s,src) ->
     let () = match src with
@@ -1201,9 +1234,9 @@ let get_operation_context (env:Global.t) (uf:Unif.t) (op:p_operation) : Local.t*
       | From_Imported_Mch _ -> () (*FIXME*)
     in
     let ctx = Local.create () in
-    let aux ctx (s,ty) = Local.add ctx s (to_open ty) in
-    let ctx = List.fold_left aux ctx s.args_in in
-    let ctx = List.fold_left aux ctx s.args_out in
+    let aux ro ctx (s,ty) = Local.add ctx s (to_open ty) ro in
+    let ctx = List.fold_left (aux true) ctx s.args_in in
+    let ctx = List.fold_left (aux false) ctx s.args_out in
     let () = check_signature op s in
     (ctx,false)
 
@@ -1251,8 +1284,8 @@ let declare_local_operation (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_opera
   match Global.get_operation gl op.op_name.lid_str with
   | None ->
     let ctx = Local.create () in
-    let (ctx,op_out) = declare_list uf ctx op.op_out in
-    let (ctx,op_in) = declare_list uf ctx op.op_in in
+    let (ctx,op_out) = declare_list uf ctx op.op_out false in
+    let (ctx,op_in) = declare_list uf ctx op.op_in true in
     let body = type_substitution_exn {gl;uf;vi=V_Local_Operations} ctx op.op_body in
     let op_in = List.map (type_var_exn gl uf ctx) op.op_in in
     let op_out = List.map (type_var_exn gl uf ctx) op.op_out in

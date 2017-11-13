@@ -76,8 +76,9 @@ module Global :
 
   let redefine_operation (env:t) (id:ident) (is_ro:bool) : unit =
     if Hashtbl.mem env.ops id then
-      let (op,_) = Hashtbl.find env.ops id in
-      Hashtbl.replace env.ops id ({op with is_readonly=is_ro},From_Current_Mch false)
+      let (op,src) = Hashtbl.find env.ops id in
+      let is_local = match src with From_Current_Mch true -> true | _ -> false in
+      Hashtbl.replace env.ops id ({op with is_readonly=is_ro},From_Current_Mch is_local)
     else
       failwith "Internal error (Global.redefine_operation)."
 
@@ -93,7 +94,7 @@ module Global :
       let (op,src) = Hashtbl.find env.ops id in
       match src with
       | From_Imported_Mch _ ->
-        ( Hashtbl.replace env.ops id (op,From_Current_Mch false); true )
+        ( Hashtbl.replace env.ops id (op,From_Current_Mch true); true )
       | _ -> false
     else
       false
@@ -143,7 +144,6 @@ type env = { gl: Global.t; uf:Unif.t; vi:visibility }
 (* *****************************************************************************
  * Local contexts 
  * ************************************************************************** *)
- (*TODO write permission*)
 module Local :
 sig
   type t
@@ -151,7 +151,6 @@ sig
   val add : t -> ident -> opn typ -> bool -> t
   val get : t -> ident -> opn typ option
   val is_readonly : t -> ident -> bool option
-(*   val iter : (string -> (opn typ*bool) -> unit) -> t -> unit *)
   val get_vars: t -> ident list
 
   end = struct
@@ -177,7 +176,7 @@ sig
     try Some (snd (M.find id ctx))
     with Not_found -> None
 
-  let iter = M.iter
+(*   let iter = M.iter *)
 
   let get_vars ctx =
     List.map fst (M.bindings ctx)
@@ -688,27 +687,32 @@ let type_var_exn (env:env) (ctx:Local.t) (v:p_var) : t_var0 =
   let var_typ = get_ident_type_exn env ctx v.var_loc v.var_id in
   { var_loc=v.var_loc; var_id=v.var_id; var_typ }
 
-let check_write_permission (gl:Global.t) (ctx:Local.t) (v:p_var) : unit =
+let check_write_permission (env:env) (ctx:Local.t) (v:p_var) : unit =
   match Local.is_readonly ctx v.var_id with
   | Some true -> Error.raise_exn v.var_loc "This variable is read-only."
   | Some false -> ()
   | None ->
-    begin match Global.get_symbol gl v.var_id with
+    begin match Global.get_symbol env.gl v.var_id with
       | Some (ts,src) ->
         begin match ts.kind, src with
           | (K_Concrete_Variable|K_Abstract_Variable), From_Current_Mch _ -> ()
           | K_Concrete_Variable, From_Refined_Mch _ -> ()
           | K_Abstract_Variable, From_Refined_Mch _ -> assert false (*not visible*)
-          | (K_Concrete_Variable|K_Abstract_Variable), (From_Seen_Mch _|From_Imported_Mch _) ->
-            Error.raise_exn v.var_loc "Variables from seen or imported machine are read-only"
+          | (K_Concrete_Variable|K_Abstract_Variable), From_Seen_Mch _ ->
+            Error.raise_exn v.var_loc "Variables from seen machine are read-only."
+          | (K_Concrete_Variable|K_Abstract_Variable), From_Imported_Mch _ ->
+            begin match env.vi with
+              | V_Local_Operations -> ()
+              | _ -> Error.raise_exn v.var_loc "Variables from imported machine are read-only."
+            end
           | (K_Abstract_Constant|K_Abstract_Set|K_Concrete_Constant|K_Concrete_Set|K_Enumerate), _ ->
             Error.raise_exn v.var_loc "Constants cannot be written."
         end
       | None -> assert false
     end
 
-let check_write_permission_nel (gl:Global.t) (ctx:Local.t) (lst:p_var Nlist.t) : unit =
-  List.iter (check_write_permission gl ctx) (Nlist.to_list lst)
+let check_write_permission_nel (env:env) (ctx:Local.t) (lst:p_var Nlist.t) : unit =
+  List.iter (check_write_permission env ctx) (Nlist.to_list lst)
 
 let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_substitution0 =
   match s0.sub_desc with
@@ -738,7 +742,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       | Some _ -> ()
     in
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
-    let () = check_write_permission_nel env.gl ctx xlst in
+    let () = check_write_permission_nel env ctx xlst in
     mk_subst s0.sub_loc (Affectation (tlst,te))
 
   | Function_Affectation (f,nlst,e) ->
@@ -755,7 +759,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     in
     let tf = type_var_exn env ctx f in
     let tlst = Nlist.map (type_expression_exn env ctx) nlst in
-    let () = check_write_permission_nel env.gl ctx (Nlist.make1 f) in
+    let () = check_write_permission_nel env ctx (Nlist.make1 f) in
     mk_subst s0.sub_loc (Function_Affectation (tf,tlst,te))
 
   | Record_Affectation (rc,fd,e) ->
@@ -767,7 +771,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ trf_access.exp_typ 
       | Some _ -> ()
     in
-    let () = check_write_permission_nel env.gl ctx (Nlist.make1 rc) in
+    let () = check_write_permission_nel env ctx (Nlist.make1 rc) in
     mk_subst s0.sub_loc (Record_Affectation (type_var_exn env ctx rc,fd,te))
 
   | Choice slst ->
@@ -843,12 +847,12 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       | Some _ -> ()
     in
     let tlst = (Nlist.map (type_var_exn env ctx) xlst) in
-    let () = check_write_permission_nel env.gl ctx xlst in
+    let () = check_write_permission_nel env ctx xlst in
     mk_subst s0.sub_loc (BecomesElt (tlst,te))
 
   | BecomesSuch (xlst,p) ->
     let tlst = Nlist.map (type_var_exn env ctx) xlst in
-    let () = check_write_permission_nel env.gl ctx xlst in
+    let () = check_write_permission_nel env ctx xlst in
     mk_subst s0.sub_loc (BecomesSuch (tlst,type_predicate_exn env ctx p))
 
   | Var (vars,s) ->
@@ -886,7 +890,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
         begin try
             let () = List.iter2 (fun v -> aux (mk_expr v.var_loc v.var_typ (Ident v.var_id))) tids ope.args_out in
             let () = List.iter2 aux tparams ope.args_in in
-            let () = match ids with [] -> () | hd::tl -> check_write_permission_nel env.gl ctx (Nlist.make hd tl) in
+            let () = match ids with [] -> () | hd::tl -> check_write_permission_nel env ctx (Nlist.make hd tl) in
             mk_subst s0.sub_loc (CallUp (tids,op,tparams))
           with Invalid_argument _ ->
             Error.raise_exn op.lid_loc ("Incorrect number of in/out parameters.")

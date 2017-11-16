@@ -281,8 +281,8 @@ predicate:
 
 substitution:
   s=level1_substitution { s }
-| s1=substitution SEMICOLON s2=substitution { mk_subst $startpos (Sequencement (s1,s2)) }
-| s1=substitution PARALLEL s2=substitution { mk_subst $startpos (Parallel (s1,s2)) }
+| s1=substitution SEMICOLON s2=substitution { mk_subst $startpos($2) (Sequencement (s1,s2)) }
+| s1=substitution PARALLEL s2=substitution { mk_subst $startpos($2) (Parallel (s1,s2)) }
 
 elsif: ELSIF p=predicate THEN s=substitution { (p,s) }
 

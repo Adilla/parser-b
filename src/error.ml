@@ -24,3 +24,11 @@ let rec fold_left (f:'a -> 'b -> ('a,'c) result) (acc:'a) (lst:'b list) : ('a,'c
       | Ok acc -> fold_left f acc tl
       | Error _ as err -> err
     end
+
+let rec list_iter f = function
+  | [] -> Ok ()
+  | hd::tl ->
+    begin match f hd with
+      | Ok _ -> list_iter f tl
+      | Error _ as e -> e
+    end

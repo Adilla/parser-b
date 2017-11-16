@@ -1,6 +1,6 @@
 let continue_on_error = ref false
 
-type machine_interface = Typechecker.MachineInterface.t
+type machine_interface = Global.t_interface
 type t_item = Done of machine_interface | InProgress
 
 let open_in (fn:string) : in_channel option =
@@ -66,10 +66,15 @@ let add_path x =
   | Ok _ -> ()
   | Error err -> print_error_no_loc err
 
+let set_alstm_opt () =
+  Typechecker.allow_becomes_such_that_in_implementation := true;
+  Typechecker.allow_out_parameters_in_precondition := true
+
 let args = [
   ("-c"    , Arg.Set continue_on_error,   "Continue on error" );
   ("-I", Arg.String add_path, "Path for definitions files" );
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
+  ("-x", Arg.Unit set_alstm_opt, "(no documentation)" );
 ]
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

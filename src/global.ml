@@ -1,7 +1,5 @@
 open Utils
 open Syntax
-open Btype
-
 type t_kind = 
   | K_Abstract_Variable | K_Concrete_Variable
   | K_Abstract_Constant | K_Concrete_Constant
@@ -49,14 +47,14 @@ type t_clause =
 module MachineInterface :
 sig
   type t
-  type t_symb = { id:string; typ:btype; kind:t_kind; hidden:bool }
-  type t_op = { id:string; args_in: (string*btype) list; args_out: (string*btype) list; readonly:bool }
+  type t_symb = { id:string; typ:Btype.t; kind:t_kind; hidden:bool }
+  type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   val make : t_symb list -> t_op list -> t
   val get_symbols : t -> t_symb list
   val get_operations : t -> t_op list
 end = struct
-  type t_symb = { id:string; typ:btype; kind:t_kind; hidden:bool }
-  type t_op = { id:string; args_in: (string*btype) list; args_out: (string*btype) list; readonly:bool }
+  type t_symb = { id:string; typ:Btype.t; kind:t_kind; hidden:bool }
+  type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   type t = t_symb list * t_op list
 
   let make l1 l2 = (l1,l2)
@@ -67,13 +65,13 @@ end
 type t_interface = MachineInterface.t
 
 type t_symbol_infos =
-  { sy_typ:btype;
+  { sy_typ:Btype.t;
     sy_kind:t_kind;
     sy_src:t_source }
 
 type t_operation_infos  =
-  { op_args_in: (string*btype) list;
-    op_args_out: (string*btype) list;
+  { op_args_in: (string*Btype.t) list;
+    op_args_out: (string*Btype.t) list;
     op_readonly:bool;
     op_src: t_op_source; }
 
@@ -83,7 +81,7 @@ type t = { symb:(string,t_symbol_infos) Hashtbl.t;
 let create () : t = { symb=Hashtbl.create 47;
                       ops=Hashtbl.create 47 }
 
-let get_symbol_type (env:t) (id:ident) : btype option =
+let get_symbol_type (env:t) (id:ident) : Btype.t option =
   try Some (Hashtbl.find env.symb id).sy_typ
   with Not_found -> None
 
@@ -107,7 +105,7 @@ let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool =
   | C_Values, _, _ -> true
   | C_Assert_Or_While_Invariant, _, _ -> true
 
-let get_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : btype Error.t_result =
+let get_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : Btype.t Error.t_result =
   try
     begin
       let infos = Hashtbl.find env.symb id in
@@ -131,7 +129,7 @@ let is_symbol_writable ki src cl =
 
   | _, _, _ -> false
 
-let get_writable_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : btype Error.t_result =
+let get_writable_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : Btype.t Error.t_result =
   try
     begin
       let infos = Hashtbl.find env.symb id in
@@ -209,21 +207,21 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
 
   | Src_Current_Local _, _ -> assert false
 
-let _add_symbol (env:t) (err_loc:loc) (id:ident) (sy_typ:btype) (sy_kind:t_kind) (sy_src:t_source2) : unit Error.t_result =
+let _add_symbol (env:t) (err_loc:loc) (id:ident) (sy_typ:Btype.t) (sy_kind:t_kind) (sy_src:t_source2) : unit Error.t_result =
   try
     begin
       let infos = Hashtbl.find env.symb id in
       match update_source id infos.sy_src sy_src with
       | Ok sy_src ->
         if are_kind_compatible infos.sy_kind sy_kind then
-          if is_equal infos.sy_typ sy_typ then
+          if Btype.equal infos.sy_typ sy_typ then
             Ok (Hashtbl.replace env.symb id { sy_typ; sy_kind; sy_src })
           else
             Error { Error.err_loc;
                     err_txt="The identifier '" ^ id ^ "' has type " 
-                            ^ to_string sy_typ
+                            ^ Btype.to_string sy_typ
                           ^ " but was previously declared with type "
-                          ^ to_string infos.sy_typ ^ "." }
+                          ^ Btype.to_string infos.sy_typ ^ "." }
         else
           Error { Error.err_loc;
                   err_txt="The identifier '" ^ id ^ "' is a " 
@@ -243,10 +241,10 @@ let _add_symbol (env:t) (err_loc:loc) (id:ident) (sy_typ:btype) (sy_kind:t_kind)
     in
     Ok (Hashtbl.add env.symb id { sy_typ; sy_kind; sy_src })
 
-let add_symbol (env:t) (loc:loc) (id:ident) (typ:btype) (kind:t_kind) : unit Error.t_result =
+let add_symbol (env:t) (loc:loc) (id:ident) (typ:Btype.t) (kind:t_kind) : unit Error.t_result =
   _add_symbol env loc id typ kind (Src_Current loc)
 
-type t_op_type = { args_in:(ident*btype) list; args_out:(ident*btype) list; }
+type t_op_type = { args_in:(ident*Btype.t) list; args_out:(ident*Btype.t) list; }
 
 let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_source Error.t_result =
   match src2, src1 with
@@ -305,10 +303,10 @@ let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_sourc
 let check_args_type (err_loc:loc) (args:t_op_type) args_in args_out : unit Error.t_result =
   let aux (x1,ty1) (x2,ty2) =
     if ident_eq x1 x2 then
-      if is_equal ty1 ty2 then ()
+      if Btype.equal ty1 ty2 then ()
       else Error.raise_exn err_loc
-          ("The parameter '"^x1^"' has type '"^to_string ty1^
-           "' but parameter of type '"^to_string ty2^"' was expected.")
+          ("The parameter '"^x1^"' has type '"^Btype.to_string ty1^
+           "' but parameter of type '"^Btype.to_string ty2^"' was expected.")
     else Error.raise_exn err_loc
         ("Parameter '"^x2^"' expected but '"^x1^"' was found.")
   in

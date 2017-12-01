@@ -5,9 +5,9 @@ open Btype
 let allow_becomes_such_that_in_implementation = ref false
 let allow_out_parameters_in_precondition = ref false
 
-type t_set = (Utils.loc,btype) set
-type t_operation = (Utils.loc,btype) operation
-type t_component = (Utils.loc,Btype.btype) component
+type t_set = (Utils.loc,Btype.t) set
+type t_operation = (Utils.loc,Btype.t) operation
+type t_component = (Utils.loc,Btype.t) component
 
 (* *****************************************************************************
  * Type Checking for Components
@@ -34,10 +34,13 @@ let fold_list_clause f accu = function
   | Some (_,nlst) -> List.fold_left f accu (Nlist.to_list nlst)
 
 let type_set : p_set -> t_set = function
-  | Abstract_Set v -> Abstract_Set { var_loc=v.var_loc; var_id=v.var_id; var_typ=T_Power (T_Atomic v.var_id) }
+  | Abstract_Set v ->
+    Abstract_Set { var_loc=v.var_loc; var_id=v.var_id;
+                   var_typ=Btype.mk_Power (Btype.mk_Atomic v.var_id) }
   | Concrete_Set (v,elts) ->
-    Concrete_Set ({ var_loc=v.var_loc; var_id=v.var_id; var_typ=T_Power (T_Atomic v.var_id) },
-                  List.map (fun e -> { var_loc=e.var_loc; var_id=e.var_id; var_typ=(T_Atomic v.var_id) }) elts )
+    Concrete_Set ({ var_loc=v.var_loc; var_id=v.var_id;
+                    var_typ=Btype.mk_Power (Btype.mk_Atomic v.var_id) },
+                  List.map (fun e -> { var_loc=e.var_loc; var_id=e.var_id; var_typ=(Btype.mk_Atomic v.var_id) }) elts )
 
 let load_seen_mch_exn (f:string->Global.t_interface option) (env:Global.t) (mch:p_lident) : unit =
   match f mch.lid_str with
@@ -71,15 +74,15 @@ let declare_local_symbol_with_global_type (env:Global.t) (uf:Unif.t)
     (k:Global.t_kind) (ctx:Inference.Local.t) (v:p_var) : Inference.Local.t =
   match Global.get_symbol_type env v.var_id with
   | None -> declare uf ctx v.var_id false
-  | Some ty -> Inference.Local.add ctx v.var_id (to_open ty) false
+  | Some ty -> Inference.Local.add ctx v.var_id (Btype.to_btype_mt ty) false
 
 let type_var_exn (env:Global.t) (uf:Unif.t) (ctx:Inference.Local.t) (v:p_var) : Inference.t_var =
   match Inference.Local.get ctx v.var_id with
   | Some (var_typ,_) ->
-    begin match Btype.close (Unif.normalize uf var_typ) with
+    begin match Btype.from_btype_mt (Unif.normalize uf var_typ) with
       | None ->
         let str = Printf.sprintf "The type of symbol '%s' could not be fully infered. The type infered so far is '%s'."
-            v.var_id (to_string (Unif.normalize uf var_typ)) in
+            v.var_id (Btype_mt.to_string (Unif.normalize uf var_typ)) in
         Error.raise_exn v.var_loc str
       | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
     end
@@ -168,7 +171,7 @@ let get_operation_context_exn (env:Global.t) (uf:Unif.t) (op:p_operation) : Infe
     (ctx,ctx2)
   | Some args ->
     let ctx = Inference.Local.create () in
-    let aux ro ctx (s,ty) = Inference.Local.add ctx s (to_open ty) ro in
+    let aux ro ctx (s,ty) = Inference.Local.add ctx s (Btype.to_btype_mt ty) ro in
     let ctx = List.fold_left (aux true) ctx args.Global.args_in in
     let ctx2 = List.fold_left (aux false) ctx args.Global.args_out in
     let () = check_signature op args in
@@ -349,7 +352,7 @@ let rec is_implementation_subst (s:_ substitution) : unit =
   | Sequencement (s1,s2) ->
     ( is_implementation_subst s1; is_implementation_subst s2 )
 
-let type_machine_exn (f:string -> Global.t_interface option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,btype) machine_desc =
+let type_machine_exn (f:string -> Global.t_interface option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,Btype.t) machine_desc =
   let uf = Unif.create () in
   let mch_constraints = clause_some_err "Not implemented: machine with clause CONSTRAINTS." mch.mch_constraints in
   let mch_includes = clause_some_err "Not implemented: clause INCLUDES." mch.mch_includes in
@@ -392,7 +395,7 @@ let load_refines_exn (f:string->Global.t_interface option) (env:Global.t) (mch:p
      | Error err -> raise (Error.Error err)
    end
 
-let type_refinement_exn (f:string->Global.t_interface option) (gl:Global.t) ref : (Utils.loc,btype) refinement_desc =
+let type_refinement_exn (f:string->Global.t_interface option) (gl:Global.t) ref : (Utils.loc,Btype.t) refinement_desc =
   let uf = Unif.create () in
   let () = load_refines_exn f gl ref.ref_refines in
   let ref_includes = clause_some_err "Not implemented: clause INCLUDES." ref.ref_includes in
@@ -434,7 +437,7 @@ let type_value_exn (gl:Global.t) (uf:Unif.t) (v,e:p_var*p_expression) : Inferenc
   | Ok var_typ ->
     let ctx = Inference.Local.create () in
     let te = type_expression_exn (mk_env gl uf Global.C_Values) ctx e in
-    if Unif.is_equal_modulo_alias uf te.exp_typ var_typ then
+    if Unif.is_equal_modulo_alias uf (Btype.to_btype_mt te.exp_typ) (Btype.to_btype_mt var_typ) then
       ( {var_loc=v.var_loc;var_id=v.var_id;var_typ},te)
     else
       Error.raise_exn e.exp_loc
@@ -482,18 +485,18 @@ let manage_set_concretisation_exn (gl:Global.t) (uf:Unif.t) (v,e) : unit =
     let te = type_expression_exn
         (mk_env gl uf Global.C_Values) (Inference.Local.create ()) e
     in
-    match te.exp_typ with
-    | T_Power ty ->
-      if not (Unif.add_alias uf v.var_id ty) then
+    match Btype.view te.exp_typ with
+    | Btype.T_Power ty ->
+      if not (Unif.add_alias uf v.var_id (Btype.to_btype_mt ty)) then
         Error.raise_exn v.var_loc "Incorrect abstract set definition."
     | _ ->
       let str = Printf.sprintf
           "This expression has type '%s' but an expression of type '%s' was expected."
-          (to_string te.exp_typ) (to_string (T_Power (Unif.new_meta uf)))
+          (to_string te.exp_typ) (Btype_mt.to_string (Btype_mt.T_Power (Unif.new_meta uf)))
       in
       Error.raise_exn e.exp_loc str
 
-let type_implementation_exn (f:string -> Global.t_interface option) (gl:Global.t) imp : (Utils.loc,btype) implementation_desc =
+let type_implementation_exn (f:string -> Global.t_interface option) (gl:Global.t) imp : (Utils.loc,Btype.t) implementation_desc =
   let uf = Unif.create () in
   let () = load_refines_exn f gl imp.imp_refines in
   let () = iter_list_clause (load_seen_mch_exn f gl) imp.imp_sees in

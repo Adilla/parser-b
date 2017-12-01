@@ -1,6 +1,5 @@
 open Utils
 open Syntax
-open Btype
 
 type t
 type t_symbol_infos
@@ -22,18 +21,18 @@ type t_clause =
 
 val create : unit -> t
 
-val get_symbol_type : t -> ident -> btype option
+val get_symbol_type : t -> ident -> Btype.t option
 val get_symbol_kind : t -> ident -> t_kind option
-val get_symbol_type_in_clause : t -> loc -> ident -> t_clause -> btype Error.t_result
-val get_writable_symbol_type_in_clause : t -> loc -> ident -> t_clause -> btype Error.t_result
+val get_symbol_type_in_clause : t -> loc -> ident -> t_clause -> Btype.t Error.t_result
+val get_writable_symbol_type_in_clause : t -> loc -> ident -> t_clause -> Btype.t Error.t_result
 
-type t_op_type = { args_in:(ident*btype) list; args_out:(ident*btype) list; }
+type t_op_type = { args_in:(ident*Btype.t) list; args_out:(ident*Btype.t) list; }
 
 val get_operation_type2 : t -> ident -> t_op_type option
 val get_operation_type : t -> loc -> ident -> t_op_type Error.t_result
 val is_operation_readonly : t -> ident -> bool
 
-val add_symbol : t -> loc -> ident -> btype -> t_kind -> unit Error.t_result
+val add_symbol : t -> loc -> ident -> Btype.t -> t_kind -> unit Error.t_result
 
 val add_operation : t -> loc -> ident -> t_op_type -> bool (*is_read_only*) -> bool (*is_local*) -> unit Error.t_result
 val promote_operation : t -> loc -> ident -> unit Error.t_result

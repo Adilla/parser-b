@@ -1,13 +1,12 @@
 open Utils
 open Syntax
-open Btype
 
 module Local :
 sig
   type t
   val create : unit -> t
-  val add : t -> ident -> opn typ -> bool -> t
-  val get : t -> ident -> (opn typ*bool) option
+  val add : t -> ident -> Btype_mt.t -> bool -> t
+  val get : t -> ident -> (Btype_mt.t*bool) option
   val get_vars : t -> ident list
 end = struct
 
@@ -17,14 +16,14 @@ end = struct
       let compare = String.compare
     end )
 
-  type t = (opn typ*bool) M.t
+  type t = (Btype_mt.t*bool) M.t
 
   let create () = M.empty
 
-  let add (ctx:t) (id:ident) (ty:opn typ) (ro:bool) : t =
+  let add (ctx:t) (id:ident) (ty:Btype_mt.t) (ro:bool) : t =
     M.add id (ty,ro) ctx
 
-  let get (ctx:t) (id:ident) : (opn typ*bool) option =
+  let get (ctx:t) (id:ident) : (Btype_mt.t*bool) option =
     try Some (M.find id ctx)
     with Not_found -> None
 
@@ -34,21 +33,21 @@ end
 
 type env = { gl: Global.t; uf:Unif.t; cl:Global.t_clause }
 
-type t_var0 = (loc,opn_btype) var 
-type t_expression0 = (loc,opn_btype) expression
-type t_predicate0 = (loc,opn_btype) predicate
-type t_substitution0 = (loc,opn_btype) substitution
+type t_var0 = (loc,Btype_mt.t) var 
+type t_expression0 = (loc,Btype_mt.t) expression
+type t_predicate0 = (loc,Btype_mt.t) predicate
+type t_substitution0 = (loc,Btype_mt.t) substitution
 
-type t_var = (loc,btype) var 
-type t_expression = (loc,btype) expression
-type t_predicate = (loc,btype) predicate
-type t_substitution = (loc,btype) substitution
+type t_var = (loc,Btype.t) var 
+type t_expression = (loc,Btype.t) expression
+type t_predicate = (loc,Btype.t) predicate
+type t_substitution = (loc,Btype.t) substitution
 
 let mk_expr exp_loc exp_typ exp_desc = { exp_loc; exp_typ; exp_desc }
 let mk_pred prd_loc prd_desc = { prd_loc; prd_desc }
 let mk_subst sub_loc sub_desc = { sub_loc; sub_desc;  }
 
-let declare (uf:Unif.t) (ctx:Local.t) (id:string) (ro:bool) : Local.t * opn typ = 
+let declare (uf:Unif.t) (ctx:Local.t) (id:string) (ro:bool) : Local.t * Btype_mt.t = 
   let mt = Unif.new_meta uf in
   ( Local.add ctx id mt ro, mt )
 
@@ -65,17 +64,19 @@ let declare_nelist (uf:Unif.t) (ctx:Local.t) (xlst:p_var Nlist.t) (ro:bool) : Lo
   let (ctx,lst) = declare_list uf ctx (Nlist.to_list xlst) ro in
   (ctx,Nlist.from_list_exn lst)
 
-let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : opn_btype =
+let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : Btype_mt.t =
   let aux pr v =
     match Local.get ctx v.var_id with
     | None -> assert false
-    | Some (ty,_) -> T_Product (pr,ty)
+    | Some (ty,_) -> Btype_mt.T_Product (pr,ty)
   in
   match Local.get ctx (Nlist.hd xlst).var_id with
   | None -> assert false
   | Some (ty,_) -> List.fold_left aux ty (Nlist.tl xlst)
 
-let get_builtin_type_exn (uf:Unif.t) (lc:Utils.loc) : e_builtin -> opn_btype = function
+let get_builtin_type_exn (uf:Unif.t) (lc:Utils.loc) (e:e_builtin) : Btype_mt.t =
+  let open Btype_mt in
+  match e with
     (* Booleans *)
     | TRUE | FALSE -> t_bool
     (* Integers *)
@@ -223,35 +224,36 @@ let get_builtin_type_exn (uf:Unif.t) (lc:Utils.loc) : e_builtin -> opn_btype = f
     | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
       Error.raise_exn lc "Not implemented (tree operators)."
   
-let get_ident_type (env:env) (ctx:Local.t) (lc:loc) (id:ident) : opn_btype Error.t_result =
+let get_ident_type (env:env) (ctx:Local.t) (lc:loc) (id:ident) : Btype_mt.t Error.t_result =
   match Local.get ctx id with
   | Some (ty,_) -> Ok ty
   | None ->
     begin match Global.get_symbol_type_in_clause env.gl lc id env.cl with
-      | Ok ty -> Ok (to_open ty)
+      | Ok ty -> Ok (Btype.to_btype_mt ty)
       | Error _ as err -> err
     end
 
-let get_writable_ident_type (env:env) (ctx:Local.t) (lc:loc) (id:ident) : opn_btype Error.t_result =
+let get_writable_ident_type (env:env) (ctx:Local.t) (lc:loc) (id:ident) : Btype_mt.t Error.t_result =
   match Local.get ctx id with
   | Some (ty,false) -> Ok ty
   | Some (ty,_) -> Error { Error.err_loc=lc; err_txt=("The variable '"^id^"' is read-only") }
   | None ->
     begin match Global.get_writable_symbol_type_in_clause env.gl lc id env.cl with
-      | Ok ty -> Ok (to_open ty)
+      | Ok ty -> Ok (Btype.to_btype_mt ty)
       | Error _ as err -> err
     end
 
-let unexpected_type_exn (uf:Unif.t) (lc:Utils.loc) (inf:opn_btype) (exp:opn_btype) =
+let unexpected_type_exn (uf:Unif.t) (lc:Utils.loc) (inf:Btype_mt.t) (exp:Btype_mt.t) =
   let str = Printf.sprintf
       "This expression has type '%s' but an expression of type '%s' was expected."
-      (to_string (Unif.normalize uf inf)) (to_string (Unif.normalize uf exp))
+      (Btype_mt.to_string (Unif.normalize uf inf)) (Btype_mt.to_string (Unif.normalize uf exp))
   in
   Error.raise_exn lc str
 
 type t_int_or_power = C_Int | C_Power
 
 let is_int_or_power_exn l (uf:Unif.t) (arg:t_expression0) : t_int_or_power =
+  let open Btype_mt in
   match Unif.normalize uf arg.exp_typ with
   | T_Product (t1,t2) as ty ->
     begin match t1 with
@@ -275,6 +277,7 @@ let is_int_or_power_exn l (uf:Unif.t) (arg:t_expression0) : t_int_or_power =
              "' but an expression of product type was expected.")
 
 let type_set_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (arg:t_expression0): t_expression0 =
+  let open Btype_mt in
   let mt1 = Unif.new_meta uf in
   let mt2 = Unif.new_meta uf in
   let op_ty_exp = type_of_binary_fun (T_Power mt1) (T_Power mt2) (T_Power (T_Product (mt1,mt2))) in
@@ -286,6 +289,7 @@ let type_set_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (arg:t
     mk_expr app_lc (T_Power (T_Product (mt1,mt2))) (Application (op,arg))
 
 let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (arg:t_expression0) : t_expression0 =
+  let open Btype_mt in
   let op_ty_exp = type_of_binary_fun t_int t_int t_int in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (Unif.new_meta uf) in
   match Unif.get_stype uf op_ty_inf op_ty_exp with
@@ -295,6 +299,7 @@ let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (arg:t
     mk_expr app_lc t_int (Application (op,arg))
 
 let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (arg:t_expression0) : t_expression0 =
+  let open Btype_mt in
   let op_ty_exp = type_of_binary_fun t_int t_int t_int in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (Unif.new_meta uf) in
   match Unif.get_stype uf op_ty_inf op_ty_exp with
@@ -304,6 +309,7 @@ let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (ar
     mk_expr app_lc t_int (Application (op,arg))
 
 let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (arg:t_expression0) : t_expression0 =
+  let open Btype_mt in
   let mt = Unif.new_meta uf in
   let op_ty_exp = type_of_binary_fun (T_Power mt) (T_Power mt) (T_Power mt) in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (Unif.new_meta uf) in
@@ -314,6 +320,7 @@ let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (uf:Unif.t) (ar
     mk_expr app_lc (T_Power mt) (Application (op,arg))
 
 let rec type_expression_exn (env:env) (ctx:Local.t) (e:p_expression) : t_expression0 =
+  let open Btype_mt in
   match e.exp_desc with
 
   | Ident id | Dollar id as d ->
@@ -458,6 +465,7 @@ let rec type_expression_exn (env:env) (ctx:Local.t) (e:p_expression) : t_express
     end
 
 and type_predicate_exn (env:env) (ctx:Local.t) (p:p_predicate) : t_predicate0 =
+  let open Btype_mt in
   match p.prd_desc with
   | P_Builtin _ as d -> mk_pred p.prd_loc d
   | Binary_Prop (op,p1,p2) ->
@@ -658,7 +666,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     in
     let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
     let ttuple = type_expression_exn env ctx tuple in
-    let ty_exp = T_Power ttuple.exp_typ in
+    let ty_exp = Btype_mt.T_Power ttuple.exp_typ in
     let te = type_expression_exn env ctx e in
     let () = match Unif.get_stype env.uf te.exp_typ ty_exp with
       | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ ty_exp
@@ -682,7 +690,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
         let tids = List.map (type_writable_var_exn env ctx) ids in
         let tparams = List.map (type_expression_exn env ctx) params in
         let aux te (_,ty_arg) =
-          let ty_exp = to_open ty_arg in
+          let ty_exp = Btype.to_btype_mt ty_arg in
           match Unif.get_stype env.uf te.exp_typ ty_exp with
           | None -> unexpected_type_exn env.uf te.exp_loc te.exp_typ ty_exp
           | Some _ -> ()
@@ -701,7 +709,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     let ts = type_substitution_exn env ctx s in
     let t_inv = type_predicate_exn { env with cl=Global.C_Assert_Or_While_Invariant } ctx inv in
     let t_var = type_expression_exn { env with cl=Global.C_Assert_Or_While_Invariant } ctx var in
-    let exp = t_int in
+    let exp = Btype_mt.t_int in
     let () = match Unif.get_stype env.uf t_var.exp_typ exp with
       | None -> unexpected_type_exn env.uf var.exp_loc t_var.exp_typ exp
       | Some _ -> ()
@@ -718,20 +726,20 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       (Parallel(type_substitution_exn env ctx s1,
                 type_substitution_exn env ctx s2))
 
-let close_exn (lc:loc) (uf:Unif.t) (ty:opn_btype) : btype =
-  match Btype.close (Unif.normalize uf ty) with
+let close_exn (lc:loc) (uf:Unif.t) (ty:Btype_mt.t) : Btype.t =
+  match Btype.from_btype_mt (Unif.normalize uf ty) with
   | None ->
     Error.raise_exn lc
       ("The type of this expression could not be fully infered. The type infered so far is '"^
-       to_string (Unif.normalize uf ty)^"'.")
+       Btype_mt.to_string (Unif.normalize uf ty)^"'.")
   | Some ty -> ty
 
 let close_var (uf:Unif.t) (v:t_var0) : t_var =
-  match Btype.close (Unif.normalize uf v.var_typ) with
+  match Btype.from_btype_mt (Unif.normalize uf v.var_typ) with
   | None -> Error.raise_exn v.var_loc 
       ("The type of symbol '"^v.var_id^
        "' could not be fully infered. The type infered so far is '"^
-       to_string (Unif.normalize uf v.var_typ)^"'.")
+       Btype_mt.to_string (Unif.normalize uf v.var_typ)^"'.")
   | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
 
 let close_var_nlist ctx = Nlist.map (close_var ctx)

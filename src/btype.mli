@@ -1,38 +1,28 @@
-type opn
-type cls
+type t
 
-type 'a typ =
-| T_Atomic : string -> 'a typ
-| T_Power : 'a typ -> 'a typ
-| T_Product : 'a typ * 'a typ -> 'a typ
-| T_Record : (string*'a typ) list -> 'a typ
-| T_Meta : int -> opn typ
+val mk_Atomic : string -> t
+val mk_Power : t -> t
+val mk_Product : t -> t -> t
+val mk_Record : (string*t) list -> t
 
-type btype = cls typ
-type opn_btype = opn typ
+val t_int : t
+val t_bool : t
+val t_string : t
 
-val t_int : 'a typ
-val t_bool : 'a typ
-val t_string : 'a typ
+val type_of_unary_fun : t -> t -> t 
+val type_of_binary_fun : t -> t -> t -> t 
+val type_of_sequence : t -> t 
 
-val type_of_unary_fun : 'a typ -> 'a typ -> 'a typ 
-val type_of_binary_fun : 'a typ -> 'a typ -> 'a typ -> 'a typ 
-val type_of_sequence : 'a typ -> 'a typ 
+val to_string : t -> string
+val equal : t -> t -> bool
 
-val to_string : 'a typ -> string
-val is_equal : 'a typ -> 'a typ -> bool
+type t_view =
+| T_Atomic of string
+| T_Power of t
+| T_Product of t * t
+| T_Record of (string*t) list
 
-val occurs : int -> 'a typ -> bool
-val subst : int -> 'a typ -> 'a typ -> 'a typ
-val close : 'a typ -> btype option
-val to_open : btype -> 'a typ
+val view: t -> t_view
 
-module Unif : sig
-  type t
-  val create : unit -> t
-  val new_meta : t -> opn typ
-  val get_stype : t -> opn typ -> opn typ -> (opn typ) option
-  val normalize : t -> opn typ -> opn typ
-  val add_alias : t -> string -> cls typ -> bool
-  val is_equal_modulo_alias : t -> 'a typ -> 'a typ -> bool
-end
+val to_btype_mt : t -> Btype_mt.t
+val from_btype_mt : Btype_mt.t -> t option

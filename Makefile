@@ -22,5 +22,8 @@ brandom:
 test_random:
 	ocamlbuild $(OCB_OPT) test_random_print_parse.native && ./test_random_print_parse.native
 
+doc:
+	ocamlbuild $(OCB_OPT) doc.docdir/index.html
+
 clean:
 	ocamlbuild -clean

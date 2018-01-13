@@ -44,7 +44,7 @@ let type_set : p_set -> t_set = function
 
 let load_seen_mch_exn (f:string->Global.t_interface option) (env:Global.t) (mch:p_lident) : unit =
   match f mch.lid_str with
-  | None -> Error.raise_exn mch.lid_loc ("Unknown machine '"^mch.lid_str^"'.")
+  | None -> Error.raise_exn mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
   | Some itf ->
    begin match Global.load_interface_for_seen_machine env itf mch with
      | Ok () -> ()
@@ -388,7 +388,7 @@ let type_machine_exn (f:string -> Global.t_interface option) (gl:Global.t) (mch:
 
 let load_refines_exn (f:string->Global.t_interface option) (env:Global.t) (mch:p_lident) : unit =
   match f mch.lid_str with
-  | None -> Error.raise_exn mch.lid_loc ("Unknown machine '"^mch.lid_str^"'.")
+  | None -> Error.raise_exn mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
   | Some itf ->
    begin match Global.load_interface_for_refined_machine env itf mch with
      | Ok () -> ()
@@ -453,7 +453,7 @@ let load_extended_mch_exn f env mi =
   match mi.mi_params with
   | [] ->
     begin match f mi.mi_mch.lid_str with
-      | None -> Error.raise_exn mi.mi_mch.lid_loc ("Unknown machine '"^mi.mi_mch.lid_str^"'.")
+      | None -> Error.raise_exn mi.mi_mch.lid_loc ("The machine '"^mi.mi_mch.lid_str^"' does not typecheck.")
       | Some itf ->
         begin match Global.load_interface_for_extended_machine env itf mi.mi_mch with
           | Ok () -> {mi_mch=mi.mi_mch;mi_params=[]}
@@ -466,7 +466,7 @@ let load_imported_mch_exn f env mi =
   match mi.mi_params with
   | [] ->
     begin match f mi.mi_mch.lid_str with
-      | None -> Error.raise_exn mi.mi_mch.lid_loc ("Unknown machine '"^mi.mi_mch.lid_str^"'.")
+      | None -> Error.raise_exn mi.mi_mch.lid_loc ("The machine '"^mi.mi_mch.lid_str^"' does not typecheck.")
       | Some itf ->
        begin match Global.load_interface_for_imported_machine env itf mi.mi_mch with
          | Ok () -> {mi_mch=mi.mi_mch;mi_params=[]}
@@ -552,8 +552,8 @@ let type_component (f:string -> Global.t_interface option) (env:Global.t) (co:p_
   with
   | Error.Error err -> Error err
 
-let get_interface (f:string -> Global.t_interface option) (co:p_component) : Global.t_interface Error.t_result =
+let get_interface (f:string -> Global.t_interface option) (co:p_component) : (t_component*Global.t_interface) Error.t_result =
   let env = Global.create () in
   match type_component f env co with
-  | Ok _ -> Ok (Global.to_interface env)
+  | Ok cp -> Ok (cp,Global.to_interface env)
   | Error err -> Error err

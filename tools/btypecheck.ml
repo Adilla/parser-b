@@ -20,14 +20,16 @@ let print_error_no_loc msg =
   Printf.fprintf stderr "%s\n" msg;
   if not !continue_on_error then exit(1)
 
-let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface option =
+let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface Error.t_result =
   match safe_find ht filename with
-  | Some (Done itf) -> Some itf
+  | Some (Done itf) -> Ok itf
   | Some InProgress ->
-    Error.raise_exn Utils.dloc "Error: dependency cycle detected."
+    Error { Error.err_loc=Utils.dloc;
+            Error.err_txt="Error: dependency cycle detected." }
   | None ->
     begin match open_in filename with
-      | None -> None
+      | None -> Error { Error.err_loc=Utils.dloc; 
+                        Error.err_txt="Cannot open file '"^filename^"'." }
       | Some input ->
         let () = Log.write "Parsing file '%s'...\n%!" filename in
         begin match Parser.parse_component filename input with
@@ -36,30 +38,31 @@ let rec type_component_from_filename (ht:interface_table) (filename:string) : ma
             let () = Log.write "Typing file '%s'...\n%!" filename in
             let () = Hashtbl.add ht filename InProgress in
             begin match Typechecker.get_interface (f ht) c with
-              | Ok itf ->
+              | Ok (_,itf) ->
                 let () = Hashtbl.add ht filename (Done itf) in
-                Some itf
-              | Error err -> (print_error err; None )
+                Ok itf
+              | Error _ as err -> err
             end
-          | Error err -> ( print_error err; None )
+          | Error _ as err -> err
         end
     end
 
 and f (ht:interface_table) (mch_name:string) : machine_interface option =
   match File.get_fullname_comp mch_name with
   | None -> None
-  | Some fn -> type_component_from_filename ht fn
+  | Some fn ->
+   begin match type_component_from_filename ht fn with
+     | Ok ok -> Some ok
+     | Error err -> ( print_error err; None )
+   end
 
 let ht:interface_table = Hashtbl.create 47
 
 let run_on_file (filename:string) : unit =
-  try 
-    let () = Log.write "Processing file '%s'...\n%!" filename in
-    match type_component_from_filename ht filename with
-    | None -> print_error_no_loc ("Cannot find file '"^filename^"'.")
-    | Some _ -> ()
-  with
-    Error.Error err -> print_error err
+  let () = Log.write "Processing file '%s'...\n%!" filename in
+  match type_component_from_filename ht filename with
+  | Error err -> print_error err
+  | Ok _ -> ()
 
 let add_path x =
   match File.add_path x with

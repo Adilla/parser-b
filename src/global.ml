@@ -7,7 +7,7 @@ let set_extended_sees b = extended_sees := b
 type t_kind = 
   | K_Abstract_Variable | K_Concrete_Variable
   | K_Abstract_Constant | K_Concrete_Constant
-  | K_Abstract_Set | K_Concrete_Set
+  | K_Abstract_Set | K_Concrete_Set of ident list
   | K_Enumerate
 
 type t_source =
@@ -169,7 +169,7 @@ let kind_to_string = function
   | K_Abstract_Constant -> "an abstract constant"
   | K_Concrete_Constant -> "a concrete constant"
   | K_Abstract_Set -> "an abstract set"
-  | K_Concrete_Set -> "a concrete set"
+  | K_Concrete_Set _ -> "a concrete set"
   | K_Enumerate -> "an enumerate"
 
 let are_kind_compatible k1 k2 =
@@ -423,6 +423,24 @@ let is_operation_readonly (env:t) (id:ident) : bool =
   try (Hashtbl.find env.ops id).op_readonly
   with Not_found -> false
 
+let is_operation_local (env:t) (id:ident) : bool =
+  match Hashtbl.find_opt env.ops id with
+  | None -> false
+  | Some op ->
+    begin match op.op_src with
+      | OS_Local_Spec _ | OS_Local_Spec_And_Implem _ -> true
+      | OS_Seen_Mch _
+      | OS_Included_Mch_Only _
+      | OS_Included_And_Refined_Mch _
+      | OS_Current_Mch_Only _
+      | OS_Refined_Mch_Only _
+      | OS_Current_And_Refined_Mch _
+      | OS_Imported_Only _
+      | OS_Imported_And_Promoted _
+      | OS_Imported_And_Refined _
+      | OS_Imported_Promoted_And_Refined _ -> false
+    end
+
 let add_operation (env:t) (loc:loc) (id:ident) (args:t_op_type) (is_readonly:bool) (is_local:bool) : unit Error.t_result =
   let src = if is_local then Src_Current_Local loc else Src_Current loc in
   _add_operation env loc id args is_readonly src
@@ -565,8 +583,44 @@ let add_alias (s:t) (alias:string) (ty:Btype.t) : bool =
   match Btype.add_alias s.alias alias ty with
   | None -> false
   | Some alias -> (s.alias <- alias; true)
-  (*
-  let ty = normalize_alias s.alias ty in
-  if occurs_atm alias ty then false
-  else ( s.alias <- Unif.SMap.add alias ty s.alias; true )
-*)
+
+let fold_symbols (f:'a -> ident -> t_kind -> t_source -> Btype.t -> 'a) (env:t) (accu:'a) : 'a =
+  let aux (id:ident) (ts:t_symbol_infos) (accu:'a) : 'a = f accu id ts.sy_kind ts.sy_src ts.sy_typ in
+  Hashtbl.fold aux env.symb accu
+
+let fold_operations (f:'a -> ident -> t_op_source -> t_op_type -> 'a) (env:t) (accu:'a) : 'a =
+  let aux (id:ident) (ts:t_operation_infos) (accu:'a) : 'a = f accu id ts.op_src { args_in=ts.op_args_in; args_out=ts.op_args_out } in
+  Hashtbl.fold aux env.ops accu
+
+let get_op_source (env:t) (id:ident) =
+  match Hashtbl.find_opt env.ops id with
+  | None -> None
+  | Some op ->
+    begin match op.op_src with
+      | OS_Current_Mch_Only _ | OS_Refined_Mch_Only _ | OS_Current_And_Refined_Mch _
+      | OS_Local_Spec _ | OS_Local_Spec_And_Implem _
+      | OS_Included_Mch_Only _ | OS_Included_And_Refined_Mch _ -> None
+      | OS_Seen_Mch mch
+      | OS_Imported_Only mch
+      | OS_Imported_And_Promoted (_,mch)
+      | OS_Imported_And_Refined (mch,_)
+      | OS_Imported_Promoted_And_Refined (_,mch,_) -> Some mch.lid_str
+    end
+
+let get_symbol_source (env:t) (id:ident) : ident option =
+  match Hashtbl.find_opt env.symb id with
+  | None -> None
+  | Some ifn ->
+    begin match ifn.sy_src with
+      | S_Ghost
+      | S_Current_Mch_Only _
+      | S_Refined_Mch_Only _
+      | S_Current_And_Refined_Mch _
+      | S_Included_Mch_Only _
+      | S_Included_And_Refined_Mch _ -> None
+      | S_Seen_Mch_Only mch
+      | S_Imported_Mch_Only mch
+      | S_Current_And_Imported_Mch (_,mch)
+      | S_Imported_And_Refined_Mch (mch,_)
+      | S_Current_Imported_And_Refined_Mch (_,mch,_) -> Some mch.lid_str
+    end

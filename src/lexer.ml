@@ -12,7 +12,7 @@ sig
   type t_token = Grammar.token * Lexing.position * Lexing.position
   val mk_state : string -> Lexing.lexbuf -> state
   val get_next_exn : state -> t_token
-  val set_next : state -> t_token -> unit
+  val preview_next : state -> t_token
   val get_last_token_str : state -> string
   val get_current_pos : state -> Lexing.position
   val prepend_queue : state -> t_token Queue.t -> unit
@@ -42,8 +42,12 @@ end = struct
       else Queue.pop state.queue
     in state.last <- next; next
 
-  let set_next (state:state) (tk:t_token) : unit =
-    Queue.push tk state.queue
+  let preview_next st =
+    if Queue.is_empty st.queue then
+      let next = get_next_exn st in
+      Queue.add next st.queue;
+      next
+    else Queue.peek st.queue
 
   let prepend_queue (state:state) (queue:t_token Queue.t) : unit =
     Queue.transfer state.queue queue;
@@ -159,9 +163,7 @@ end = struct
 end
 
 let is_next_eof (state:Lexer_With_Look_Ahead.state) : bool =
-  let next = Lexer_With_Look_Ahead.get_next_exn state in
-  let () = Lexer_With_Look_Ahead.set_next state next in
-  match next with
+  match Lexer_With_Look_Ahead.preview_next state with
   | EOF, _, _ -> true
   | _, _, _ -> false
 

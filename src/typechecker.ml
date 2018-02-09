@@ -74,7 +74,8 @@ let declare_set_exn (env:Global.t) (s:p_set) : t_set =
   let () = match ts with
     | Abstract_Set v -> declare_global_symbol_exn env Global.K_Abstract_Set v
     | Concrete_Set (v,elts) ->
-      declare_global_symbol_exn env Global.K_Concrete_Set v;
+      let lst = List.map (fun x -> x.var_id) elts in
+      declare_global_symbol_exn env (Global.K_Concrete_Set lst) v;
       List.iter (declare_global_symbol_exn env Global.K_Enumerate) elts
   in
   ts
@@ -83,8 +84,7 @@ let declare (ctx:Inference.Local.t) (id:string) (ro:bool) : Inference.Local.t =
   let mt = Btype.Unif.new_meta () in
   Inference.Local.add ctx id mt ro
 
-let declare_local_symbol_with_global_type (env:Global.t)
-    (k:Global.t_kind) (ctx:Inference.Local.t) (v:p_var) : Inference.Local.t =
+let declare_local_symbol_with_global_type (env:Global.t) (ctx:Inference.Local.t) (v:p_var) : Inference.Local.t =
   match Global.get_symbol_type env v.var_id with
   | None -> declare ctx v.var_id false
   | Some ty -> Inference.Local.add ctx v.var_id (Btype.to_unif ty) false
@@ -122,14 +122,8 @@ let type_expression_exn cl env ctx e =
 
 let declare_constants_exn (env:Global.t) cconst aconst prop =
   let ctx = Inference.Local.create () in
-  let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type env Global.K_Concrete_Constant)
-      ctx cconst
-  in
-  let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type env Global.K_Abstract_Constant)
-      ctx aconst
-  in
+  let ctx = fold_list_clause (declare_local_symbol_with_global_type env) ctx cconst in
+  let ctx = fold_list_clause (declare_local_symbol_with_global_type env) ctx aconst in
   let t_prop = map_clause (type_predicate_exn Global.C_Properties env ctx) prop in
   let t_cconst = map_list_clause (type_var_exn env ctx) cconst in
   let t_aconst = map_list_clause (type_var_exn env ctx) aconst in
@@ -139,14 +133,8 @@ let declare_constants_exn (env:Global.t) cconst aconst prop =
 
 let declare_variables_exn (env:Global.t) cvars avars inv =
   let ctx = Inference.Local.create () in
-  let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type env Global.K_Concrete_Variable)
-      ctx cvars
-  in
-  let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type env Global.K_Abstract_Variable)
-      ctx avars
-  in
+  let ctx = fold_list_clause (declare_local_symbol_with_global_type env) ctx cvars in
+  let ctx = fold_list_clause (declare_local_symbol_with_global_type env) ctx avars in
   let t_inv = map_clause
       (type_predicate_exn Global.C_Invariant_Or_Assertions env ctx) inv
   in

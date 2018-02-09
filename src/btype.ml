@@ -145,10 +145,10 @@ let mk_Record lst = Unif.T_Record lst
 
 let rec close_exn : Unif.t -> t = function
   | Unif.T_Atomic _ as ty -> ty
-  | Unif.T_Power ty -> T_Power (close_exn ty)
-  | Unif.T_Product (ty1,ty2) -> T_Product (close_exn ty1, close_exn ty2)
-  | Unif.T_Record lst -> T_Record (List.map (fun (s,t) -> (s,close_exn t)) lst)
-  | Unif.T_UVar {contents=Bound ty} -> close_exn ty
+  | Unif.T_Power ty -> mk_Power (close_exn ty)
+  | Unif.T_Product (ty1,ty2) -> mk_Product (close_exn ty1) (close_exn ty2)
+  | Unif.T_Record lst -> mk_Record (List.map (fun (s,t) -> (s,close_exn t)) lst)
+  | Unif.T_UVar {contents=Unif.Bound ty} -> close_exn ty
   | Unif.T_UVar _ -> raise (Failure "close_exn")
 
 let close (ty:Unif.t) : t option = try Some (close_exn ty) with Failure _ -> None
@@ -172,25 +172,25 @@ let no_alias = SMap.empty
 let normalize_alias (alias:t_alias) (ty:t) : t =
   let rec loop : t -> t = fun ty ->
     match ty with
-    | T_Atomic s ->
+    | Unif.T_Atomic s ->
       begin match SMap.find_opt s alias with
         | None -> ty
         | Some ty' -> ty'
       end
-    | T_Power ty -> T_Power (loop ty)
-    | T_Product (ty1,ty2) -> T_Product (loop ty1,loop ty2)
-    | T_Record lst -> T_Record (List.map (fun (x,ty) -> (x,loop ty)) lst)
-    | T_UVar _ -> assert false
+    | Unif.T_Power ty -> mk_Power (loop ty)
+    | Unif.T_Product (ty1,ty2) -> mk_Product (loop ty1) (loop ty2)
+    | Unif.T_Record lst -> mk_Record (List.map (fun (x,ty) -> (x,loop ty)) lst)
+    | Unif.T_UVar _ -> assert false
   in
   loop ty
 
 let rec occurs_atm (str:string) (ty:t) : bool =
   match ty with
-  | T_Atomic str2 -> String.equal str str2
-  | T_Power ty -> occurs_atm str ty
-  | T_Product (ty1,ty2) -> ( occurs_atm str ty1 || occurs_atm str ty2 )
-  | T_Record lst ->  List.exists (fun (_,t) -> occurs_atm str t) lst
-  | T_UVar _ -> assert false
+  | Unif.T_Atomic str2 -> String.equal str str2
+  | Unif.T_Power ty -> occurs_atm str ty
+  | Unif.T_Product (ty1,ty2) -> ( occurs_atm str ty1 || occurs_atm str ty2 )
+  | Unif.T_Record lst ->  List.exists (fun (_,t) -> occurs_atm str t) lst
+  | Unif.T_UVar _ -> assert false
 
 let is_equal_modulo_alias (alias:t_alias) (t1:t) (t2:t) : bool =
   equal (normalize_alias alias t1) (normalize_alias alias t2)

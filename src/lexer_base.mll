@@ -11,10 +11,12 @@
 (*     string_loc := loc *)
 
   let int_of_int_lit (s:string) : int =
+    try
     if String.get s 0 = '-' then
       let l=String.length s in
       - (int_of_string (String.sub s 1 (l-1)))
     else int_of_string s
+    with Failure _ -> (print_endline s; 0)
 
 let err lexbuf err_txt =
   let open Error in

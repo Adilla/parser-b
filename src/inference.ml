@@ -546,13 +546,14 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
   | Skip -> mk_subst s0.sub_loc Skip
 
   | Pre (p,s) ->
-    mk_subst s0.sub_loc
-      (Pre (type_predicate_exn env ctx p, type_substitution_exn env ctx s))
+    let p = type_predicate_exn env ctx p in
+    let s = type_substitution_exn env ctx s in
+    mk_subst s0.sub_loc (Pre (p,s))
 
   | Assert (p,s) ->
-    mk_subst s0.sub_loc
-      (Assert(type_predicate_exn {env with cl=Global.C_Assert_Or_While_Invariant} ctx p,
-              type_substitution_exn env ctx s))
+    let p = type_predicate_exn {env with cl=Global.C_Assert_Or_While_Invariant} ctx p in
+    let s =  type_substitution_exn env ctx s in
+    mk_subst s0.sub_loc (Assert(p,s))
 
   | Affectation (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
@@ -590,6 +591,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
 
   | Record_Affectation (rc,fd,e) ->
     let _ = type_writable_var_exn env ctx rc in
+    let rc = type_var_exn env ctx rc in
     let rf_access = mk_expr rc.var_loc ()
         (Record_Field_Access (mk_expr rc.var_loc () (Ident rc.var_id),fd)) in
     let trf_access = type_expression_exn env ctx rf_access in
@@ -598,7 +600,7 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
       | None -> unexpected_type_exn env.uf e.exp_loc te.exp_typ trf_access.exp_typ 
       | Some _ -> ()
     in
-    mk_subst s0.sub_loc (Record_Affectation (type_var_exn env ctx rc,fd,te))
+    mk_subst s0.sub_loc (Record_Affectation (rc,fd,te))
 
   | Choice slst ->
    mk_subst s0.sub_loc (Choice (Nlist.map (type_substitution_exn env ctx) slst))
@@ -657,7 +659,9 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
           | Some var_typ -> ({var_loc=v.var_loc;var_typ;var_id=v.var_id},te)
         end
     in
-    mk_subst s0.sub_loc (Let (tids,Nlist.map aux nlst,type_substitution_exn env ctx s))
+    let nlst = Nlist.map aux nlst in
+    let s = type_substitution_exn env ctx s in
+    mk_subst s0.sub_loc (Let (tids,nlst,s))
 
   | BecomesElt (xlst,e) ->
     let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
@@ -677,11 +681,13 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
 
   | BecomesSuch (xlst,p) ->
     let tlst = Nlist.map (type_writable_var_exn env ctx) xlst in
-    mk_subst s0.sub_loc (BecomesSuch (tlst,type_predicate_exn env ctx p))
+    let p = type_predicate_exn env ctx p in
+    mk_subst s0.sub_loc (BecomesSuch (tlst,p))
 
   | Var (vars,s) ->
     let (ctx,tvars) = declare_nelist env.uf ctx vars false in
-    mk_subst s0.sub_loc (Var(tvars,type_substitution_exn env ctx s))
+    let s = type_substitution_exn env ctx s in
+    mk_subst s0.sub_loc (Var(tvars,s))
 
   | CallUp (ids,op,params) ->
     begin match Global.get_operation_type env.gl op.lid_loc op.lid_str with
@@ -717,14 +723,14 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     mk_subst s0.sub_loc (While (tp,ts,t_inv,t_var))
 
   | Sequencement (s1,s2) ->
-    mk_subst s0.sub_loc
-      (Sequencement(type_substitution_exn env ctx s1,
-                    type_substitution_exn env ctx s2))
+    let s1 = type_substitution_exn env ctx s1 in
+    let s2 = type_substitution_exn env ctx s2 in
+    mk_subst s0.sub_loc (Sequencement(s1,s2))
 
   | Parallel (s1,s2) ->
-    mk_subst s0.sub_loc
-      (Parallel(type_substitution_exn env ctx s1,
-                type_substitution_exn env ctx s2))
+    let s1 = type_substitution_exn env ctx s1 in
+    let s2 = type_substitution_exn env ctx s2 in
+    mk_subst s0.sub_loc (Parallel(s1,s2))
 
 let close_exn (lc:loc) (uf:Unif.t) (ty:Btype_mt.t) : Btype.t =
   match Btype.from_btype_mt (Unif.normalize uf ty) with

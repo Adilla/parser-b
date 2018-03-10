@@ -556,13 +556,15 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
     mk_subst s0.sub_loc (Assert(p,s))
 
   | Affectation (xlst,e) ->
-    let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
-        | [] -> mk_expr x.var_loc () (Ident x.var_id)
+    let rec mk_tuple (x:p_expression) : p_var list -> p_expression = function
+        | [] -> x
         | hd::tl ->
-          mk_expr x.var_loc ()
-            (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
+          let id = mk_expr hd.var_loc () (Ident hd.var_id) in
+          let cp = mk_expr x.exp_loc () (Couple (Comma false,x,id)) in
+          mk_tuple cp tl
     in
-    let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
+    let hd = Nlist.hd xlst in
+    let tuple = mk_tuple (mk_expr hd.var_loc () (Ident hd.var_id)) (Nlist.tl xlst) in
     let ttuple = type_expression_exn env ctx tuple in
     let te = type_expression_exn env ctx e in
     let () = match Unif.get_stype env.uf te.exp_typ ttuple.exp_typ with

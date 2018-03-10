@@ -94,6 +94,7 @@ let _ = List.iter (fun (name, keyword) ->
    "PROPERTIES"         , PROPERTIES;
    "OF"                 , OF;
    "CONCRETE_VARIABLES" , CONCRETE_VARIABLES;
+   "VISIBLE_VARIABLES" , CONCRETE_VARIABLES;
    "ABSTRACT_CONSTANTS" , ABSTRACT_CONSTANTS;
 
    "bool"      , CBOOL;

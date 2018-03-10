@@ -199,6 +199,7 @@ rule token = parse
   | "**"        { E_INFIX_200 Syntax.Power  }
   | "{}"        { CONSTANT Syntax.Empty_Set  }
   | "[]"        { CONSTANT Syntax.Empty_Seq  }
+  | "<>"        { CONSTANT Syntax.Empty_Seq  }
   | ".."        { E_INFIX_170 Syntax.Interval  }
   | "\\/"       { E_INFIX_160 Syntax.Union }
   | "/\\"       { E_INFIX_160 Syntax.Intersection }

@@ -210,12 +210,12 @@ end = struct
       | s::tl ->  s ^ "," ^ (concat sep tl)
     in
     let aux name (loc,params,tokens) =
-      Printf.fprintf stdout "DEFINITIONS %s(%s) == (...)\n"
+      Printf.fprintf stderr "DEFINITIONS %s(%s) == (...)\n"
         name (concat "," params)
     in
-    Printf.fprintf stdout ">>> DefTable\n";
+    Printf.fprintf stderr ">>> DefTable\n";
     Hashtbl.iter aux defs;
-    Printf.fprintf stdout "<<< DefTable\n"
+    Printf.fprintf stderr "<<< DefTable\n"
 
 
   let raise_err (loc:loc) (tk:token) =
@@ -227,17 +227,33 @@ end = struct
       let next = get_next_exn state in
       let _ = Queue.add next queue in
       match next with
+      | EQUALEQUAL, _, _ | DEF_FILE _, _, _ -> true
+
       | SEMICOLON, _, _ | MACHINE, _, _ | REFINEMENT, _, _
       | IMPLEMENTATION, _, _ | REFINES, _, _ | DEFINITIONS, _, _
       | IMPORTS, _, _ | SEES, _, _ | INCLUDES, _, _ | USES, _, _
-      | EXTENDS, _, _ | PROMOTES, _, _ | SETS, _, _
+      | EXTENDS, _, _ | PROMOTES, _, _ | SETS, _, _ | CONSTRAINTS, _, _
       | ABSTRACT_CONSTANTS, _, _ | CONCRETE_CONSTANTS, _, _
       | CONSTANTS, _, _ | VALUES, _, _ | ABSTRACT_VARIABLES, _, _
       | VARIABLES, _, _ | CONCRETE_VARIABLES, _, _ | INVARIANT, _, _
       | ASSERTIONS, _, _ | INITIALISATION, _, _ | OPERATIONS, _, _
-      | LOCAL_OPERATIONS, _, _ | EOF, _, _ -> false
-      | EQUALEQUAL, _, _ | DEF_FILE _, _, _ -> true
-      | _ -> aux ()
+      | LOCAL_OPERATIONS, _, _ | EOF, _, _ | PROPERTIES, _, _ -> false
+
+      | CONSTANT _, _, _ | E_PREFIX _, _, _ | PREDICATE _, _, _ | E_BINDER _, _, _
+      | E_INFIX_125 _, _, _ | E_INFIX_160 _, _, _ | E_INFIX_170 _, _, _
+      | E_INFIX_180 _, _, _ | E_INFIX_190 _, _, _ | E_INFIX_200 _, _, _
+      | WHILE, _, _ | WHEN, _, _ | WHERE, _, _ | VARIANT, _, _ | VAR, _, _
+      | TILDE, _, _ | THEN, _, _ | STRUCT, _, _ | SQUOTE, _, _ | SKIP, _, _
+      | SELECT, _, _ | OF, _, _ | LBRA_COMP, _, _ | ELSIF, _, _ | ELSE, _, _
+      | CASE_OR, _, _ | BEGIN, _, _ | END, _, _ | PRE, _, _ | ASSERT, _, _
+      | CHOICE, _, _ | IF, _, _ | CASE, _, _ | OR, _, _ | EITHER, _, _ | ANY, _, _
+      | LET, _, _ | BE, _, _ | DO, _, _ | IN, _, _ | CBOOL, _, _ | NOT, _, _
+      | REC, _, _ | MAPLET, _, _ | LEFTARROW, _, _ | EQUIV, _, _
+      | PARALLEL, _, _ | IMPLY, _, _ | AFFECTATION, _, _ | BECOMES_ELT, _, _
+      | DOLLAR_ZERO, _, _ | DOT, _, _ | BAR, _, _ | LBRA, _, _
+      | RBRA, _, _ | LSQU, _, _ | RSQU, _, _ | AND, _, _
+      | FORALL, _, _ | EXISTS, _, _ | EQUAL, _, _ | MEMBER_OF, _, _ | MINUS, _, _
+      | COMMA, _, _ | RPAR, _, _ | LPAR, _, _ | IDENT _, _, _ | STRING _ , _, _ -> aux ()
     in
     let next = get_next_exn state in
     let _ = Queue.add next queue in
@@ -252,32 +268,21 @@ end = struct
     result
 
   let is_end_of_def_clause = function
-    | REFINEMENT
-    | IMPLEMENTATION
-    | REFINES
-    | DEFINITIONS
-    | IMPORTS
-    | SEES
-    | INCLUDES
-    | USES
-    | EXTENDS
-    | PROMOTES
-    | SETS
-    | ABSTRACT_CONSTANTS
-    | CONCRETE_CONSTANTS
-    | CONSTANTS
-    | VALUES
-    | ABSTRACT_VARIABLES
-    | VARIABLES
-    | CONCRETE_VARIABLES
-    | INVARIANT
-    | ASSERTIONS
-    | INITIALISATION
-    | OPERATIONS
-    | LOCAL_OPERATIONS
-    | PROPERTIES
-    | EOF -> true
-    | _ -> false
+    | REFINEMENT | IMPLEMENTATION | REFINES | DEFINITIONS | IMPORTS | SEES
+    | INCLUDES | USES | EXTENDS | PROMOTES | SETS | ABSTRACT_CONSTANTS
+    | CONCRETE_CONSTANTS | CONSTANTS | VALUES | ABSTRACT_VARIABLES
+    | VARIABLES | CONCRETE_VARIABLES | INVARIANT | ASSERTIONS | INITIALISATION
+    | OPERATIONS | LOCAL_OPERATIONS | PROPERTIES | EOF | MACHINE | CONSTRAINTS -> true
+
+    | CONSTANT _ | E_PREFIX _ | PREDICATE _ | E_BINDER _ | E_INFIX_125 _ | SEMICOLON
+    | E_INFIX_160 _ | E_INFIX_170 _ | E_INFIX_180 _ | E_INFIX_190 _ | E_INFIX_200 _
+    | WHILE | WHEN | WHERE | VARIANT | VAR | TILDE | THEN | STRUCT | SQUOTE | SKIP
+    | SELECT | OF | LBRA_COMP | ELSIF | ELSE | CASE_OR | BEGIN | END | PRE | ASSERT
+    | CHOICE | IF | CASE | OR | EITHER | ANY | LET | BE | DO | IN | CBOOL | NOT
+    | REC | MAPLET | LEFTARROW | EQUIV | PARALLEL | IMPLY | AFFECTATION | BECOMES_ELT
+    | DOLLAR_ZERO | DOT | BAR | LBRA | RBRA | LSQU | RSQU | AND | FORALL | EXISTS
+    | EQUAL | MEMBER_OF | MINUS | COMMA | RPAR | LPAR | IDENT _ | STRING _ | EQUALEQUAL
+    | DEF_FILE _ -> false
 
   let rec state_1_start_exn (state:state) (def_lst:macro list) : macro list =
     match get_next_exn state with
@@ -496,8 +501,27 @@ end = struct
     | (INITIALISATION, st, ed)
     | (OPERATIONS, st, ed)
     | (LOCAL_OPERATIONS, st, ed)
+    | (CONSTRAINTS, st, ed)
+    | (PROPERTIES, st, ed)
     | (EOF, st, ed) as next -> next
-    | _ -> read_until_next_clause_exn state
+
+    | CONSTANT _, _, _ | E_PREFIX _, _, _ | PREDICATE _, _, _ | E_BINDER _, _, _
+    | E_INFIX_125 _, _, _ | E_INFIX_160 _, _, _ | E_INFIX_170 _, _, _
+    | E_INFIX_180 _, _, _ | E_INFIX_190 _, _, _ | E_INFIX_200 _, _, _
+    | WHILE, _, _ | WHEN, _, _ | WHERE, _, _ | VARIANT, _, _ | VAR, _, _
+    | TILDE, _, _ | THEN, _, _ | STRUCT, _, _ | SQUOTE, _, _ | SKIP, _, _
+    | SELECT, _, _ | OF, _, _ | LBRA_COMP, _, _ | ELSIF, _, _ | ELSE, _, _
+    | CASE_OR, _, _ | BEGIN, _, _ | END, _, _ | PRE, _, _ | ASSERT, _, _
+    | CHOICE, _, _ | IF, _, _ | CASE, _, _ | OR, _, _ | EITHER, _, _ | ANY, _, _
+    | LET, _, _ | BE, _, _ | DO, _, _ | IN, _, _ | CBOOL, _, _ | NOT, _, _
+    | REC, _, _ | MAPLET, _, _ | LEFTARROW, _, _ | EQUIV, _, _
+    | PARALLEL, _, _ | IMPLY, _, _ | AFFECTATION, _, _ | BECOMES_ELT, _, _
+    | DOLLAR_ZERO, _, _ | DOT, _, _ | BAR, _, _ | LBRA, _, _
+    | RBRA, _, _ | LSQU, _, _ | RSQU, _, _ | AND, _, _
+    | FORALL, _, _ | EXISTS, _, _ | EQUAL, _, _ | MEMBER_OF, _, _ | MINUS, _, _
+    | COMMA, _, _ | RPAR, _, _ | LPAR, _, _ | IDENT _, _, _ | STRING _ , _, _
+    | SEMICOLON, _, _ | DEF_FILE _, _, _ | EQUALEQUAL, _, _ ->
+      read_until_next_clause_exn state
 
   let decr_fuel_exn (state:state) : unit =
     if state.fuel > 0 then

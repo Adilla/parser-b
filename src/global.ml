@@ -122,7 +122,7 @@ let get_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : Btype
 let is_symbol_writable ki src cl =
   match ki, src, cl with
   | (K_Abstract_Variable|K_Concrete_Variable),
-    (S_Current_Mch_Only _|S_Current_And_Refined_Mch _), _ -> true
+    (S_Current_Mch_Only _|S_Current_And_Refined_Mch _|S_Refined_Mch_Only _), _ -> true
   | (K_Abstract_Variable|K_Concrete_Variable),
     (S_Imported_And_Refined_Mch _|S_Current_And_Imported_Mch _|
      S_Current_Imported_And_Refined_Mch _|S_Imported_Mch_Only _), C_Local_Operations -> true

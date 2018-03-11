@@ -11,7 +11,8 @@ sig
   val token_to_string : Grammar.token -> string
   type t_token = Grammar.token * Lexing.position * Lexing.position
   val mk_state : string -> Lexing.lexbuf -> state
-  val get_next_exn : state -> Grammar.token * Lexing.position * Lexing.position
+  val get_next_exn : state -> t_token
+  val set_next : state -> t_token -> unit
   val get_last_token_str : state -> string
   val get_current_pos : state -> Lexing.position
   val prepend_queue : state -> t_token Queue.t -> unit
@@ -40,6 +41,9 @@ end = struct
       if Queue.is_empty state.queue then get_token_exn state.lb
       else Queue.pop state.queue
     in state.last <- next; next
+
+  let set_next (state:state) (tk:t_token) : unit =
+    Queue.push tk state.queue
 
   let prepend_queue (state:state) (queue:t_token Queue.t) : unit =
     Queue.transfer state.queue queue;
@@ -153,6 +157,13 @@ end = struct
 
   let get_current_pos state = state.lb.Lexing.lex_curr_p
 end
+
+let is_next_eof (state:Lexer_With_Look_Ahead.state) : bool =
+  let next = Lexer_With_Look_Ahead.get_next_exn state in
+  let () = Lexer_With_Look_Ahead.set_next state next in
+  match next with
+  | EOF, _, _ -> true
+  | _, _, _ -> false
 
 module Preprocessing : sig
   type macro_table
@@ -270,45 +281,47 @@ end = struct
     prepend_queue state queue;
     result
 
-  let is_end_of_def_clause = function
+  let is_end_of_def_clause state is_def_file = function
     | REFINEMENT | IMPLEMENTATION | REFINES | DEFINITIONS | IMPORTS | SEES
     | INCLUDES | USES | EXTENDS | PROMOTES | SETS | ABSTRACT_CONSTANTS
     | CONCRETE_CONSTANTS | CONSTANTS | VALUES | ABSTRACT_VARIABLES
     | VARIABLES | CONCRETE_VARIABLES | INVARIANT | ASSERTIONS | INITIALISATION
     | OPERATIONS | LOCAL_OPERATIONS | PROPERTIES | EOF | MACHINE | CONSTRAINTS -> true
 
+    | END -> (not is_def_file) && is_next_eof state
+
     | CONSTANT _ | E_PREFIX _ | PREDICATE _ | E_BINDER _ | E_INFIX_125 _ | SEMICOLON
     | E_INFIX_160 _ | E_INFIX_170 _ | E_INFIX_180 _ | E_INFIX_190 _ | E_INFIX_200 _
     | WHILE | WHEN | WHERE | VARIANT | VAR | TILDE | THEN | STRUCT | SQUOTE | SKIP
-    | SELECT | OF | LBRA_COMP | ELSIF | ELSE | CASE_OR | BEGIN | END | PRE | ASSERT
+    | SELECT | OF | LBRA_COMP | ELSIF | ELSE | CASE_OR | BEGIN | PRE | ASSERT
     | CHOICE | IF | CASE | OR | EITHER | ANY | LET | BE | DO | IN | CBOOL | NOT
     | REC | MAPLET | LEFTARROW | EQUIV | PARALLEL | IMPLY | AFFECTATION | BECOMES_ELT
     | DOLLAR_ZERO | DOT | BAR | LBRA | RBRA | LSQU | RSQU | AND | FORALL | EXISTS
     | EQUAL | MEMBER_OF | MINUS | COMMA | RPAR | LPAR | IDENT _ | STRING _ | EQUALEQUAL
     | DEF_FILE _ -> false
 
-  let rec state_1_start_exn (state:state) (def_lst:macro list) : macro list =
+  let rec state_1_start_exn (state:state) (is_def_file:bool) (def_lst:macro list) : macro list =
     match get_next_exn state with
     | STRING fn, st, _ ->
       let input = load_quoted_def_file_exn st fn in
       let def_lst = parse_def_file_exn def_lst fn input in
-      state_8_def_file_exn state def_lst
+      state_8_def_file_exn state is_def_file def_lst
     | DEF_FILE fn, st, _ ->
       let input = load_def_file_exn st fn in
       let def_lst = parse_def_file_exn def_lst fn input in
-      state_8_def_file_exn state def_lst
-    | IDENT id, lc, _   -> state_2_eqeq_or_lpar_exn state def_lst (lc,id)
+      state_8_def_file_exn state is_def_file def_lst
+    | IDENT id, lc, _   -> state_2_eqeq_or_lpar_exn state is_def_file def_lst (lc,id)
     | tk, st, _ ->
-      if is_end_of_def_clause tk then def_lst
+      if is_end_of_def_clause state is_def_file tk then def_lst
       else raise_err st tk
 
-  and state_2_eqeq_or_lpar_exn (state:state) (def_lst:macro list) (lc,def_name:loc*string) : macro list =
+  and state_2_eqeq_or_lpar_exn (state:state) is_def_file (def_lst:macro list) (lc,def_name:loc*string) : macro list =
     match get_next_exn state with
-    | EQUALEQUAL, _, _ -> state_3_body_exn state def_lst (lc,def_name) [] []
-    | LPAR, _, _ -> state_4_param_lst_exn state def_lst (lc,def_name)
+    | EQUALEQUAL, _, _ -> state_3_body_exn state is_def_file def_lst (lc,def_name) [] []
+    | LPAR, _, _ -> state_4_param_lst_exn state is_def_file def_lst (lc,def_name)
     | tk, st, _ -> raise_err st tk
 
-  and state_3_body_exn state (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) (tks_rev:t_token list) : macro list =
+  and state_3_body_exn state is_def_file (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) (tks_rev:t_token list) : macro list =
     match get_next_exn state with
     (* may be a separator *)
     | SEMICOLON, _, _ as next ->
@@ -316,57 +329,57 @@ end = struct
         begin
           let params = List.rev plst_rev in
           let tokens = List.rev tks_rev in
-          state_1_start_exn state ((lc,def_name,params,tokens)::def_lst)
+          state_1_start_exn state is_def_file ((lc,def_name,params,tokens)::def_lst)
         end
       else
-        state_3_body_exn state def_lst (lc,def_name) plst_rev (next::tks_rev)
+        state_3_body_exn state is_def_file def_lst (lc,def_name) plst_rev (next::tks_rev)
     | (tk, _, _ ) as next ->
       (* end of definition clause *)
-      if is_end_of_def_clause tk then
+      if is_end_of_def_clause state is_def_file tk then
         let params = List.rev plst_rev in
         let tokens = List.rev tks_rev in
         (lc,def_name,params,tokens)::def_lst
       else
         (* definition body *)
-        state_3_body_exn state def_lst (lc,def_name) plst_rev (next::tks_rev)
+        state_3_body_exn state is_def_file def_lst (lc,def_name) plst_rev (next::tks_rev)
 
-  and state_4_param_lst_exn (state:state) (def_lst:macro list) (lc,def_name:loc*string) : macro list =
+  and state_4_param_lst_exn (state:state) is_def_file (def_lst:macro list) (lc,def_name:loc*string) : macro list =
     match get_next_exn state with
-    | IDENT id, _, _ -> state_5_comma_or_rpar_exn state def_lst (lc,def_name) [id]
-    | RPAR, _, _ -> state_7_eqeq_exn state def_lst (lc,def_name) []
+    | IDENT id, _, _ -> state_5_comma_or_rpar_exn state is_def_file def_lst (lc,def_name) [id]
+    | RPAR, _, _ -> state_7_eqeq_exn state is_def_file def_lst (lc,def_name) []
     | tk, st, _ -> raise_err st tk
 
-  and state_5_comma_or_rpar_exn (state:state) (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) : macro list =
+  and state_5_comma_or_rpar_exn (state:state) is_def_file (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) : macro list =
     match get_next_exn state with
-    | COMMA, _, _ -> state_6_param_exn state def_lst (lc,def_name) plst_rev
-    | RPAR, _, _ -> state_7_eqeq_exn state def_lst (lc,def_name) plst_rev
+    | COMMA, _, _ -> state_6_param_exn state is_def_file def_lst (lc,def_name) plst_rev
+    | RPAR, _, _ -> state_7_eqeq_exn state is_def_file def_lst (lc,def_name) plst_rev
     | tk, st, _ -> raise_err st tk
 
-  and state_6_param_exn (state:state) (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) : macro list =
+  and state_6_param_exn (state:state) is_def_file (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) : macro list =
     match get_next_exn state with
-    | IDENT id, _, _ -> state_5_comma_or_rpar_exn state def_lst (lc,def_name) (id::plst_rev)
+    | IDENT id, _, _ -> state_5_comma_or_rpar_exn state is_def_file def_lst (lc,def_name) (id::plst_rev)
     | tk, st, _ -> raise_err st tk
 
-  and state_7_eqeq_exn (state:state) (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) : macro list =
+  and state_7_eqeq_exn (state:state) is_def_file (def_lst:macro list) (lc,def_name:loc*string) (plst_rev:string list) : macro list =
     match get_next_exn state with
-    | EQUALEQUAL, _, _ -> state_3_body_exn state def_lst (lc,def_name) plst_rev []
+    | EQUALEQUAL, _, _ -> state_3_body_exn state is_def_file def_lst (lc,def_name) plst_rev []
     | tk, st, _ -> raise_err st tk
 
   and parse_def_file_exn (def_lst:macro list) (fn:string) (input:in_channel) : macro list =
     let state = mk_state fn (Lexing.from_channel input) in
     match get_next_exn state with
-    | DEFINITIONS, _, _ ->  state_1_start_exn state def_lst
+    | DEFINITIONS, _, _ ->  state_1_start_exn state true def_lst
     | tk, st, _ -> raise_err st tk
 
-  and state_8_def_file_exn (state:state) (def_lst:macro list) : macro list =
+  and state_8_def_file_exn (state:state) (is_def_file:bool) (def_lst:macro list) : macro list =
     match get_next_exn state with
-    | SEMICOLON, _, _ -> state_1_start_exn state def_lst
+    | SEMICOLON, _, _ -> state_1_start_exn state is_def_file def_lst
     | tk, st, _ ->
-      if is_end_of_def_clause tk then def_lst
+      if is_end_of_def_clause state is_def_file tk then def_lst
       else raise_err st tk
 
   let parse_defs_exn (state:state) : macro_table =
-    let defs = state_1_start_exn state [] in
+    let defs = state_1_start_exn state false [] in
     let hsh = Hashtbl.create 47 in
     List.iter (fun (lc,id,params,body) ->
         Hashtbl.add hsh id (lc,params,body) ) defs;
@@ -508,13 +521,17 @@ end = struct
     | (PROPERTIES, st, ed)
     | (EOF, st, ed) as next -> next
 
+    | END, _, _ as next ->
+      if is_next_eof state then next
+      else read_until_next_clause_exn state
+
     | CONSTANT _, _, _ | E_PREFIX _, _, _ | PREDICATE _, _, _ | E_BINDER _, _, _
     | E_INFIX_125 _, _, _ | E_INFIX_160 _, _, _ | E_INFIX_170 _, _, _
     | E_INFIX_180 _, _, _ | E_INFIX_190 _, _, _ | E_INFIX_200 _, _, _
     | WHILE, _, _ | WHEN, _, _ | WHERE, _, _ | VARIANT, _, _ | VAR, _, _
     | TILDE, _, _ | THEN, _, _ | STRUCT, _, _ | SQUOTE, _, _ | SKIP, _, _
     | SELECT, _, _ | OF, _, _ | LBRA_COMP, _, _ | ELSIF, _, _ | ELSE, _, _
-    | CASE_OR, _, _ | BEGIN, _, _ | END, _, _ | PRE, _, _ | ASSERT, _, _
+    | CASE_OR, _, _ | BEGIN, _, _ | PRE, _, _ | ASSERT, _, _
     | CHOICE, _, _ | IF, _, _ | CASE, _, _ | OR, _, _ | EITHER, _, _ | ANY, _, _
     | LET, _, _ | BE, _, _ | DO, _, _ | IN, _, _ | CBOOL, _, _ | NOT, _, _
     | REC, _, _ | MAPLET, _, _ | LEFTARROW, _, _ | EQUIV, _, _

@@ -78,6 +78,7 @@ let args = [
   ("-I", Arg.String add_path, "Path for definitions files" );
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
   ("-x", Arg.Unit set_alstm_opt, "(no documentation)" );
+  ("-f", Arg.Int Lexer.set_macro_fuel, "Max number of definition expansions for one file (default is 999)." );
 ]
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

@@ -1,6 +1,9 @@
 open Grammar
 open Utils
 
+let fuel = ref 999
+let set_macro_fuel i = fuel := i
+
 module Lexer_With_Look_Ahead :
 sig
   type state
@@ -523,11 +526,13 @@ end = struct
     | SEMICOLON, _, _ | DEF_FILE _, _, _ | EQUALEQUAL, _, _ ->
       read_until_next_clause_exn state
 
-  let decr_fuel_exn (state:state) : unit =
+  let decr_fuel_exn lc (state:state) : unit =
     if state.fuel > 0 then
       state.fuel <- state.fuel - 1
     else
-      Error.raise_exn dloc "Cyclic macro detected."
+      Error.raise_exn lc ("Maximum number of definition expansions reached ("^
+                          string_of_int !fuel ^
+                          "). Use option -f to change this limit.")
 
   let get_next_exn (state:state) : t_token =
     let open Preprocessing in
@@ -545,7 +550,7 @@ end = struct
             next
           | Some macro ->
             begin
-              decr_fuel_exn state; (* no more than x macro expansions for one file to avoid cyclic macro expansions *)
+              decr_fuel_exn st state; (* no more than x macro expansions for one file to avoid cyclic macro expansions *)
               if has_parameters macro then
                 let params = get_params_exn lstate in
                 let () = expand_exn st lstate macro params in
@@ -566,12 +571,12 @@ end = struct
     let macros = Preprocessing.mk_macro_table_exn filename (Lexing.from_channel input) in
     seek_in input 0;
     let lstate = Lexer_With_Look_Ahead.mk_state filename (Lexing.from_channel input) in
-    { macros; lstate; fuel=999; }
+    { macros; lstate; fuel= !fuel; }
 
   let mk_state_from_string_exn (input:string) : state =
     let macros = Preprocessing.mk_macro_table_exn "noname" (Lexing.from_string input) in
     let lstate = Lexer_With_Look_Ahead.mk_state "noname" (Lexing.from_string input) in
-    { macros; lstate; fuel=999; }
+    { macros; lstate; fuel= !fuel; }
 
   let get_last_token_str (state:state) : string =
     Lexer_With_Look_Ahead.get_last_token_str state.lstate

@@ -96,6 +96,7 @@ let _ = List.iter (fun (name, keyword) ->
    "CONCRETE_VARIABLES" , CONCRETE_VARIABLES;
    "VISIBLE_VARIABLES" , CONCRETE_VARIABLES;
    "ABSTRACT_CONSTANTS" , ABSTRACT_CONSTANTS;
+   "HIDDEN_CONSTANTS" , ABSTRACT_CONSTANTS;
 
    "bool"      , CBOOL;
    "mod"       , E_INFIX_190 Syntax.Modulo;

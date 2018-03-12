@@ -47,9 +47,11 @@ let rec type_component_from_filename (ht:interface_table) (filename:string) : ma
         end
     end
 
-and f (ht:interface_table) (mch_name:string) : machine_interface option =
+and f (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : machine_interface option =
   match File.get_fullname_comp mch_name with
-  | None -> None
+  | None ->
+    let err = { Error.err_loc=mch_loc; err_txt="Cannot find machine '"^mch_name^"'." } in
+    ( Error.print_error err; None )
   | Some fn ->
    begin match type_component_from_filename ht fn with
      | Ok ok -> Some ok

@@ -42,8 +42,8 @@ let type_set : p_set -> t_set = function
                     var_typ=Btype.mk_Power (Btype.mk_Atomic v.var_id) },
                   List.map (fun e -> { var_loc=e.var_loc; var_id=e.var_id; var_typ=(Btype.mk_Atomic v.var_id) }) elts )
 
-let load_seen_mch_exn (f:string->Global.t_interface option) (env:Global.t) (mch:p_lident) : unit =
-  match f mch.lid_str with
+let load_seen_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) (mch:p_lident) : unit =
+  match f mch.lid_loc mch.lid_str with
   | None -> Error.raise_exn mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
   | Some itf ->
    begin match Global.load_interface_for_seen_machine env itf mch with
@@ -352,7 +352,7 @@ let rec is_implementation_subst (s:_ substitution) : unit =
   | Sequencement (s1,s2) ->
     ( is_implementation_subst s1; is_implementation_subst s2 )
 
-let type_machine_exn (f:string -> Global.t_interface option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,Btype.t) machine_desc =
+let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,Btype.t) machine_desc =
   let uf = Unif.create () in
   let mch_constraints = clause_some_err "Not implemented: machine with clause CONSTRAINTS." mch.mch_constraints in
   let mch_includes = clause_some_err "Not implemented: clause INCLUDES." mch.mch_includes in
@@ -386,8 +386,8 @@ let type_machine_exn (f:string -> Global.t_interface option) (gl:Global.t) (mch:
     mch_properties; mch_concrete_variables; mch_abstract_variables;
     mch_invariant; mch_assertions; mch_initialisation; mch_operations }
 
-let load_refines_exn (f:string->Global.t_interface option) (env:Global.t) (mch:p_lident) : unit =
-  match f mch.lid_str with
+let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) (mch:p_lident) : unit =
+  match f mch.lid_loc mch.lid_str with
   | None -> Error.raise_exn mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
   | Some itf ->
    begin match Global.load_interface_for_refined_machine env itf mch with
@@ -395,7 +395,7 @@ let load_refines_exn (f:string->Global.t_interface option) (env:Global.t) (mch:p
      | Error err -> raise (Error.Error err)
    end
 
-let type_refinement_exn (f:string->Global.t_interface option) (gl:Global.t) ref : (Utils.loc,Btype.t) refinement_desc =
+let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) ref : (Utils.loc,Btype.t) refinement_desc =
   let uf = Unif.create () in
   let () = load_refines_exn f gl ref.ref_refines in
   let ref_includes = clause_some_err "Not implemented: clause INCLUDES." ref.ref_includes in
@@ -449,10 +449,10 @@ let promote_op_exn (env:Global.t) (op_name:p_lident) : unit =
   | Ok () -> ()
   | Error err -> raise (Error.Error err)
 
-let load_extended_mch_exn f env mi =
+let load_extended_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) (mi:_ machine_instanciation) : _ machine_instanciation =
   match mi.mi_params with
   | [] ->
-    begin match f mi.mi_mch.lid_str with
+    begin match f mi.mi_mch.lid_loc mi.mi_mch.lid_str with
       | None -> Error.raise_exn mi.mi_mch.lid_loc ("The machine '"^mi.mi_mch.lid_str^"' does not typecheck.")
       | Some itf ->
         begin match Global.load_interface_for_extended_machine env itf mi.mi_mch with
@@ -462,10 +462,10 @@ let load_extended_mch_exn f env mi =
     end
   | _::_ -> Error.raise_exn mi.mi_mch.lid_loc "Not implemented: extension of machine with parameters."
 
-let load_imported_mch_exn f env mi =
+let load_imported_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) (mi:_ machine_instanciation) : _ machine_instanciation =
   match mi.mi_params with
   | [] ->
-    begin match f mi.mi_mch.lid_str with
+    begin match f mi.mi_mch.lid_loc mi.mi_mch.lid_str with
       | None -> Error.raise_exn mi.mi_mch.lid_loc ("The machine '"^mi.mi_mch.lid_str^"' does not typecheck.")
       | Some itf ->
        begin match Global.load_interface_for_imported_machine env itf mi.mi_mch with
@@ -496,7 +496,7 @@ let manage_set_concretisation_exn (gl:Global.t) (uf:Unif.t) (v,e) : unit =
       in
       Error.raise_exn e.exp_loc str
 
-let type_implementation_exn (f:string -> Global.t_interface option) (gl:Global.t) imp : (Utils.loc,Btype.t) implementation_desc =
+let type_implementation_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) imp : (Utils.loc,Btype.t) implementation_desc =
   let uf = Unif.create () in
   let () = load_refines_exn f gl imp.imp_refines in
   let () = iter_list_clause (load_seen_mch_exn f gl) imp.imp_sees in
@@ -535,7 +535,7 @@ let type_implementation_exn (f:string -> Global.t_interface option) (gl:Global.t
 let mk_comp co_loc co_name co_parameters co_desc : t_component =
   { co_name; co_parameters; co_loc; co_desc }
 
-let type_component (f:string -> Global.t_interface option) (env:Global.t) (co:p_component) : t_component Error.t_result =
+let type_component (f:Utils.loc -> string -> Global.t_interface option) (env:Global.t) (co:p_component) : t_component Error.t_result =
   try
     let params = match co.co_parameters with
       | [] -> []
@@ -552,7 +552,7 @@ let type_component (f:string -> Global.t_interface option) (env:Global.t) (co:p_
   with
   | Error.Error err -> Error err
 
-let get_interface (f:string -> Global.t_interface option) (co:p_component) : (t_component*Global.t_interface) Error.t_result =
+let get_interface (f:Utils.loc -> string -> Global.t_interface option) (co:p_component) : (t_component*Global.t_interface) Error.t_result =
   let env = Global.create () in
   match type_component f env co with
   | Ok cp -> Ok (cp,Global.to_interface env)

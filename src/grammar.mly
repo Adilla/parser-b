@@ -290,7 +290,7 @@ els: ELSE s=substitution { s }
 
 whn: WHEN p=predicate THEN s=substitution { (p,s) }
 
-case_or: CASE_OR e=expression THEN s=substitution { (e,s) }
+case_or: CASE_OR e=expression THEN s=substitution { (expr_to_nonempty_list e,s) }
 
 id_eq_expr: id=IDENT EQUAL e=expression { (mk_var $startpos(id) id,e) }
 
@@ -331,7 +331,7 @@ level1_substitution:
         EITHER e=expression THEN s=substitution
         ors=case_or*
         opt=option(els)
-  END END { mk_subst $startpos (Case (exp,Nlist.make (e,s) ors,opt)) }
+  END END { mk_subst $startpos (Case (exp,Nlist.make (expr_to_nonempty_list e,s) ors,opt)) }
 
 | ANY ids=var_nelist_comma WHERE p=predicate THEN s=substitution END { mk_subst $startpos (Any (ids,p,s)) }
 

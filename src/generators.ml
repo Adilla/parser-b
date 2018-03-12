@@ -219,7 +219,7 @@ let rec sized_subst : substitution Gen.sized = fun n rd ->
       Gen.map (fun (e,(es_nel,s_opt)) -> mk_subst (Case (e,es_nel,s_opt)))
         (Gen.pair gen_expr
            (sized_nel_and_opt
-              (fun fuel -> Gen.pair gen_expr (sized_subst fuel))
+              (fun fuel -> Gen.pair (fun rd -> Nlist.make1 (gen_expr rd)) (sized_subst fuel))
               sized_subst (n-1)) );
       Gen.map (fun (id_nel,p,s) -> mk_subst (Any (id_nel,p,s)))
         (Gen.triple gen_var_nelist gen_pred (sized_subst (n-1)));

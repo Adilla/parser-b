@@ -115,7 +115,7 @@ type ('lc,'ty) substitution_desc =
   | Choice of ('lc,'ty) substitution Nlist.t
   | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
   | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Case of ('lc,'ty) expression * (('lc,'ty) expression * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Case of ('lc,'ty) expression * (('lc,'ty) expression Nlist.t * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
   | Any of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) substitution
   | Let of ('lc,'ty) var Nlist.t * (('lc,'ty) var * ('lc,'ty) expression) Nlist.t * ('lc,'ty) substitution
   | BecomesElt of ('lc,'ty) var Nlist.t * ('lc,'ty) expression

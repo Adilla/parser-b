@@ -156,7 +156,7 @@ type ('lc,'ty) substitution_desc =
   | Choice of ('lc,'ty) substitution Nlist.t
   | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
   | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Case of ('lc,'ty) expression * (('lc,'ty) expression * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
+  | Case of ('lc,'ty) expression * (('lc,'ty) expression Nlist.t * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
   | Any of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) substitution
   | Let of ('lc,'ty) var Nlist.t * (('lc,'ty) var * ('lc,'ty) expression) Nlist.t * ('lc,'ty) substitution
   | BecomesElt of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
@@ -190,7 +190,7 @@ let rec subst_eq : type a b c d. (a,b) substitution -> (c,d) substitution -> boo
       | _, _ -> false
     end
   | Case (e1,lst1,opt1), Case (e2,lst2,opt2) ->
-    let aux (e1,s1) (e2,s2) = expr_eq e1 e2 && subst_eq s1 s2 in
+    let aux (lst1,s1) (lst2,s2) = Nlist.equal expr_eq lst1 lst2 && subst_eq s1 s2 in
     expr_eq e1 e2 && Nlist.equal aux lst1 lst2 &&
     begin match opt1, opt2 with
       | None, None -> true

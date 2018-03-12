@@ -631,11 +631,15 @@ let rec type_substitution_exn (env:env) (ctx:Local.t) (s0:p_substitution) : t_su
 
   | Case (e,nlst,c_else) ->
     let te = type_expression_exn env ctx e in
-    let aux (elt,s) =
-      let telt =  type_expression_exn env ctx elt in
-      match Unif.get_stype env.uf te.exp_typ telt.exp_typ with
-      | None -> unexpected_type_exn env.uf e.exp_loc telt.exp_typ te.exp_typ 
-      | Some _ -> (telt,type_substitution_exn env ctx s)
+    let aux (lst,s) =
+      let aux elt =
+        let telt = type_expression_exn env ctx elt in
+        match Unif.get_stype env.uf te.exp_typ telt.exp_typ with
+        | None -> unexpected_type_exn env.uf telt.exp_loc telt.exp_typ te.exp_typ 
+        | Some _ -> telt
+      in
+      let ts = type_substitution_exn env ctx s in
+      (Nlist.map aux lst,ts)
     in
     let t_else = match c_else with
       | None -> None
@@ -827,7 +831,7 @@ let rec close_subst (uf:Unif.t) (s:t_substitution0) : t_substitution =
     in
     mk_subst s.sub_loc (Select (Nlist.map aux nlst,topt))
   | Case (e,nlst,opt) -> 
-    let aux (e,s) = (close_expr uf e,close_subst uf s) in
+    let aux (lst,s) = (Nlist.map (close_expr uf) lst,close_subst uf s) in
     let topt = match opt with
       | None -> None
       | Some s0 -> Some (close_subst uf s0)

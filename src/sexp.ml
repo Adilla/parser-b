@@ -104,7 +104,9 @@ let rec sexp_of_subst : ('lc,'ty) substitution -> t = fun s ->
       | Some els -> List [Atom "SELECT";yy;sexp_of_subst els]
     end
   | Case (e,ylst,s_opt) ->
-    let aux (e,s) = List [sexp_of_expr e;sexp_of_subst s] in
+    let aux (lst,s) =
+      let lst = List.map sexp_of_expr (Nlist.to_list lst) in
+      List [List lst;sexp_of_subst s] in
     let yy = List (List.map aux (Nlist.to_list ylst)) in
     begin match s_opt with
       | None -> List [Atom "SELECT";sexp_of_expr e;yy]

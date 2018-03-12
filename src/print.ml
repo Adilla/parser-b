@@ -279,6 +279,10 @@ let rec get_par_list (s:_ substitution) =
   | Parallel (s1,s2) -> (get_par_list s1)@[s2]
   | _ -> [s]
 
+let mk_expr_nelist_comma (lst:_ expression Nlist.t) : Easy_format.t =
+  let lst = List.map ef_expr (Nlist.to_list lst) in
+  List (("",",","",list_1), lst)
+
 let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
   match s.sub_desc with
   | Skip -> mk_atom "skip"
@@ -357,11 +361,11 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
     let (e,s) = Nlist.hd eslst in
     let clst =
       [ [ (mk_atom "OF");
-          Label((mk_atom "EITHER",lb),ef_expr e);
+          Label((mk_atom "EITHER",lb),mk_expr_nelist_comma e);
           Label((mk_atom "THEN",lb),ef_subst s)] ]
       @
-      (List.map (fun (e,s) ->
-           [Label((mk_atom "OR",lb),ef_expr e);
+      (List.map (fun (lst,s) ->
+           [Label((mk_atom "OR",lb),mk_expr_nelist_comma lst);
             Label((mk_atom "THEN",lb),ef_subst s)]
          ) (Nlist.tl eslst))
       @ (match opt with

@@ -170,7 +170,7 @@ module Preprocessing : sig
   type macro
 
   val mk_macro_table_exn : string -> Lexing.lexbuf -> macro_table
-  val dump_table : macro_table -> unit
+  val dump_table : out_channel -> macro_table -> unit
   val find : macro_table -> string -> macro option
 
   val has_parameters : macro -> bool
@@ -217,20 +217,13 @@ end = struct
       Some (lc,id,params,body)
     with Not_found -> None
 
-  let dump_table (defs:macro_table) : unit =
-    let rec concat sep = function
-      | [] -> ""
-      | [s] -> s
-      | s::tl ->  s ^ "," ^ (concat sep tl)
+  let dump_table out (defs:macro_table) : unit =
+    let aux name (_,params,tokens) =
+      Printf.fprintf out "\n%s(%s) ==" name (String.concat "," params);
+      List.iter (fun (tk,_,_) -> Printf.fprintf out " %s" (token_to_string tk)) tokens;
+      Printf.fprintf out "\n"
     in
-    let aux name (loc,params,tokens) =
-      Printf.fprintf stderr "DEFINITIONS %s(%s) == (...)\n"
-        name (concat "," params)
-    in
-    Printf.fprintf stderr ">>> DefTable\n";
-    Hashtbl.iter aux defs;
-    Printf.fprintf stderr "<<< DefTable\n"
-
+    Hashtbl.iter aux defs
 
   let raise_err (loc:loc) (tk:token) =
     raise_exn loc ("Error in clause DEFINITIONS: unexpected token '" ^ token_to_string tk ^ "'.")
@@ -310,9 +303,11 @@ end = struct
       let input = load_def_file_exn st fn in
       let def_lst = parse_def_file_exn def_lst fn input in
       state_8_def_file_exn state is_def_file def_lst
+    | SEMICOLON, _, _   -> state_1_start_exn state is_def_file def_lst
     | IDENT id, lc, _   -> state_2_eqeq_or_lpar_exn state is_def_file def_lst (lc,id)
+    | EOF, st, _ -> def_lst
     | tk, st, _ ->
-      if is_end_of_def_clause state is_def_file tk then def_lst
+      if (not is_def_file) && is_end_of_def_clause state is_def_file tk then def_lst
       else raise_err st tk
 
   and state_2_eqeq_or_lpar_exn (state:state) is_def_file (def_lst:macro list) (lc,def_name:loc*string) : macro list =
@@ -333,12 +328,32 @@ end = struct
         end
       else
         state_3_body_exn state is_def_file def_lst (lc,def_name) plst_rev (next::tks_rev)
-    | (tk, _, _ ) as next ->
-      (* end of definition clause *)
-      if is_end_of_def_clause state is_def_file tk then
+    | (EOF, _, _ ) ->
+      let params = List.rev plst_rev in
+      let tokens = List.rev tks_rev in
+      (lc,def_name,params,tokens)::def_lst
+    | (INVARIANT, st, _ ) as next ->
+      let rec aux = function
+        | [] -> false
+        | (INVARIANT,_,_)::tl -> false
+        | (WHILE,_,_)::tl -> true
+        | _::tl -> aux tl
+      in
+      if aux tks_rev then
+        state_3_body_exn state is_def_file def_lst (lc,def_name) plst_rev (next::tks_rev)
+      else if is_def_file then raise_err st INVARIANT
+      else
         let params = List.rev plst_rev in
         let tokens = List.rev tks_rev in
         (lc,def_name,params,tokens)::def_lst
+    | (tk, st, _ ) as next ->
+      (* end of definition clause *)
+      if is_end_of_def_clause state is_def_file tk then
+        if is_def_file then raise_err st tk
+        else
+          let params = List.rev plst_rev in
+          let tokens = List.rev tks_rev in
+          (lc,def_name,params,tokens)::def_lst
       else
         (* definition body *)
         state_3_body_exn state is_def_file def_lst (lc,def_name) plst_rev (next::tks_rev)
@@ -374,8 +389,9 @@ end = struct
   and state_8_def_file_exn (state:state) (is_def_file:bool) (def_lst:macro list) : macro list =
     match get_next_exn state with
     | SEMICOLON, _, _ -> state_1_start_exn state is_def_file def_lst
+    | EOF, st, _ -> def_lst
     | tk, st, _ ->
-      if is_end_of_def_clause state is_def_file tk then def_lst
+      if (not is_def_file) && is_end_of_def_clause state is_def_file tk then def_lst
       else raise_err st tk
 
   let parse_defs_exn (state:state) : macro_table =
@@ -618,3 +634,11 @@ let mk_state_from_string str =
 let get_last_token_str = Lexer_With_Preprocessing.get_last_token_str
 
 let get_current_pos = Lexer_With_Preprocessing.get_current_pos
+
+type macro_table = Preprocessing.macro_table
+
+let mk_macro_table x y =
+ try Ok (Preprocessing.mk_macro_table_exn x y)
+ with Error.Error err -> Error err
+
+let print_macro_table = Preprocessing.dump_table

@@ -8,4 +8,8 @@ val get_next_exn : state -> t_token (* may raise exception Error.Error *)
 val get_current_pos : state -> Lexing.position
 val get_last_token_str : state -> string
 
+type macro_table
+val mk_macro_table : string -> Lexing.lexbuf -> macro_table Error.t_result
+val print_macro_table : out_channel -> macro_table -> unit
+
 val set_macro_fuel: int -> unit

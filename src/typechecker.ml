@@ -51,6 +51,16 @@ let load_seen_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:Glob
      | Error err -> raise (Error.Error err)
    end
 
+let load_included_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) (mi:_ machine_instanciation) : _ machine_instanciation =
+  (*FIXME check parameters*)
+  match f mi.mi_mch.lid_loc mi.mi_mch.lid_str with
+  | None -> Error.raise_exn mi.mi_mch.lid_loc ("The machine '"^mi.mi_mch.lid_str^"' does not typecheck.")
+  | Some itf ->
+   begin match Global.load_interface_for_included_machine env itf mi.mi_mch with
+     | Ok () -> { mi_mch=mi.mi_mch; mi_params=[] }
+     | Error err -> raise (Error.Error err)
+   end
+
 let declare_global_symbol_exn (env:Global.t)  (kind:Global.t_kind) (v:Inference.t_var) : unit =
   match Global.add_symbol env v.var_loc v.var_id v.var_typ kind with
   | Ok () -> ()
@@ -355,11 +365,12 @@ let rec is_implementation_subst (s:_ substitution) : unit =
 let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,Btype.t) machine_desc =
   let uf = Unif.create () in
   let mch_constraints = clause_some_err "Not implemented: machine with clause CONSTRAINTS." mch.mch_constraints in
-  let mch_includes = clause_some_err "Not implemented: clause INCLUDES." mch.mch_includes in
+(*   let mch_includes = clause_some_err "Not implemented: clause INCLUDES." mch.mch_includes in *)
   let mch_promotes = clause_some_err "Not implemented: clause PROMOTES." mch.mch_promotes in
   let mch_extends = clause_some_err "Not implemented: clause EXTENDS." mch.mch_extends in
   let mch_uses = clause_some_err "Not implemented: clause USES." mch.mch_uses in
   let () = iter_list_clause (load_seen_mch_exn f gl) mch.mch_sees in
+  let mch_includes = map_list_clause (load_included_mch_exn f gl) mch.mch_includes in
   let mch_sets = map_list_clause (declare_set_exn gl) mch.mch_sets in
   let (mch_concrete_constants,mch_abstract_constants,mch_properties) =
     declare_constants_exn gl uf mch.mch_concrete_constants
@@ -398,10 +409,11 @@ let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
 let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) ref : (Utils.loc,Btype.t) refinement_desc =
   let uf = Unif.create () in
   let () = load_refines_exn f gl ref.ref_refines in
-  let ref_includes = clause_some_err "Not implemented: clause INCLUDES." ref.ref_includes in
+(*   let ref_includes = clause_some_err "Not implemented: clause INCLUDES." ref.ref_includes in *)
   let ref_promotes = clause_some_err "Not implemented: clause PROMOTES." ref.ref_promotes in
   let ref_extends = clause_some_err "Not implemented: clause EXTENDS."ref.ref_extends in
   let () = iter_list_clause (load_seen_mch_exn f gl) ref.ref_sees in
+  let ref_includes = map_list_clause (load_included_mch_exn f gl) ref.ref_includes in
   let ref_sets = map_list_clause (declare_set_exn gl) ref.ref_sets in
   let (ref_concrete_constants,ref_abstract_constants,ref_properties) =
     declare_constants_exn gl uf ref.ref_concrete_constants

@@ -10,7 +10,9 @@ type t_source =
   | S_Current_Mch_Only of loc
   | S_Seen_Mch_Only of p_lident
   | S_Refined_Mch_Only of p_lident
+  | S_Included_Mch_Only of p_lident
   | S_Current_And_Refined_Mch of loc*p_lident
+  | S_Included_And_Refined_Mch of p_lident*p_lident
   | S_Imported_Mch_Only of p_lident
   | S_Current_And_Imported_Mch of loc * p_lident
   | S_Imported_And_Refined_Mch of p_lident * p_lident
@@ -23,12 +25,15 @@ type t_source2 =
   | Src_Seen of p_lident
   | Src_Refined of p_lident
   | Src_Imported of p_lident
+  | Src_Included of p_lident
 
 type t_op_source =
   | OS_Seen_Mch of p_lident
   | OS_Current_Mch_Only of loc
   | OS_Refined_Mch_Only of p_lident
+  | OS_Included_Mch_Only of p_lident
   | OS_Current_And_Refined_Mch of loc * p_lident
+  | OS_Included_And_Refined_Mch of p_lident * p_lident
   | OS_Local_Spec of loc
   | OS_Local_Spec_And_Implem of loc*loc
   | OS_Imported_Only of p_lident
@@ -89,7 +94,7 @@ let get_symbol_kind (env:t) (id:ident) : t_kind option =
   try Some (Hashtbl.find env.symb id).sy_kind
   with Not_found -> None
 
-let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool =
+let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool = (*FIXME*)
   match cl, ki, src with
   | C_Properties, (K_Abstract_Variable|K_Concrete_Variable), _ -> false
   | C_Properties, _, _ -> true
@@ -119,7 +124,7 @@ let get_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : Btype
     Not_found -> Error { Error.err_loc=loc;
                          err_txt="Unknown identifier '"^id^"'." }
 
-let is_symbol_writable ki src cl =
+let is_symbol_writable ki src cl = (*FIXME*)
   match ki, src, cl with
   | (K_Abstract_Variable|K_Concrete_Variable),
     (S_Current_Mch_Only _|S_Current_And_Refined_Mch _|S_Refined_Mch_Only _), _ -> true
@@ -173,7 +178,9 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
   | Src_Current lc, S_Current_And_Refined_Mch _
   | Src_Current lc, S_Current_And_Imported_Mch _
   | Src_Current lc, S_Current_Imported_And_Refined_Mch _
-  | Src_Current lc, S_Ghost ->
+  | Src_Current lc, S_Ghost
+  | Src_Current lc, S_Included_Mch_Only _
+  | Src_Current lc, S_Included_And_Refined_Mch _ ->
     Error { Error.err_loc=lc;
             err_txt="The identifier '"^id^"' is already declared." }
 
@@ -189,6 +196,8 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
   | Src_Imported imp, S_Current_And_Imported_Mch _
   | Src_Imported imp, S_Imported_And_Refined_Mch _
   | Src_Imported imp, S_Current_Imported_And_Refined_Mch _
+  | Src_Imported imp, S_Included_And_Refined_Mch _
+  | Src_Imported imp, S_Included_Mch_Only _
   | Src_Imported imp, S_Ghost ->
     Error { Error.err_loc=imp.lid_loc;
             err_txt="The identifier '"^id^"' is already declared." }
@@ -196,12 +205,28 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
   | Src_Refined ref, S_Current_Mch_Only lc -> Ok (S_Current_And_Refined_Mch (lc,ref))
   | Src_Refined ref, S_Imported_Mch_Only imp -> Ok (S_Imported_And_Refined_Mch (imp,ref))
   | Src_Refined ref, S_Current_And_Imported_Mch (lc,imp) -> Ok (S_Current_Imported_And_Refined_Mch (lc,imp,ref))
+  | Src_Refined ref, S_Included_Mch_Only mch -> Ok (S_Included_And_Refined_Mch (mch,ref))
   | Src_Refined ref, S_Seen_Mch_Only _
   | Src_Refined ref, S_Refined_Mch_Only _
   | Src_Refined ref, S_Current_And_Refined_Mch _
   | Src_Refined ref, S_Imported_And_Refined_Mch _
   | Src_Refined ref, S_Current_Imported_And_Refined_Mch _
-  | Src_Refined ref, S_Ghost ->
+  | Src_Refined ref, S_Ghost
+  | Src_Refined ref, S_Included_And_Refined_Mch _ ->
+    Error { Error.err_loc=ref.lid_loc;
+            err_txt="The identifier '"^id^"' is already declared." }
+
+  | Src_Included ref, S_Refined_Mch_Only mch -> Ok (S_Included_And_Refined_Mch (ref,mch))
+  | Src_Included ref, S_Current_Mch_Only _
+  | Src_Included ref, S_Current_And_Refined_Mch _
+  | Src_Included ref, S_Seen_Mch_Only _
+  | Src_Included ref, S_Imported_Mch_Only _
+  | Src_Included ref, S_Current_And_Imported_Mch _
+  | Src_Included ref, S_Imported_And_Refined_Mch _
+  | Src_Included ref, S_Current_Imported_And_Refined_Mch _
+  | Src_Included ref, S_Included_And_Refined_Mch _
+  | Src_Included ref, S_Included_Mch_Only _
+  | Src_Included ref, S_Ghost ->
     Error { Error.err_loc=ref.lid_loc;
             err_txt="The identifier '"^id^"' is already declared." }
 
@@ -237,6 +262,7 @@ let _add_symbol (env:t) (err_loc:loc) (id:ident) (sy_typ:Btype.t) (sy_kind:t_kin
       | Src_Seen mch -> S_Seen_Mch_Only mch
       | Src_Imported mch -> S_Imported_Mch_Only mch
       | Src_Refined mch -> S_Refined_Mch_Only mch
+      | Src_Included mch -> S_Included_Mch_Only mch
       | Src_Current_Local _ -> assert false
     in
     Ok (Hashtbl.add env.symb id { sy_typ; sy_kind; sy_src })
@@ -250,6 +276,8 @@ let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_sourc
   match src2, src1 with
   | Src_Current lc, OS_Refined_Mch_Only ref -> Ok (OS_Current_And_Refined_Mch (lc,ref))
   | Src_Current lc, OS_Local_Spec spe -> Ok (OS_Local_Spec_And_Implem (spe,lc))
+  | Src_Current lc, OS_Included_Mch_Only _
+  | Src_Current lc, OS_Included_And_Refined_Mch _
   | Src_Current lc, OS_Seen_Mch _
   | Src_Current lc, OS_Current_Mch_Only _
   | Src_Current lc, OS_Current_And_Refined_Mch _
@@ -261,6 +289,8 @@ let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_sourc
     Error { Error.err_loc=lc;
             err_txt="The operation '"^id^"' is already declared." }
   | Src_Current_Local lc, OS_Current_Mch_Only lc2 -> Ok (OS_Local_Spec_And_Implem (lc,lc2))
+  | Src_Current_Local lc, OS_Included_Mch_Only _
+  | Src_Current_Local lc, OS_Included_And_Refined_Mch _
   | Src_Current_Local lc, OS_Refined_Mch_Only _
   | Src_Current_Local lc, OS_Local_Spec _
   | Src_Current_Local lc, OS_Seen_Mch _
@@ -273,6 +303,8 @@ let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_sourc
     Error { Error.err_loc=lc;
             err_txt="The operation '"^id^"' is already declared." }
   | Src_Imported imp, OS_Refined_Mch_Only ref -> Ok (OS_Imported_And_Refined (imp,ref))
+  | Src_Imported imp, OS_Included_And_Refined_Mch _
+  | Src_Imported imp, OS_Included_Mch_Only _
   | Src_Imported imp, OS_Current_Mch_Only _
   | Src_Imported imp, OS_Local_Spec _
   | Src_Imported imp, OS_Seen_Mch _
@@ -287,6 +319,8 @@ let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_sourc
   | Src_Refined ref, OS_Current_Mch_Only lc -> Ok (OS_Current_And_Refined_Mch (lc,ref))
   | Src_Refined ref, OS_Imported_Only imp -> Ok (OS_Imported_And_Refined (ref,imp))
   | Src_Refined ref, OS_Imported_And_Promoted (lc,imp) -> Ok (OS_Imported_Promoted_And_Refined (lc,imp,ref))
+  | Src_Refined ref, OS_Included_Mch_Only mch -> Ok (OS_Included_And_Refined_Mch (mch,ref))
+  | Src_Refined ref, OS_Included_And_Refined_Mch _
   | Src_Refined ref, OS_Refined_Mch_Only _
   | Src_Refined ref, OS_Local_Spec _
   | Src_Refined ref, OS_Seen_Mch _
@@ -295,6 +329,10 @@ let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_sourc
   | Src_Refined ref, OS_Imported_And_Refined _
   | Src_Refined ref, OS_Imported_Promoted_And_Refined _ ->
     Error { Error.err_loc=ref.lid_loc;
+            err_txt="The operation '"^id^"' is already declared." }
+  | Src_Included ref, OS_Refined_Mch_Only mch -> Ok (OS_Included_And_Refined_Mch (ref,mch))
+  | Src_Included mch, _ -> 
+    Error { Error.err_loc=mch.lid_loc;
             err_txt="The operation '"^id^"' is already declared." }
   | Src_Seen mch, _ -> 
     Error { Error.err_loc=mch.lid_loc;
@@ -341,6 +379,7 @@ let _add_operation (env:t) (err_loc:loc) (id:ident) (args:t_op_type) (op_readonl
       | Src_Seen mch -> OS_Seen_Mch mch
       | Src_Imported mch -> OS_Imported_Only mch
       | Src_Refined mch -> OS_Refined_Mch_Only mch
+      | Src_Included mch -> OS_Included_Mch_Only mch
     in
     Ok (Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly; op_src })
 
@@ -349,7 +388,8 @@ let is_operation_visible is_readonly = function
   | OS_Current_Mch_Only _ | OS_Refined_Mch_Only _ | OS_Current_And_Refined_Mch _ -> false
   | OS_Local_Spec _ | OS_Local_Spec_And_Implem _ | OS_Imported_Only _
   | OS_Imported_And_Promoted _ | OS_Imported_And_Refined _
-  | OS_Imported_Promoted_And_Refined _ -> true
+  | OS_Imported_Promoted_And_Refined _ | OS_Included_Mch_Only _
+  | OS_Included_And_Refined_Mch _ -> true
 
 let get_operation_type (env:t) (err_loc:loc) (id:ident) =
   try
@@ -389,7 +429,8 @@ let promote_operation (env:t) (loc:loc) (id:ident) =
         Error { Error.err_loc=loc;
                 err_txt="The operation '"^id^"' is already promoted." }
       | OS_Seen_Mch _ | OS_Current_Mch_Only _ | OS_Current_And_Refined_Mch _
-      | OS_Local_Spec_And_Implem _ | OS_Refined_Mch_Only _ | OS_Local_Spec _ ->
+      | OS_Local_Spec_And_Implem _ | OS_Refined_Mch_Only _ | OS_Local_Spec _
+      | OS_Included_Mch_Only _ | OS_Included_And_Refined_Mch _ ->
         Error { Error.err_loc=loc;
                 err_txt="The operation '"^id^"' is not an operation of an imported machine." }
     end
@@ -407,6 +448,19 @@ let load_interface_for_seen_machine (env:t) (itf:MachineInterface.t) (mch:p_lide
     Error.list_iter (
       fun (r:t_op) -> _add_operation env mch.lid_loc r.id {args_in=r.args_in;args_out=r.args_out} r.readonly (Src_Seen mch)
     ) (get_operations itf)
+
+let load_interface_for_included_machine (env:t) (itf:MachineInterface.t) (mch:p_lident) : unit Error.t_result =
+  let open MachineInterface in
+  let res =
+    Error.list_iter (fun (r:t_symb) ->
+        _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Included mch)) (get_symbols itf)
+  in
+  match res with
+  | Error _ as err -> err
+  | Ok _ ->
+    Error.list_iter (fun (r:t_op) ->
+        _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Included mch)
+      ) (get_operations itf)
 
 let load_interface_for_refined_machine (env:t) (itf:MachineInterface.t) (mch:p_lident) : unit Error.t_result =
   let open MachineInterface in
@@ -450,7 +504,8 @@ let to_interface (env:t) : MachineInterface.t =
   let aux1 x symb lst =
     match symb.sy_src with
     | S_Current_Mch_Only _ | S_Current_And_Refined_Mch _ | S_Current_And_Imported_Mch _
-    | S_Current_Imported_And_Refined_Mch _ | S_Refined_Mch_Only _ ->
+    | S_Current_Imported_And_Refined_Mch _ | S_Refined_Mch_Only _ | S_Included_Mch_Only _
+    | S_Included_And_Refined_Mch _ ->
       { MachineInterface.
         id=x; typ=symb.sy_typ; kind=symb.sy_kind; hidden=false }::lst
     | S_Imported_And_Refined_Mch _ | S_Imported_Mch_Only _ | S_Ghost ->
@@ -463,7 +518,8 @@ let to_interface (env:t) : MachineInterface.t =
     | OS_Seen_Mch _ | OS_Local_Spec _ | OS_Local_Spec_And_Implem _
     | OS_Imported_And_Refined _ | OS_Imported_Only _ -> lst
     | OS_Current_Mch_Only _ | OS_Current_And_Refined_Mch _ | OS_Imported_And_Promoted _
-    | OS_Imported_Promoted_And_Refined _ | OS_Refined_Mch_Only _ ->
+    | OS_Imported_Promoted_And_Refined _ | OS_Refined_Mch_Only _
+    | OS_Included_Mch_Only _ | OS_Included_And_Refined_Mch _ ->
       { MachineInterface.
         id=x; args_in=op.op_args_in; args_out=op.op_args_out; readonly=op.op_readonly }::lst
   in
@@ -477,6 +533,8 @@ let check_operation_coherence (env:t) (err_loc:loc) (is_imp:bool) : unit Error.t
       fun x op ->
         match op.op_src with
         | OS_Seen_Mch _ -> ()
+        | OS_Included_Mch_Only _ -> ()
+        | OS_Included_And_Refined_Mch _ -> ()
         | OS_Refined_Mch_Only _ ->
           if is_imp then
             Error.raise_exn err_loc ("The operation '"^x^"' is not refined.")

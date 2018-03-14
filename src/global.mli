@@ -41,6 +41,7 @@ type t_interface
 val to_interface : t -> t_interface 
 
 val load_interface_for_seen_machine : t -> t_interface -> p_lident -> unit Error.t_result
+val load_interface_for_included_machine : t -> t_interface -> p_lident -> unit Error.t_result
 val load_interface_for_refined_machine : t -> t_interface -> p_lident -> unit Error.t_result
 val load_interface_for_imported_machine : t -> t_interface -> p_lident -> unit Error.t_result
 val load_interface_for_extended_machine : t -> t_interface -> p_lident -> unit Error.t_result

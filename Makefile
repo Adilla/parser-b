@@ -1,8 +1,11 @@
-.PHONY: clean bformat btags brandom btype b2sexp test_random test_bformat_with_coverage
+.PHONY: clean bformat btags brandom btype b2sexp test_random test_bformat_with_coverage bdefs
 
 OCB_OPT=-Is src,tools -use-ocamlfind
 
-all: bformat btags brandom btypecheck b2sexp
+all: bformat btags brandom btypecheck b2sexp bdefs
+
+bdefs:
+	ocamlbuild $(OCB_OPT) bdefs.native
 
 b2sexp:
 	ocamlbuild $(OCB_OPT) b2sexp.native

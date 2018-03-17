@@ -17,4 +17,6 @@ val to_string : t -> string
 val equal : t -> t -> bool
 
 val occurs : int -> t -> bool
+val occurs2 : int -> t -> bool*bool
 val subst : int -> t -> t -> t
+val subst2 : int -> t -> t -> t*bool

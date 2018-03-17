@@ -50,6 +50,27 @@ let rec equal ty1 ty2 =
       with Invalid_argument _ -> false )
   | _, _ -> false
 
+let rec occurs2 (n:int) (t:t) : bool*bool =
+  match t with
+  | T_Atomic _ -> (false,true)
+  | T_Power ty -> occurs2 n ty
+  | T_Product (ty1,ty2) ->
+    let occ1,isc1 = occurs2 n ty1 in
+    if occ1 then (true,false)
+    else
+      let occ2,isc2 = occurs2 n ty2 in
+      (occ2, isc1&&isc2)
+  | T_Meta m -> (n=m,false)
+  | T_Record lst -> 
+    let rec aux (isc0:bool) : (_*t) list -> bool*bool = function
+      | [] -> (false,isc0)
+      | (_,hd)::tl ->
+        let occ,isc = occurs2 n hd in
+        if occ then (true,false)
+        else aux (isc&&isc0) tl
+    in
+    aux true lst
+
 let rec occurs n t =
   match t with
   | T_Atomic _ -> false
@@ -58,6 +79,25 @@ let rec occurs n t =
   | T_Meta m -> n=m
   | T_Record lst ->  List.exists (fun (_,t) -> occurs n t) lst
 
+let rec subst2 n rep ty =
+  match ty with
+  | T_Atomic _ as ty -> ty,true
+  | T_Power ty -> let nty,is_cl = subst2 n rep ty in T_Power nty, is_cl
+  | T_Product (ty1,ty2) ->
+    let nty1, is_cl1 = subst2 n rep ty1 in
+    let nty2, is_cl2 = subst2 n rep ty2 in
+    T_Product (nty1,nty2), (is_cl1&&is_cl2)
+  | T_Record lst ->
+    let rec aux is_cl0 lst_rev = function
+      | [] -> (List.rev lst_rev,is_cl0)
+      | (id,hd)::tl ->
+        let nty,is_cl = subst2 n rep hd in
+        aux (is_cl0&&is_cl) ((id,nty)::lst_rev) tl
+    in
+    let lst,is_cl = aux true [] lst in
+    (T_Record lst), is_cl
+  | T_Meta m as ty -> if n=m then rep,true else ty,false
+
 let rec subst n rep ty =
   match ty with
   | T_Atomic _ as ty -> ty
@@ -65,3 +105,4 @@ let rec subst n rep ty =
   | T_Product (ty1,ty2) -> T_Product (subst n rep ty1,subst n rep ty2)
   | T_Record lst -> T_Record (List.map (fun (s,ty) -> (s,subst n rep ty)) lst)
   | T_Meta m as ty -> if n=m then rep else ty
+

@@ -298,10 +298,12 @@ end = struct
     | STRING fn, st, _ ->
       let input = load_quoted_def_file_exn st fn in
       let def_lst = parse_def_file_exn def_lst fn input in
+      let () = close_in input in
       state_8_def_file_exn state is_def_file def_lst
     | DEF_FILE fn, st, _ ->
       let input = load_def_file_exn st fn in
       let def_lst = parse_def_file_exn def_lst fn input in
+      let () = close_in input in
       state_8_def_file_exn state is_def_file def_lst
     | SEMICOLON, _, _   -> state_1_start_exn state is_def_file def_lst
     | IDENT id, lc, _   -> state_2_eqeq_or_lpar_exn state is_def_file def_lst (lc,id)

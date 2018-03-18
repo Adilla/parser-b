@@ -52,14 +52,17 @@ let load_seen_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:Glob
    end
 
 let load_included_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) (mi:_ machine_instanciation) : _ machine_instanciation =
-  (*FIXME check parameters*)
-  match f mi.mi_mch.lid_loc mi.mi_mch.lid_str with
-  | None -> Error.raise_exn mi.mi_mch.lid_loc ("The machine '"^mi.mi_mch.lid_str^"' does not typecheck.")
-  | Some itf ->
-   begin match Global.load_interface_for_included_machine env itf mi.mi_mch with
-     | Ok () -> { mi_mch=mi.mi_mch; mi_params=[] }
-     | Error err -> raise (Error.Error err)
-   end
+  match mi.mi_params with
+  | [] ->
+    begin match f mi.mi_mch.lid_loc mi.mi_mch.lid_str with
+      | None -> Error.raise_exn mi.mi_mch.lid_loc ("The machine '"^mi.mi_mch.lid_str^"' does not typecheck.")
+      | Some itf ->
+        begin match Global.load_interface_for_included_machine env itf mi.mi_mch with
+          | Ok () -> { mi_mch=mi.mi_mch; mi_params=[] }
+          | Error err -> raise (Error.Error err)
+        end
+    end
+  | _::_ -> Error.raise_exn mi.mi_mch.lid_loc "Not implemented: inclusion of machine with parameters."
 
 let declare_global_symbol_exn (env:Global.t)  (kind:Global.t_kind) (v:Inference.t_var) : unit =
   match Global.add_symbol env v.var_loc v.var_id v.var_typ kind with
@@ -365,7 +368,6 @@ let rec is_implementation_subst (s:_ substitution) : unit =
 let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,Btype.t) machine_desc =
   let uf = Unif.create () in
   let mch_constraints = clause_some_err "Not implemented: machine with clause CONSTRAINTS." mch.mch_constraints in
-(*   let mch_includes = clause_some_err "Not implemented: clause INCLUDES." mch.mch_includes in *)
   let mch_promotes = clause_some_err "Not implemented: clause PROMOTES." mch.mch_promotes in
   let mch_extends = clause_some_err "Not implemented: clause EXTENDS." mch.mch_extends in
   let mch_uses = clause_some_err "Not implemented: clause USES." mch.mch_uses in
@@ -409,7 +411,6 @@ let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
 let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) ref : (Utils.loc,Btype.t) refinement_desc =
   let uf = Unif.create () in
   let () = load_refines_exn f gl ref.ref_refines in
-(*   let ref_includes = clause_some_err "Not implemented: clause INCLUDES." ref.ref_includes in *)
   let ref_promotes = clause_some_err "Not implemented: clause PROMOTES." ref.ref_promotes in
   let ref_extends = clause_some_err "Not implemented: clause EXTENDS."ref.ref_extends in
   let () = iter_list_clause (load_seen_mch_exn f gl) ref.ref_sees in

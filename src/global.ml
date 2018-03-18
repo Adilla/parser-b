@@ -520,10 +520,9 @@ let to_interface (env:t) : MachineInterface.t =
   let aux2 x op lst =
     match op.op_src with
     | OS_Seen_Mch _ | OS_Local_Spec _ | OS_Local_Spec_And_Implem _
-    | OS_Imported_And_Refined _ | OS_Imported_Only _ -> lst
+    | OS_Imported_And_Refined _ | OS_Imported_Only _ | OS_Included_Mch_Only _ -> lst
     | OS_Current_Mch_Only _ | OS_Current_And_Refined_Mch _ | OS_Imported_And_Promoted _
-    | OS_Imported_Promoted_And_Refined _ | OS_Refined_Mch_Only _
-    | OS_Included_Mch_Only _ | OS_Included_And_Refined_Mch _ ->
+    | OS_Imported_Promoted_And_Refined _ | OS_Refined_Mch_Only _ | OS_Included_And_Refined_Mch _ ->
       { MachineInterface.
         id=x; args_in=op.op_args_in; args_out=op.op_args_out; readonly=op.op_readonly }::lst
   in

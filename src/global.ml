@@ -1,5 +1,9 @@
 open Utils
 open Syntax
+
+let extended_sees = ref false
+let set_extended_sees b = extended_sees := b
+
 type t_kind = 
   | K_Abstract_Variable | K_Concrete_Variable
   | K_Abstract_Constant | K_Concrete_Constant
@@ -98,7 +102,7 @@ let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool = (*FIXME*
   match cl, ki, src with
   | C_Properties, (K_Abstract_Variable|K_Concrete_Variable), _ -> false
   | C_Properties, _, _ -> true
-  | C_Invariant_Or_Assertions, (K_Abstract_Variable|K_Concrete_Variable), S_Seen_Mch_Only _ -> false
+  | C_Invariant_Or_Assertions, (K_Abstract_Variable|K_Concrete_Variable), S_Seen_Mch_Only _ -> !extended_sees
   | C_Invariant_Or_Assertions, _, _ -> true
   | C_Operations, K_Abstract_Constant, (S_Refined_Mch_Only _|S_Imported_Mch_Only _|S_Imported_And_Refined_Mch _) -> false
   | C_Operations, K_Abstract_Variable, (S_Refined_Mch_Only _|S_Imported_Mch_Only _|S_Imported_And_Refined_Mch _) -> false

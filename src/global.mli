@@ -47,3 +47,5 @@ val load_interface_for_imported_machine : t -> t_interface -> p_lident -> unit E
 val load_interface_for_extended_machine : t -> t_interface -> p_lident -> unit Error.t_result
 
 val check_operation_coherence: t -> loc -> bool -> unit Error.t_result
+
+val set_extended_sees: bool -> unit

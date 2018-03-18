@@ -98,7 +98,7 @@ let get_symbol_kind (env:t) (id:ident) : t_kind option =
   try Some (Hashtbl.find env.symb id).sy_kind
   with Not_found -> None
 
-let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool = (*FIXME*)
+let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool =
   match cl, ki, src with
   | C_Properties, (K_Abstract_Variable|K_Concrete_Variable), _ -> false
   | C_Properties, _, _ -> true
@@ -128,7 +128,7 @@ let get_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : Btype
     Not_found -> Error { Error.err_loc=loc;
                          err_txt="Unknown identifier '"^id^"'." }
 
-let is_symbol_writable ki src cl = (*FIXME*)
+let is_symbol_writable ki src cl =
   match ki, src, cl with
   | (K_Abstract_Variable|K_Concrete_Variable),
     (S_Current_Mch_Only _|S_Current_And_Refined_Mch _|S_Refined_Mch_Only _), _ -> true

@@ -26,6 +26,9 @@ val get_symbol_kind : t -> ident -> t_kind option
 val get_symbol_type_in_clause : t -> loc -> ident -> t_clause -> Btype.t Error.t_result
 val get_writable_symbol_type_in_clause : t -> loc -> ident -> t_clause -> Btype.t Error.t_result
 
+val get_alias : t -> Btype.t_alias 
+val add_alias : t -> string -> Btype.t -> bool
+
 type t_op_type = { args_in:(ident*Btype.t) list; args_out:(ident*Btype.t) list; }
 
 val get_operation_type2 : t -> ident -> t_op_type option

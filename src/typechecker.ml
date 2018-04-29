@@ -79,23 +79,23 @@ let declare_set_exn (env:Global.t) (s:p_set) : t_set =
   in
   ts
 
-let declare (uf:Unif.t) (ctx:Inference.Local.t) (id:string) (ro:bool) : Inference.Local.t = 
-  let mt = Unif.new_meta uf in
+let declare (ctx:Inference.Local.t) (id:string) (ro:bool) : Inference.Local.t = 
+  let mt = Btype.Unif.new_meta () in
   Inference.Local.add ctx id mt ro
 
-let declare_local_symbol_with_global_type (env:Global.t) (uf:Unif.t)
+let declare_local_symbol_with_global_type (env:Global.t)
     (k:Global.t_kind) (ctx:Inference.Local.t) (v:p_var) : Inference.Local.t =
   match Global.get_symbol_type env v.var_id with
-  | None -> declare uf ctx v.var_id false
-  | Some ty -> Inference.Local.add ctx v.var_id (Btype.to_btype_mt ty) false
+  | None -> declare ctx v.var_id false
+  | Some ty -> Inference.Local.add ctx v.var_id (Btype.to_unif ty) false
 
-let type_var_exn (env:Global.t) (uf:Unif.t) (ctx:Inference.Local.t) (v:p_var) : Inference.t_var =
+let type_var_exn (env:Global.t) (ctx:Inference.Local.t) (v:p_var) : Inference.t_var =
   match Inference.Local.get ctx v.var_id with
   | Some (var_typ,_) ->
-    begin match Btype.from_btype_mt (Unif.normalize uf var_typ) with
+    begin match Btype.close var_typ with
       | None ->
         let str = Printf.sprintf "The type of symbol '%s' could not be fully infered. The type infered so far is '%s'."
-            v.var_id (Btype_mt.to_string (Unif.normalize uf var_typ)) in
+            v.var_id (Btype.Unif.to_string var_typ) in
         Error.raise_exn v.var_loc str
       | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
     end
@@ -105,61 +105,59 @@ let type_var_exn (env:Global.t) (uf:Unif.t) (ctx:Inference.Local.t) (v:p_var) : 
       | None -> assert false
     end
 
-let type_predicate_exn env ctx p =
-  match Inference.type_predicate env ctx p with
+let type_predicate_exn cl env ctx p =
+  match Inference.type_predicate cl env ctx p with
   | Ok x -> x
   | Error err -> raise (Error.Error err)
 
-let type_substitution_exn env ctx s =
-  match Inference.type_substitution env ctx s with
+let type_substitution_exn cl env ctx s =
+  match Inference.type_substitution cl env ctx s with
   | Ok x -> x
   | Error err -> raise (Error.Error err)
 
-let type_expression_exn env ctx e =
-  match Inference.type_expression env ctx e with
+let type_expression_exn cl env ctx e =
+  match Inference.type_expression cl env ctx e with
   | Ok x -> x
   | Error err -> raise (Error.Error err)
 
-let mk_env gl uf cl = let open Inference in {uf;gl;cl}
-
-let declare_constants_exn (gl:Global.t) (uf:Unif.t) cconst aconst prop =
+let declare_constants_exn (env:Global.t) cconst aconst prop =
   let ctx = Inference.Local.create () in
   let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type gl uf Global.K_Concrete_Constant)
+      (declare_local_symbol_with_global_type env Global.K_Concrete_Constant)
       ctx cconst
   in
   let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type gl uf Global.K_Abstract_Constant)
+      (declare_local_symbol_with_global_type env Global.K_Abstract_Constant)
       ctx aconst
   in
-  let t_prop = map_clause (type_predicate_exn (mk_env gl uf Global.C_Properties) ctx) prop in
-  let t_cconst = map_list_clause (type_var_exn gl uf ctx) cconst in
-  let t_aconst = map_list_clause (type_var_exn gl uf ctx) aconst in
-  let _ = iter_list_clause (declare_global_symbol_exn gl Global.K_Concrete_Constant) t_cconst in
-  let _ = iter_list_clause (declare_global_symbol_exn gl Global.K_Abstract_Constant) t_aconst in
+  let t_prop = map_clause (type_predicate_exn Global.C_Properties env ctx) prop in
+  let t_cconst = map_list_clause (type_var_exn env ctx) cconst in
+  let t_aconst = map_list_clause (type_var_exn env ctx) aconst in
+  let _ = iter_list_clause (declare_global_symbol_exn env Global.K_Concrete_Constant) t_cconst in
+  let _ = iter_list_clause (declare_global_symbol_exn env Global.K_Abstract_Constant) t_aconst in
   (t_cconst,t_aconst,t_prop)
 
-let declare_variables_exn (gl:Global.t) (uf:Unif.t) cvars avars inv =
+let declare_variables_exn (env:Global.t) cvars avars inv =
   let ctx = Inference.Local.create () in
   let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type gl uf Global.K_Concrete_Variable)
+      (declare_local_symbol_with_global_type env Global.K_Concrete_Variable)
       ctx cvars
   in
   let ctx = fold_list_clause
-      (declare_local_symbol_with_global_type gl uf Global.K_Abstract_Variable)
+      (declare_local_symbol_with_global_type env Global.K_Abstract_Variable)
       ctx avars
   in
   let t_inv = map_clause
-      (type_predicate_exn (mk_env gl uf Global.C_Invariant_Or_Assertions) ctx) inv
+      (type_predicate_exn Global.C_Invariant_Or_Assertions env ctx) inv
   in
-  let t_cvars = map_list_clause (type_var_exn gl uf ctx) cvars in
-  let t_avars = map_list_clause (type_var_exn gl uf ctx) avars in
-  let _ = iter_list_clause (declare_global_symbol_exn gl Global.K_Concrete_Variable) t_cvars in
-  let _ = iter_list_clause (declare_global_symbol_exn gl Global.K_Abstract_Variable) t_avars in
+  let t_cvars = map_list_clause (type_var_exn env ctx) cvars in
+  let t_avars = map_list_clause (type_var_exn env ctx) avars in
+  let _ = iter_list_clause (declare_global_symbol_exn env Global.K_Concrete_Variable) t_cvars in
+  let _ = iter_list_clause (declare_global_symbol_exn env Global.K_Abstract_Variable) t_avars in
   (t_cvars,t_avars,t_inv)
 
-let declare_var_list (uf:Unif.t) (ctx:Inference.Local.t) (lst:p_var list) (ro:bool) : Inference.Local.t =
-  List.fold_left (fun ctx v -> declare uf ctx v.var_id ro) ctx lst
+let declare_var_list (ctx:Inference.Local.t) (lst:p_var list) (ro:bool) : Inference.Local.t =
+  List.fold_left (fun ctx v -> declare ctx v.var_id ro) ctx lst
 
 let check_signature op s =
   let rec aux lst1 lst2 =
@@ -175,16 +173,16 @@ let check_signature op s =
   aux op.op_in s.Global.args_in;
   aux op.op_out s.Global.args_out
 
-let get_operation_context_exn (env:Global.t) (uf:Unif.t) (op:p_operation) : Inference.Local.t*Inference.Local.t =
+let get_operation_context_exn (env:Global.t) (op:p_operation) : Inference.Local.t*Inference.Local.t =
   match Global.get_operation_type2 env op.op_name.lid_str with
   | None ->
     let ctx = Inference.Local.create () in
-    let ctx = declare_var_list uf ctx op.op_in true in
-    let ctx2 = declare_var_list uf ctx op.op_out false in
+    let ctx = declare_var_list ctx op.op_in true in
+    let ctx2 = declare_var_list ctx op.op_out false in
     (ctx,ctx2)
   | Some args ->
     let ctx = Inference.Local.create () in
-    let aux ro ctx (s,ty) = Inference.Local.add ctx s (Btype.to_btype_mt ty) ro in
+    let aux ro ctx (s,ty) = Inference.Local.add ctx s (Btype.to_unif ty) ro in
     let ctx = List.fold_left (aux true) ctx args.Global.args_in in
     let ctx2 = List.fold_left (aux false) ctx args.Global.args_out in
     let () = check_signature op args in
@@ -227,64 +225,62 @@ let rec is_read_only (gl:Global.t) (ctx:ident list) (s:p_substitution) : bool =
   | Sequencement (s1,s2) | Parallel (s1,s2) ->
     is_read_only gl ctx s1 && is_read_only gl ctx s2
 
-let declare_local_operation_exn (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
+let declare_local_operation_exn (env:Global.t) (op:p_operation) : t_operation =
   let ctx = Inference.Local.create () in
-  let ctx = declare_var_list uf ctx op.op_in true in
+  let ctx = declare_var_list ctx op.op_in true in
   let (ctx,op_body) =
     if !allow_out_parameters_in_precondition then
-      let ctx = declare_var_list uf ctx op.op_out false in
-      let op_body = type_substitution_exn (mk_env gl uf Global.C_Local_Operations) ctx op.op_body in
+      let ctx = declare_var_list ctx op.op_out false in
+      let op_body = type_substitution_exn Global.C_Local_Operations env ctx op.op_body in
       (ctx,op_body)
     else
       begin match op.op_body.sub_desc with
         | Pre (p,s) ->
-          let env = mk_env gl uf Global.C_Local_Operations in
-          let tp = type_predicate_exn env ctx p in
-          let ctx = declare_var_list uf ctx op.op_out false in
-          let ts = type_substitution_exn env ctx s in
+          let tp = type_predicate_exn Global.C_Local_Operations env ctx p in
+          let ctx = declare_var_list ctx op.op_out false in
+          let ts = type_substitution_exn Global.C_Local_Operations env ctx s in
           (ctx,{ sub_loc=op.op_body.sub_loc; sub_desc=Pre (tp,ts)})
         | _ ->
-          let ctx = declare_var_list uf ctx op.op_out false in
-          let op_body = type_substitution_exn (mk_env gl uf Global.C_Local_Operations) ctx op.op_body in
+          let ctx = declare_var_list ctx op.op_out false in
+          let op_body = type_substitution_exn Global.C_Local_Operations env ctx op.op_body in
           (ctx,op_body)
       end
   in
-  let op_in = List.map (type_var_exn gl uf ctx) op.op_in in
-  let op_out = List.map (type_var_exn gl uf ctx) op.op_out in
+  let op_in = List.map (type_var_exn env ctx) op.op_in in
+  let op_out = List.map (type_var_exn env ctx) op.op_out in
   let aux v = (v.var_id, v.var_typ) in
   let args_out = List.map aux op_out in
   let args_in  = List.map aux op_in in
   let loc = op.op_name.lid_loc in
-  let is_readonly = is_read_only gl (Inference.Local.get_vars ctx) op.op_body in
-  match Global.add_operation gl loc op.op_name.lid_str { Global.args_in; args_out } is_readonly true with
+  let is_readonly = is_read_only env (Inference.Local.get_vars ctx) op.op_body in
+  match Global.add_operation env loc op.op_name.lid_str { Global.args_in; args_out } is_readonly true with
   | Ok () -> { op_name=op.op_name; op_in; op_out; op_body }
   | Error err -> raise (Error.Error err)
 
-let declare_operation_exn (gl:Global.t) (uf:Unif.t) (op:p_operation) : t_operation =
-  let (ctx,ctx2) = get_operation_context_exn gl uf op in
+let declare_operation_exn (env:Global.t) (op:p_operation) : t_operation =
+  let (ctx,ctx2) = get_operation_context_exn env op in
   let (ctx,op_body) =
     if !allow_out_parameters_in_precondition then
-      let op_body = type_substitution_exn (mk_env gl uf Global.C_Local_Operations) ctx2 op.op_body in
+      let op_body = type_substitution_exn Global.C_Local_Operations env ctx2 op.op_body in
       (ctx2,op_body)
     else
       begin match op.op_body.sub_desc with
         | Pre (p,s) ->
-          let env = mk_env gl uf Global.C_Local_Operations in
-          let tp = type_predicate_exn env ctx p in
-          let ts = type_substitution_exn env ctx2 s in
+          let tp = type_predicate_exn Global.C_Local_Operations env ctx p in
+          let ts = type_substitution_exn Global.C_Local_Operations env ctx2 s in
           (ctx2,{ sub_loc=op.op_body.sub_loc; sub_desc=Pre (tp,ts)})
         | _ ->
-          let op_body = type_substitution_exn (mk_env gl uf Global.C_Local_Operations) ctx2 op.op_body in
+          let op_body = type_substitution_exn Global.C_Local_Operations env ctx2 op.op_body in
           (ctx2,op_body)
       end
   in
-  let op_in = List.map (type_var_exn gl uf ctx) op.op_in in
-  let op_out = List.map (type_var_exn gl uf ctx) op.op_out in
+  let op_in = List.map (type_var_exn env ctx) op.op_in in
+  let op_out = List.map (type_var_exn env ctx) op.op_out in
   let aux v = (v.var_id, v.var_typ) in
   let args_out = List.map aux op_out in
   let args_in  = List.map aux op_in in
-  let is_readonly = is_read_only gl (Inference.Local.get_vars ctx) op.op_body in
-  match Global.add_operation gl op.op_name.lid_loc op.op_name.lid_str { Global.args_in; args_out } is_readonly false with
+  let is_readonly = is_read_only env (Inference.Local.get_vars ctx) op.op_body in
+  match Global.add_operation env op.op_name.lid_loc op.op_name.lid_str { Global.args_in; args_out } is_readonly false with
   | Ok () -> { op_name=op.op_name; op_in; op_out; op_body }
   | Error err -> raise (Error.Error err)
 
@@ -365,34 +361,31 @@ let rec is_implementation_subst (s:_ substitution) : unit =
   | Sequencement (s1,s2) ->
     ( is_implementation_subst s1; is_implementation_subst s2 )
 
-let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) (mch:_ machine_desc) : (Utils.loc,Btype.t) machine_desc =
-  let uf = Unif.create () in
+let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) (mch:_ machine_desc) : (Utils.loc,Btype.t) machine_desc =
   let mch_constraints = clause_some_err "Not implemented: machine with clause CONSTRAINTS." mch.mch_constraints in
   let mch_promotes = clause_some_err "Not implemented: clause PROMOTES." mch.mch_promotes in
   let mch_extends = clause_some_err "Not implemented: clause EXTENDS." mch.mch_extends in
   let mch_uses = clause_some_err "Not implemented: clause USES." mch.mch_uses in
-  let () = iter_list_clause (load_seen_mch_exn f gl) mch.mch_sees in
-  let mch_includes = map_list_clause (load_included_mch_exn f gl) mch.mch_includes in
-  let mch_sets = map_list_clause (declare_set_exn gl) mch.mch_sets in
+  let () = iter_list_clause (load_seen_mch_exn f env) mch.mch_sees in
+  let mch_includes = map_list_clause (load_included_mch_exn f env) mch.mch_includes in
+  let mch_sets = map_list_clause (declare_set_exn env) mch.mch_sets in
   let (mch_concrete_constants,mch_abstract_constants,mch_properties) =
-    declare_constants_exn gl uf mch.mch_concrete_constants
+    declare_constants_exn env mch.mch_concrete_constants
       mch.mch_abstract_constants mch.mch_properties
   in
   let (mch_concrete_variables,mch_abstract_variables,mch_invariant) =
-    declare_variables_exn gl uf mch.mch_concrete_variables
+    declare_variables_exn env mch.mch_concrete_variables
       mch.mch_abstract_variables mch.mch_invariant
   in
   let ctx = Inference.Local.create () in
-  let mch_assertions = map_list_clause
-      (type_predicate_exn (mk_env gl uf Global.C_Invariant_Or_Assertions) ctx)
-      mch.mch_assertions
+  let mch_assertions =
+    map_list_clause (type_predicate_exn Global.C_Invariant_Or_Assertions env ctx) mch.mch_assertions
   in
-  let mch_initialisation = map_clause
-      (type_substitution_exn (mk_env gl uf Global.C_Operations) ctx)
-      mch.mch_initialisation
+  let mch_initialisation =
+    map_clause (type_substitution_exn Global.C_Operations env ctx) mch.mch_initialisation
   in
   let _ = map_clause is_machine_subst mch.mch_initialisation in
-  let mch_operations = map_list_clause (declare_operation_exn gl uf) mch.mch_operations in
+  let mch_operations = map_list_clause (declare_operation_exn env) mch.mch_operations in
   let _ = map_list_clause (fun op -> is_machine_subst op.op_body) mch.mch_operations in
   { mch_constraints; mch_sees=mch.mch_sees; mch_includes; mch_promotes; mch_extends;
     mch_uses; mch_sets; mch_concrete_constants; mch_abstract_constants;
@@ -408,49 +401,46 @@ let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
      | Error err -> raise (Error.Error err)
    end
 
-let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) ref : (Utils.loc,Btype.t) refinement_desc =
-  let uf = Unif.create () in
-  let () = load_refines_exn f gl ref.ref_refines in
+let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) ref : (Utils.loc,Btype.t) refinement_desc =
+  let () = load_refines_exn f env ref.ref_refines in
   let ref_promotes = clause_some_err "Not implemented: clause PROMOTES." ref.ref_promotes in
   let ref_extends = clause_some_err "Not implemented: clause EXTENDS."ref.ref_extends in
-  let () = iter_list_clause (load_seen_mch_exn f gl) ref.ref_sees in
-  let ref_includes = map_list_clause (load_included_mch_exn f gl) ref.ref_includes in
-  let ref_sets = map_list_clause (declare_set_exn gl) ref.ref_sets in
+  let () = iter_list_clause (load_seen_mch_exn f env) ref.ref_sees in
+  let ref_includes = map_list_clause (load_included_mch_exn f env) ref.ref_includes in
+  let ref_sets = map_list_clause (declare_set_exn env) ref.ref_sets in
   let (ref_concrete_constants,ref_abstract_constants,ref_properties) =
-    declare_constants_exn gl uf ref.ref_concrete_constants
+    declare_constants_exn env ref.ref_concrete_constants
       ref.ref_abstract_constants ref.ref_properties
   in
   let (ref_concrete_variables,ref_abstract_variables,ref_invariant) =
-    declare_variables_exn gl uf ref.ref_concrete_variables
+    declare_variables_exn env ref.ref_concrete_variables
       ref.ref_abstract_variables ref.ref_invariant
   in
   let ctx = Inference.Local.create () in
-  let ref_assertions = map_list_clause
-      (type_predicate_exn (mk_env gl uf Global.C_Invariant_Or_Assertions) ctx)
-      ref.ref_assertions
+  let ref_assertions =
+    map_list_clause (type_predicate_exn Global.C_Invariant_Or_Assertions env ctx) ref.ref_assertions
   in
-  let ref_initialisation = map_clause
-      (type_substitution_exn (mk_env gl uf Global.C_Operations) ctx)
-      ref.ref_initialisation
+  let ref_initialisation =
+    map_clause (type_substitution_exn Global.C_Operations env ctx) ref.ref_initialisation
   in
   let _ = map_clause is_refinement_subst ref.ref_initialisation in
   let ref_local_operations =
-    map_list_clause (declare_local_operation_exn gl uf) ref.ref_local_operations
+    map_list_clause (declare_local_operation_exn env) ref.ref_local_operations
   in
-  let ref_operations = map_list_clause (declare_operation_exn gl uf) ref.ref_operations in
+  let ref_operations = map_list_clause (declare_operation_exn env) ref.ref_operations in
   let _ = map_list_clause (fun op -> is_refinement_subst op.op_body) ref.ref_operations in
   { ref_refines=ref.ref_refines; ref_sees=ref.ref_sees; ref_includes; ref_promotes;
     ref_extends; ref_sets; ref_concrete_constants; ref_abstract_constants;
     ref_properties; ref_concrete_variables; ref_abstract_variables; ref_invariant;
     ref_assertions; ref_initialisation; ref_operations; ref_local_operations; }
 
-let type_value_exn (gl:Global.t) (uf:Unif.t) (v,e:p_var*p_expression) : Inference.t_var*Inference.t_expression =
-  match Global.get_symbol_type_in_clause gl v.var_loc v.var_id Global.C_Values with
+let type_value_exn (env:Global.t) (v,e:p_var*p_expression) : Inference.t_var*Inference.t_expression =
+  match Global.get_symbol_type_in_clause env v.var_loc v.var_id Global.C_Values with
   | Error err -> raise (Error.Error err)
   | Ok var_typ ->
     let ctx = Inference.Local.create () in
-    let te = type_expression_exn (mk_env gl uf Global.C_Values) ctx e in
-    if Unif.is_equal_modulo_alias uf (Btype.to_btype_mt te.exp_typ) (Btype.to_btype_mt var_typ) then
+    let te = type_expression_exn Global.C_Values env ctx e in
+    if Btype.is_equal_modulo_alias (Global.get_alias env) te.exp_typ var_typ then
       ( {var_loc=v.var_loc;var_id=v.var_id;var_typ},te)
     else
       Error.raise_exn e.exp_loc
@@ -493,52 +483,46 @@ let is_abstract_set env v =
   | None -> false
   | Some k -> k = Global.K_Abstract_Set
 
-let manage_set_concretisation_exn (gl:Global.t) (uf:Unif.t) (v,e) : unit =
-  if is_abstract_set gl v then
-    let te = type_expression_exn
-        (mk_env gl uf Global.C_Values) (Inference.Local.create ()) e
-    in
+let manage_set_concretisation_exn (env:Global.t) (v,e) : unit =
+  if is_abstract_set env v then
+    let te = type_expression_exn Global.C_Values env (Inference.Local.create ()) e in
     match Btype.view te.exp_typ with
     | Btype.T_Power ty ->
-      if not (Unif.add_alias uf v.var_id (Btype.to_btype_mt ty)) then
+      if not (Global.add_alias env v.var_id ty) then
         Error.raise_exn v.var_loc "Incorrect abstract set definition."
     | _ ->
       let str = Printf.sprintf
           "This expression has type '%s' but an expression of type '%s' was expected."
-          (to_string te.exp_typ) (Btype_mt.to_string (Btype_mt.T_Power (Unif.new_meta uf)))
+          (to_string te.exp_typ) (Btype.Unif.to_string (Btype.Unif.T_Power (Btype.Unif.new_meta ())))
       in
       Error.raise_exn e.exp_loc str
 
-let type_implementation_exn (f:Utils.loc->string->Global.t_interface option) (gl:Global.t) imp : (Utils.loc,Btype.t) implementation_desc =
-  let uf = Unif.create () in
-  let () = load_refines_exn f gl imp.imp_refines in
-  let () = iter_list_clause (load_seen_mch_exn f gl) imp.imp_sees in
-  let imp_sets = map_list_clause (declare_set_exn gl) imp.imp_sets in
-  let () = iter_list_clause (manage_set_concretisation_exn gl uf) imp.imp_values in
-  let imp_imports = map_list_clause (load_imported_mch_exn f gl) imp.imp_imports in
-  let imp_extends = map_list_clause (load_extended_mch_exn f gl) imp.imp_extends in
-  let () = iter_list_clause (promote_op_exn gl) imp.imp_promotes in
+let type_implementation_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t) imp : (Utils.loc,Btype.t) implementation_desc =
+  let () = load_refines_exn f env imp.imp_refines in
+  let () = iter_list_clause (load_seen_mch_exn f env) imp.imp_sees in
+  let imp_sets = map_list_clause (declare_set_exn env) imp.imp_sets in
+  let () = iter_list_clause (manage_set_concretisation_exn env) imp.imp_values in
+  let imp_imports = map_list_clause (load_imported_mch_exn f env) imp.imp_imports in
+  let imp_extends = map_list_clause (load_extended_mch_exn f env) imp.imp_extends in
+  let () = iter_list_clause (promote_op_exn env) imp.imp_promotes in
   let (imp_concrete_constants,imp_abstract_constants,imp_properties) =
-    declare_constants_exn gl uf imp.imp_concrete_constants
-      None imp.imp_properties
+    declare_constants_exn env imp.imp_concrete_constants None imp.imp_properties
   in
   let (imp_concrete_variables,imp_abstract_variables,imp_invariant) =
-    declare_variables_exn gl uf imp.imp_concrete_variables None imp.imp_invariant
+    declare_variables_exn env imp.imp_concrete_variables None imp.imp_invariant
   in
-  let imp_values = map_list_clause (type_value_exn gl uf) imp.imp_values in
+  let imp_values = map_list_clause (type_value_exn env) imp.imp_values in
   let ctx = Inference.Local.create () in
-  let imp_assertions = map_list_clause
-      (type_predicate_exn (mk_env gl uf Global.C_Invariant_Or_Assertions) ctx)
-      imp.imp_assertions
+  let imp_assertions =
+    map_list_clause (type_predicate_exn Global.C_Invariant_Or_Assertions env ctx) imp.imp_assertions
   in
-  let imp_initialisation = map_clause
-      (type_substitution_exn (mk_env gl uf Global.C_Operations) ctx)
-      imp.imp_initialisation
+  let imp_initialisation =
+    map_clause (type_substitution_exn Global.C_Operations env ctx) imp.imp_initialisation
   in
   let _ = map_clause is_implementation_subst imp.imp_initialisation in
-  let imp_local_operations = map_list_clause (declare_local_operation_exn gl uf) imp.imp_local_operations in
+  let imp_local_operations = map_list_clause (declare_local_operation_exn env) imp.imp_local_operations in
   let _ = map_list_clause (fun op -> is_refinement_subst op.op_body) imp.imp_local_operations in
-  let imp_operations = map_list_clause (declare_operation_exn gl uf) imp.imp_operations in
+  let imp_operations = map_list_clause (declare_operation_exn env) imp.imp_operations in
   let _ = map_list_clause (fun op -> is_implementation_subst op.op_body) imp.imp_operations in
   { imp_refines=imp.imp_refines; imp_sees=imp.imp_sees; imp_imports;
     imp_promotes=imp.imp_promotes; imp_extends; imp_sets; imp_concrete_constants;

@@ -84,11 +84,18 @@ type t_operation_infos  =
     op_readonly:bool;
     op_src: t_op_source; }
 
-type t = { symb:(string,t_symbol_infos) Hashtbl.t;
-           ops:(string,t_operation_infos) Hashtbl.t }
+type t = {
+  mutable alias: Btype.t_alias;
+  symb:(string,t_symbol_infos) Hashtbl.t;
+  ops:(string,t_operation_infos) Hashtbl.t
+}
 
-let create () : t = { symb=Hashtbl.create 47;
-                      ops=Hashtbl.create 47 }
+let create () : t =
+  { alias=Btype.no_alias;
+    symb=Hashtbl.create 47;
+    ops=Hashtbl.create 47 }
+
+let get_alias env = env.alias
 
 let get_symbol_type (env:t) (id:ident) : Btype.t option =
   try Some (Hashtbl.find env.symb id).sy_typ
@@ -553,3 +560,13 @@ let check_operation_coherence (env:t) (err_loc:loc) (is_imp:bool) : unit Error.t
         | OS_Imported_Promoted_And_Refined _ -> ()
     ) env.ops; Ok ()
   with Error.Error err -> Error err
+
+let add_alias (s:t) (alias:string) (ty:Btype.t) : bool =
+  match Btype.add_alias s.alias alias ty with
+  | None -> false
+  | Some alias -> (s.alias <- alias; true)
+  (*
+  let ty = normalize_alias s.alias ty in
+  if occurs_atm alias ty then false
+  else ( s.alias <- Unif.SMap.add alias ty s.alias; true )
+*)

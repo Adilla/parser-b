@@ -1,3 +1,4 @@
+(** Lexer with a stack buffer*)
 open Lexing_Utils
 
 module Make (Lexer: sig

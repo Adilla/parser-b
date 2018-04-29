@@ -15,7 +15,7 @@ let print_error_no_loc msg =
 let run_on_file filename =
   try
     let input = open_in filename in
-    match Parser.parse_component filename input with
+    match Parser.parse_component_from_channel ~filename input with
     | Ok c -> Sexp.sexp_to_channel !out (Sexp.sexp_of_component c)
     | Error err -> print_error err
   with

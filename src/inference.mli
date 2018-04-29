@@ -1,3 +1,4 @@
+(** Type inference for expressions, predicate and substitutions *)
 open Utils
 open Syntax
 

@@ -1,3 +1,4 @@
+(** S-expression generation*)
 open Syntax
 
 type t

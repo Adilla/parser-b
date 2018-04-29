@@ -1,11 +1,35 @@
+(** Non-empty lists *)
+
 type 'a t
-val equal : ('a -> 'b -> bool) -> 'a t -> 'b t -> bool
+(** Non-empty lists of ['a] *)
+
+val equal : p:('a -> 'b -> bool) -> 'a t -> 'b t -> bool
+(** [equal ~p l1 l2] tests if two lists are equal.
+    Two elements [e1] and [e2] are considered equal when [~p e1 e2] returns [true] *)
+
 val make: 'a -> 'a list -> 'a t
+(** [make hd tl] creates a non-empty list from [(hd::tl)].*)
+
 val make1: 'a -> 'a t
+(** [make hd] creates a non-empty list from [[hd]].*)
+
 val to_list : 'a t -> 'a list
+(** [to_list nle] creates a list from [nle]. *)
+
 val from_list : 'a list -> 'a t option
+(** [from_list l] creates a non-empty list from [l] when [l] is non-empty. *)
+
 val from_list_exn : 'a list -> 'a t
+(** [from_list l] creates a non-empty list from [l] when [l] is non-empty. *)
+
 val cons : 'a -> 'a t -> 'a t
+(** [cons hd tl] creates the non-empty list [hd::tl] *)
+
 val hd : 'a t -> 'a
+(** [hd nle] returns the head of [nle] *)
+
 val tl : 'a t -> 'a list
-val map : ('a -> 'b) -> 'a t -> 'b t
+(** [tl nle] returns the tail of [nle] *)
+
+val map : f:('a -> 'b) -> 'a t -> 'b t
+(** map function for non-empty list*)

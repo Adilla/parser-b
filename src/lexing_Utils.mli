@@ -1,3 +1,4 @@
+(** Utility functions for lexing*)
 type t_token = Grammar.token * Lexing.position * Lexing.position
 val token_to_string : Grammar.token -> string
 

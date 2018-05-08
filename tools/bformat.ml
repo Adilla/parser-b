@@ -29,8 +29,7 @@ let add_path s =
 let args = [
   ("-c", Arg.Set continue_on_error, "Continue on error" );
   ("-o", Arg.String set_out, "Output file" );
-  ("-I", Arg.String add_path, "Path for definitions files" );
-  ("-f", Arg.Int Lexer.set_macro_fuel, "Max number of definition expansions for one file (default is 999)." );
+  ("-I", Arg.String add_path, "Path for definitions files" )
 ]
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

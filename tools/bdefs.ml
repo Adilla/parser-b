@@ -12,13 +12,13 @@ let run_on_file filename =
   try
     let input = open_in filename in
     let lb = Lexing.from_channel input in
-    match Lexer.mk_macro_table filename lb with
+    match MacroTable.make filename lb with
     | Ok mt ->
       begin
         Printf.fprintf stdout "##############################################################################\n";
         Printf.fprintf stdout "### DEFINITIONS for machine %s\n" filename;
         Printf.fprintf stdout "##############################################################################\n";
-        Lexer.print_macro_table stdout mt
+        MacroTable.print stdout mt
       end
     | Error err -> print_error err
   with

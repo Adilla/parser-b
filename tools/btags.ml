@@ -53,8 +53,7 @@ let args = [
   ("-I"    , Arg.String add_path, "Path for definitions files" );
   ("-d"    , Arg.Set debug_mode, "Print debugging informations." );
   ("-e"    , Arg.Set check_ext, "Ignoring files with extension different from .mch, .ref or .imp" );
-  ("-o"    , Arg.String set_out, "Output file (default is standard output)" );
-  ("-f", Arg.Int Lexer.set_macro_fuel, "Max number of definition expansions for one file (default is 999)." );
+  ("-o"    , Arg.String set_out, "Output file (default is standard output)" )
 ]
 
 let _ =

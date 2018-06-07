@@ -1,3 +1,4 @@
+(** Types for B expressions*)
 type t_alias
 val no_alias: t_alias
 

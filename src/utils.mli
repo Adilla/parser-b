@@ -1,3 +1,4 @@
+(** General utility functions*)
 type loc = Lexing.position
 val dloc : loc
 type 'a non_empty_list = 'a*'a list

@@ -1,3 +1,4 @@
+(** Printing functions *)
 open Syntax
 
 val expression_to_format : ('lc,'ty) expression -> Easy_format.t

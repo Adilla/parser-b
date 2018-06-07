@@ -759,7 +759,7 @@ let close_var (v:t_var0) : t_var =
        Btype.Open.to_string v.var_typ^"'.")
   | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
 
-let close_var_nlist = Nlist.map close_var
+let close_var_nlist = Nlist.map ~f:close_var
 
 let mk_expr exp_loc exp_typ exp_desc =
   let exp_typ = close_exn exp_loc exp_typ in

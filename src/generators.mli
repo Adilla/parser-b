@@ -1,3 +1,4 @@
+(** Random generator for expressions, predicates, substitution and components*)
 open QCheck
 
 type expression = (unit,unit) Syntax.expression

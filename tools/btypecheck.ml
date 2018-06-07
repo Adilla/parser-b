@@ -32,7 +32,7 @@ let rec type_component_from_filename (ht:interface_table) (filename:string) : ma
                         Error.err_txt="Cannot open file '"^filename^"'." }
       | Some input ->
         let () = Log.write "Parsing file '%s'...\n%!" filename in
-        begin match Parser.parse_component filename input with
+        begin match Parser.parse_component_from_channel ~filename input with
           | Ok c ->
             let () = close_in input in
             let () = Log.write "Typing file '%s'...\n%!" filename in

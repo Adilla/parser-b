@@ -1,3 +1,4 @@
+(** Lexer with macro expansion*)
 open Lexing_Utils
 
 type state

@@ -1,3 +1,4 @@
+(** Typechecking for components*)
 open Syntax
 
 val allow_becomes_such_that_in_implementation : bool ref

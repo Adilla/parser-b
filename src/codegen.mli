@@ -1,3 +1,4 @@
+(** Functor for code generation parametrized by the target language*)
 module Make (
     Ident:
     sig

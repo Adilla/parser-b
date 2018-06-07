@@ -19,7 +19,7 @@ let loop (st:Lexer.state) : p_component Error.t_result =
   try Ok (loop_exn st (Grammar.Incremental.component_eof (Lexing.dummy_pos)))
   with Error.Error err -> Error err
 
-let parse_component (filename:string) (input:in_channel) : p_component Error.t_result =
+let parse_component_from_channel ~filename:(filename:string) (input:in_channel) : p_component Error.t_result =
   match Lexer.mk_state_from_channel filename input with
   | Ok state -> loop state
   | Error err -> Error err

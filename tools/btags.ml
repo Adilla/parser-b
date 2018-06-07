@@ -36,7 +36,7 @@ let run_on_file filename =
       try
         debug "Generating tags for file '%s'." filename;
         let input = open_in filename in
-        match Parser.parse_component filename input with
+        match Parser.parse_component_from_channel ~filename input with
         | Ok c -> tags := Tags.add_tags !tags c
         | Error err -> print_error err
       with

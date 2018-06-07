@@ -8,7 +8,13 @@ This repository provides a set of command-line tools for parsing, checking and t
   * `brandom` generates a random and syntactically valid B machine.
   * `btags` generates a \_tag file for a B machine using the [ctags](http://ctags.sourceforge.net/) format.
   * `btypecheck` typechecks a B machine.
-  * `b2ada` convert a B implementation into an Ada program (this is work in progress in branch code_gen_2).
+  * `b2ada` convert a B implementation into an Ada program.
+
+### Potential Futur Work
+  * Ada to B translator.
+  * Proof Obligation (PO) generator.
+  * B to Rust translator.
+  * Generator of well-typed machines.
 
 ### Known limitations
 
@@ -24,15 +30,3 @@ This repository provides a set of command-line tools for parsing, checking and t
   * Records are not supported.
   * Support for arrays is limited:
     * Only concrete sets can be used to index arrays.
-
-### TODO
-  * Document the code.
-  * Write more tests.
-  * Improve error localization when using definitions.
-  * Work on known limitations given above.
-
-### Tools I might write in the future:
-  * Ada to B translator.
-  * Proof Obligation (PO) generator.
-  * B to Rust translator.
-  * Generator of well-typed machines.

@@ -1,3 +1,4 @@
+(** Abstract Syntax Trees*)
 type inclusion = Not_Strict | Strict | Non_Inclusion | Non_Strict_Inclusion
 
 type inequality = Smaller_or_Equal | Strictly_Smaller | Greater_or_Equal | Strictly_Greater
@@ -37,6 +38,7 @@ type e_builtin =
   | Max | Min | TRUE | FALSE
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
+  (** Builtin constants*)
 
 val builtin_to_string : e_builtin -> string
 

@@ -1,3 +1,4 @@
+(** Global typing environment *)
 open Utils
 open Syntax
 

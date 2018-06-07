@@ -22,6 +22,7 @@ let mk_state_from_string (input:string) : state Error.t_result =
 let is_comp_start_exn (s:state) : bool =
   let rec loop accu =
       let next = L.get_token_exn s.s in
+      let open Grammar in
       match next with
       | IDENT _, _, _ | COMMA, _, _ | LPAR, _, _ | RPAR, _, _ -> loop (next::accu)
       | BAR, _, _ -> (List.iter (fun x -> L.push_token s.s x) (next::accu); true)

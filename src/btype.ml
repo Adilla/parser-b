@@ -4,9 +4,12 @@ module SMap = Map.Make(
     let compare = compare
   end )
 
-module Unif =
+module Open =
 struct
   type t =
+    | T_Int
+    | T_Bool
+    | T_String
     | T_Atomic of string
     | T_Power of t
     | T_Product of t * t
@@ -16,9 +19,9 @@ struct
 
   type t_alias = t SMap.t
 
-  let t_int = T_Atomic "INTEGER"
-  let t_bool = T_Atomic "BOOLEAN"
-  let t_string = T_Atomic "STRING"
+  let t_int = T_Int
+  let t_bool = T_Bool
+  let t_string = T_String
 
   let type_of_unary_fun t_arg t_res =
     T_Power (T_Product(t_arg,t_res))
@@ -30,6 +33,9 @@ struct
 
   let rec to_string_np () ty =
     match ty with
+    | T_Int -> "INTEGER"
+    | T_Bool -> "BOOLEAN"
+    | T_String -> "STRING"
     | T_Atomic s -> s
     | T_Power t -> Printf.sprintf "POW(%a)" to_string_np t
     | T_Product (t1,t2) -> Printf.sprintf "%a*%a" to_string_wp t1 to_string_wp t2
@@ -68,6 +74,11 @@ struct
 
   let uv_count = ref 0
 
+  let mk_Atomic s = T_Atomic s
+  let mk_Power ty = T_Power ty
+  let mk_Product ty1 ty2 = T_Product (ty1,ty2)
+  let mk_Record lst = T_Record lst
+
   let new_meta () =
     incr uv_count;
     T_UVar (ref (Unbound !uv_count))
@@ -75,6 +86,9 @@ struct
   exception Not_Unifiable
 
   let rec occurs uv = function
+    | T_Int
+    | T_Bool
+    | T_String
     | T_Atomic _ -> false
     | T_Power ty -> occurs uv ty
     | T_Product (ty1,ty2) -> (occurs uv ty1 || occurs uv ty2)
@@ -116,7 +130,7 @@ struct
 
   let rec normalize ty =
     match ty with
-    | T_Atomic _ | T_UVar { contents=Unbound _ } -> ty
+    | T_Int | T_Bool | T_String | T_Atomic _ | T_UVar { contents=Unbound _ } -> ty
     | T_Power ty -> T_Power (normalize ty)
     | T_Product (ty1,ty2) -> T_Product (normalize ty1,normalize ty2)
     | T_Record lst -> T_Record (List.map (fun (s,ty) -> (s,normalize ty)) lst)
@@ -128,69 +142,76 @@ struct
 
 end
 
-type t = Unif.t
-let to_unif x = x
+type t = Open.t
 
-let equal = Unif.equal
-let to_string = Unif.to_string
+let equal = Open.equal
+let to_string = Open.to_string
 
-let t_int = Unif.t_int
-let t_bool = Unif.t_bool
-let t_string = Unif.t_string
+let t_int = Open.t_int
+let t_bool = Open.t_bool
+let t_string = Open.t_string
 
-let mk_Atomic s = Unif.T_Atomic s
-let mk_Power ty = Unif.T_Power ty
-let mk_Product ty1 ty2 = Unif.T_Product (ty1,ty2)
-let mk_Record lst = Unif.T_Record lst
+let mk_Atomic s = Open.T_Atomic s
+let mk_Power ty = Open.T_Power ty
+let mk_Product ty1 ty2 = Open.T_Product (ty1,ty2)
+let mk_Record lst = Open.T_Record lst
 
-let rec close_exn : Unif.t -> t = function
-  | Unif.T_Atomic _ as ty -> ty
-  | Unif.T_Power ty -> mk_Power (close_exn ty)
-  | Unif.T_Product (ty1,ty2) -> mk_Product (close_exn ty1) (close_exn ty2)
-  | Unif.T_Record lst -> mk_Record (List.map (fun (s,t) -> (s,close_exn t)) lst)
-  | Unif.T_UVar {contents=Unif.Bound ty} -> close_exn ty
-  | Unif.T_UVar _ -> raise (Failure "close_exn")
+let rec close_exn : Open.t -> t = function
+  | Open.T_Int | Open.T_Bool | Open.T_String | Open.T_Atomic _ as ty -> ty
+  | Open.T_Power ty -> mk_Power (close_exn ty)
+  | Open.T_Product (ty1,ty2) -> mk_Product (close_exn ty1) (close_exn ty2)
+  | Open.T_Record lst -> mk_Record (List.map (fun (s,t) -> (s,close_exn t)) lst)
+  | Open.T_UVar {contents=Open.Bound ty} -> close_exn ty
+  | Open.T_UVar _ -> raise (Failure "close_exn")
 
-let close (ty:Unif.t) : t option = try Some (close_exn ty) with Failure _ -> None
+let close (ty:Open.t) : t option = try Some (close_exn ty) with Failure _ -> None
 
 type t_view =
+  | T_Int
+  | T_Bool
+  | T_String
   | T_Atomic of string
   | T_Power of t
   | T_Product of t * t
   | T_Record of (string*t) list
 
 let view = function 
-  | Unif.T_Atomic s -> T_Atomic s
-  | Unif.T_Power ty -> T_Power ty
-  | Unif.T_Product (ty1,ty2) -> T_Product (ty1,ty2)
-  | Unif.T_Record lst -> T_Record lst
-  | Unif.T_UVar _ -> assert false
+  | Open.T_Int -> T_Int
+  | Open.T_Bool -> T_Bool
+  | Open.T_String -> T_String
+  | Open.T_Atomic s -> T_Atomic s
+  | Open.T_Power ty -> T_Power ty
+  | Open.T_Product (ty1,ty2) -> T_Product (ty1,ty2)
+  | Open.T_Record lst -> T_Record lst
+  | Open.T_UVar _ -> assert false
 
-type t_alias = Unif.t_alias
+type t_alias = Open.t_alias
 let no_alias = SMap.empty
 
 let normalize_alias (alias:t_alias) (ty:t) : t =
   let rec loop : t -> t = fun ty ->
     match ty with
-    | Unif.T_Atomic s ->
+    | Open.T_Int | Open.T_Bool | Open.T_String as ty -> ty
+    | Open.T_Atomic s ->
       begin match SMap.find_opt s alias with
         | None -> ty
         | Some ty' -> ty'
       end
-    | Unif.T_Power ty -> mk_Power (loop ty)
-    | Unif.T_Product (ty1,ty2) -> mk_Product (loop ty1) (loop ty2)
-    | Unif.T_Record lst -> mk_Record (List.map (fun (x,ty) -> (x,loop ty)) lst)
-    | Unif.T_UVar _ -> assert false
+    | Open.T_Power ty -> mk_Power (loop ty)
+    | Open.T_Product (ty1,ty2) -> mk_Product (loop ty1) (loop ty2)
+    | Open.T_Record lst -> mk_Record (List.map (fun (x,ty) -> (x,loop ty)) lst)
+    | Open.T_UVar _ -> assert false
   in
   loop ty
 
 let rec occurs_atm (str:string) (ty:t) : bool =
   match ty with
-  | Unif.T_Atomic str2 -> String.equal str str2
-  | Unif.T_Power ty -> occurs_atm str ty
-  | Unif.T_Product (ty1,ty2) -> ( occurs_atm str ty1 || occurs_atm str ty2 )
-  | Unif.T_Record lst ->  List.exists (fun (_,t) -> occurs_atm str t) lst
-  | Unif.T_UVar _ -> assert false
+  | Open.T_Int | Open.T_Bool | Open.T_String -> false
+  | Open.T_Atomic str2 -> String.equal str str2
+  | Open.T_Power ty -> occurs_atm str ty
+  | Open.T_Product (ty1,ty2) -> ( occurs_atm str ty1 || occurs_atm str ty2 )
+  | Open.T_Record lst ->  List.exists (fun (_,t) -> occurs_atm str t) lst
+  | Open.T_UVar _ -> assert false
 
 let is_equal_modulo_alias (alias:t_alias) (t1:t) (t2:t) : bool =
   equal (normalize_alias alias t1) (normalize_alias alias t2)

@@ -81,13 +81,13 @@ let declare_set_exn (env:Global.t) (s:p_set) : t_set =
   ts
 
 let declare (ctx:Inference.Local.t) (id:string) (ro:bool) : Inference.Local.t = 
-  let mt = Btype.Unif.new_meta () in
+  let mt = Btype.Open.new_meta () in
   Inference.Local.add ctx id mt ro
 
 let declare_local_symbol_with_global_type (env:Global.t) (ctx:Inference.Local.t) (v:p_var) : Inference.Local.t =
   match Global.get_symbol_type env v.var_id with
   | None -> declare ctx v.var_id false
-  | Some ty -> Inference.Local.add ctx v.var_id (Btype.to_unif ty) false
+  | Some ty -> Inference.Local.add ctx v.var_id (ty :> Btype.Open.t) false
 
 let type_var_exn (env:Global.t) (ctx:Inference.Local.t) (v:p_var) : Inference.t_var =
   match Inference.Local.get ctx v.var_id with
@@ -95,7 +95,7 @@ let type_var_exn (env:Global.t) (ctx:Inference.Local.t) (v:p_var) : Inference.t_
     begin match Btype.close var_typ with
       | None ->
         let str = Printf.sprintf "The type of symbol '%s' could not be fully infered. The type infered so far is '%s'."
-            v.var_id (Btype.Unif.to_string var_typ) in
+            v.var_id (Btype.Open.to_string var_typ) in
         Error.raise_exn v.var_loc str
       | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
     end
@@ -170,7 +170,7 @@ let get_operation_context_exn (env:Global.t) (op:p_operation) : Inference.Local.
     (ctx,ctx2)
   | Some args ->
     let ctx = Inference.Local.create () in
-    let aux ro ctx (s,ty) = Inference.Local.add ctx s (Btype.to_unif ty) ro in
+    let aux ro ctx (s,ty:_*Btype.t) = Inference.Local.add ctx s (ty :> Btype.Open.t) ro in
     let ctx = List.fold_left (aux true) ctx args.Global.args_in in
     let ctx2 = List.fold_left (aux false) ctx args.Global.args_out in
     let () = check_signature op args in
@@ -481,7 +481,7 @@ let manage_set_concretisation_exn (env:Global.t) (v,e) : unit =
     | _ ->
       let str = Printf.sprintf
           "This expression has type '%s' but an expression of type '%s' was expected."
-          (to_string te.exp_typ) (Btype.Unif.to_string (Btype.Unif.T_Power (Btype.Unif.new_meta ())))
+          (to_string te.exp_typ) (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
       in
       Error.raise_exn e.exp_loc str
 

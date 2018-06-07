@@ -5,8 +5,8 @@ module Local :
 sig
   type t
   val create : unit -> t
-  val add : t -> ident -> Btype.Unif.t -> bool -> t
-  val get : t -> ident -> (Btype.Unif.t*bool) option
+  val add : t -> ident -> Btype.Open.t -> bool -> t
+  val get : t -> ident -> (Btype.Open.t*bool) option
   val get_vars : t -> ident list
 end
 

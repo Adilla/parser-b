@@ -180,7 +180,7 @@ struct
 
   let is_int ty =
     match Btype.view ty with
-    | Btype.T_Atomic s when String.equal "INTEGER" s -> true
+    | Btype.T_Int -> true
     | _ -> false
    
   let mk_ident (lc:Utils.loc) (s:ident) : Ident.t =
@@ -205,14 +205,12 @@ struct
     { q_nspace=Utils.map_opt (mk_pkg lc) (Global.get_op_source env id);
       q_id=mk_ident lc id }
 
-
   let rec to_b0_type (lc:Utils.loc) (env:Global.t) (ty:Btype.t) : t_b0_type =
     match Btype.view ty with
+    | Btype.T_Int -> T_Int
+    | Btype.T_Bool -> T_Bool
+    | Btype.T_String -> T_String
     | Btype.T_Atomic s ->
-      if String.equal "INTEGER" s then T_Int
-      else if String.equal "BOOLEAN" s then T_Bool
-      else if String.equal "STRING" s then T_String
-      else
         begin match Global.get_symbol_kind env s with
           | Some (Global.K_Concrete_Set _) -> T_Int
           | Some Global.K_Abstract_Set -> T_Abstract (get_qident env [] lc s)
@@ -289,7 +287,7 @@ struct
       begin match Btype.view ty with
         | Btype.T_Product (ty,_) ->
           begin match Btype.view ty with
-            | Btype.T_Atomic s -> String.equal s "INTEGER"
+            | Btype.T_Int -> true
             | _ -> false
           end
         | _ -> false
@@ -327,13 +325,12 @@ struct
 
   let is_valid_array_target env ty =
     match Btype.view ty with
+    | T_Int | T_Bool | T_String -> true
     | Btype.T_Atomic s ->
-      String.equal s "INTEGER" ||
-      String.equal s "STRING" ||
-      String.equal s "BOOLEAN" ||
-      (match Global.get_symbol_kind env s with
+      begin match Global.get_symbol_kind env s with
         | Some (Global.K_Concrete_Set _) -> true
-        | _ -> false )
+        | _ -> false
+      end
     | _ -> false
 
   let get_constant_kind env (ty:Btype.t) : ckind =
@@ -649,7 +646,7 @@ struct
         begin match Btype.view e.exp_typ with
           | Btype.T_Power ty ->
             begin match Btype.view ty with
-              | Btype.T_Atomic id when String.equal "INTEGER" id -> D_Int
+              | Btype.T_Int -> D_Int
               | _ -> Error.raise_exn e.exp_loc "This is not a valid type definition."
             end
           | _ -> Error.raise_exn e.exp_loc "This is not a valid type definition."

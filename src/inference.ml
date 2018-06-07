@@ -5,8 +5,8 @@ module Local :
 sig
   type t
   val create : unit -> t
-  val add : t -> ident -> Btype.Unif.t -> bool -> t
-  val get : t -> ident -> (Btype.Unif.t*bool) option
+  val add : t -> ident -> Btype.Open.t -> bool -> t
+  val get : t -> ident -> (Btype.Open.t*bool) option
   val get_vars : t -> ident list
 end = struct
 
@@ -16,14 +16,14 @@ end = struct
       let compare = String.compare
     end )
 
-  type t = (Btype.Unif.t*bool) M.t
+  type t = (Btype.Open.t*bool) M.t
 
   let create () = M.empty
 
-  let add (ctx:t) (id:ident) (ty:Btype.Unif.t) (ro:bool) : t =
+  let add (ctx:t) (id:ident) (ty:Btype.Open.t) (ro:bool) : t =
     M.add id (ty,ro) ctx
 
-  let get (ctx:t) (id:ident) : (Btype.Unif.t*bool) option =
+  let get (ctx:t) (id:ident) : (Btype.Open.t*bool) option =
     try Some (M.find id ctx)
     with Not_found -> None
 
@@ -31,10 +31,10 @@ end = struct
 
 end
 
-type t_var0 = (loc,Btype.Unif.t) var 
-type t_expression0 = (loc,Btype.Unif.t) expression
-type t_predicate0 = (loc,Btype.Unif.t) predicate
-type t_substitution0 = (loc,Btype.Unif.t) substitution
+type t_var0 = (loc,Btype.Open.t) var 
+type t_expression0 = (loc,Btype.Open.t) expression
+type t_predicate0 = (loc,Btype.Open.t) predicate
+type t_substitution0 = (loc,Btype.Open.t) substitution
 
 type t_var = (loc,Btype.t) var 
 type t_expression = (loc,Btype.t) expression
@@ -45,8 +45,8 @@ let mk_expr exp_loc exp_typ exp_desc = { exp_loc; exp_typ; exp_desc }
 let mk_pred prd_loc prd_desc = { prd_loc; prd_desc }
 let mk_subst sub_loc sub_desc = { sub_loc; sub_desc;  }
 
-let declare (ctx:Local.t) (id:string) (ro:bool) : Local.t * Btype.Unif.t = 
-  let mt = Btype.Unif.new_meta () in
+let declare (ctx:Local.t) (id:string) (ro:bool) : Local.t * Btype.Open.t = 
+  let mt = Btype.Open.new_meta () in
   ( Local.add ctx id mt ro, mt )
 
 let declare_list (ctx:Local.t) (lst:p_var list) (ro:bool) : Local.t * t_var0 list =
@@ -62,18 +62,18 @@ let declare_nelist (ctx:Local.t) (xlst:p_var Nlist.t) (ro:bool) : Local.t * t_va
   let (ctx,lst) = declare_list ctx (Nlist.to_list xlst) ro in
   (ctx,Nlist.from_list_exn lst)
 
-let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : Btype.Unif.t =
+let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : Btype.Open.t =
   let aux pr v =
     match Local.get ctx v.var_id with
     | None -> assert false
-    | Some (ty,_) -> Btype.Unif.T_Product (pr,ty)
+    | Some (ty,_) -> Btype.Open.mk_Product pr ty
   in
   match Local.get ctx (Nlist.hd xlst).var_id with
   | None -> assert false
   | Some (ty,_) -> List.fold_left aux ty (Nlist.tl xlst)
 
-let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Unif.t =
-  let open Btype.Unif in
+let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Open.t =
+  let open Btype.Open in
   match e with
     (* Booleans *)
     | TRUE | FALSE -> t_bool
@@ -84,52 +84,52 @@ let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Unif.t =
     (* Arithmetic operators *)
     | Unary_Minus | Successor | Predecessor  -> type_of_unary_fun t_int t_int
     | Addition | Division | Modulo | Power  -> type_of_binary_fun t_int t_int t_int
-    | Max | Min  -> type_of_unary_fun (T_Power t_int) t_int
+    | Max | Min  -> type_of_unary_fun (mk_Power t_int) t_int
     (* Types *)
-    | NATURAL | NATURAL1 | INT | NAT | NAT1 | INTEGER  -> T_Power t_int
-    | STRINGS  -> T_Power t_string
-    | BOOLEANS  -> T_Power t_bool
+    | NATURAL | NATURAL1 | INT | NAT | NAT1 | INTEGER  -> mk_Power t_int
+    | STRINGS  -> mk_Power t_string
+    | BOOLEANS  -> mk_Power t_bool
     (* Empty set/sequence *)
-    | Empty_Set -> T_Power (new_meta ())
+    | Empty_Set -> mk_Power (new_meta ())
     | Empty_Seq -> type_of_unary_fun t_int (new_meta ())
     (* Arithmetic or Set operator *)
     | Product  -> assert false
     | Difference -> assert false
     (* Operations on sets *)
-    | Interval  -> type_of_binary_fun t_int t_int (T_Power t_int)
+    | Interval  -> type_of_binary_fun t_int t_int (mk_Power t_int)
     | Intersection | Union  ->
-      let t_set = T_Power (new_meta ()) in
+      let t_set = mk_Power (new_meta ()) in
       type_of_binary_fun t_set t_set t_set
     | First_Projection ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
-      type_of_binary_fun (T_Power mt1) (T_Power mt2)
-        (type_of_unary_fun (T_Product (mt1,mt2)) mt1)
+      type_of_binary_fun (mk_Power mt1) (mk_Power mt2)
+        (type_of_unary_fun (mk_Product mt1 mt2) mt1)
     | Second_Projection ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
-      type_of_binary_fun (T_Power mt1) (T_Power mt2)
-        (type_of_unary_fun (T_Product (mt1,mt2)) mt2)
+      type_of_binary_fun (mk_Power mt1) (mk_Power mt2)
+        (type_of_unary_fun (mk_Product mt1 mt2) mt2)
     | Parallel_Product ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let mt3 = new_meta () in
       let mt4 = new_meta () in
       type_of_binary_fun (type_of_unary_fun mt1 mt2) (type_of_unary_fun mt3 mt4)
-        (T_Power (T_Product (T_Product (mt1,mt3),T_Product (mt2,mt4))))
+        (mk_Power (mk_Product (mk_Product mt1 mt3) (mk_Product mt2 mt4)))
     | Direct_Product ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let mt3 = new_meta () in
       type_of_binary_fun (type_of_unary_fun mt1 mt2) (type_of_unary_fun mt1 mt3)
-        (T_Power (T_Product (mt1,T_Product (mt2,mt3))))
-    | Cardinal  -> type_of_unary_fun (T_Power (new_meta ())) t_int
+        (mk_Power (mk_Product mt1 (mk_Product mt2 mt3)))
+    | Cardinal  -> type_of_unary_fun (mk_Power (new_meta ())) t_int
     | Power_Set _ ->
-      let t_set = T_Power (new_meta ()) in
-      type_of_unary_fun t_set (T_Power t_set)
+      let t_set = mk_Power (new_meta ()) in
+      type_of_unary_fun t_set (mk_Power t_set)
     | G_Intersection | G_Union  ->
-      let t_set = T_Power (new_meta ()) in
-      type_of_unary_fun (T_Power t_set) t_set
+      let t_set = mk_Power (new_meta ()) in
+      type_of_unary_fun (mk_Power t_set) t_set
     (* Operations on relations *)
     | Composition ->
       let ty1 = new_meta () in
@@ -142,20 +142,20 @@ let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Unif.t =
     | Image  ->
       let t_arg = new_meta () in
       let t_res = new_meta () in
-      type_of_binary_fun (type_of_unary_fun t_arg t_res) (T_Power t_arg) (T_Power t_res)
+      type_of_binary_fun (type_of_unary_fun t_arg t_res) (mk_Power t_arg) (mk_Power t_res)
     | Domain_Restriction
     | Domain_Soustraction ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let ty_rel = type_of_unary_fun mt1 mt2 in
-      let ty_dom = T_Power mt1 in
+      let ty_dom = mk_Power mt1 in
       type_of_binary_fun ty_dom ty_rel ty_rel
     | Codomain_Restriction
     | Codomain_Soustraction ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let ty_rel = type_of_unary_fun mt1 mt2 in
-      let ty_ran = T_Power mt2 in
+      let ty_ran = mk_Power mt2 in
       type_of_binary_fun ty_rel ty_ran ty_rel
     | Surcharge  ->
       let ty_f = type_of_unary_fun (new_meta ()) (new_meta ()) in
@@ -163,10 +163,10 @@ let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Unif.t =
     | Relations | Functions _ ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
-      type_of_binary_fun (T_Power mt1) (T_Power mt2) (T_Power (type_of_unary_fun mt1 mt2))
+      type_of_binary_fun (mk_Power mt1) (mk_Power mt2) (mk_Power (type_of_unary_fun mt1 mt2))
     | Identity_Relation  ->
       let mt = new_meta () in
-      type_of_unary_fun (T_Power mt) (type_of_unary_fun mt mt)
+      type_of_unary_fun (mk_Power mt) (type_of_unary_fun mt mt)
     | Inverse_Relation  ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
@@ -177,23 +177,23 @@ let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Unif.t =
     | Domain  ->
       let t_arg = new_meta () in
       let t_res = new_meta () in
-      type_of_unary_fun (type_of_unary_fun t_arg t_res) (T_Power t_arg)
+      type_of_unary_fun (type_of_unary_fun t_arg t_res) (mk_Power t_arg)
     | Range  ->
       let t_arg = new_meta () in
       let t_res = new_meta () in
-      type_of_unary_fun (type_of_unary_fun t_arg t_res) (T_Power t_res)
+      type_of_unary_fun (type_of_unary_fun t_arg t_res) (mk_Power t_res)
     | Fnc  ->
       let t_arg = new_meta () in
       let t_res = new_meta () in
-      T_Power(type_of_unary_fun t_arg t_res)
+      mk_Power(type_of_unary_fun t_arg t_res)
     | Rel  ->
       let t_arg = new_meta () in
       let t_res = new_meta () in
-      type_of_unary_fun (type_of_unary_fun t_arg (T_Power t_res)) (type_of_unary_fun t_arg t_res)
+      type_of_unary_fun (type_of_unary_fun t_arg (mk_Power t_res)) (type_of_unary_fun t_arg t_res)
     (* Sequence operators *)
     | Sequence_Set _ ->
       let mt = new_meta () in
-      type_of_unary_fun (T_Power mt) (T_Power (type_of_sequence mt))
+      type_of_unary_fun (mk_Power mt) (mk_Power (type_of_sequence mt))
     | Size  -> type_of_unary_fun (type_of_sequence (new_meta ())) t_int 
     | First | Last  ->
       let mt = new_meta () in
@@ -222,48 +222,48 @@ let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Unif.t =
     | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
       Error.raise_exn lc "Not implemented (tree operators)."
   
-let get_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:ident) : Btype.Unif.t Error.t_result =
+let get_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:ident) : Btype.Open.t Error.t_result =
   match Local.get ctx id with
   | Some (ty,_) -> Ok ty
   | None ->
     begin match Global.get_symbol_type_in_clause env lc id cl with
-      | Ok ty -> Ok (Btype.to_unif ty)
+      | Ok ty -> Ok (ty :> Btype.Open.t)
       | Error _ as err -> err
     end
 
-let get_writable_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:ident) : Btype.Unif.t Error.t_result =
+let get_writable_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:ident) : Btype.Open.t Error.t_result =
   match Local.get ctx id with
   | Some (ty,false) -> Ok ty
   | Some (ty,_) -> Error { Error.err_loc=lc; err_txt=("The variable '"^id^"' is read-only") }
   | None ->
     begin match Global.get_writable_symbol_type_in_clause env lc id cl with
-      | Ok ty -> Ok (Btype.to_unif ty)
+      | Ok ty -> Ok (ty :> Btype.Open.t)
       | Error _ as err -> err
     end
 
-let unexpected_type_exn (lc:Utils.loc) (inf:Btype.Unif.t) (exp:Btype.Unif.t) =
+let unexpected_type_exn (lc:Utils.loc) (inf:Btype.Open.t) (exp:Btype.Open.t) =
   let str = Printf.sprintf
       "This expression has type '%s' but an expression of type '%s' was expected."
-      (Btype.Unif.to_string inf) (Btype.Unif.to_string exp)
+      (Btype.Open.to_string inf) (Btype.Open.to_string exp)
   in
   Error.raise_exn lc str
 
 type t_int_or_power = C_Int | C_Power
 
-let rec weak_norm : Btype.Unif.t -> Btype.Unif.t = function
-  | Btype.Unif.T_UVar { contents=Btype.Unif.Bound ty } -> weak_norm ty
+let rec weak_norm : Btype.Open.t -> Btype.Open.t = function
+  | Btype.Open.T_UVar { contents=Btype.Open.Bound ty } -> weak_norm ty
   | ty -> ty
 
 let is_int_or_power_exn l (arg:t_expression0) : t_int_or_power =
-  let open Btype.Unif in
+  let open Btype.Open in
   match weak_norm arg.exp_typ with
   | T_Product (t1,t2) as ty ->
     begin match t1 with
-      | T_Atomic s when String.equal s "INTEGER" -> C_Int
+      | T_Int -> C_Int
       | T_Power _ -> C_Power
       | T_UVar _ ->
         begin match weak_norm t2 with
-          | T_Atomic s when String.equal s "INTEGER" -> C_Int
+          | T_Int -> C_Int
           | T_Power _ -> C_Power
           | T_UVar _ -> Error.raise_exn l "Cannot decide from this is an operation on integers or sets."
           | _ -> Error.raise_exn arg.exp_loc
@@ -279,19 +279,19 @@ let is_int_or_power_exn l (arg:t_expression0) : t_int_or_power =
              "' but an expression of product type was expected.")
 
 let type_set_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0): t_expression0 =
-  let open Btype.Unif in
+  let open Btype.Open in
   let mt1 = new_meta () in
   let mt2 = new_meta () in
-  let op_ty_exp = type_of_binary_fun (T_Power mt1) (T_Power mt2) (T_Power (T_Product (mt1,mt2))) in
+  let op_ty_exp = type_of_binary_fun (mk_Power mt1) (mk_Power mt2) (mk_Power (mk_Product mt1 mt2)) in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (new_meta ()) in
   match get_stype (Global.get_alias env) op_ty_exp op_ty_inf with
   | None -> unexpected_type_exn op_lc op_ty_inf op_ty_exp
   | Some _ ->
     let op = mk_expr op_lc op_ty_exp (Builtin Product) in
-    mk_expr app_lc (T_Power (T_Product (mt1,mt2))) (Application (op,arg))
+    mk_expr app_lc (mk_Power (mk_Product mt1 mt2)) (Application (op,arg))
 
 let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0) : t_expression0 =
-  let open Btype.Unif in
+  let open Btype.Open in
   let op_ty_exp = type_of_binary_fun t_int t_int t_int in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (new_meta ()) in
   match get_stype (Global.get_alias env) op_ty_inf op_ty_exp with
@@ -301,7 +301,7 @@ let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (ar
     mk_expr app_lc t_int (Application (op,arg))
 
 let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0) : t_expression0 =
-  let open Btype.Unif in
+  let open Btype.Open in
   let op_ty_exp = type_of_binary_fun t_int t_int t_int in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (new_meta ()) in
   match get_stype (Global.get_alias env) op_ty_inf op_ty_exp with
@@ -311,18 +311,18 @@ let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) 
     mk_expr app_lc t_int (Application (op,arg))
 
 let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0) : t_expression0 =
-  let open Btype.Unif in
+  let open Btype.Open in
   let mt = new_meta () in
-  let op_ty_exp = type_of_binary_fun (T_Power mt) (T_Power mt) (T_Power mt) in
+  let op_ty_exp = type_of_binary_fun (mk_Power mt) (mk_Power mt) (mk_Power mt) in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (new_meta ()) in
   match get_stype (Global.get_alias env) op_ty_exp op_ty_inf with
   | None -> unexpected_type_exn op_lc op_ty_inf op_ty_exp
   | Some _ ->
     let op = mk_expr op_lc op_ty_exp (Builtin Difference) in
-    mk_expr app_lc (T_Power mt) (Application (op,arg))
+    mk_expr app_lc (mk_Power mt) (Application (op,arg))
 
 let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e:p_expression) : t_expression0 =
-  let open Btype.Unif in
+  let open Btype.Open in
   match e.exp_desc with
 
   | Ident id | Dollar id as d ->
@@ -369,7 +369,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
   | Couple (cm,e1,e2) ->
     let te1 = type_expression_exn cl env ctx e1 in
     let te2 = type_expression_exn cl env ctx e2 in
-    mk_expr e.exp_loc (T_Product (te1.exp_typ,te2.exp_typ)) (Couple (cm,te1,te2))
+    mk_expr e.exp_loc (mk_Product te1.exp_typ te2.exp_typ) (Couple (cm,te1,te2))
 
   | Sequence nlst ->
     begin
@@ -381,7 +381,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
         | None -> unexpected_type_exn elt.exp_loc t_elt.exp_typ te.exp_typ
       in
       let tlst = List.map aux (Nlist.tl nlst) in
-      mk_expr e.exp_loc (T_Power (T_Product (t_int,te.exp_typ))) (Sequence (Nlist.make te tlst))
+      mk_expr e.exp_loc (mk_Power (mk_Product t_int te.exp_typ)) (Sequence (Nlist.make te tlst))
     end
 
   | Extension nlst ->
@@ -394,13 +394,13 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
         | None -> unexpected_type_exn elt.exp_loc t_elt.exp_typ te0.exp_typ
       in
       let tlst = List.map aux (Nlist.tl nlst) in
-      mk_expr e.exp_loc (T_Power te0.exp_typ) (Extension (Nlist.make te0 tlst))
+      mk_expr e.exp_loc (mk_Power te0.exp_typ) (Extension (Nlist.make te0 tlst))
     end
 
   | Comprehension (ids,p) ->
     let (ctx,tids) = declare_nelist ctx ids true in
     let tp = type_predicate_exn cl env ctx p in
-    mk_expr e.exp_loc (T_Power (ids_to_product ctx ids)) (Comprehension (tids,tp))
+    mk_expr e.exp_loc (mk_Power (ids_to_product ctx ids)) (Comprehension (tids,tp))
 
   | Binder (bi,ids,p,e0) ->
     begin
@@ -417,7 +417,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
         let (ctx,tids) = declare_nelist ctx ids true in
         let tp = type_predicate_exn cl env ctx p in
         let te = type_expression_exn cl env ctx e0 in
-        let ty_exp = T_Power (new_meta ()) in
+        let ty_exp = mk_Power (new_meta ()) in
         begin match get_stype (Global.get_alias env) te.exp_typ ty_exp with
           | Some ty -> mk_expr e.exp_loc ty (Binder (bi,tids,tp,te))
           | None -> unexpected_type_exn e0.exp_loc te.exp_typ ty_exp
@@ -427,7 +427,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
           let (ctx,tids) = declare_nelist ctx ids true in
           let tp = type_predicate_exn cl env ctx p in
           let te = type_expression_exn cl env ctx e0 in
-          mk_expr e.exp_loc (T_Power (T_Product (ids_to_product ctx ids,te.exp_typ)))
+          mk_expr e.exp_loc (mk_Power (mk_Product (ids_to_product ctx ids) te.exp_typ))
             (Binder (bi,tids,tp,te))
         end
     end
@@ -435,20 +435,20 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
   | Record nlst ->
     let aux (id,e) = (id,type_expression_exn cl env ctx e) in
     let tnlst = Nlist.map aux nlst in
-    let ty = T_Record (Nlist.to_list (Nlist.map (fun (id,e) -> (id.lid_str,e.exp_typ)) tnlst)) in
+    let ty = mk_Record (Nlist.to_list (Nlist.map (fun (id,e) -> (id.lid_str,e.exp_typ)) tnlst)) in
     mk_expr e.exp_loc ty (Record tnlst)
 
   | Record_Type nlst ->
     let aux (id,e) = (id,type_expression_exn cl env ctx e) in
     let get_type (id,te) =
-      let ty_exp = T_Power (new_meta ()) in
+      let ty_exp = mk_Power (new_meta ()) in
       match get_stype (Global.get_alias env) te.exp_typ ty_exp with
       | Some (T_Power ty) -> (id.lid_str,ty)
       | None -> unexpected_type_exn e.exp_loc te.exp_typ ty_exp
       | _ -> assert false
     in
     let tlst = Nlist.map aux nlst in
-    let ty = T_Power (T_Record (Nlist.to_list (Nlist.map get_type tlst))) in
+    let ty = mk_Power (mk_Record (Nlist.to_list (Nlist.map get_type tlst))) in
     mk_expr e.exp_loc ty (Record_Type tlst)
 
   | Record_Field_Access (e0,fd) ->
@@ -469,7 +469,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
     end
 
 and type_predicate_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (p:p_predicate) : t_predicate0 =
-  let open Btype.Unif in
+  let open Btype.Open in
   match p.prd_desc with
   | P_Builtin _ as d -> mk_pred p.prd_loc d
   | Binary_Prop (op,p1,p2) ->
@@ -493,14 +493,14 @@ and type_predicate_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (p:p_pr
           let te1 = type_expression_exn cl env ctx e1 in
           let te2 = type_expression_exn cl env ctx e2 in
           begin
-            match get_stype (Global.get_alias env) (T_Power te1.exp_typ) te2.exp_typ with
+            match get_stype (Global.get_alias env) (mk_Power te1.exp_typ) te2.exp_typ with
             | Some _ -> mk_pred p.prd_loc (Binary_Pred (bop,te1,te2))
-            | None -> unexpected_type_exn e2.exp_loc te2.exp_typ (T_Power te1.exp_typ)
+            | None -> unexpected_type_exn e2.exp_loc te2.exp_typ (mk_Power te1.exp_typ)
           end
         end
       | Inclusion _ ->
         begin
-          let ty0 = T_Power (new_meta ()) in
+          let ty0 = mk_Power (new_meta ()) in
           let te1 = type_expression_exn cl env ctx e1 in
           let te2 = type_expression_exn cl env ctx e2 in
           begin match get_stype (Global.get_alias env) te1.exp_typ ty0 with
@@ -546,7 +546,7 @@ let type_writable_var_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (v:p
   | Error err -> raise (Error.Error err)
 
 let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (s0:p_substitution) : t_substitution0 =
-  let open Btype.Unif in
+  let open Btype.Open in
   match s0.sub_desc with
   | Skip -> mk_subst s0.sub_loc Skip
 
@@ -681,7 +681,7 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
     in
     let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
     let ttuple = type_expression_exn cl env ctx tuple in
-    let ty_exp = T_Power ttuple.exp_typ in
+    let ty_exp = mk_Power ttuple.exp_typ in
     let te = type_expression_exn cl env ctx e in
     let () = match get_stype (Global.get_alias env) te.exp_typ ty_exp with
       | None -> unexpected_type_exn e.exp_loc te.exp_typ ty_exp
@@ -706,8 +706,8 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
       | Ok args ->
         let tids = List.map (type_writable_var_exn cl env ctx) ids in
         let tparams = List.map (type_expression_exn cl env ctx) params in
-        let aux te (_,ty_arg) =
-          let ty_exp = Btype.to_unif ty_arg in
+        let aux te (_,ty_arg:_*Btype.t) =
+          let ty_exp = ( ty_arg :> Btype.Open.t) in
           match get_stype (Global.get_alias env) te.exp_typ ty_exp with
           | None -> unexpected_type_exn te.exp_loc te.exp_typ ty_exp
           | Some _ -> ()
@@ -743,12 +743,12 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
     let s2 = type_substitution_exn cl env ctx s2 in
     mk_subst s0.sub_loc (Parallel(s1,s2))
 
-let close_exn (lc:loc) (ty:Btype.Unif.t) : Btype.t =
+let close_exn (lc:loc) (ty:Btype.Open.t) : Btype.t =
   match Btype.close ty with
   | None ->
     Error.raise_exn lc
       ("The type of this expression could not be fully infered. The type infered so far is '"^
-       Btype.Unif.to_string ty^"'.")
+       Btype.Open.to_string ty^"'.")
   | Some ty -> ty
 
 let close_var (v:t_var0) : t_var =
@@ -756,7 +756,7 @@ let close_var (v:t_var0) : t_var =
   | None -> Error.raise_exn v.var_loc 
       ("The type of symbol '"^v.var_id^
        "' could not be fully infered. The type infered so far is '"^
-       Btype.Unif.to_string v.var_typ^"'.")
+       Btype.Open.to_string v.var_typ^"'.")
   | Some var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
 
 let close_var_nlist = Nlist.map close_var

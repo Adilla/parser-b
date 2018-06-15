@@ -148,9 +148,7 @@ and pred_eq : type a b c d. (a,b) predicate -> (c,d) predicate -> bool = fun p1 
 
 type ('lc,'ty) substitution_desc =
   | Skip
-  | Affectation of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
-  | Function_Affectation of ('lc,'ty) var * ('lc,'ty) expression Nlist.t * ('lc,'ty) expression
-  | Record_Affectation of ('lc,'ty) var * 'lc lident * ('lc,'ty) expression
+  | Affectation of ('lc,'ty) lhs * ('lc,'ty) expression
   | Pre of ('lc,'ty) predicate * ('lc,'ty) substitution
   | Assert of ('lc,'ty) predicate * ('lc,'ty) substitution
   | Choice of ('lc,'ty) substitution Nlist.t
@@ -167,16 +165,17 @@ type ('lc,'ty) substitution_desc =
   | Sequencement of ('lc,'ty) substitution * ('lc,'ty) substitution
   | Parallel of ('lc,'ty) substitution * ('lc,'ty) substitution
 
+and ('lc,'ty) lhs =
+  | Tuple of ('lc,'ty) var Nlist.t
+  | Function of ('lc,'ty) var * ('lc,'ty) expression Nlist.t
+  | Record of ('lc,'ty) var * 'lc lident
+
 and ('lc,'ty) substitution = { sub_loc:'lc; sub_desc:('lc,'ty) substitution_desc }
 
 let rec subst_eq : type a b c d. (a,b) substitution -> (c,d) substitution -> bool = fun s1 s2 ->
   match s1.sub_desc ,s2.sub_desc  with
   | Skip, Skip -> true
-  | Affectation (xlst1,e1), Affectation (xlst2,e2) -> Nlist.equal var_eq xlst1 xlst2 && expr_eq e1 e2
-  | Function_Affectation (f1,lst1,a1), Function_Affectation (f2,lst2,a2) ->
-    var_eq f1 f2 && Nlist.equal expr_eq lst1 lst2 && expr_eq a1 a1
-  | Record_Affectation (id1,fd1,e1), Record_Affectation (id2,fd2,e2) ->
-    var_eq id1 id2 && ident_eq fd1.lid_str fd2.lid_str && expr_eq e1 e2
+  | Affectation (lhs1,e1), Affectation (lhs2,e2) -> lhs_eq lhs1 lhs2 && expr_eq e1 e2
   | Pre (p1,s1), Pre (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
   | Assert (p1,s1), Assert (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
   | Choice lst1, Choice lst2 -> Nlist.equal subst_eq lst1 lst2
@@ -214,6 +213,13 @@ let rec subst_eq : type a b c d. (a,b) substitution -> (c,d) substitution -> boo
     subst_eq s1 s2 && subst_eq r1 r2
   | Parallel (s1,r1), Parallel (s2,r2) ->
     subst_eq s1 s2 && subst_eq r1 r2
+  | _, _ -> false
+
+and lhs_eq : type a b c d. (a,b) lhs -> (c,d) lhs -> bool = fun lhs1 lhs2 ->
+  match lhs1, lhs2 with
+  | Tuple xlst1, Tuple xlst2 -> Nlist.equal var_eq xlst1 xlst2
+  | Function (f1,lst1), Function (f2,lst2) -> var_eq f1 f2 && Nlist.equal expr_eq lst1 lst2
+  | Record (id1,fd1), Record (id2,fd2) -> var_eq id1 id2 && ident_eq fd1.lid_str fd2.lid_str
   | _, _ -> false
 
 type ('lc,'ty) operation =

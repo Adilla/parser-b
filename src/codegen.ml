@@ -524,7 +524,7 @@ struct
     let add_loc sub0_desc = { sub0_loc=stmt.sub_loc; sub0_desc } in
     match stmt.sub_desc with
     | Skip -> add_loc B0_Null
-    | Affectation (vars,e) ->
+    | Affectation (Tuple vars,e) ->
       let e_nle = get_exp_nle e in
       begin match merge_map2 vars e_nle with
         | None -> Error.raise_exn stmt.sub_loc "Ill-formed affectation."
@@ -576,12 +576,12 @@ struct
       let s1 = to_b0_subst env ctx s1 in
       let s2 = to_b0_subst env ctx s2 in
       add_loc (B0_Sequencement (s1,s2))
-    | Function_Affectation (f,args,e) ->
+    | Affectation (Function(f,args),e) ->
       let f = mk_ident f.var_loc f.var_id in
       let args = Nlist.map (to_b0_expr env ctx) args in
       let e = to_b0_expr env ctx e in
       add_loc (B0_Array_Affectation (f,args,e))
-    | Record_Affectation _ -> Error.raise_exn stmt.sub_loc "Records are not supported by the translator."
+    | Affectation (Record _,_) -> Error.raise_exn stmt.sub_loc "Records are not supported by the translator."
     | Pre _ -> Error.raise_exn stmt.sub_loc "This is not a valid B0-substitution (Precondition)."
     | Choice _ -> Error.raise_exn stmt.sub_loc "This is not a valid B0-substitution (Choice)."
     | Select _ -> Error.raise_exn stmt.sub_loc "This is not a valid B0-substitution (Select)."

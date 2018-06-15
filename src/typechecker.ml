@@ -181,10 +181,10 @@ let mem id = List.exists (Syntax.ident_eq id)
 let rec is_read_only (gl:Global.t) (ctx:ident list) (s:p_substitution) : bool =
   match s.sub_desc with
   | Skip -> true
-  | Affectation (xlst,_) | BecomesElt (xlst,_) | BecomesSuch (xlst,_) ->
+  | Affectation (Tuple xlst,_) | BecomesElt (xlst,_) | BecomesSuch (xlst,_) ->
     let aux v = mem v.var_id ctx in
     List.for_all aux (Nlist.to_list xlst)
-  | Function_Affectation (v,_,_) | Record_Affectation (v,_,_) ->
+  | Affectation (Function(v,_),_) | Affectation (Record(v,_),_) ->
     mem v.var_id ctx
   | CallUp (args_out,id,args_in) ->
     let aux v = mem v.var_id ctx in
@@ -274,8 +274,7 @@ let declare_operation_exn (env:Global.t) (op:p_operation) : t_operation =
 
 let rec is_machine_subst (s:_ substitution) : unit =
   match s.sub_desc with
-  | Skip | Function_Affectation _ | Record_Affectation _ | BecomesElt _
-  | BecomesSuch _ | Affectation _ | CallUp _ -> ()
+  | Skip | BecomesElt _ | BecomesSuch _ | Affectation _ | CallUp _ -> ()
   | Any (_,_,s) | Let (_,_,s) | Pre (_,s) | Assert (_,s) -> is_machine_subst s
   | Choice slst -> List.iter is_machine_subst (Nlist.to_list slst)
   | IfThenElse (pslst,s_else)
@@ -300,8 +299,7 @@ let rec is_machine_subst (s:_ substitution) : unit =
 
 let rec is_refinement_subst (s:_ substitution) : unit =
   match s.sub_desc with
-  | Skip | Function_Affectation _ | Record_Affectation _ | BecomesElt _
-  | BecomesSuch _ | Affectation _ | CallUp _ -> ()
+  | Skip | BecomesElt _ | BecomesSuch _ | Affectation _ | CallUp _ -> ()
   | Var (_,s) | Any (_,_,s) | Let (_,_,s) | Pre (_,s) | Assert (_,s) -> is_refinement_subst s
   | Choice slst -> List.iter is_refinement_subst (Nlist.to_list slst)
   | IfThenElse (pslst,s_else)
@@ -325,7 +323,7 @@ let rec is_refinement_subst (s:_ substitution) : unit =
 
 let rec is_implementation_subst (s:_ substitution) : unit =
   match s.sub_desc with
-  | Skip | Function_Affectation _ | Record_Affectation _ | Affectation _ | CallUp _ -> ()
+  | Skip |  Affectation _ | CallUp _ -> ()
   | Parallel _ | Select _ | BecomesElt _ | Any _ | Let _ | Pre _ | Choice _ ->
     Error.raise_exn s.sub_loc "This substitution is not allowed in an implementation."
   | BecomesSuch _ ->

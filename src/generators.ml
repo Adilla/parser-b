@@ -187,11 +187,11 @@ let rec sized_subst : substitution Gen.sized = fun n rd ->
   if n <= 0 then
     Gen.oneof [
       Gen.return (mk_subst Skip);
-      Gen.map (fun (id_nel,e_nel) -> mk_subst (Affectation (id_nel,e_nel)))
+      Gen.map (fun (id_nel,e_nel) -> mk_subst (Affectation (Tuple id_nel,e_nel)))
         (Gen.pair gen_var_nelist gen_expr) ;
-      Gen.map (fun (id,e_nel,e)-> mk_subst (Function_Affectation(id,e_nel,e)))
+      Gen.map (fun (id,e_nel,e)-> mk_subst (Affectation(Function(id,e_nel),e)))
         (Gen.triple gen_var (gen_nel gen_expr) gen_expr);
-      Gen.map (fun (id,fd,e) -> mk_subst (Record_Affectation (id,fd,e)))
+      Gen.map (fun (id,fd,e) -> mk_subst (Affectation (Record(id,fd),e)))
         (Gen.triple gen_var gen_rfield gen_expr);
       Gen.map (fun (id_nel,e) -> mk_subst (BecomesElt (id_nel,e)))
         (Gen.pair gen_var_nelist gen_expr);

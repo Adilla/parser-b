@@ -109,9 +109,7 @@ val pred_eq : ('lc,'ty) predicate -> ('lc2,'ty2) predicate -> bool
 
 type ('lc,'ty) substitution_desc =
   | Skip
-  | Affectation of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
-  | Function_Affectation of ('lc,'ty) var * ('lc,'ty) expression Nlist.t * ('lc,'ty) expression
-  | Record_Affectation of ('lc,'ty) var * 'lc lident * ('lc,'ty) expression
+  | Affectation of ('lc,'ty) lhs * ('lc,'ty) expression
   | Pre of ('lc,'ty) predicate * ('lc,'ty) substitution
   | Assert of ('lc,'ty) predicate * ('lc,'ty) substitution
   | Choice of ('lc,'ty) substitution Nlist.t
@@ -127,6 +125,11 @@ type ('lc,'ty) substitution_desc =
   | While of ('lc,'ty) predicate * ('lc,'ty) substitution * ('lc,'ty) predicate * ('lc,'ty) expression
   | Sequencement of ('lc,'ty) substitution * ('lc,'ty) substitution
   | Parallel of ('lc,'ty) substitution * ('lc,'ty) substitution
+
+and ('lc,'ty) lhs =
+  | Tuple of ('lc,'ty) var Nlist.t
+  | Function of ('lc,'ty) var * ('lc,'ty) expression Nlist.t
+  | Record of ('lc,'ty) var * 'lc lident
 
 and ('lc,'ty) substitution = {
   sub_loc:'lc;

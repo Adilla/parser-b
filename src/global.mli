@@ -15,7 +15,6 @@ type t_source =
   | S_Current_And_Imported_Mch of loc * p_lident
   | S_Imported_And_Refined_Mch of p_lident * p_lident
   | S_Current_Imported_And_Refined_Mch of loc * p_lident * p_lident
-  | S_Ghost
 
 type t_op_source =
   | OS_Seen_Mch of p_lident

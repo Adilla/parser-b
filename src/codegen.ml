@@ -325,7 +325,7 @@ struct
 
   let is_valid_array_target env ty =
     match Btype.view ty with
-    | T_Int | T_Bool | T_String -> true
+    | Btype.T_Int | Btype.T_Bool | Btype.T_String -> true
     | Btype.T_Atomic s ->
       begin match Global.get_symbol_kind env s with
         | Some (Global.K_Concrete_Set _) -> true
@@ -627,8 +627,7 @@ struct
           | Global.S_Imported_Mch_Only _
           | Global.S_Current_And_Imported_Mch _
           | Global.S_Imported_And_Refined_Mch _
-          | Global.S_Current_Imported_And_Refined_Mch _
-          | Global.S_Ghost -> accu
+          | Global.S_Current_Imported_And_Refined_Mch _ -> accu
         end
       | _ -> accu
     in
@@ -704,8 +703,7 @@ struct
           | Global.S_Imported_Mch_Only _
           | Global.S_Current_And_Imported_Mch _
           | Global.S_Imported_And_Refined_Mch _
-          | Global.S_Current_Imported_And_Refined_Mch _
-          | Global.S_Ghost -> accu
+          | Global.S_Current_Imported_And_Refined_Mch _ -> accu
         end
       | _ -> accu
     in

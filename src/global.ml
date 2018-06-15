@@ -21,7 +21,6 @@ type t_source =
   | S_Current_And_Imported_Mch of loc * p_lident
   | S_Imported_And_Refined_Mch of p_lident * p_lident
   | S_Current_Imported_And_Refined_Mch of loc * p_lident * p_lident
-  | S_Ghost
 
 type t_source2 =
   | Src_Current of loc
@@ -189,7 +188,6 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
   | Src_Current lc, S_Current_And_Refined_Mch _
   | Src_Current lc, S_Current_And_Imported_Mch _
   | Src_Current lc, S_Current_Imported_And_Refined_Mch _
-  | Src_Current lc, S_Ghost
   | Src_Current lc, S_Included_Mch_Only _
   | Src_Current lc, S_Included_And_Refined_Mch _ ->
     Error { Error.err_loc=lc;
@@ -208,8 +206,7 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
   | Src_Imported imp, S_Imported_And_Refined_Mch _
   | Src_Imported imp, S_Current_Imported_And_Refined_Mch _
   | Src_Imported imp, S_Included_And_Refined_Mch _
-  | Src_Imported imp, S_Included_Mch_Only _
-  | Src_Imported imp, S_Ghost ->
+  | Src_Imported imp, S_Included_Mch_Only _ ->
     Error { Error.err_loc=imp.lid_loc;
             err_txt="The identifier '"^id^"' is already declared." }
 
@@ -222,7 +219,6 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
   | Src_Refined ref, S_Current_And_Refined_Mch _
   | Src_Refined ref, S_Imported_And_Refined_Mch _
   | Src_Refined ref, S_Current_Imported_And_Refined_Mch _
-  | Src_Refined ref, S_Ghost
   | Src_Refined ref, S_Included_And_Refined_Mch _ ->
     Error { Error.err_loc=ref.lid_loc;
             err_txt="The identifier '"^id^"' is already declared." }
@@ -236,8 +232,7 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
   | Src_Included ref, S_Imported_And_Refined_Mch _
   | Src_Included ref, S_Current_Imported_And_Refined_Mch _
   | Src_Included ref, S_Included_And_Refined_Mch _
-  | Src_Included ref, S_Included_Mch_Only _
-  | Src_Included ref, S_Ghost ->
+  | Src_Included ref, S_Included_Mch_Only _ ->
     Error { Error.err_loc=ref.lid_loc;
             err_txt="The identifier '"^id^"' is already declared." }
 
@@ -537,7 +532,7 @@ let to_interface (env:t) : MachineInterface.t =
     | S_Included_And_Refined_Mch _ ->
       { MachineInterface.
         id=x; typ=symb.sy_typ; kind=symb.sy_kind; hidden=false }::lst
-    | S_Imported_And_Refined_Mch _ | S_Imported_Mch_Only _ | S_Ghost ->
+    | S_Imported_And_Refined_Mch _ | S_Imported_Mch_Only _ ->
       { MachineInterface.
         id=x; typ=symb.sy_typ; kind=symb.sy_kind; hidden=true }::lst
     | S_Seen_Mch_Only _  -> lst
@@ -612,7 +607,6 @@ let get_symbol_source (env:t) (id:ident) : ident option =
   | None -> None
   | Some ifn ->
     begin match ifn.sy_src with
-      | S_Ghost
       | S_Current_Mch_Only _
       | S_Refined_Mch_Only _
       | S_Current_And_Refined_Mch _

@@ -560,7 +560,7 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
     let s =  type_substitution_exn cl env ctx s in
     mk_subst s0.sub_loc (Assert(p,s))
 
-  | Affectation (xlst,e) ->
+  | Affectation (Tuple xlst,e) ->
     let rec mk_tuple (x:p_expression) : p_var list -> p_expression = function
         | [] -> x
         | hd::tl ->
@@ -577,9 +577,9 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
       | Some _ -> ()
     in
     let tlst = Nlist.map (type_writable_var_exn cl env ctx) xlst in
-    mk_subst s0.sub_loc (Affectation (tlst,te))
+    mk_subst s0.sub_loc (Affectation (Tuple tlst,te))
 
-  | Function_Affectation (f,nlst,e) ->
+  | Affectation (Function(f,nlst),e) ->
     let _ = type_writable_var_exn cl env ctx f in
     let rec mk_app (lc:Utils.loc) f = function
       | [] -> f
@@ -594,9 +594,9 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
     in
     let tf = type_var_exn cl env ctx f in
     let tlst = Nlist.map (type_expression_exn cl env ctx) nlst in
-    mk_subst s0.sub_loc (Function_Affectation (tf,tlst,te))
+    mk_subst s0.sub_loc (Affectation (Function(tf,tlst),te))
 
-  | Record_Affectation (rc,fd,e) ->
+  | Affectation (Record(rc,fd),e) ->
     let _ = type_writable_var_exn cl env ctx rc in
     let rc = type_var_exn cl env ctx rc in
     let rf_access = mk_expr rc.var_loc ()
@@ -607,7 +607,7 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
       | None -> unexpected_type_exn e.exp_loc te.exp_typ trf_access.exp_typ 
       | Some _ -> ()
     in
-    mk_subst s0.sub_loc (Record_Affectation (rc,fd,te))
+    mk_subst s0.sub_loc (Affectation (Record(rc,fd),te))
 
   | Choice slst ->
    mk_subst s0.sub_loc (Choice (Nlist.map (type_substitution_exn cl env ctx) slst))
@@ -808,12 +808,12 @@ let rec close_subst (s:t_substitution0) : t_substitution =
   match s.sub_desc with
   | Skip ->
     mk_subst s.sub_loc Skip
-  | Affectation (xlst,e) ->
-    mk_subst s.sub_loc (Affectation(close_var_nlist xlst,close_expr e))
-  | Function_Affectation (v,nlst,e) ->
-    mk_subst s.sub_loc (Function_Affectation (close_var v,Nlist.map close_expr nlst,close_expr e))
-  | Record_Affectation (v,id,e) ->
-    mk_subst s.sub_loc (Record_Affectation (close_var v,id,close_expr e))
+  | Affectation (Tuple xlst,e) ->
+    mk_subst s.sub_loc (Affectation(Tuple (close_var_nlist xlst),close_expr e))
+  | Affectation (Function(v,nlst),e) ->
+    mk_subst s.sub_loc (Affectation (Function(close_var v,Nlist.map close_expr nlst),close_expr e))
+  | Affectation (Record(v,id),e) ->
+    mk_subst s.sub_loc (Affectation (Record(close_var v,id),close_expr e))
   | Pre (p,s0) -> mk_subst s.sub_loc (Pre(close_pred p,close_subst s0))
   | Assert (p,s0) -> mk_subst s.sub_loc (Assert(close_pred p,close_subst s0))
   | Choice nlst -> mk_subst s.sub_loc (Choice(Nlist.map close_subst nlst))

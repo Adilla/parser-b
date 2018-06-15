@@ -76,14 +76,14 @@ and sexp_of_pred : ('lc,'ty) predicate -> t = fun p ->
 let rec sexp_of_subst : ('lc,'ty) substitution -> t = fun s ->
   match s.sub_desc with
   | Skip -> Atom "SKIP"
-  | Affectation (xlst,e) ->
+  | Affectation (Tuple xlst,e) ->
     let ids = List (List.map sexp_of_var (Nlist.to_list xlst)) in
     let exprs = List [sexp_of_expr e] in
     List [Atom "AFF1";ids;exprs]
-  | Function_Affectation (f,elst,a) ->
+  | Affectation (Function(f,elst),a) ->
     let exprs = List (List.map sexp_of_expr (Nlist.to_list elst)) in
     List [Atom "AFF2";sexp_of_var f;exprs;sexp_of_expr a]
-  | Record_Affectation (id,fd,e) ->
+  | Affectation (Record(id,fd),e) ->
     List [Atom "AFF3";sexp_of_var id;sexp_of_record_field fd;sexp_of_expr e]
   | Pre (p,s) -> List [Atom "PRE"; sexp_of_pred p; sexp_of_subst s]
   | Assert (p,s) -> List [Atom "ASSERT"; sexp_of_pred p; sexp_of_subst s]

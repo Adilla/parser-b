@@ -309,13 +309,13 @@ level1_substitution:
 
 | SKIP { mk_subst $startpos Skip }
 
-| ids=var_nelist_comma AFFECTATION e=expression { mk_subst $startpos (Affectation (ids,e)) }
+| ids=var_nelist_comma AFFECTATION e=expression { mk_subst $startpos (Affectation (Tuple ids,e)) }
 
 | id=IDENT LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
-     { mk_subst $startpos (Function_Affectation (mk_var $startpos(id) id,Nlist.make e1 lst,e2)) }
+     { mk_subst $startpos (Affectation (Function(mk_var $startpos(id) id,Nlist.make e1 lst),e2)) }
 
 | id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression
-{ mk_subst $startpos (Record_Affectation (mk_var $startpos(id) id,mk_lident $startpos(fi) fi,e)) }
+{ mk_subst $startpos (Affectation (Record (mk_var $startpos(id) id,mk_lident $startpos(fi) fi),e)) }
 
 | PRE p=predicate THEN s=substitution END { mk_subst $startpos (Pre (p,s)) }
 

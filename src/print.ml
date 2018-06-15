@@ -287,16 +287,16 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
   match s.sub_desc with
   | Skip -> mk_atom "skip"
 
-  | Affectation (xlst,e) ->
+  | Affectation (Tuple xlst,e) ->
     mk_sequence [mk_var_nelist_comma xlst;mk_atom ":=";ef_expr e]
 
-  | Function_Affectation (f,alst,e) ->
+  | Affectation (Function(f,alst),e) ->
     let aux e = List(("(","",")",list),[ef_expr e]) in
     let lst_args = List(("","","",list),List.map aux (Nlist.to_list alst)) in
     let lf = Label ((mk_atom f.var_id,label), lst_args) in
     mk_sequence [lf;mk_atom ":=";ef_expr e]
 
-  | Record_Affectation (rf,fd,e) ->
+  | Affectation (Record(rf,fd),e) ->
     let lf = mk_atom (rf.var_id ^ "'" ^ fd.lid_str) in
     mk_sequence [lf;mk_atom ":=";ef_expr e]
 
@@ -456,7 +456,7 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
 
 and ef_subst_wbe s =
   match s.sub_desc with
-  | Skip |  Affectation _ | Function_Affectation _ | Record_Affectation _
+  | Skip |  Affectation _
   | Pre _ | Assert _ | Choice _ | IfThenElse _ | Select _ | Case _ | Any _
   | Let _ | BecomesElt _ | BecomesSuch _ | Var _ | CallUp _ | While _ -> ef_subst s
   | Sequencement _ | Parallel _ ->

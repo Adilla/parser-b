@@ -65,7 +65,7 @@ let mk_infix_op (op:t_b0_binary_op) (e1:Easy_format.t) (e2:Easy_format.t) : Easy
              indent_body = 2 } in
   mk_list "" (b0_binary_op_to_string op) "" st [e1;e2]
 
-let mk_fun_app (f:string) (args:Easy_format.t Nlist.t Nlist.t) : Easy_format.t  =
+let mk_fun_app (f:Easy_format.t) (args:Easy_format.t Nlist.t) : Easy_format.t  =
   let st = { Easy_format.list with
              Easy_format.space_after_opening = false;
              stick_to_label = false;
@@ -76,8 +76,7 @@ let mk_fun_app (f:string) (args:Easy_format.t Nlist.t Nlist.t) : Easy_format.t  
              align_closing = false;
              wrap_body = `Wrap_atoms;
              indent_body = 2 } in
-  let mk_args nle = mk_list "(" "," ")" st (Nlist.to_list nle) in
-  mk_label 2 false `Auto (mk_atom f) (mk_list "" "" "" st (List.map mk_args (Nlist.to_list args)))
+  mk_label 2 false `Auto f (mk_list "(" "," ")" st (Nlist.to_list args))
 
 let mk_proc_call (f:string) (args:Easy_format.t list) : Easy_format.t  =
   let st = { Easy_format.list with
@@ -134,17 +133,18 @@ let mk_array (lst:Easy_format.t list) : Easy_format.t =
 
 let rec mk_expr (e0:t_b0_expr) : Easy_format.t =
   match e0.exp0_desc with
-  | B0_Ident ts -> mk_ident ts 
+  | B0_Extern (ns,q_id,_) -> mk_ident {q_nspace=Some ns;q_id}
+  | B0_Ident (q_id,_) -> mk_ident {q_nspace=None;q_id}
   | B0_Builtin_0 cst -> mk_const cst
   | B0_Builtin_1 (op,e) -> mk_prefix_op op (mk_expr_wp e)
   | B0_Builtin_2 ((B0_Equality|B0_Disequality) as op,e1,e2) ->
     mk_infix_op op (mk_expr_wp e1) (mk_expr_wp e2)
   | B0_Builtin_2 (op,e1,e2) -> mk_infix_op op (mk_expr_wp e1) (mk_expr_wp e2)
-  | B0_Application (f,lst) -> 
-    mk_fun_app (t_symb_to_string f) (Nlist.make1 (Nlist.map mk_expr lst))
-  | B0_Array lst -> mk_array (List.map mk_expr lst)
-  | B0_Array_Access (f,arg) ->
-    mk_fun_app (t_symb_to_string f) (Nlist.make1 (Nlist.make1 (mk_expr arg)))
+  | B0_Array_Init _ | B0_Array_Access _ | B0_Array _ ->
+    Error.raise_exn e0.exp0_loc "Array types not supported."
+  | B0_Record _ | B0_Record_Access _ ->
+    Error.raise_exn e0.exp0_loc "Record types not supported."
+  | B0_Fun_App (f,args) -> mk_fun_app (mk_ident f) (Nlist.map mk_expr args)
 
 and mk_expr_wp (e0:t_b0_expr) : Easy_format.t =
   match e0.exp0_desc with
@@ -174,51 +174,26 @@ let rec get_seq_list (s:t_b0_subst) =
   | B0_Null -> []
   | _ -> [s]
 
-(*
-let rec pp_type out = function
-  | T_Int -> Printf.fprintf out "Int"
-  | T_Bool -> Printf.fprintf out "Bool"
-  | T_String -> Printf.fprintf out "String"
-  | T_Abstract id -> Printf.fprintf out "Abstract(%s)" (Codegen.Ada_ident.to_string id.q_id)
-  | T_Array (sz,A_Int) -> Printf.fprintf out "Int[%i]" sz
-  | T_Array (sz,A_Bool) -> Printf.fprintf out "Bool[%i]" sz
-  | T_Array (sz,A_String) -> Printf.fprintf out "String[%i]" sz
-  | T_Function (t_args,t_res) ->
-    begin
-      Printf.fprintf out "fun(%a" pp_type (Nlist.hd t_args);
-      List.iter (Printf.fprintf out ",%a" pp_type) (Nlist.tl t_args);
-      Printf.fprintf out ") return %a" pp_type t_res
-    end
-
-let print_type (ty:t_b0_type) : unit =
-  Printf.fprintf stdout "%a\n" pp_type ty
-*)
-
-let b0_type_to_string : t_b0_type -> string = function
+let b0_type_to_string lc : t_b0_type -> string = function
   | T_Int -> "Types.Int"
   | T_Bool -> "Types.Bool"
   | T_String -> "string"
   | T_Abstract ts -> t_symb_to_string ts
-  | T_Array (sz,A_Int) -> "Types.T_Int_Array_" ^ string_of_int sz
-  | T_Array (sz,A_Bool) -> "Types.T_Bool_Array_" ^ string_of_int sz
-  | T_Array (sz,A_String) -> "Types.T_String_Array_" ^ string_of_int sz
+  | T_Array _ -> Error.raise_exn lc "Array types not supported."
+  | T_Record _ -> Error.raise_exn lc "Record types not supported."
 
 let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
   match s0.sub0_desc with
   | B0_Null -> mk_atom "null;"
-  | B0_Affectation nle ->
-    let st = Easy_format.list in
-    let vars = mk_list "" "," "" st (List.map (fun (x,_) -> mk_atom (Codegen.Ada_ident.to_string x)) (Nlist.to_list nle)) in
-    let defs = mk_list "" "," "" st (List.map (fun (_,e) -> mk_expr e) (Nlist.to_list nle)) in
-    let st = Easy_format.list in
-    mk_list "" ":=" ";" st [vars;defs]
-  | B0_Array_Affectation (f,args,e) ->
-    let st = Easy_format.list in
-    let args = mk_list "(" "," ")" st (List.map mk_expr (Nlist.to_list args)) in
-    let arr = mk_label 2 false `Auto (mk_atom (Codegen.Ada_ident.to_string f)) args in
+  | B0_Affectation (LHS_Variable(x,_),e) ->
+    let var = mk_atom (Codegen.Ada_ident.to_string x) in
     let def = mk_expr e in
     let st = Easy_format.list in
-    mk_list "" ":=" ";" st [arr;def]
+    mk_list "" ":=" ";" st [var;def]
+  | B0_Affectation (LHS_Array _,e) ->
+    Error.raise_exn s0.sub0_loc "Array types not supported."
+  | B0_Affectation (LHS_Record _,_) ->
+    Error.raise_exn s0.sub0_loc "Record types not supported."
   | B0_IfThenElse (cases,def) ->
     let (p,s) = Nlist.hd cases in
     let st = Easy_format.list in
@@ -257,7 +232,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     in
     mk_sequence_nl lst
   | B0_Var (vars,s) ->
-    let aux (id,ty) = mk_atom (Codegen.Ada_ident.to_string id ^ ": " ^ b0_type_to_string ty ^ ";") in
+    let aux (id,ty) = mk_atom (Codegen.Ada_ident.to_string id ^ ": " ^ b0_type_to_string s0.sub0_loc ty ^ ";") in
     let st = Easy_format.list in
     let vars = mk_list "" "" "" st (List.map aux (Nlist.to_list vars)) in
     let decl = mk_label 2 true `Always_rec (mk_atom "declare") vars in
@@ -271,7 +246,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
   | B0_CallUp ([],f,[]) -> mk_atom (t_symb_to_string f ^ ";")
   | B0_CallUp (out,f,args) ->
     let args = (List.map mk_expr args)@
-               (List.map (fun x -> mk_atom (Codegen.Ada_ident.to_string x)) out) in
+               (List.map (fun (_,x) -> mk_atom (Codegen.Ada_ident.to_string x)) out) in
     mk_proc_call (t_symb_to_string f) args
   | B0_Sequencement (s1,s2) ->
     begin match get_seq_list s0 with
@@ -282,36 +257,26 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
         mk_list "" "" "" st seqs
     end
 
-let mk_dep (dep:Codegen.Ada_ident.t_pkg_id) =
+let mk_dep (dep,_:Codegen.Ada_ident.t_pkg_id*_) =
   mk_atom ("with " ^ Codegen.Ada_ident.pkg_to_string dep ^ ";")
 
 let mk_type (ty:t_type) : Easy_format.t =
   match ty.ty_def with
-  | D_Enumerate lst ->
-    let st = { Easy_format.list with
-               Easy_format.space_after_opening = false;
-               stick_to_label = false;
-               space_before_separator = false;
-               space_after_separator = true;
-               separators_stick_left = true;
-               space_before_closing = false;
-               align_closing = false;
-               wrap_body = `Wrap_atoms;
-               indent_body = 3 }
-    in
-    let elts = List.map (fun x -> mk_atom (Codegen.Ada_ident.to_string x)) lst in
-    mk_label 2 true `Auto (mk_atom ("type " ^ Codegen.Ada_ident.to_string ty.ty_name ^ " is"))
-      (mk_list "(" "," ");" st elts)
-  | D_Alias ts -> mk_atom ("subtype " ^ Codegen.Ada_ident.to_string ty.ty_name ^ " is " ^ t_symb_to_string ts ^ ";")
-  | D_Int -> mk_atom ("subtype " ^ Codegen.Ada_ident.to_string ty.ty_name ^ " is Integer;")
+  | D_Alias ts ->
+    mk_atom ("subtype " ^ Codegen.Ada_ident.to_string ty.ty_name ^ " is "
+             ^ t_symb_to_string ts ^ ";")
+  | D_Int ->
+    mk_atom ("subtype " ^ Codegen.Ada_ident.to_string ty.ty_name ^ " is Integer;")
 
-let mk_arg2 (i:int) (ty:t_b0_type) : Easy_format.t =
-  mk_label 2 true `Auto (mk_atom ("Arg"^string_of_int i^":"))
-    (mk_atom ("in "^ b0_type_to_string ty))
+let t_mode_to_string b = if b then "out" else "in"
 
-let mk_func_spec (fname:Codegen.Ada.t_id) (args:Codegen.Ada.t_b0_type list) (tg:Codegen.Ada.t_b0_type) : Easy_format.t option =
-  let fn = mk_atom ("function " ^ Codegen.Ada_ident.to_string fname) in
-  let args = List.mapi mk_arg2 args in
+let mk_arg (is_out:bool) (a:t_arg) : Easy_format.t =
+  mk_label 2 true `Auto (mk_atom (Codegen.Ada_ident.to_string a.arg_name^":"))
+    (mk_atom (t_mode_to_string is_out^" "^ b0_type_to_string a.arg_loc a.arg_type))
+
+let mk_fun_spec (f:t_fun) : Easy_format.t =
+  let fn = mk_atom ("function " ^ Codegen.Ada_ident.to_string f.f_name) in
+  let args = List.map (mk_arg false) (Nlist.to_list f.f_args) in
   let st = Easy_format.list in
   let fn =
     if args = [] then fn
@@ -319,37 +284,36 @@ let mk_func_spec (fname:Codegen.Ada.t_id) (args:Codegen.Ada.t_b0_type list) (tg:
       let args = mk_list "(" ";" ")" st args in
       mk_label 2 false `Auto fn args
   in
-  let ret = mk_atom ("return "^b0_type_to_string tg^";") in
-  Some (mk_sequence_nl [fn;ret])
+  let ret = mk_atom ("return "^b0_type_to_string f.f_loc f.f_ret.exp0_type^";") in
+  mk_sequence_nl [fn;ret]
 
-let mk_const (c:t_constant) : Easy_format.t option =
-  match c.c_type with
-  | Fun (args,tg) -> mk_func_spec c.c_name (Nlist.to_list args) tg
-  | Cst ty ->
-    let st = { Easy_format.list with
-               Easy_format.space_after_opening = false;
-               stick_to_label = false;
-               space_before_separator = false;
-               space_after_separator = true;
-               separators_stick_left = false;
-               space_before_closing = false;
-               align_closing = false;
-               wrap_body = `Wrap_atoms;
-               indent_body = 3 }
-    in
+let mk_const (c:t_constant_or_fun) : Easy_format.t =
+  let st = { Easy_format.list with
+             Easy_format.space_after_opening = false;
+             stick_to_label = false;
+             space_before_separator = false;
+             space_after_separator = true;
+             separators_stick_left = false;
+             space_before_closing = false;
+             align_closing = false;
+             wrap_body = `Wrap_atoms;
+             indent_body = 3 }
+  in
+  match c with
+  | Fun f -> mk_fun_spec f
+  | Cst ({c_init=Init c_init} as c) ->
     let ty = mk_atom (Codegen.Ada_ident.to_string c.c_name ^ ": constant "
-                      ^ b0_type_to_string ty ^ " :=")
+                      ^ b0_type_to_string c.c_loc c.c_type ^ " :=")
     in
-    Some (mk_label 2 true `Auto ty (mk_list "" "" ";" st [mk_expr c.c_init]))
+    mk_label 2 true `Auto ty (mk_list "" "" ";" st [mk_expr c_init])
+  | Cst ({c_init=Promoted mch}) -> assert false (*FIXME*)
 
 let mk_var (v:t_variable) : Easy_format.t =
-  mk_atom (Codegen.Ada_ident.to_string v.v_name ^ ": " ^ b0_type_to_string v.v_type ^ ";")
-
-let t_mode_to_string b = if b then "out" else "in"
-
-let mk_arg (is_out:bool) (a:t_arg) : Easy_format.t =
-  mk_label 2 true `Auto (mk_atom (Codegen.Ada_ident.to_string a.arg_name^":"))
-    (mk_atom (t_mode_to_string is_out^" "^ b0_type_to_string a.arg_type))
+  match v.v_promoted_from with
+  | None ->
+    mk_atom (Codegen.Ada_ident.to_string v.v_name ^ ": "
+             ^ b0_type_to_string v.v_loc v.v_type ^ ";")
+  | Some _ -> assert false (*FIXME*)
 
 let mk_proc_spec (p:t_procedure) : Easy_format.t =
   let args = (List.map (mk_arg false) p.p_args_in)@(List.map (mk_arg true) p.p_args_out) in
@@ -393,9 +357,9 @@ let mk_proc_spec_if_global (p:t_procedure) : Easy_format.t option =
   else Some (mk_proc_spec p)
 
 let package_to_format_spec (pkg:t_package) : Easy_format.t =
-  let deps = List.rev_map mk_dep ((match Codegen.Ada_ident.make_pkg_id "Types" with None -> assert false | Some id -> id)::pkg.pkg_dependencies) in
+  let deps = List.rev_map mk_dep pkg.pkg_dependencies in
   let types = List.map mk_type pkg.pkg_types in
-  let consts = Utils.filter_map mk_const pkg.pkg_constants in
+  let consts = List.map mk_const pkg.pkg_constants in
   let vars = List.map mk_var pkg.pkg_variables in
   let procs = Utils.filter_map mk_proc_spec_if_global pkg.pkg_procedures in
   let st_body = { Easy_format.list with
@@ -461,19 +425,19 @@ let mk_proc_body (p:t_procedure) : Easy_format.t option =
                wrap_body = `Force_breaks;
                indent_body = 3 }
     in
-    let body = mk_list "begin" "" ("end " ^ Codegen.Ada_ident.to_string p.p_name ^ ";") st [mk_subst s] in
+    let body =
+      mk_list "begin" "" ("end " ^ Codegen.Ada_ident.to_string p.p_name ^ ";")
+        st [mk_subst s]
+    in
     Some (mk_sequence_nl [proc;mk_atom "is";body])
   | Renames ts -> None
 
-let mk_local_proc_spec (p:t_procedure) : Easy_format.t option =
-  if not p.p_is_local then None
-  else Some (mk_proc_spec p)
-
-let mk_fun_body (c:t_constant) : Easy_format.t option =
-  match c.c_type with
-  | Fun (t_args,t_res) ->
-    let fn = mk_atom ("function " ^ Codegen.Ada_ident.to_string c.c_name) in
-    let args = List.mapi mk_arg2 (Nlist.to_list t_args) in
+let mk_fun_body (c:t_constant_or_fun) : Easy_format.t option =
+  match c with
+  | Cst _ -> None
+  | Fun f ->
+    let fn = mk_atom ("function " ^ Codegen.Ada_ident.to_string f.f_name) in
+    let args = List.map (mk_arg false) (Nlist.to_list f.f_args) in
     let st = Easy_format.list in
     let fn =
       if args = [] then fn
@@ -481,14 +445,17 @@ let mk_fun_body (c:t_constant) : Easy_format.t option =
         let args = mk_list "(" ";" ")" st args in
         mk_label 2 false `Auto fn args
     in
-    let ret_ty = mk_atom ("return "^b0_type_to_string t_res) in
+    let ret_ty = mk_atom ("return "^b0_type_to_string f.f_loc f.f_ret.exp0_type) in
     let st = Easy_format.list in
-    let ret =  mk_list  "return" "" ";" st [mk_expr c.c_init] in
+    let ret =  mk_list  "return" "" ";" st [mk_expr f.f_ret] in
     let st = Easy_format.list in
-    let body = mk_list "begin" "" ("end "^Codegen.Ada_ident.to_string c.c_name^";") st [ret] in
+    let body = mk_list "begin" "" ("end "^Codegen.Ada_ident.to_string f.f_name^";") st [ret] in
     Some (mk_sequence_nl [fn;ret_ty;mk_atom "is";body])
-  | Cst _ -> None
- 
+
+let mk_local_proc_spec (p:t_procedure) : Easy_format.t option =
+  if not p.p_is_local then None
+  else Some (mk_proc_spec p)
+
 let package_to_format_body (pkg:t_package) : Easy_format.t option =
   let lst1 = Utils.filter_map mk_local_proc_spec pkg.pkg_procedures in
   let lst2 = Utils.filter_map mk_fun_body pkg.pkg_constants in
@@ -527,17 +494,13 @@ let print_package_body (out:out_channel) (pkg:t_package) : unit Error.t_result =
     end
   with Error.Error err -> Error err
 
-let some_constant_is_a_function lst =
-  let aux c = match c.c_type with
-    | Fun _ -> true
-    | Cst _ -> false
-  in
-  List.exists aux lst
+let is_cst = function
+  | Fun _ -> true
+  | Cst _ -> false
 
 let is_package_body_empty pkg =
-  match pkg.pkg_procedures, pkg.pkg_init with
-  | [], None -> not (some_constant_is_a_function pkg.pkg_constants)
-  | lst, None  ->
-    not (some_constant_is_a_function pkg.pkg_constants) &&
-    List.for_all (fun p -> match p.p_body with Body _ -> false | Renames _ -> true ) lst
-  | _, __ -> false
+  List.for_all (function Fun _ -> false | Cst _ -> true) pkg.pkg_constants &&
+  List.for_all (fun p -> match p.p_body with Body _ -> false | Renames _ -> true ) pkg.pkg_procedures &&
+  match pkg.pkg_init with
+  | None -> true
+  | Some _ -> false

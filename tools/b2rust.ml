@@ -120,6 +120,7 @@ let args = [
   ("-c", Arg.Set continue_on_error,   "Continue on error" );
   ("-I", Arg.String add_path, "Path for definitions files" );
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
+  ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
   ("-x", Arg.Unit set_alstm_opt, "(no documentation)" );
 ]
 

@@ -101,9 +101,11 @@ let read_until_next_clause (s:TreeLexer.state) : t_token =
   in
   loop 0
 
+let keep_macro_loc = ref false
+
 let rec get_token_exn (s:state) : t_token =
   match TreeLexer.get_token_exn s.xstate with
-  | IDENT id, st, _ as tk ->
+  | IDENT id, st, ed as tk ->
     begin match MacroTable.get_macro s.macros id with
       | None -> tk
       | Some (_,args,tks) ->
@@ -121,7 +123,10 @@ let rec get_token_exn (s:state) : t_token =
                   " paramter(s). Expecting "^string_of_int n2^" parameter(s).")
             end
         in
-        let tree = tree_subst params tks in
+        let tree =
+          if !keep_macro_loc then tree_subst_loc st ed params tks
+          else tree_subst params tks
+        in
         let () = TreeLexer.push_tree_exn st s.xstate tree in
         get_token_exn s
     end

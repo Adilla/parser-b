@@ -10,6 +10,7 @@ end
 
 type tree
 val tree_subst : (string*t_token list) list -> t_token list -> tree
+val tree_subst_loc : Lexing.position -> Lexing.position -> (string*t_token list) list -> t_token list -> tree
 val tree_pop : tree -> (t_token*tree) option
 val tree_top : tree -> t_token option
 val token_to_tree : t_token -> tree

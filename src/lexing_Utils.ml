@@ -138,6 +138,15 @@ let rec tree_subst (params:(string*t_token list) list) : t_token list -> tree =
     end
   | tk -> Token tk)
 
+let rec tree_subst_loc st ed (params:(string*t_token list) list) : t_token list -> tree =
+  List.map (function
+  | (Grammar.IDENT id as tk,_,_) ->
+    begin match List.assoc_opt id params with
+      | None -> Token (tk,st,ed)
+      | Some tks -> List tks
+    end
+  | (tk,_,_) -> Token (tk,st,ed))
+
 let rec tree_pop : tree -> (t_token*tree) option = function
   | [] -> None
   | (Token tk)::lst -> Some (tk,lst)

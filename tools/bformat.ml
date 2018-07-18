@@ -29,6 +29,7 @@ let add_path s =
 let args = [
   ("-c", Arg.Set continue_on_error, "Continue on error" );
   ("-o", Arg.String set_out, "Output file" );
+  ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
   ("-I", Arg.String add_path, "Path for definitions files" )
 ]
 

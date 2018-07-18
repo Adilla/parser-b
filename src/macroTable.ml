@@ -7,25 +7,25 @@ module L = StackLexer.Make(Base_Lexer)
 let opened_def_files = ref []
 let reset_opened_def_files () = opened_def_files := []
 
-let load_def_file_exn (lc:loc) (fn:string) : in_channel =
+let load_def_file_exn (lc:loc) (fn:string) : in_channel*string =
   match File.get_fullname fn with
   | Some fn ->
     begin
       ( if List.mem fn !opened_def_files then
           Error.raise_exn lc ("Error: trying to load '" ^ fn ^ "' twice.")
         else opened_def_files := fn :: !opened_def_files );
-      try open_in fn
+      try (open_in fn,fn)
       with Sys_error _ -> Error.raise_exn lc ("Error: cannot open file '"^fn^"'.")
     end
   | None -> Error.raise_exn lc ("Error: cannot find file '"^fn^"'.")
 
-let load_quoted_def_file_exn (lc:loc) (fn:string) : in_channel =
+let load_quoted_def_file_exn (lc:loc) (fn:string) : in_channel*string =
   let dir = Filename.dirname lc.Lexing.pos_fname in
   let fn = dir ^ "/" ^ fn in
   ( if List.mem fn !opened_def_files then
       Error.raise_exn lc ("Error: trying to load '" ^ fn ^ "' twice.")
     else opened_def_files := fn :: !opened_def_files );
-  try open_in fn
+  try (open_in fn,fn)
   with Sys_error _ -> Error.raise_exn lc ("Error: cannot open file '"^fn^"'.")
 
 (* ***** *)
@@ -107,12 +107,12 @@ let print out (defs:t) : unit =
 let rec state_1_start_exn (s:L.state) (is_def_file:bool) (def_lst:macro list) : macro list =
   match L.get_token_exn s with
   | STRING fn, st, _ ->
-    let input = load_quoted_def_file_exn st fn in
+    let (input,fn) = load_quoted_def_file_exn st fn in
     let def_lst = parse_def_file_exn def_lst fn input in
     let () = close_in input in
     state_8_def_file_exn s is_def_file def_lst
   | DEF_FILE fn, st, _ ->
-    let input = load_def_file_exn st fn in
+    let (input,fn) = load_def_file_exn st fn in
     let def_lst = parse_def_file_exn def_lst fn input in
     let () = close_in input in
     state_8_def_file_exn s is_def_file def_lst

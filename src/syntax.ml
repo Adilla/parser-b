@@ -75,531 +75,468 @@ type expr_binder = Sum | Prod | Q_Union | Q_Intersection | Lambda
 
 type c_or_m = Maplet | Comma of bool | Infix
 
-type ident = string
-let ident_eq = String.equal
-
-type ('lc,'ty) var = { var_loc:'lc; var_typ:'ty; var_id:ident }
-let var_eq (v1:('lc,'ty) var) (v2:('lc2,'ty2) var) : bool = String.equal v1.var_id v2.var_id 
-
-type 'lc lident = { lid_loc:'lc; lid_str:ident }
-let lident_eq : type a b. a lident -> b lident -> bool = fun a b -> ident_eq a.lid_str b.lid_str
-
-type ('lc,'ty) expression_desc =
-  | Ident of ident
-  | Dollar of ident
+type ('ident,'bvar,'rfield,'expression,'predicate) expression_desc =
+  | Ident of 'ident
+  | Dollar of 'ident
   | Builtin of e_builtin
-  | Pbool of ('lc,'ty) predicate
-  | Application of ('lc,'ty) expression * ('lc,'ty) expression
-  | Couple of c_or_m  * ('lc,'ty) expression * ('lc,'ty) expression
-  | Sequence of (('lc,'ty) expression) Nlist.t
-  | Extension of (('lc,'ty) expression) Nlist.t
-  | Comprehension of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
-  | Binder of expr_binder * ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) expression
-  | Record_Field_Access of ('lc,'ty) expression * 'lc lident
-  | Record of ('lc lident * ('lc,'ty) expression) Nlist.t
-  | Record_Type of ('lc lident * ('lc,'ty) expression) Nlist.t
+  | Pbool of 'predicate
+  | Application of 'expression * 'expression
+  | Couple of c_or_m  * 'expression * 'expression
+  | Sequence of 'expression Nlist.t
+  | Extension of 'expression Nlist.t
+  | Comprehension of 'bvar Nlist.t * 'predicate
+  | Binder of expr_binder * 'bvar Nlist.t * 'predicate * 'expression
+  | Record_Field_Access of 'expression * 'rfield
+  | Record of ('rfield * 'expression) Nlist.t
+  | Record_Type of ('rfield * 'expression) Nlist.t
 
-and ('lc,'ty) expression = { exp_loc:'lc; exp_typ:'ty; exp_desc:('lc,'ty) expression_desc }
-
-and ('lc,'ty) predicate_desc =
+type ('bvar,'expression,'predicate) predicate_desc =
   | P_Builtin of p_builtin
-  | Binary_Prop of prop_bop * ('lc,'ty) predicate * ('lc,'ty) predicate
-  | Binary_Pred of pred_bop * ('lc,'ty) expression * ('lc,'ty) expression
-  | Negation of ('lc,'ty) predicate
-  | Universal_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
-  | Existential_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Binary_Prop of prop_bop * 'predicate * 'predicate
+  | Binary_Pred of pred_bop * 'expression * 'expression
+  | Negation of 'predicate
+  | Universal_Q of 'bvar Nlist.t * 'predicate
+  | Existential_Q of 'bvar Nlist.t * 'predicate
 
-and ('lc,'ty) predicate = { prd_loc:'lc; prd_desc:('lc,'ty) predicate_desc }
+type ('mut_var,'rfield,'expression) lhs =
+  | Tuple of 'mut_var Nlist.t
+  | Function of 'mut_var * 'expression Nlist.t
+  | Record of 'mut_var * 'rfield
 
-let rec expr_eq : type a b c d. (a,b) expression -> (c,d) expression -> bool = fun e1 e2 ->
-  match e1.exp_desc, e2.exp_desc with
-  | Ident v1, Ident v2 | Dollar v1, Dollar v2 -> ident_eq v1 v2
-  | Builtin b1, Builtin b2 -> e_builtin_eq b1 b2
-  | Pbool p1, Pbool p2 -> pred_eq p1 p2
-  | Application (f1,a1), Application (f2,a2) -> expr_eq f1 f2 && expr_eq a1 a2
-  | Couple (_,x1,y1), Couple (_,x2,y2) -> expr_eq x1 x2 && expr_eq y1 y2
-  | Sequence lst1, Sequence lst2 -> Nlist.equal expr_eq lst1 lst2
-  | Extension lst1, Extension lst2 -> Nlist.equal expr_eq lst1 lst2
-  | Comprehension (lst1,p1), Comprehension(lst2,p2) ->
-    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
-  | Binder (bi1,lst1,p1,e1), Binder (bi2,lst2,p2,e2) ->
-    bi1 = bi2 && Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2 && expr_eq e1 e2
-  | Record_Field_Access (e1,f1), Record_Field_Access(e2,f2) ->
-    expr_eq e1 e2 && ident_eq f1.lid_str f2.lid_str
-  | Record lst1, Record lst2
-  | Record_Type lst1, Record_Type lst2 ->
-    let aux (id1,e1) (id2,e2) = ident_eq id1.lid_str id2.lid_str && expr_eq e1 e2 in
-    Nlist.equal aux lst1 lst2
-  | _, _ -> false
-
-and pred_eq : type a b c d. (a,b) predicate -> (c,d) predicate -> bool = fun p1 p2 ->
-  match p1.prd_desc, p2.prd_desc with
-  | P_Builtin b1, P_Builtin b2 -> b1 = b2
-  | Binary_Prop (b1,p1,q1), Binary_Prop (b2,p2,q2) ->
-    b1 = b2 && pred_eq p1 p2 && pred_eq q1 q2
-  | Binary_Pred (b1,p1,q1), Binary_Pred (b2,p2,q2) ->
-    b1 = b2 && expr_eq p1 p2 && expr_eq q1 q2
-  | Negation p1, Negation p2 -> pred_eq p1 p2
-  | Universal_Q (lst1,p1), Universal_Q (lst2,p2) ->
-    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
-  | Existential_Q (lst1,p1), Existential_Q (lst2,p2) ->
-    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
-  | _, _ -> false
-
-type ('lc,'ty) substitution_desc =
+type ('bvar,'op_name,'mut_var,'rfield,'expression,'predicate,'substitution) substitution_desc =
   | Skip
-  | Affectation of ('lc,'ty) lhs * ('lc,'ty) expression
-  | Pre of ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Assert of ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Choice of ('lc,'ty) substitution Nlist.t
-  | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Case of ('lc,'ty) expression * (('lc,'ty) expression Nlist.t * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Any of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Let of ('lc,'ty) var Nlist.t * (('lc,'ty) var * ('lc,'ty) expression) Nlist.t * ('lc,'ty) substitution
-  | BecomesElt of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
-  | BecomesSuch of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
-  | Var of ('lc,'ty) var Nlist.t * ('lc,'ty) substitution
-  | CallUp of ('lc,'ty) var list * 'lc lident * ('lc,'ty) expression list
-  | While of ('lc,'ty) predicate * ('lc,'ty) substitution * ('lc,'ty) predicate * ('lc,'ty) expression
-  | Sequencement of ('lc,'ty) substitution * ('lc,'ty) substitution
-  | Parallel of ('lc,'ty) substitution * ('lc,'ty) substitution
+  | Affectation of ('mut_var,'rfield,'expression) lhs * 'expression
+  | Pre of 'predicate * 'substitution
+  | Assert of 'predicate * 'substitution
+  | Choice of 'substitution Nlist.t
+  | IfThenElse of ('predicate * 'substitution) Nlist.t * 'substitution option
+  | Select of ('predicate * 'substitution) Nlist.t * 'substitution option
+  | Case of 'expression * ('expression Nlist.t * 'substitution) Nlist.t * 'substitution option
+  | Any of 'bvar Nlist.t * 'predicate * 'substitution
+  | Let of 'bvar Nlist.t * ('bvar * 'expression) Nlist.t * 'substitution
+  | BecomesElt of 'mut_var Nlist.t * 'expression
+  | BecomesSuch of  'mut_var Nlist.t * 'predicate
+  | Var of  'bvar Nlist.t * 'substitution
+  | CallUp of  'mut_var list * 'op_name * 'expression list
+  | While of 'predicate * 'substitution * 'predicate * 'expression
+  | Sequencement of 'substitution * 'substitution
+  | Parallel of 'substitution * 'substitution
 
-and ('lc,'ty) lhs =
-  | Tuple of ('lc,'ty) var Nlist.t
-  | Function of ('lc,'ty) var * ('lc,'ty) expression Nlist.t
-  | Record of ('lc,'ty) var * 'lc lident
+type ('op_name,'arg,'substitution) operation =
+  { op_out: 'arg list;
+    op_name: 'op_name;
+    op_in: 'arg list;
+    op_body: 'substitution
+  }
 
-and ('lc,'ty) substitution = { sub_loc:'lc; sub_desc:('lc,'ty) substitution_desc }
+type ('mch_name,'expression) machine_instanciation =
+  { mi_mch: 'mch_name;
+    mi_params: 'expression list
+  }
 
-let rec subst_eq : type a b c d. (a,b) substitution -> (c,d) substitution -> bool = fun s1 s2 ->
-  match s1.sub_desc ,s2.sub_desc  with
-  | Skip, Skip -> true
-  | Affectation (lhs1,e1), Affectation (lhs2,e2) -> lhs_eq lhs1 lhs2 && expr_eq e1 e2
-  | Pre (p1,s1), Pre (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
-  | Assert (p1,s1), Assert (p2,s2) -> pred_eq p1 p2 && subst_eq s1 s2
-  | Choice lst1, Choice lst2 -> Nlist.equal subst_eq lst1 lst2
-  | IfThenElse (lst1,opt1), IfThenElse (lst2,opt2)
-  | Select (lst1,opt1), Select (lst2,opt2) ->
-    let aux (p1,s1) (p2,s2) = pred_eq p1 p2 && subst_eq s1 s2 in
-    Nlist.equal aux lst1 lst2 &&
-    begin match opt1, opt2 with
-      | None, None -> true
-      | Some s1, Some s2 -> subst_eq s1 s2
-      | _, _ -> false
-    end
-  | Case (e1,lst1,opt1), Case (e2,lst2,opt2) ->
-    let aux (lst1,s1) (lst2,s2) = Nlist.equal expr_eq lst1 lst2 && subst_eq s1 s2 in
-    expr_eq e1 e2 && Nlist.equal aux lst1 lst2 &&
-    begin match opt1, opt2 with
-      | None, None -> true
-      | Some s1, Some s2 -> subst_eq s1 s2
-      | _, _ -> false
-    end
-  | Any (lst1,p1,s1), Any (lst2,p2,s2) ->
-    Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2 && subst_eq s1 s2
-  | Let (xlst1,ylst1,s1), Let (xlst2,ylst2,s2) ->
-    let aux (v1,e1) (v2,e2) = var_eq v1 v2 && expr_eq e1 e2 in
-    Nlist.equal var_eq xlst1 xlst2 &&
-    Nlist.equal aux ylst1 ylst2 && subst_eq s1 s2
-  | BecomesElt (lst1,e1), BecomesElt (lst2,e2) -> Nlist.equal var_eq lst1 lst2 && expr_eq e1 e2
-  | BecomesSuch (lst1,p1), BecomesSuch (lst2,p2) -> Nlist.equal var_eq lst1 lst2 && pred_eq p1 p2
-  | Var (lst1,s1), Var (lst2,s2) -> Nlist.equal var_eq lst1 lst2 && subst_eq s1 s2
-  | CallUp (xlst1,op1,elst1), CallUp (xlst2,op2,elst2) ->
-    Utils.list_eq var_eq xlst1 xlst2 && lident_eq op1 op2 && Utils.list_eq expr_eq elst1 elst2
-  | While (p1,s1,q1,e1), While (p2,s2,q2,e2) ->
-    pred_eq p1 p2 && subst_eq s1 s2 && pred_eq q1 q2 && expr_eq e1 e2
-  | Sequencement (s1,r1), Sequencement (s2,r2) ->
-    subst_eq s1 s2 && subst_eq r1 r2
-  | Parallel (s1,r1), Parallel (s2,r2) ->
-    subst_eq s1 s2 && subst_eq r1 r2
-  | _, _ -> false
+type 'a set =
+  | Abstract_Set of 'a
+  | Concrete_Set of 'a * 'a list
 
-and lhs_eq : type a b c d. (a,b) lhs -> (c,d) lhs -> bool = fun lhs1 lhs2 ->
-  match lhs1, lhs2 with
-  | Tuple xlst1, Tuple xlst2 -> Nlist.equal var_eq xlst1 xlst2
-  | Function (f1,lst1), Function (f2,lst2) -> var_eq f1 f2 && Nlist.equal expr_eq lst1 lst2
-  | Record (id1,fd1), Record (id2,fd2) -> var_eq id1 id2 && ident_eq fd1.lid_str fd2.lid_str
-  | _, _ -> false
-
-type ('lc,'ty) operation =
-  { op_out:('lc,'ty) var list;
-    op_name:'lc lident;
-    op_in:('lc,'ty)  var list;
-    op_body: ('lc,'ty) substitution }
-
-type ('lc,'ty) machine_instanciation =
-  { mi_mch: 'lc lident;
-    mi_params: ('lc,'ty) expression list }
-
-type ('lc,'ty) set =
-  | Abstract_Set of ('lc,'ty) var
-  | Concrete_Set of ('lc,'ty) var * ('lc,'ty) var list
-
-type ('lc,'ty) clause_desc =
-  | Constraints of ('lc,'ty) predicate
-  | Imports of (('lc,'ty) machine_instanciation) Nlist.t
-  | Sees of 'lc lident Nlist.t
-  | Includes of ('lc,'ty) machine_instanciation Nlist.t
-  | Extends of ('lc,'ty) machine_instanciation Nlist.t
-  | Promotes of 'lc lident Nlist.t
-  | Uses of 'lc lident Nlist.t
-  | Sets of ('lc,'ty) set Nlist.t
-  | Constants of ('lc,'ty) var Nlist.t
-  | Abstract_constants of ('lc,'ty) var Nlist.t
-  | Properties of ('lc,'ty) predicate
-  | Concrete_variables of ('lc,'ty) var Nlist.t
-  | Variables of ('lc,'ty) var Nlist.t
-  | Invariant of ('lc,'ty) predicate
-  | Assertions of ('lc,'ty) predicate Nlist.t
-  | Initialization of ('lc,'ty) substitution
-  | Operations of ('lc,'ty) operation Nlist.t
-  | Local_Operations of ('lc,'ty) operation Nlist.t
-  | Values of (('lc,'ty) var * ('lc,'ty) expression) Nlist.t
-
-and ('lc,'ty) clause = { cl_loc:'lc; cl_desc:('lc,'ty) clause_desc }
-
-type ('lc,'ty) machine_desc = {
-  mch_constraints: ('lc * ('lc,'ty) predicate) option;
-  mch_sees: ('lc * 'lc lident Nlist.t) option;
-  mch_includes: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
-  mch_promotes: ('lc * 'lc lident Nlist.t) option;
-  mch_extends: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
-  mch_uses: ('lc * 'lc lident Nlist.t) option;
-  mch_sets: ('lc * ('lc,'ty) set Nlist.t) option;
-  mch_concrete_constants: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_abstract_constants: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_properties: ('lc * ('lc,'ty) predicate) option;
-  mch_concrete_variables: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_abstract_variables: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_invariant: ('lc * ('lc,'ty) predicate) option;
-  mch_assertions: ('lc * ('lc,'ty) predicate Nlist.t) option;
-  mch_initialisation: ('lc * ('lc,'ty) substitution) option;
-  mch_operations: ('lc * ('lc,'ty) operation Nlist.t) option;
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) machine_desc = {
+  mch_constraints: 'predicate option;
+  mch_sees: 'mch_name list;
+  mch_includes: ('mch_name,'expression) machine_instanciation list;
+  mch_promotes: 'op_name list;
+  mch_extends: ('mch_name,'expression) machine_instanciation list;
+  mch_uses: 'mch_name list;
+  mch_sets: 'symb set list;
+  mch_concrete_constants: 'symb list;
+  mch_abstract_constants: 'symb list;
+  mch_properties: 'predicate option;
+  mch_concrete_variables: 'symb list;
+  mch_abstract_variables: 'symb list;
+  mch_invariant: 'predicate option;
+  mch_assertions: 'predicate list;
+  mch_initialisation: 'substitution option;
+  mch_operations: ('op_name,'arg,'substitution) operation list;
 }
 
-type ('lc,'ty) refinement_desc = {
-  ref_refines: 'lc lident;
-  ref_sees: ('lc*'lc lident Nlist.t) option;
-  ref_includes: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  ref_promotes: ('lc*'lc lident Nlist.t) option;
-  ref_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  ref_sets: ('lc*('lc,'ty) set Nlist.t) option;
-  ref_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_abstract_constants: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_properties: ('lc*('lc,'ty) predicate) option;
-  ref_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_abstract_variables: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_invariant: ('lc*('lc,'ty) predicate) option;
-  ref_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
-  ref_initialisation: ('lc*('lc,'ty) substitution) option;
-  ref_operations: ('lc*('lc,'ty) operation Nlist.t) option;
-  ref_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) refinement_desc = {
+  ref_refines: 'mch_name;
+  ref_sees: 'mch_name list;
+  ref_includes: ('mch_name,'expression) machine_instanciation list;
+  ref_promotes: 'op_name list;
+  ref_extends: ('mch_name,'expression) machine_instanciation list;
+  ref_sets: 'symb set list;
+  ref_concrete_constants: 'symb list;
+  ref_abstract_constants: 'symb list;
+  ref_properties: 'predicate option;
+  ref_concrete_variables: 'symb list;
+  ref_abstract_variables: 'symb list;
+  ref_invariant: 'predicate option;
+  ref_assertions: 'predicate list;
+  ref_initialisation: 'substitution option;
+  ref_operations: ('op_name,'arg,'substitution) operation list;
+  ref_local_operations: ('op_name,'arg,'substitution) operation  list;
 }
 
-type ('lc,'ty) implementation_desc = {
-  imp_refines: 'lc lident;
-  imp_sees: ('lc*'lc lident Nlist.t) option;
-  imp_imports: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  imp_promotes: ('lc*'lc lident Nlist.t) option;
-  imp_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  imp_sets: ('lc*('lc,'ty) set Nlist.t) option;
-  imp_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
-  imp_properties: ('lc*('lc,'ty) predicate) option;
-  imp_values: ('lc*(('lc,'ty) var*('lc,'ty) expression) Nlist.t) option;
-  imp_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
-  imp_invariant: ('lc*('lc,'ty) predicate) option;
-  imp_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
-  imp_initialisation: ('lc*('lc,'ty) substitution) option;
-  imp_operations: ('lc*('lc,'ty) operation Nlist.t) option;
-  imp_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) implementation_desc = {
+  imp_refines: 'mch_name;
+  imp_sees: 'mch_name list;
+  imp_imports: ('mch_name,'expression) machine_instanciation list;
+  imp_promotes: 'op_name list;
+  imp_extends: ('mch_name,'expression) machine_instanciation list;
+  imp_sets: 'symb set list;
+  imp_concrete_constants: 'symb list;
+  imp_properties: 'predicate option;
+  imp_values: ('symb*'expression) list;
+  imp_concrete_variables: 'symb list;
+  imp_invariant: 'predicate option;
+  imp_assertions: 'predicate list;
+  imp_initialisation: 'substitution option;
+  imp_operations: ('op_name,'arg,'substitution) operation list;
+  imp_local_operations: ('op_name,'arg,'substitution) operation list;
 }
 
-type ('lc,'ty) component_desc = 
-  | Machine of ('lc,'ty) machine_desc
-  | Refinement of ('lc,'ty) refinement_desc
-  | Implementation of ('lc,'ty) implementation_desc
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) component_desc =
+  | Machine of ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) machine_desc
+  | Refinement of ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) refinement_desc
+  | Implementation of ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) implementation_desc
 
-type ('lc,'ty) component = {
-  co_loc: 'lc;
-  co_name: ident;
-  co_parameters: ('lc,'ty) var list;
-  co_desc: ('lc,'ty) component_desc
-}
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) clause_desc =
+    | Constraints of 'predicate
+    | Imports of ('mch_name,'expression) machine_instanciation Nlist.t
+    | Sees of 'symb Nlist.t
+    | Includes of ('mch_name,'expression) machine_instanciation Nlist.t
+    | Extends of  ('mch_name,'expression) machine_instanciation Nlist.t
+    | Promotes of 'symb Nlist.t
+    | Uses of 'symb Nlist.t
+    | Sets of 'symb set Nlist.t
+    | Constants of 'symb Nlist.t
+    | Abstract_constants of 'symb Nlist.t
+    | Properties of 'predicate
+    | Concrete_variables of 'symb Nlist.t
+    | Variables of 'symb Nlist.t
+    | Invariant of 'predicate
+    | Assertions of 'predicate Nlist.t
+    | Initialization of 'substitution
+    | Operations of ('op_name,'arg,'substitution) operation Nlist.t
+    | Local_Operations of ('op_name,'arg,'substitution) operation Nlist.t
+    | Values of ('symb * 'expression) Nlist.t
 
-let operation_eq : type a b c d. (a,b) operation -> (c,d) operation -> bool = fun op1 op2 ->
-  Utils.list_eq var_eq op1.op_out op2.op_out && lident_eq op1.op_name op2.op_name &&
-  Utils.list_eq var_eq op1.op_in op2.op_in && subst_eq op1.op_body op2.op_body
+module R = struct
+  type ident = string
+  type bvar = string
+  type rfield = string
+  type mch_name = string
+  type op_name = string
+  type mut_var = string
+  type symb = string
+  type param = string
+  type arg = string
 
-let minst_eq (mi1:('lc,'ty) machine_instanciation) (mi2:('lc2,'ty2) machine_instanciation) : bool =
-  lident_eq mi1.mi_mch mi2.mi_mch && Utils.list_eq expr_eq mi1.mi_params mi2.mi_params 
+  type expression = {
+    exp_desc:(ident,bvar,rfield,expression,predicate) expression_desc
+  } (*FIXME unboxed*)
 
-let set_eq (s1:('lc,'ty) set) (s2:('lc2,'ty2) set) : bool =
-  match s1, s2 with
-  | Abstract_Set id1, Abstract_Set id2 -> var_eq id1 id2
-  | Concrete_Set (id1,lst1), Concrete_Set (id2,lst2) ->
-    var_eq id1 id2 && Utils.list_eq var_eq lst1 lst2
-  | _, _ -> false
+  and predicate = {
+    prd_desc: (bvar,expression,predicate) predicate_desc
+  } (*FIXME unboxed*)
 
-let clause_eq : type a b c d. (a,b) clause -> (c,d) clause -> bool = fun cl1 cl2 ->
-  match cl1.cl_desc, cl2.cl_desc with
-  | Constraints p1, Constraints p2 -> pred_eq p1 p2
-  | Imports lst1, Imports lst2 -> Nlist.equal minst_eq lst1 lst2
-  | Sees lst1, Sees lst2 -> Nlist.equal lident_eq lst1 lst2
-  | Includes lst1, Includes lst2 -> Nlist.equal minst_eq lst1 lst2
-  | Extends lst1, Extends lst2 -> Nlist.equal minst_eq lst1 lst2
-  | Promotes lst1, Promotes lst2 -> Nlist.equal lident_eq lst1 lst2
-  | Uses lst1, Uses lst2 -> Nlist.equal lident_eq lst1 lst2
-  | Sets lst1, Sets lst2 -> Nlist.equal set_eq lst1 lst2
-  | Constants lst1, Constants lst2 -> Nlist.equal var_eq lst1 lst2
-  | Abstract_constants lst1, Abstract_constants lst2 -> Nlist.equal var_eq lst1 lst2
-  | Properties p1, Properties p2 -> pred_eq p1 p2
-  | Concrete_variables lst1, Concrete_variables lst2 -> Nlist.equal var_eq lst1 lst2
-  | Variables lst1, Variables lst2 -> Nlist.equal var_eq lst1 lst2
-  | Invariant p1, Invariant p2 -> pred_eq p1 p2
-  | Assertions p1, Assertions p2 -> Nlist.equal pred_eq p1 p2
-  | Initialization s1, Initialization s2 -> subst_eq s1 s2
-  | Operations lst1, Operations lst2 -> Nlist.equal operation_eq lst1 lst2
-  | Local_Operations lst1, Local_Operations lst2 -> Nlist.equal operation_eq lst1 lst2
-  | Values lst1, Values lst2 ->
-    let aux (i1,x1) (i2,x2) = var_eq i1 i2 && expr_eq x1 x2 in
-    Nlist.equal aux lst1 lst2
-  | _, _ -> false
+  type substitution = {
+    sub_desc: (bvar,op_name,mut_var,rfield,expression,predicate,substitution) substitution_desc
+  } (*FIXME unboxed*)
 
-(* ******** *)
+  type nonrec set = symb set
+  type nonrec machine_instanciation = (mch_name,expression) machine_instanciation
+  type nonrec operation = (op_name,arg,substitution) operation
 
-let add lst f = function
-  | None -> lst
-  | Some (l,x) -> { cl_loc=l; cl_desc=f x}::lst
+  type component = {
+    co_name: mch_name;
+    co_parameters: param list;
+    co_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) component_desc
+  }
 
-let clist_of_mch (mch:('lc,'ty) machine_desc) : ('lc,'ty) clause list =
-  let lst = add []  (fun ops -> Operations ops) mch.mch_operations in
-  let lst = add lst (fun x -> Initialization(x)) mch.mch_initialisation in
-  let lst = add lst (fun x -> Assertions(x)) mch.mch_assertions in
-  let lst = add lst (fun x -> Invariant(x)) mch.mch_invariant in
-  let lst = add lst (fun x -> Variables(x)) mch.mch_abstract_variables in
-  let lst = add lst (fun x -> Concrete_variables(x)) mch.mch_concrete_variables in
-  let lst = add lst (fun x -> Properties(x)) mch.mch_properties in
-  let lst = add lst (fun x -> Abstract_constants(x)) mch.mch_abstract_constants in
-  let lst = add lst (fun x -> Constants(x)) mch.mch_concrete_constants in
-  let lst = add lst (fun x -> Sets(x)) mch.mch_sets in
-  let lst = add lst (fun x -> Uses(x)) mch.mch_uses in
-  let lst = add lst (fun x -> Extends(x)) mch.mch_extends in
-  let lst = add lst (fun x -> Promotes(x)) mch.mch_promotes in
-  let lst = add lst (fun x -> Includes(x)) mch.mch_includes in
-  let lst = add lst (fun x -> Sees(x)) mch.mch_sees in
-  let lst = add lst (fun x -> Constraints(x)) mch.mch_constraints in
-  lst
+  type clause = {
+    cl_loc: Utils.loc;
+    cl_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) clause_desc;
+  }
 
-let check_none_exn : type a b c. a -> b option -> c -> (c,a Error.t) result =
-  fun lc opt res ->
+  let get_clauses _ = assert false (*FIXME*)
+
+end
+
+let _undecorate_e u_ident u_bvar u_rfield u_expr u_pred : _ expression_desc -> R.expression = function
+  | Ident id -> { exp_desc=Ident (u_ident id) }
+  | Dollar id -> { exp_desc=Dollar (u_ident id) }
+  | Builtin bi -> { exp_desc=Builtin bi }
+  | Pbool p -> { exp_desc=Pbool (u_pred p) }
+  | Application (e1,e2) -> { exp_desc=Application (u_expr e1,u_expr e2) }
+  | Couple (x,e1,e2) -> { exp_desc=Couple(x,u_expr e1,u_expr e2) }
+  | Sequence nle -> { exp_desc=Sequence (Nlist.map u_expr nle) }
+  | Extension nle -> { exp_desc=Extension (Nlist.map u_expr nle) }
+  | Comprehension (xlst,p) -> { exp_desc=Comprehension(Nlist.map u_bvar xlst,u_pred p) }
+  | Binder (bi,xlst,p,e) -> { exp_desc=Binder (bi,Nlist.map u_bvar xlst,u_pred p,u_expr e) }
+  | Record_Field_Access (e,fd) -> { exp_desc=Record_Field_Access (u_expr e,u_rfield fd) }
+  | Record nle ->
+    let aux (fd,e) = (u_rfield fd,u_expr e) in
+    { exp_desc=Record (Nlist.map aux nle) }
+  | Record_Type nle ->
+    let aux (fd,e) = (u_rfield fd,u_expr e) in
+    { exp_desc=Record_Type (Nlist.map aux nle) }
+
+let _undecorate_p u_bvar u_expr u_pred : _ predicate_desc -> R.predicate = function
+  | P_Builtin bi -> { prd_desc=P_Builtin bi }
+  | Binary_Prop (op,p1,p2) -> { prd_desc=Binary_Prop (op,u_pred p1,u_pred p2) }
+  | Binary_Pred (op,e1,e2) -> { prd_desc=Binary_Pred (op,u_expr e1,u_expr e2) }
+  | Negation p -> { prd_desc=Negation (u_pred p) }
+  | Universal_Q (xlst,p) -> { prd_desc=Universal_Q (Nlist.map u_bvar xlst,u_pred p) }
+  | Existential_Q (xlst,p) -> { prd_desc=Existential_Q (Nlist.map u_bvar xlst,u_pred p) }
+
+type lident = { lid_loc:Utils.loc; lid_str:string }
+
+module P = struct
+
+  type ident = string
+  type bvar = lident
+  type rfield = lident
+  type mch_name = lident
+  type op_name = lident
+  type mut_var = lident
+  type symb = lident
+  type param = lident
+  type arg = lident
+
+  type expression = {
+    exp_loc: Utils.loc;
+    exp_desc: (ident,bvar,rfield,expression,predicate) expression_desc
+  }
+
+  and predicate = {
+    prd_loc: Utils.loc;
+    prd_desc: (bvar,expression,predicate) predicate_desc
+  }
+
+  type substitution = {
+    sub_loc: Utils.loc;
+    sub_desc: (bvar,op_name,mut_var,rfield,expression,predicate,substitution) substitution_desc
+  }
+
+  type nonrec set = symb set
+  type nonrec machine_instanciation = (mch_name,expression) machine_instanciation
+  type nonrec operation = (op_name,arg,substitution) operation
+
+  type component = {
+    co_name: mch_name;
+    co_parameters: param list;
+    co_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) component_desc
+  }
+
+  type clause = {
+    cl_loc: Utils.loc;
+    cl_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) clause_desc;
+  }
+
+  let check_none_exn lc opt : unit =
     match opt with
-    | None -> Ok res
-    | Some _ -> Error { Error.err_loc=lc; err_txt="This clause is defined twice." }
+    | None -> ()
+    | Some _ -> Error.raise_exn lc "This clause is defined twice."
 
-let add_clause_mch (co:('lc,'ty) machine_desc) (cl:('lc,'ty) clause) : (('lc,'ty) machine_desc,'lc Error.t) result =
-  match cl.cl_desc with
-  | Sees lst -> check_none_exn cl.cl_loc co.mch_sees { co with mch_sees = Some(cl.cl_loc,lst) }
-  | Sets lst -> check_none_exn cl.cl_loc co.mch_sets { co with mch_sets = Some(cl.cl_loc,lst) }
-  | Constants lst -> check_none_exn cl.cl_loc co.mch_concrete_constants { co with mch_concrete_constants = Some(cl.cl_loc,lst) }
-  | Abstract_constants lst -> check_none_exn cl.cl_loc co.mch_abstract_constants { co with mch_abstract_constants = Some(cl.cl_loc,lst) }
-  | Properties p -> check_none_exn cl.cl_loc co.mch_properties { co with mch_properties = Some (cl.cl_loc,p) }
-  | Concrete_variables lst -> check_none_exn cl.cl_loc co.mch_concrete_variables { co with mch_concrete_variables = Some(cl.cl_loc,lst) }
-  | Variables lst -> check_none_exn cl.cl_loc co.mch_abstract_variables { co with mch_abstract_variables = Some(cl.cl_loc,lst) }
-  | Invariant p -> check_none_exn cl.cl_loc co.mch_invariant { co with mch_invariant = Some (cl.cl_loc,p) }
-  | Assertions lst -> check_none_exn cl.cl_loc co.mch_assertions { co with mch_assertions = Some (cl.cl_loc,lst) }
-  | Initialization p -> check_none_exn cl.cl_loc co.mch_initialisation { co with mch_initialisation = Some (cl.cl_loc,p) }
-  | Operations lst -> check_none_exn cl.cl_loc co.mch_operations { co with mch_operations = Some(cl.cl_loc,lst) }
-  | Values _ -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause VALUES is not allowed in abstract machines." }
-  | Local_Operations _ -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause LOCAL_OPERATIONS is not allowed in abstract machines." }
-  | Promotes lst -> check_none_exn cl.cl_loc co.mch_promotes { co with mch_promotes = Some(cl.cl_loc,lst) }
-  | Imports _ -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause IMPORTS is not allowed in abstract machines."}
-  | Constraints lst -> check_none_exn cl.cl_loc co.mch_constraints { co with mch_constraints = Some(cl.cl_loc,lst) }
-  | Includes lst -> check_none_exn cl.cl_loc co.mch_includes { co with mch_includes = Some(cl.cl_loc,lst) }
-  | Extends lst -> check_none_exn cl.cl_loc co.mch_extends { co with mch_extends = Some(cl.cl_loc,lst) }
-  | Uses lst -> check_none_exn cl.cl_loc co.mch_uses { co with mch_uses = Some(cl.cl_loc,lst) }
+  let check_empty_exn lc lst : unit =
+    match lst with
+    | [] -> ()
+    | _ -> Error.raise_exn lc "This clause is defined twice."
 
-let mk_machine : type a b. a lident -> (a,b) var list -> (a,b) clause list -> ((a,b) component,a Error.t) result =
-  fun name co_parameters clauses ->
+  type nonrec machine_desc = (mch_name,op_name,symb,arg,expression,predicate,substitution) machine_desc
+
+  let add_clause_mch_exn (co:machine_desc) (cl:clause) : machine_desc =
+    match cl.cl_desc with
+    | Sees lst -> ( check_empty_exn cl.cl_loc co.mch_sees; { co with mch_sees = Nlist.to_list lst } )
+    | Sets lst -> ( check_empty_exn cl.cl_loc co.mch_sets; { co with mch_sets = Nlist.to_list lst } )
+    | Constants lst -> ( check_empty_exn cl.cl_loc co.mch_concrete_constants; { co with mch_concrete_constants = Nlist.to_list lst } )
+    | Abstract_constants lst -> ( check_empty_exn cl.cl_loc co.mch_abstract_constants; { co with mch_abstract_constants = Nlist.to_list lst } )
+    | Properties p -> ( check_none_exn cl.cl_loc co.mch_properties; { co with mch_properties = Some p } )
+    | Concrete_variables lst -> ( check_empty_exn cl.cl_loc co.mch_concrete_variables; { co with mch_concrete_variables = Nlist.to_list lst } )
+    | Variables lst -> ( check_empty_exn cl.cl_loc co.mch_abstract_variables; { co with mch_abstract_variables = Nlist.to_list lst } )
+    | Invariant p -> ( check_none_exn cl.cl_loc co.mch_invariant; { co with mch_invariant = Some p } )
+    | Assertions lst -> ( check_empty_exn cl.cl_loc co.mch_assertions; { co with mch_assertions = Nlist.to_list lst } )
+    | Initialization p -> ( check_none_exn cl.cl_loc co.mch_initialisation; { co with mch_initialisation = Some p } )
+    | Operations lst -> ( check_empty_exn cl.cl_loc co.mch_operations; { co with mch_operations = Nlist.to_list lst } )
+    | Values _ -> Error.raise_exn cl.cl_loc "The clause VALUES is not allowed in abstract machines."
+    | Local_Operations _ -> Error.raise_exn cl.cl_loc "The clause LOCAL_OPERATIONS is not allowed in abstract machines."
+    | Promotes lst -> ( check_empty_exn cl.cl_loc co.mch_promotes; { co with mch_promotes = Nlist.to_list lst } )
+    | Imports _ -> Error.raise_exn cl.cl_loc "The clause IMPORTS is not allowed in abstract machines."
+    | Constraints p -> ( check_none_exn cl.cl_loc co.mch_constraints; { co with mch_constraints = Some p } )
+    | Includes lst -> ( check_empty_exn cl.cl_loc co.mch_includes; { co with mch_includes = Nlist.to_list lst } )
+    | Extends lst -> ( check_empty_exn cl.cl_loc co.mch_extends; { co with mch_extends = Nlist.to_list lst } )
+    | Uses lst -> ( check_empty_exn cl.cl_loc co.mch_uses; { co with mch_uses = Nlist.to_list lst } )
+
+  let mk_machine_exn (co_name:lident) (co_parameters:lident list) (clauses:clause list) : component =
     let mch_desc =
-      { mch_sees=None;
-        mch_sets=None;
-        mch_uses=None;
-        mch_promotes=None;
-        mch_includes=None;
-        mch_extends=None;
+      { mch_sees=[];
+        mch_sets=[];
+        mch_uses=[];
+        mch_promotes=[];
+        mch_includes=[];
+        mch_extends=[];
         mch_constraints=None;
-        mch_concrete_constants=None;
-        mch_abstract_constants=None;
+        mch_concrete_constants=[];
+        mch_abstract_constants=[];
         mch_properties=None;
-        mch_concrete_variables=None;
-        mch_abstract_variables=None;
+        mch_concrete_variables=[];
+        mch_abstract_variables=[];
         mch_invariant=None;
-        mch_assertions=None;
+        mch_assertions=[];
         mch_initialisation=None;
-        mch_operations=None; }
+        mch_operations=[]; }
     in
-    match Error.fold_left add_clause_mch mch_desc clauses with
-    | Ok mch_desc -> Ok { co_loc=name.lid_loc; co_name=name.lid_str;
-                          co_parameters; co_desc=Machine mch_desc }
-    | Error err -> Error err
+    { co_name; co_parameters;
+      co_desc=Machine (List.fold_left add_clause_mch_exn mch_desc clauses) }
 
-(* ******** *)
+  type nonrec refinement_desc = (mch_name,op_name,symb,arg,expression,predicate,substitution) refinement_desc
 
-let clist_of_ref (ref:('lc,'ty) refinement_desc) : ('lc,'ty) clause list =
-  let lst = add []  (fun x -> Operations(x)) ref.ref_operations in
-  let lst = add lst (fun x -> Local_Operations(x)) ref.ref_local_operations in
-  let lst = add lst (fun x -> Initialization(x)) ref.ref_initialisation in
-  let lst = add lst (fun x -> Assertions(x)) ref.ref_assertions in
-  let lst = add lst (fun x -> Invariant(x)) ref.ref_invariant in
-  let lst = add lst (fun x -> Variables(x)) ref.ref_abstract_variables in
-  let lst = add lst (fun x -> Concrete_variables(x)) ref.ref_concrete_variables in
-  let lst = add lst (fun x -> Properties(x)) ref.ref_properties in
-  let lst = add lst (fun x -> Abstract_constants(x)) ref.ref_abstract_constants in
-  let lst = add lst (fun x -> Constants(x)) ref.ref_concrete_constants in
-  let lst = add lst (fun x -> Sets(x)) ref.ref_sets in
-  let lst = add lst (fun x -> Extends(x)) ref.ref_extends in
-  let lst = add lst (fun x -> Promotes(x)) ref.ref_promotes in
-  let lst = add lst (fun x -> Includes(x)) ref.ref_includes in
-  let lst = add lst (fun x -> Sees(x)) ref.ref_sees in
-  lst
+  let add_clause_ref_exn (co:refinement_desc) (cl:clause) : refinement_desc =
+    match cl.cl_desc with
+    | Sees lst -> ( check_empty_exn cl.cl_loc co.ref_sees; { co with ref_sees = Nlist.to_list lst } )
+    | Sets lst -> ( check_empty_exn cl.cl_loc co.ref_sets; { co with ref_sets = Nlist.to_list lst } )
+    | Constants lst -> ( check_empty_exn cl.cl_loc co.ref_concrete_constants; { co with ref_concrete_constants = Nlist.to_list lst } )
+    | Properties p -> ( check_none_exn cl.cl_loc co.ref_properties; { co with ref_properties = Some p } )
+    | Concrete_variables lst -> ( check_empty_exn cl.cl_loc co.ref_concrete_variables; { co with ref_concrete_variables = Nlist.to_list lst } )
+    | Invariant p -> ( check_none_exn cl.cl_loc co.ref_invariant; { co with ref_invariant = Some p } )
+    | Assertions lst -> ( check_empty_exn cl.cl_loc co.ref_assertions; { co with ref_assertions = Nlist.to_list lst } )
+    | Initialization p -> ( check_none_exn cl.cl_loc co.ref_initialisation; { co with ref_initialisation = Some p } )
+    | Operations lst -> ( check_empty_exn cl.cl_loc co.ref_operations; { co with ref_operations = Nlist.to_list lst } )
+    | Values lst -> Error.raise_exn cl.cl_loc "The clause VALUES is not allowed in refinements."
+    | Local_Operations lst -> ( check_empty_exn cl.cl_loc co.ref_local_operations; { co with ref_local_operations = Nlist.to_list lst } )
+    | Promotes lst -> ( check_empty_exn cl.cl_loc co.ref_promotes; { co with ref_promotes = Nlist.to_list lst } )
+    | Imports lst -> Error.raise_exn cl.cl_loc "The clause IMPORTS is not allowed in refinements."
+    | Abstract_constants lst -> ( check_empty_exn cl.cl_loc co.ref_abstract_constants; { co with ref_abstract_constants = Nlist.to_list lst } )
+    | Variables lst -> ( check_empty_exn cl.cl_loc co.ref_abstract_variables; { co with ref_abstract_variables = Nlist.to_list lst } )
+    | Constraints _ -> Error.raise_exn cl.cl_loc "The clause CONSTRAINTS is not allowed in refinements."
+    | Includes lst -> ( check_empty_exn cl.cl_loc co.ref_includes; { co with ref_includes = Nlist.to_list lst } )
+    | Extends lst -> ( check_empty_exn cl.cl_loc co.ref_extends; { co with ref_extends = Nlist.to_list lst } )
+    | Uses lst -> Error.raise_exn cl.cl_loc "The clause USES is not allowed in refinements."
 
-let add_clause_ref co cl =
-  match cl.cl_desc with
-  | Sees lst -> check_none_exn cl.cl_loc co.ref_sees { co with ref_sees = Some(cl.cl_loc,lst) }
-  | Sets lst -> check_none_exn cl.cl_loc co.ref_sets { co with ref_sets = Some(cl.cl_loc,lst) }
-  | Constants lst -> check_none_exn cl.cl_loc co.ref_concrete_constants { co with ref_concrete_constants = Some(cl.cl_loc,lst) }
-  | Properties p -> check_none_exn cl.cl_loc co.ref_properties { co with ref_properties = Some (cl.cl_loc,p) }
-  | Concrete_variables lst -> check_none_exn cl.cl_loc co.ref_concrete_variables { co with ref_concrete_variables = Some(cl.cl_loc,lst) }
-  | Invariant p -> check_none_exn cl.cl_loc co.ref_invariant { co with ref_invariant = Some (cl.cl_loc,p) }
-  | Assertions lst -> check_none_exn cl.cl_loc co.ref_assertions { co with ref_assertions = Some (cl.cl_loc,lst) }
-  | Initialization p -> check_none_exn cl.cl_loc co.ref_initialisation { co with ref_initialisation = Some (cl.cl_loc,p) }
-  | Operations lst -> check_none_exn cl.cl_loc co.ref_operations { co with ref_operations = Some(cl.cl_loc,lst) }
-  | Values lst -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause VALUES is not allowed in refinements."}
-  | Local_Operations lst -> check_none_exn cl.cl_loc co.ref_local_operations { co with ref_local_operations = Some(cl.cl_loc,lst) }
-  | Promotes lst -> check_none_exn cl.cl_loc co.ref_promotes { co with ref_promotes = Some(cl.cl_loc,lst) }
-  | Imports lst -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause IMPORTS is not allowed in refinements."}
-  | Abstract_constants lst -> check_none_exn cl.cl_loc co.ref_abstract_constants { co with ref_abstract_constants = Some(cl.cl_loc,lst) }
-  | Variables lst -> check_none_exn cl.cl_loc co.ref_abstract_variables { co with ref_abstract_variables = Some(cl.cl_loc,lst) }
-  | Constraints _ -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause CONSTRAINTS is not allowed in refinements."}
-  | Includes lst -> check_none_exn cl.cl_loc co.ref_includes { co with ref_includes = Some(cl.cl_loc,lst) }
-  | Extends lst -> check_none_exn cl.cl_loc co.ref_extends { co with ref_extends = Some(cl.cl_loc,lst) }
-  | Uses lst -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause USES is not allowed in refinements."}
+  let mk_refinement_exn co_name co_parameters refines clauses =
+    let ref_desc =
+      { ref_refines=refines;
+        ref_sees=[];
+        ref_sets=[];
+        ref_promotes=[];
+        ref_includes=[];
+        ref_extends=[];
+        ref_concrete_constants=[];
+        ref_abstract_constants=[];
+        ref_properties=None;
+        ref_concrete_variables=[];
+        ref_abstract_variables=[];
+        ref_invariant=None;
+        ref_assertions=[];
+        ref_initialisation=None;
+        ref_local_operations=[];
+        ref_operations=[]; }
+    in
+    { co_name; co_parameters;
+      co_desc=Refinement (List.fold_left add_clause_ref_exn ref_desc clauses) }
 
-let mk_refinement name co_parameters refines clauses =
-  let ref_desc =
-    { ref_refines=refines;
-      ref_sees=None;
-      ref_sets=None;
-      ref_promotes=None;
-      ref_includes=None;
-      ref_extends=None;
-      ref_concrete_constants=None;
-      ref_abstract_constants=None;
-      ref_properties=None;
-      ref_concrete_variables=None;
-      ref_abstract_variables=None;
-      ref_invariant=None;
-      ref_assertions=None;
-      ref_initialisation=None;
-      ref_local_operations=None;
-      ref_operations=None; }
-  in
-  match Error.fold_left add_clause_ref ref_desc clauses with
-  | Ok ref_desc -> Ok { co_loc=name.lid_loc; co_name=name.lid_str;
-                        co_parameters; co_desc=Refinement ref_desc }
-  | Error _ as err -> err
+  type nonrec implementation_desc = (mch_name,op_name,symb,arg,expression,predicate,substitution) implementation_desc
 
-(* ******** *)
+  let add_clause_imp_exn (co:implementation_desc) (cl:clause) : implementation_desc =
+    match cl.cl_desc with
+    | Sees lst -> ( check_empty_exn cl.cl_loc co.imp_sees; { co with imp_sees = Nlist.to_list lst } )
+    | Sets lst -> ( check_empty_exn cl.cl_loc co.imp_sets; { co with imp_sets = Nlist.to_list lst } )
+    | Constants lst -> ( check_empty_exn cl.cl_loc co.imp_concrete_constants; { co with imp_concrete_constants = Nlist.to_list lst } )
+    | Properties p -> ( check_none_exn cl.cl_loc co.imp_properties; { co with imp_properties = Some p } )
+    | Concrete_variables lst -> ( check_empty_exn cl.cl_loc co.imp_concrete_variables; { co with imp_concrete_variables = Nlist.to_list lst } )
+    | Invariant p -> ( check_none_exn cl.cl_loc co.imp_invariant; { co with imp_invariant = Some p } )
+    | Assertions lst -> ( check_empty_exn cl.cl_loc co.imp_assertions; { co with imp_assertions = Nlist.to_list lst } )
+    | Initialization p -> ( check_none_exn cl.cl_loc co.imp_initialisation; { co with imp_initialisation = Some p } )
+    | Operations lst -> ( check_empty_exn cl.cl_loc co.imp_operations; { co with imp_operations = Nlist.to_list lst } )
+    | Values lst -> ( check_empty_exn cl.cl_loc co.imp_values; { co with imp_values = Nlist.to_list lst } )
+    | Local_Operations lst -> ( check_empty_exn cl.cl_loc co.imp_local_operations; { co with imp_local_operations = Nlist.to_list lst } )
+    | Promotes lst -> ( check_empty_exn cl.cl_loc co.imp_promotes; { co with imp_promotes = Nlist.to_list lst } )
+    | Imports lst -> ( check_empty_exn cl.cl_loc co.imp_imports; { co with imp_imports = Nlist.to_list lst } )
+    | Abstract_constants _ -> Error.raise_exn cl.cl_loc "The clause ABSTRACT_CONSTANTS is not allowed in implementations."
+    | Variables _ -> Error.raise_exn cl.cl_loc "The clause VARIABLES is not allowed in implementations."
+    | Constraints _ -> Error.raise_exn cl.cl_loc "The clause CONSTRAINTS is not allowed in implementation."
+    | Includes _ -> Error.raise_exn cl.cl_loc "The clause INCLUDES is not allowed in implementations."
+    | Extends lst -> ( check_empty_exn cl.cl_loc co.imp_extends; { co with imp_extends = Nlist.to_list lst } )
+    | Uses _ -> Error.raise_exn cl.cl_loc "The clause USES is not allowed in implementations."
 
-let clist_of_imp (imp:('lc,'ty) implementation_desc) : ('lc,'ty) clause list =
-  let lst = add []  (fun x -> Operations(x)) imp.imp_operations in
-  let lst = add lst (fun x -> Local_Operations(x)) imp.imp_local_operations in
-  let lst = add lst (fun x -> Initialization(x)) imp.imp_initialisation in
-  let lst = add lst (fun x -> Assertions(x)) imp.imp_assertions in
-  let lst = add lst (fun x -> Invariant(x)) imp.imp_invariant in
-  let lst = add lst (fun x -> Concrete_variables(x)) imp.imp_concrete_variables in
-  let lst = add lst (fun x -> Values(x)) imp.imp_values in
-  let lst = add lst (fun x -> Properties(x)) imp.imp_properties in
-  let lst = add lst (fun x -> Constants(x)) imp.imp_concrete_constants in
-  let lst = add lst (fun x -> Sets(x)) imp.imp_sets in
-  let lst = add lst (fun x -> Extends(x)) imp.imp_extends in
-  let lst = add lst (fun x -> Promotes(x)) imp.imp_promotes in
-  let lst = add lst (fun x -> Imports(x)) imp.imp_imports in
-  let lst = add lst (fun x -> Sees(x)) imp.imp_sees in
-  lst
+  let mk_implementation_exn co_name co_parameters refines clauses =
+    let imp_desc =
+      { imp_refines=refines;
+        imp_sees=[];
+        imp_sets=[];
+        imp_values=[];
+        imp_imports=[];
+        imp_promotes=[];
+        imp_concrete_constants=[];
+        imp_properties=None;
+        imp_concrete_variables=[];
+        imp_invariant=None;
+        imp_assertions=[];
+        imp_extends=[];
+        imp_initialisation=None;
+        imp_local_operations=[];
+        imp_operations=[]; }
+    in
+    { co_name; co_parameters;
+      co_desc=Implementation (List.fold_left add_clause_imp_exn imp_desc clauses) }
 
-let add_clause_imp co cl =
-  match cl.cl_desc with
-  | Sees lst -> check_none_exn cl.cl_loc co.imp_sees { co with imp_sees = Some(cl.cl_loc,lst) }
-  | Sets lst -> check_none_exn cl.cl_loc co.imp_sets { co with imp_sets = Some(cl.cl_loc,lst) }
-  | Constants lst -> check_none_exn cl.cl_loc co.imp_concrete_constants { co with imp_concrete_constants = Some(cl.cl_loc,lst) }
-  | Properties p -> check_none_exn cl.cl_loc co.imp_properties { co with imp_properties = Some (cl.cl_loc,p) }
-  | Concrete_variables lst -> check_none_exn cl.cl_loc co.imp_concrete_variables { co with imp_concrete_variables = Some(cl.cl_loc,lst) }
-  | Invariant p -> check_none_exn cl.cl_loc co.imp_invariant { co with imp_invariant = Some (cl.cl_loc,p) }
-  | Assertions lst -> check_none_exn cl.cl_loc co.imp_assertions { co with imp_assertions = Some (cl.cl_loc,lst) }
-  | Initialization p -> check_none_exn cl.cl_loc co.imp_initialisation { co with imp_initialisation = Some (cl.cl_loc,p) }
-  | Operations lst -> check_none_exn cl.cl_loc co.imp_operations { co with imp_operations = Some(cl.cl_loc,lst) }
-  | Values lst -> check_none_exn cl.cl_loc co.imp_values { co with imp_values = Some(cl.cl_loc,lst) }
-  | Local_Operations lst -> check_none_exn cl.cl_loc co.imp_local_operations { co with imp_local_operations = Some(cl.cl_loc,lst) }
-  | Promotes lst -> check_none_exn cl.cl_loc co.imp_promotes { co with imp_promotes = Some(cl.cl_loc,lst) }
-  | Imports lst -> check_none_exn cl.cl_loc co.imp_imports { co with imp_imports = Some(cl.cl_loc,lst) }
-  | Abstract_constants lst -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause ABSTRACT_CONSTANTS is not allowed in implementations."}
-  | Variables lst -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause VARIABLES is not allowed in implementations."}
-  | Constraints _ -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause CONSTRAINTS is not allowed in implementation."}
-  | Includes lst -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause INCLUDES is not allowed in implementations."}
-  | Extends lst -> check_none_exn cl.cl_loc co.imp_extends { co with imp_extends = Some(cl.cl_loc,lst) }
-  | Uses lst -> Error { Error.err_loc=cl.cl_loc; err_txt="The clause USES is not allowed in implementations."}
+  let u_ident x = x
+  let u_bvar x = x.lid_str
+  let u_rfield x = x.lid_str
+  let rec u_expr x = _undecorate_e u_ident u_bvar u_rfield u_expr u_pred x.exp_desc
+  and u_pred x = _undecorate_p u_bvar u_expr u_pred x.prd_desc
 
-let mk_implementation name co_parameters refines clauses =
-  let imp_desc =
-    { imp_refines=refines;
-      imp_sees=None;
-      imp_sets=None;
-      imp_values=None;
-      imp_imports=None;
-      imp_promotes=None;
-      imp_concrete_constants=None;
-      imp_properties=None;
-      imp_concrete_variables=None;
-      imp_invariant=None;
-      imp_assertions=None;
-      imp_extends=None;
-      imp_initialisation=None;
-      imp_local_operations=None;
-      imp_operations=None; }
-  in
-  match Error.fold_left add_clause_imp imp_desc clauses with
-  | Ok imp_desc -> Ok { co_loc=name.lid_loc; co_name=name.lid_str;
-                        co_parameters; co_desc=Implementation imp_desc }
-  | Error _ as err -> err
+  let u_subst x = assert false (*FIXME*)
+  let u_comp x = assert false (*FIXME*)
 
-(* ******** *)
+  let get_clauses _ = assert false (*FIXME*)
 
-let component_eq: type a b c d. (a,b) component -> (c,d) component -> bool = fun c1 c2 ->
-  ident_eq c1.co_name c2.co_name && Utils.list_eq var_eq c1.co_parameters c2.co_parameters &&
-  match c1.co_desc, c2.co_desc with
-  | Machine mch1, Machine mch2 -> Utils.list_eq clause_eq (clist_of_mch mch1) (clist_of_mch mch2)
-  | Refinement ref1, Refinement ref2 -> Utils.list_eq clause_eq (clist_of_ref ref1) (clist_of_ref ref2)
-  | Implementation imp1, Implementation imp2 -> Utils.list_eq clause_eq (clist_of_imp imp1) (clist_of_imp imp2)
-  | _, _ -> false
+end
 
-let get_clauses co =
-  match co.co_desc with
-  | Machine mch -> clist_of_mch mch
-  | Refinement ref -> clist_of_ref ref
-  | Implementation imp -> clist_of_imp imp
+module T = struct
 
-type p_var = (Utils.loc,unit) var
-type p_lident = Utils.loc lident
-type p_expression = (Utils.loc,unit) expression
-type p_predicate = (Utils.loc,unit) predicate
-type p_substitution = (Utils.loc,unit) substitution
-type p_set = (Utils.loc,unit) set
-type p_machine_instanciation = (Utils.loc,unit) machine_instanciation
-type p_clause = (Utils.loc,unit) clause
-type p_operation = (Utils.loc,unit) operation
-type p_component = (Utils.loc,unit) component
+  type var = {
+    var_loc: Utils.loc;
+    var_typ: Btype.t;
+    var_id: string;
+  }
+
+  type ident = string
+  type bvar = var
+  type rfield = lident
+  type mch_name = lident
+  type op_name = lident
+  type mut_var = var
+  type symb = var
+  type param = var
+  type arg = var
+
+  type expression = {
+    exp_loc: Utils.loc;
+    exp_typ: Btype.t;
+    exp_desc: (ident,bvar,rfield,expression,predicate) expression_desc
+  }
+
+  and predicate = {
+    prd_loc: Utils.loc;
+    prd_desc: (bvar,expression,predicate) predicate_desc
+  }
+
+  type substitution = {
+    sub_loc: Utils.loc;
+    sub_desc: (bvar,op_name,mut_var,rfield,expression,predicate,substitution) substitution_desc
+  }
+
+  type nonrec set = symb set
+  type nonrec machine_instanciation = (mch_name,expression) machine_instanciation
+  type nonrec operation = (op_name,arg,substitution) operation
+
+  type component = {
+    co_name: mch_name;
+    co_parameters: param list;
+    co_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) component_desc
+  }
+end
 
 let pred_bop_to_string : pred_bop -> string = function
   | Equality -> "="

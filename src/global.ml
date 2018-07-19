@@ -7,42 +7,42 @@ let set_extended_sees b = extended_sees := b
 type t_kind = 
   | K_Abstract_Variable | K_Concrete_Variable
   | K_Abstract_Constant | K_Concrete_Constant
-  | K_Abstract_Set | K_Concrete_Set of ident list
+  | K_Abstract_Set | K_Concrete_Set of P.ident list
   | K_Enumerate
 
 type t_source =
   | S_Current_Mch_Only of loc
-  | S_Seen_Mch_Only of p_lident
-  | S_Refined_Mch_Only of p_lident
-  | S_Included_Mch_Only of p_lident
-  | S_Current_And_Refined_Mch of loc*p_lident
-  | S_Included_And_Refined_Mch of p_lident*p_lident
-  | S_Imported_Mch_Only of p_lident
-  | S_Current_And_Imported_Mch of loc * p_lident
-  | S_Imported_And_Refined_Mch of p_lident * p_lident
-  | S_Current_Imported_And_Refined_Mch of loc * p_lident * p_lident
+  | S_Seen_Mch_Only of lident
+  | S_Refined_Mch_Only of lident
+  | S_Included_Mch_Only of lident
+  | S_Current_And_Refined_Mch of loc*lident
+  | S_Included_And_Refined_Mch of lident*lident
+  | S_Imported_Mch_Only of lident
+  | S_Current_And_Imported_Mch of loc*lident
+  | S_Imported_And_Refined_Mch of lident*lident
+  | S_Current_Imported_And_Refined_Mch of loc*lident*lident
 
 type t_source2 =
   | Src_Current of loc
   | Src_Current_Local of loc
-  | Src_Seen of p_lident
-  | Src_Refined of p_lident
-  | Src_Imported of p_lident
-  | Src_Included of p_lident
+  | Src_Seen of lident
+  | Src_Refined of lident
+  | Src_Imported of lident
+  | Src_Included of lident
 
 type t_op_source =
-  | OS_Seen_Mch of p_lident
+  | OS_Seen_Mch of lident
   | OS_Current_Mch_Only of loc
-  | OS_Refined_Mch_Only of p_lident
-  | OS_Included_Mch_Only of p_lident
-  | OS_Current_And_Refined_Mch of loc * p_lident
-  | OS_Included_And_Refined_Mch of p_lident * p_lident
+  | OS_Refined_Mch_Only of lident
+  | OS_Included_Mch_Only of lident
+  | OS_Current_And_Refined_Mch of loc*lident
+  | OS_Included_And_Refined_Mch of lident*lident
   | OS_Local_Spec of loc
   | OS_Local_Spec_And_Implem of loc*loc
-  | OS_Imported_Only of p_lident
-  | OS_Imported_And_Promoted of loc * p_lident
-  | OS_Imported_And_Refined of p_lident * p_lident
-  | OS_Imported_Promoted_And_Refined of loc * p_lident * p_lident
+  | OS_Imported_Only of lident
+  | OS_Imported_And_Promoted of loc*lident
+  | OS_Imported_And_Refined of lident*lident
+  | OS_Imported_Promoted_And_Refined of loc*lident*lident
 
 type t_clause =
   | C_Invariant_Or_Assertions
@@ -96,11 +96,11 @@ let create () : t =
 
 let get_alias env = env.alias
 
-let get_symbol_type (env:t) (id:ident) : Btype.t option =
+let get_symbol_type (env:t) (id:P.ident) : Btype.t option =
   try Some (Hashtbl.find env.symb id).sy_typ
   with Not_found -> None
 
-let get_symbol_kind (env:t) (id:ident) : t_kind option =
+let get_symbol_kind (env:t) (id:P.ident) : t_kind option =
   try Some (Hashtbl.find env.symb id).sy_kind
   with Not_found -> None
 
@@ -120,7 +120,7 @@ let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool =
   | C_Values, _, _ -> true
   | C_Assert_Or_While_Invariant, _, _ -> true
 
-let get_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : Btype.t Error.t_result =
+let get_symbol_type_in_clause (env:t) (loc:loc) (id:P.ident) (cl:t_clause) : Btype.t Error.t_result =
   try
     begin
       let infos = Hashtbl.find env.symb id in
@@ -144,7 +144,7 @@ let is_symbol_writable ki src cl =
 
   | _, _, _ -> false
 
-let get_writable_symbol_type_in_clause (env:t) (loc:loc) (id:ident) (cl:t_clause) : Btype.t Error.t_result =
+let get_writable_symbol_type_in_clause (env:t) (loc:loc) (id:P.ident) (cl:t_clause) : Btype.t Error.t_result =
   try
     begin
       let infos = Hashtbl.find env.symb id in
@@ -178,7 +178,7 @@ let are_kind_compatible k1 k2 =
   | K_Abstract_Constant, K_Concrete_Constant -> true
   | _, _ -> false
 
-let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t_result =
+let update_source (id:P.ident) (src1:t_source) (src2:t_source2) : t_source Error.t_result =
   match src2, src1 with
   | Src_Current lc, S_Refined_Mch_Only mch -> Ok (S_Current_And_Refined_Mch (lc,mch))
   | Src_Current lc, S_Imported_Mch_Only mch -> Ok (S_Current_And_Imported_Mch (lc,mch))
@@ -238,7 +238,7 @@ let update_source (id:ident) (src1:t_source) (src2:t_source2) : t_source Error.t
 
   | Src_Current_Local _, _ -> assert false
 
-let _add_symbol (env:t) (err_loc:loc) (id:ident) (sy_typ:Btype.t) (sy_kind:t_kind) (sy_src:t_source2) : unit Error.t_result =
+let _add_symbol (env:t) (err_loc:loc) (id:P.ident) (sy_typ:Btype.t) (sy_kind:t_kind) (sy_src:t_source2) : unit Error.t_result =
   try
     begin
       let infos = Hashtbl.find env.symb id in
@@ -273,12 +273,12 @@ let _add_symbol (env:t) (err_loc:loc) (id:ident) (sy_typ:Btype.t) (sy_kind:t_kin
     in
     Ok (Hashtbl.add env.symb id { sy_typ; sy_kind; sy_src })
 
-let add_symbol (env:t) (loc:loc) (id:ident) (typ:Btype.t) (kind:t_kind) : unit Error.t_result =
+let add_symbol (env:t) (loc:loc) (id:P.ident) (typ:Btype.t) (kind:t_kind) : unit Error.t_result =
   _add_symbol env loc id typ kind (Src_Current loc)
 
-type t_op_type = { args_in:(ident*Btype.t) list; args_out:(ident*Btype.t) list; }
+type t_op_type = { args_in:(P.ident*Btype.t) list; args_out:(P.ident*Btype.t) list; }
 
-let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_source Error.t_result =
+let update_op_source (id:P.ident) (src1:t_op_source) (src2:t_source2) : t_op_source Error.t_result =
   match src2, src1 with
   | Src_Current lc, OS_Refined_Mch_Only ref -> Ok (OS_Current_And_Refined_Mch (lc,ref))
   | Src_Current lc, OS_Local_Spec spe -> Ok (OS_Local_Spec_And_Implem (spe,lc))
@@ -346,7 +346,7 @@ let update_op_source (id:ident) (src1:t_op_source) (src2:t_source2) : t_op_sourc
 
 let check_args_type (err_loc:loc) (args:t_op_type) args_in args_out : unit Error.t_result =
   let aux (x1,ty1) (x2,ty2) =
-    if ident_eq x1 x2 then
+    if String.equal x1 x2 then
       if Btype.equal ty1 ty2 then ()
       else Error.raise_exn err_loc
           ("The parameter '"^x1^"' has type '"^Btype.to_string ty1^
@@ -363,7 +363,7 @@ let check_args_type (err_loc:loc) (args:t_op_type) args_in args_out : unit Error
     Error { Error.err_loc; err_txt="Unexpected number of parameters." }
   | Error.Error err -> Error err
 
-let _add_operation (env:t) (err_loc:loc) (id:ident) (args:t_op_type) (op_readonly:bool) (op_src:t_source2) : unit Error.t_result =
+let _add_operation (env:t) (err_loc:loc) (id:P.ident) (args:t_op_type) (op_readonly:bool) (op_src:t_source2) : unit Error.t_result =
   let op_args_in = args.args_in in
   let op_args_out = args.args_out in
   try
@@ -397,7 +397,7 @@ let is_operation_visible is_readonly = function
   | OS_Imported_Promoted_And_Refined _ | OS_Included_Mch_Only _
   | OS_Included_And_Refined_Mch _ -> true
 
-let get_operation_type (env:t) (err_loc:loc) (id:ident) =
+let get_operation_type (env:t) (err_loc:loc) (id:P.ident) =
   try
     let infos = Hashtbl.find env.ops id in
     if is_operation_visible infos.op_readonly infos.op_src then
@@ -407,18 +407,18 @@ let get_operation_type (env:t) (err_loc:loc) (id:ident) =
   with
     Not_found -> Error { Error.err_loc; err_txt="Unknown operation '"^id^"'." }
 
-let get_operation_type2 (env:t) (id:ident) : t_op_type option =
+let get_operation_type2 (env:t) (id:P.ident) : t_op_type option =
   try
     let infos = Hashtbl.find env.ops id in
     Some { args_in=infos.op_args_in; args_out=infos.op_args_out }
   with
     Not_found -> None
 
-let is_operation_readonly (env:t) (id:ident) : bool =
+let is_operation_readonly (env:t) (id:P.ident) : bool =
   try (Hashtbl.find env.ops id).op_readonly
   with Not_found -> false
 
-let is_operation_local (env:t) (id:ident) : bool =
+let is_operation_local (env:t) (id:P.ident) : bool =
   match Hashtbl.find_opt env.ops id with
   | None -> false
   | Some op ->
@@ -436,11 +436,11 @@ let is_operation_local (env:t) (id:ident) : bool =
       | OS_Imported_Promoted_And_Refined _ -> false
     end
 
-let add_operation (env:t) (loc:loc) (id:ident) (args:t_op_type) (is_readonly:bool) (is_local:bool) : unit Error.t_result =
+let add_operation (env:t) (loc:loc) (id:P.ident) (args:t_op_type) (is_readonly:bool) (is_local:bool) : unit Error.t_result =
   let src = if is_local then Src_Current_Local loc else Src_Current loc in
   _add_operation env loc id args is_readonly src
 
-let promote_operation (env:t) (loc:loc) (id:ident) =
+let promote_operation (env:t) (loc:loc) (id:P.ident) =
   try
     begin
       let infos = Hashtbl.find env.ops id in
@@ -461,7 +461,7 @@ let promote_operation (env:t) (loc:loc) (id:ident) =
   with
     Not_found -> Error { Error.err_loc=loc; err_txt="Unknown operation '"^id^"'." }
 
-let load_interface_for_seen_machine (env:t) (itf:MachineInterface.t) (mch:p_lident) : unit Error.t_result =
+let load_interface_for_seen_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res = Error.list_iter
       (fun (r:t_symb) -> _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Seen mch)) (get_symbols itf)
@@ -473,7 +473,7 @@ let load_interface_for_seen_machine (env:t) (itf:MachineInterface.t) (mch:p_lide
       fun (r:t_op) -> _add_operation env mch.lid_loc r.id {args_in=r.args_in;args_out=r.args_out} r.readonly (Src_Seen mch)
     ) (get_operations itf)
 
-let load_interface_for_included_machine (env:t) (itf:MachineInterface.t) (mch:p_lident) : unit Error.t_result =
+let load_interface_for_included_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res =
     Error.list_iter (fun (r:t_symb) ->
@@ -486,7 +486,7 @@ let load_interface_for_included_machine (env:t) (itf:MachineInterface.t) (mch:p_
         _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Included mch)
       ) (get_operations itf)
 
-let load_interface_for_refined_machine (env:t) (itf:MachineInterface.t) (mch:p_lident) : unit Error.t_result =
+let load_interface_for_refined_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res =
     Error.list_iter (fun (r:t_symb) ->
@@ -499,7 +499,7 @@ let load_interface_for_refined_machine (env:t) (itf:MachineInterface.t) (mch:p_l
         _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Refined mch)
       ) (get_operations itf)
 
-let load_interface_for_imported_machine (env:t) (itf:MachineInterface.t) (mch:p_lident) : unit Error.t_result =
+let load_interface_for_imported_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res = Error.list_iter (fun (r:t_symb) ->
       _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Imported mch)) (get_symbols itf)
@@ -510,7 +510,7 @@ let load_interface_for_imported_machine (env:t) (itf:MachineInterface.t) (mch:p_
       fun (r:t_op) -> _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Imported mch)
     ) (get_operations itf)
 
-let load_interface_for_extended_machine (env:t) (itf:MachineInterface.t) (mch:p_lident) : unit Error.t_result =
+let load_interface_for_extended_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res = Error.list_iter (fun (r:t_symb) ->
       _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Imported mch)) (get_symbols itf)
@@ -579,15 +579,15 @@ let add_alias (s:t) (alias:string) (ty:Btype.t) : bool =
   | None -> false
   | Some alias -> (s.alias <- alias; true)
 
-let fold_symbols (f:'a -> ident -> t_kind -> t_source -> Btype.t -> 'a) (env:t) (accu:'a) : 'a =
-  let aux (id:ident) (ts:t_symbol_infos) (accu:'a) : 'a = f accu id ts.sy_kind ts.sy_src ts.sy_typ in
+let fold_symbols (f:'a -> P.ident -> t_kind -> t_source -> Btype.t -> 'a) (env:t) (accu:'a) : 'a =
+  let aux (id:P.ident) (ts:t_symbol_infos) (accu:'a) : 'a = f accu id ts.sy_kind ts.sy_src ts.sy_typ in
   Hashtbl.fold aux env.symb accu
 
-let fold_operations (f:'a -> ident -> t_op_source -> t_op_type -> 'a) (env:t) (accu:'a) : 'a =
-  let aux (id:ident) (ts:t_operation_infos) (accu:'a) : 'a = f accu id ts.op_src { args_in=ts.op_args_in; args_out=ts.op_args_out } in
+let fold_operations (f:'a -> P.ident -> t_op_source -> t_op_type -> 'a) (env:t) (accu:'a) : 'a =
+  let aux (id:P.ident) (ts:t_operation_infos) (accu:'a) : 'a = f accu id ts.op_src { args_in=ts.op_args_in; args_out=ts.op_args_out } in
   Hashtbl.fold aux env.ops accu
 
-let get_op_source (env:t) (id:ident) =
+let get_op_source (env:t) (id:P.ident) =
   match Hashtbl.find_opt env.ops id with
   | None -> None
   | Some op ->
@@ -602,7 +602,7 @@ let get_op_source (env:t) (id:ident) =
       | OS_Imported_Promoted_And_Refined (_,mch,_) -> Some mch.lid_str
     end
 
-let get_symbol_source (env:t) (id:ident) : ident option =
+let get_symbol_source (env:t) (id:P.ident) : P.ident option =
   match Hashtbl.find_opt env.symb id with
   | None -> None
   | Some ifn ->

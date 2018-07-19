@@ -43,7 +43,7 @@ struct
     | T_Bool
     | T_String
     | T_Abstract of qident
-    | T_Array of t_b0_type
+    | T_Array of int*t_b0_type
     | T_Record of (t_id*t_b0_type) list
 
   type t_local_ident_kind = 
@@ -70,12 +70,14 @@ struct
     | B0_Builtin_0 of t_b0_constant
     | B0_Builtin_1 of t_b0_unary_op * t_b0_expr
     | B0_Builtin_2 of t_b0_binary_op * t_b0_expr * t_b0_expr
-    | B0_Array_Access of t_b0_expr * t_b0_expr
+    | B0_Array_Access of t_b0_expr * t_b0_expr Nlist.t
     | B0_Array of t_b0_expr list
-    | B0_Array_Init of t_b0_expr*t_b0_expr (*size*default*)
+    | B0_Array_Init of t_b0_range*t_b0_expr
     | B0_Record of (t_id*t_b0_expr) list
     | B0_Record_Access of t_b0_expr*t_id
     | B0_Fun_App of qident*t_b0_expr Nlist.t
+
+  and t_b0_range = (t_b0_expr*t_b0_expr) Nlist.t
 
   and t_b0_expr =
     { exp0_loc: Utils.loc;
@@ -201,14 +203,14 @@ and t_b0_lhs =
 
   let normalize_app e =
     let rec aux e args =
-      match e.exp_desc with
+      match e.T.exp_desc with
       | Application (e1,e2) -> aux e1 (e2::args)
       | _ -> (e,args)
     in aux e []
 
   let get_args e : _ Nlist.t =
     let rec aux lst e =
-      match e.exp_desc with
+      match e.T.exp_desc with
       | Couple (_,e1,e2) -> aux (e2::lst) e1
       | _ -> e::lst
     in
@@ -219,29 +221,44 @@ and t_b0_lhs =
     | Btype.T_Int -> true
     | _ -> false
    
-  let mk_ident (lc:Utils.loc) (s:ident) : Ident.t =
+  let mk_ident (lc:Utils.loc) (s:string) : Ident.t =
     match Ident.make s with 
     | None -> Error.raise_exn lc ("The symbol '"^s^"' is not a valid identifier.")
     | Some id -> id
 
-  let mk_pkg (lc:Utils.loc) (s:ident) : Ident.t_pkg_id =
+  let mk_pkg (lc:Utils.loc) (s:string) : Ident.t_pkg_id =
     match Ident.make_pkg_id s with 
     | None -> Error.raise_exn lc ("The symbol '"^s^"' is not a valid package identifier.")
     | Some id -> id
 
+<<<<<<< HEAD
   type t_ctx = (string*t_local_ident_kind) list
 
   let get_qident (env:Global.t) (ctx:t_ctx) (lc:Utils.loc) (id:ident) : qident =
     let aux (x,_) = String.equal id x in
+=======
+  let get_qident (env:Global.t) (ctx:string list) (lc:Utils.loc) (id:string) : qident =
+    let aux = String.equal id in
+>>>>>>> wip
     if List.exists aux ctx then
       { q_nspace=None; q_id=mk_ident lc id }
     else
       { q_nspace=Utils.map_opt (mk_pkg lc) (Global.get_symbol_source env id);
            q_id=mk_ident lc id }
 
-  let get_op_qident (env:Global.t) (lc:Utils.loc) (id:ident) : qident =
+  let get_op_qident (env:Global.t) (lc:Utils.loc) (id:string) : qident =
     { q_nspace=Utils.map_opt (mk_pkg lc) (Global.get_op_source env id);
       q_id=mk_ident lc id }
+
+  let is_valid_range_type env rg =
+    match Btype.view rg with
+    | Btype.T_Int -> true
+    | Btype.T_Atomic s ->
+      begin match Global.get_symbol_kind env s with
+        | Some (Global.K_Concrete_Set lst) -> true
+        | _ -> false
+      end
+    | _ -> false
 
   let rec to_b0_type (lc:Utils.loc) (env:Global.t) (ty:Btype.t) : t_b0_type =
     match Btype.view ty with
@@ -258,29 +275,38 @@ and t_b0_lhs =
       begin match Btype.view ty0 with
         | Btype.T_Product (rg,tg) ->
           let tg = to_b0_type lc env tg in
-          begin match Btype.view rg with
-            | Btype.T_Int -> T_Array tg
-            | Btype.T_Atomic s ->
-              begin match Global.get_symbol_kind env s with
-                | Some (Global.K_Concrete_Set lst) -> T_Array tg
-                | _ -> Error.raise_exn lc "Only arrays indexed by integers or concrete sets are supported."
-              end
-            | _ -> Error.raise_exn lc "Only arrays indexed by a integers or concrete sets are supported."
-          end
+          let dim = get_array_dim lc env rg in
+          T_Array (dim,tg)
         | _ -> Error.raise_exn lc "Power types are not supported by the translator."
       end
     | Btype.T_Record lst -> T_Record (List.map (fun (id,ty) -> (mk_ident lc id,to_b0_type lc env ty)) lst)
     | Btype.T_Product (t1,t2) -> Error.raise_exn lc "Product types are not supported by the translator."
 
+<<<<<<< HEAD
+  and get_array_dim lc env rg =
+    match Btype.view rg with
+    | Btype.T_Product (ty1,ty2) ->
+      if is_valid_range_type env ty2 then
+        (get_array_dim lc env ty1) + 1
+      else Error.raise_exn lc "Only arrays indexed by integers or concrete sets are supported."
+    | _ -> 
+      if is_valid_range_type env rg then 1
+      else Error.raise_exn lc "Only arrays indexed by integers or concrete sets are supported."
+
   let get_pos (lst:ident list) (elt:ident) : int option =
+=======
+  let get_pos (lst:string list) (elt:string) : int option =
+>>>>>>> wip
     let rec aux i = function
-    | [] -> None
-    | hd::tl -> 
-      if String.equal elt hd then Some i
-      else aux (i+1) tl
+      | [] -> None
+      | hd::tl -> 
+        if String.equal elt hd then Some i
+        else aux (i+1) tl
     in aux 1 lst
 
-  let check_completeness (env:Global.t) (ctx:t_ctx)(lst:(Utils.loc*ident*Btype.t*t_b0_expr) list) : (qident*t_b0_expr) list =
+<<<<<<< HEAD
+=======
+  let check_completeness (env:Global.t) (ctx:string list)(lst:(Utils.loc*string*Btype.t*t_b0_expr) list) : (qident*t_b0_expr) list =
     let (fst_lc,elts,cs) = match lst with
       | [] -> assert false
       | (lc,id,ty,_)::tl ->
@@ -305,11 +331,12 @@ and t_b0_lhs =
     ) arr_pre
     in lst
 
+>>>>>>> wip
   let get_enum_type (lc:Utils.loc) (env:Global.t) (ty:Btype.t) : qident option =
     match Btype.view ty with
     | Btype.T_Atomic s ->
-        begin match Global.get_symbol_kind env s with
-          | Some (Global.K_Concrete_Set _) -> Some (get_qident env [] lc s)
+      begin match Global.get_symbol_kind env s with
+        | Some (Global.K_Concrete_Set _) -> Some (get_qident env [] lc s)
           | _ -> None
         end
     | _ -> None
@@ -331,13 +358,13 @@ and t_b0_lhs =
                                                  
   let get_all_args e =
     let rec aux accu e =
-      match e.exp_desc with
+      match e.T.exp_desc with
       | Couple (_,e1,e2) -> aux (e2::accu) e1
       | _ -> e::accu
     in
     Nlist.from_list_exn (aux [] e)
 
-  let get_pos2 (elts:ident list) (id:ident) : Int32.t option =
+  let get_pos2 (elts:string list) (id:string) : Int32.t option =
     let rec aux p = function
       | [] -> None
       | hd::tl when String.equal id hd -> Some p
@@ -361,8 +388,12 @@ and t_b0_lhs =
     with
     Error.Error _ -> true
 
+<<<<<<< HEAD
   let rec to_b0_expr (env:Global.t) (ctx:t_ctx) (e:Inference.t_expression) : t_b0_expr =
 (*     Log.write "to_b0_expr\n"; *)
+=======
+  let rec to_b0_expr (env:Global.t) (ctx:string list) (e:T.expression) : t_b0_expr =
+>>>>>>> wip
     let add_lt exp0_desc =
       { exp0_loc = e.exp_loc;
         exp0_type = to_b0_type e.exp_loc env e.exp_typ;
@@ -433,11 +464,20 @@ and t_b0_lhs =
           add_lt (B0_Fun_App(get_qident env ctx f.exp_loc c,args))
         | _ ->
           let f = to_b0_expr env ctx f in
-          let arg = to_b0_expr env ctx arg in
-          add_lt (B0_Array_Access(f,arg))
+          let rec get_args arg =
+            match arg.exp_desc with
+            | Couple (_,a1,a2) -> Nlist.cons (to_b0_expr env ctx a1) (get_args a2)
+            | _ -> Nlist.make1 (to_b0_expr env ctx arg)
+          in
+          let args = get_args arg in
+          add_lt (B0_Array_Access(f,args))
       end
     | Extension nle ->
+<<<<<<< HEAD
       let aux i e = match e.exp_desc with
+=======
+      let aux e = match e.T.exp_desc with
+>>>>>>> wip
         | Couple (_,e1,e2) ->
           begin match (to_b0_expr env ctx e1).exp0_desc with
             | B0_Builtin_0 (B0_Integer j) ->
@@ -466,49 +506,65 @@ and t_b0_lhs =
       add_lt (B0_Record_Access (e,fd))
     | Record_Type _ -> Error.raise_exn e.exp_loc "This is not a valid B0-expression (Record type)."
 
+<<<<<<< HEAD
   and get_array_init (env:Global.t) (ctx:t_ctx) (e:_ expression) : t_exp0_desc =
 (*     Log.write "get_array_init\n"; *)
     match e.exp_desc with
+=======
+  and get_array_init (env:Global.t) (ctx:string list) (e:T.expression) : t_exp0_desc =
+    match e.T.exp_desc with
+>>>>>>> wip
     | Couple (_,e1,e2) ->
-      begin
-        let v = match e2.exp_desc with
-          | Extension lst ->
-            begin match Nlist.to_list lst with
-              | [s] -> to_b0_expr env ctx s
-              | _ -> Error.raise_exn e.exp_loc "Invalid array initialisation (not a singleton)."
-            end
-          | _ -> Error.raise_exn e.exp_loc "Invalid array initialisation (not a singleton)."
-        in
-        match e1.exp_desc with
-        | Ident id ->
-          begin match Global.get_symbol_kind env id with
-            | None -> Error.raise_exn e1.exp_loc ("Unknown symbol '"^id^"'.")
-            | Some (Global.K_Concrete_Set elts) -> B0_Array (List.map (fun _ -> v) elts)
-            | Some _ ->
-              Error.raise_exn e1.exp_loc ("Invalid array range. '"^id^"' is not a concrete set.")
+      let v = match e2.exp_desc with
+        | Extension lst ->
+          begin match Nlist.to_list lst with
+            | [s] -> to_b0_expr env ctx s
+            | _ -> Error.raise_exn e.exp_loc "Invalid array initialisation (not a singleton)."
           end
-        | Application (f,arg) ->
-          begin match f.exp_desc, arg.exp_desc with
-            | Builtin Interval, Couple (_,int_start,int_end) ->
-             begin match int_start.exp_desc with
-               | Builtin (Integer _)   -> (*FIXME*)
-                 let mk_int exp0_desc =
-                   { exp0_loc = int_end.exp_loc;
-                     exp0_desc;
-                     exp0_type = T_Int }
-                 in
-                 let max = to_b0_expr env ctx int_end in
-                 let sz = B0_Builtin_2(B0_Addition,max,mk_int (B0_Builtin_0 (B0_Integer Int32.one))) in
-                 B0_Array_Init (mk_int sz,v)
-               | _ -> Error.raise_exn e.exp_loc "Invalid array initialisation."
-             end
-            | _, _ -> Error.raise_exn e.exp_loc "Invalid array initialisation."
-          end
-        | _ -> Error.raise_exn e.exp_loc "Invalid array initialisation."
-      end
+        | _ -> Error.raise_exn e.exp_loc "Invalid array initialisation (not a singleton)."
+      in
+      B0_Array_Init (get_array_range env ctx e1,v)
     | _ -> Error.raise_exn e.exp_loc "Invalid array initialisation."
+  
+  and get_array_range (env:Global.t) (ctx:t_ctx) (e:_ expression) : t_b0_range =
+    let add_lt exp0_desc =
+      { exp0_loc = e.exp_loc;
+        exp0_type = to_b0_type e.exp_loc env e.exp_typ;
+        exp0_desc }
+    in
+    match e.exp_desc with
+    | Ident id ->
+      begin match Global.get_symbol_kind env id with
+        | None -> Error.raise_exn e.exp_loc ("Unknown symbol '"^id^"'.")
+        | Some (Global.K_Concrete_Set elts) ->
+          let min = add_lt (B0_Builtin_0 (B0_Integer Int32.zero)) in
+          let max = add_lt (B0_Builtin_0 (B0_Integer (Int32.of_int ((List.length elts) - 1)))) in
+          Nlist.make1 (min,max)
+        | Some _ ->
+          Error.raise_exn e.exp_loc ("Invalid array range. '"^id^"' is not a concrete set.")
+      end
+    | Application (f,arg) ->
+      begin match f.exp_desc, arg.exp_desc with
+        | Builtin Interval, Couple (_,int_start,int_end) ->
+          let min = to_b0_expr env ctx int_start in
+          let max = to_b0_expr env ctx int_end in
+          Nlist.make1 (min,max)
+        | Builtin Product, Couple (_,st,ed) ->
+          let rg1 = get_array_range env ctx st in
+          let rg2 = get_array_range env ctx ed in
+          begin match Nlist.to_list rg2 with
+            | [x] -> Nlist.from_list_exn ((Nlist.to_list rg1)@[x]) (*FIXME*)
+            | _ -> Error.raise_exn e.exp_loc "Invalid array range."
+          end
+        | _, _ -> Error.raise_exn e.exp_loc "Invalid array range."
+      end
+    | _ -> Error.raise_exn e.exp_loc "Invalid array range."
 
+<<<<<<< HEAD
   and pred_to_b0_expr (env:Global.t) (ctx:t_ctx) (p:_ predicate) : t_b0_expr =
+=======
+  and pred_to_b0_expr (env:Global.t) (ctx:string list) (p:T.predicate) : t_b0_expr =
+>>>>>>> wip
     let add_loc exp0_desc = { exp0_loc = p.prd_loc; exp0_type = T_Bool; exp0_desc } in
     match p.prd_desc with
     | P_Builtin Btrue -> add_loc (B0_Builtin_0 B0_True)
@@ -537,7 +593,7 @@ and t_b0_lhs =
     | Existential_Q _ -> Error.raise_exn p.prd_loc "This is not a valid B0-expression (Existensial quantifier)."
 
   let rec get_exp_nle e =
-    match e.exp_desc with
+    match e.T.exp_desc with
     | Couple (_,x,y) -> Nlist.cons x (get_exp_nle y)
     | _ -> Nlist.make1 e
 
@@ -549,10 +605,16 @@ and t_b0_lhs =
     with
       Invalid_argument _ -> None
 
+<<<<<<< HEAD
   let get_enum (env:Global.t) (ctx:t_ctx) (e:_ expression) : Int32.t =
     match e.exp_desc with
+=======
+  let get_enum (env:Global.t) (ctx:string list) (e:T.expression) : Int32.t =
+    match e.T.exp_desc with
+>>>>>>> wip
     | Ident id ->
       begin match Btype.view e.exp_typ with
+        | Btype.T_Int | Btype.T_Bool -> Int32.zero (*FIXME*)
         | Btype.T_Atomic s ->
           begin match Global.get_symbol_kind env s with
             | Some (Global.K_Concrete_Set elts) ->
@@ -561,13 +623,18 @@ and t_b0_lhs =
                 | None -> Int32.zero (*FIXME*)
 (*                   Error.raise_exn e.exp_loc (id ^ " does not belong to " ^ s ^ " = {"^String.concat "," elts ^"}") *)
               end
-            | _ -> Error.raise_exn e.exp_loc "Enumerate expected."
+            | Some _ -> Error.raise_exn e.exp_loc (id ^ " is not an enumerate; its type is '"^Btype.to_string e.exp_typ^"'.")
+            | None -> Error.raise_exn e.exp_loc ("Unknown type '"^s^"'.")
           end
-        | _ -> Error.raise_exn e.exp_loc "Enumerate expected."
+        | _ -> Error.raise_exn e.exp_loc (id ^ " is not an enumerate; its type is '"^Btype.to_string e.exp_typ^"'.")
       end
-    | _ -> Error.raise_exn e.exp_loc "Enumerate expected."
+    | _ -> Error.raise_exn e.exp_loc "Identifier expected."
 
+<<<<<<< HEAD
   let rec to_b0_subst (env:Global.t) (ctx:t_ctx) (stmt:Inference.t_substitution) : t_b0_subst =
+=======
+  let rec to_b0_subst (env:Global.t) (ctx:string list) (stmt:T.substitution) : t_b0_subst =
+>>>>>>> wip
     let add_loc sub0_desc = { sub0_loc=stmt.sub_loc; sub0_desc } in
     let get_var_mut_kind x =
       match List.assoc_opt x ctx with
@@ -577,11 +644,20 @@ and t_b0_lhs =
     match stmt.sub_desc with
     | Skip -> add_loc B0_Null
     | Affectation (Tuple vars,e) ->
+<<<<<<< HEAD
       begin match Nlist.to_list vars with
         | [v] -> add_loc (B0_Affectation (
             LHS_Variable(mk_ident v.var_loc v.var_id, get_var_mut_kind v.var_id),
             to_b0_expr env ctx e))
         | _ -> Error.raise_exn stmt.sub_loc "This is not a valid B0-substitution (Parallel affectation)."
+=======
+      let e_nle = get_exp_nle e in
+      begin match merge_map2 vars e_nle with
+        | None -> Error.raise_exn stmt.sub_loc "Ill-formed affectation."
+        | Some nle ->
+          let nle = Nlist.map (fun (x,y) -> (mk_ident x.T.var_loc x.var_id,to_b0_expr env ctx y)) nle in
+          add_loc (B0_Affectation nle)
+>>>>>>> wip
       end
     | Assert (_,s) -> to_b0_subst env ctx s
     | IfThenElse (nle,def) ->
@@ -610,13 +686,21 @@ and t_b0_lhs =
       in
       add_loc (B0_Case (e,cases,def))
     | Var (vars,s) ->
+<<<<<<< HEAD
       let ctx =  (List.map (fun v -> (v.var_id,LIK_Var)) (Nlist.to_list vars))@ctx in
+=======
+      let ctx =  (List.map (fun v -> v.T.var_id) (Nlist.to_list vars))@ctx in
+>>>>>>> wip
       let ss = to_b0_subst env ctx s in
-      let aux v = (mk_ident v.var_loc v.var_id,to_b0_type v.var_loc env v.var_typ) in
+      let aux v = (mk_ident v.T.var_loc v.var_id,to_b0_type v.var_loc env v.var_typ) in
       let vars = Nlist.map aux vars in
       add_loc (B0_Var (vars,ss))
     | CallUp (outs,f,args) ->
+<<<<<<< HEAD
           let outs = List.map (fun v -> (get_var_mut_kind v.var_id,mk_ident v.var_loc v.var_id)) outs in
+=======
+      let outs = List.map (fun v -> mk_ident v.T.var_loc v.var_id) outs in
+>>>>>>> wip
       let args = List.map (to_b0_expr env ctx) args in
       add_loc (B0_CallUp (outs,get_op_qident env f.lid_loc f.lid_str,args))
     | While (cond,body,_,_) ->
@@ -646,6 +730,7 @@ and t_b0_lhs =
     | BecomesSuch _ -> add_loc B0_Null (*FIXME warning*)
     | Parallel _ -> Error.raise_exn stmt.sub_loc "This is not a valid B0-substitution (||)."
 
+<<<<<<< HEAD
   let get_dependencies sees imports extends : (Ident.t_pkg_id*t_dep_kind) list =
     let lst1 = match sees with
       | None -> []
@@ -663,11 +748,47 @@ and t_b0_lhs =
     let lst3 = match extends with
       | None -> []
       | Some (_,nle) -> List.map (aux DK_Extends) (Nlist.to_list nle)
+=======
+  let get_dependencies sees imports extends : Ident.t_pkg_id list =
+    let lst1 = List.map (fun x -> mk_pkg x.lid_loc x.lid_str) sees in
+    let aux x = match x.mi_params with
+      | [] -> mk_pkg x.mi_mch.lid_loc x.mi_mch.lid_str
+      | z::_ -> Error.raise_exn z.T.exp_loc "Not implemented (Parameters)."
+>>>>>>> wip
     in
+    let lst2 = List.map aux imports in
+    let lst3 = List.map aux extends in
     lst1@lst2@lst3
 
+<<<<<<< HEAD
   let get_type_decl (env:Global.t) (ty_name:Ident.t) (e:_ expression) : t_type =
     let ty_def = match e.exp_desc with
+=======
+  let get_enumerates (env:Global.t) : t_type list =
+    let aux accu id kd src ty =
+      match kd with
+      | Global.K_Concrete_Set elts ->
+        begin match src with
+          | Global.S_Current_Mch_Only lc
+          | Global.S_Current_And_Refined_Mch (lc,_) ->
+            { ty_name=mk_ident lc id;
+              ty_def=D_Enumerate (List.map (mk_ident lc) elts) }::accu
+          | Global.S_Included_Mch_Only _
+          | Global.S_Included_And_Refined_Mch _
+          | Global.S_Refined_Mch_Only _
+          | Global.S_Seen_Mch_Only _
+          | Global.S_Imported_Mch_Only _
+          | Global.S_Current_And_Imported_Mch _
+          | Global.S_Imported_And_Refined_Mch _
+          | Global.S_Current_Imported_And_Refined_Mch _ -> accu
+        end
+      | _ -> accu
+    in
+    Global.fold_symbols aux env []
+
+  let get_type_decl (env:Global.t) (ty_name:Ident.t) (e:T.expression) : t_type =
+    let ty_def = match e.T.exp_desc with
+>>>>>>> wip
       | Ident id ->
         begin match Global.get_symbol_kind env id with
         | None -> Error.raise_exn e.exp_loc ("Unknown type '"^id^"'.")
@@ -687,19 +808,17 @@ and t_b0_lhs =
     { ty_name; ty_def }
 
   let get_type_decl_list (env:Global.t) (imp:_ implementation_desc) : t_type list =
-    match imp.imp_values with
-    | None -> []
-    | Some (_,nle) ->
-      let aux lst (v,e) =
-        match Global.get_symbol_kind env v.var_id with
-        | None -> Error.raise_exn e.exp_loc ("Unknown symbol '"^v.var_id^"'.")
-        | Some Global.K_Abstract_Set -> (get_type_decl env (mk_ident v.var_loc v.var_id) e)::lst
-        | Some Global.K_Concrete_Constant -> lst
-        | Some _ -> Error.raise_exn e.exp_loc ("Unexpected symbol '"^v.var_id^"'. Abstract set or concrete constant expected.")
-      in
-      List.rev (List.fold_left aux [] (Nlist.to_list nle))
+    let aux lst (v,e) =
+      match Global.get_symbol_kind env v.T.var_id with
+      | None -> Error.raise_exn e.T.exp_loc ("Unknown symbol '"^v.var_id^"'.")
+      | Some Global.K_Abstract_Set -> (get_type_decl env (mk_ident v.var_loc v.var_id) e)::lst
+      | Some Global.K_Concrete_Constant -> lst
+      | Some _ -> Error.raise_exn e.exp_loc ("Unexpected symbol '"^v.var_id^"'. Abstract set or concrete constant expected.")
+    in
+    List.rev (List.fold_left aux [] imp.imp_values)
 
 
+<<<<<<< HEAD
   let get_promoted_constants (env:Global.t) : t_constant_or_fun list =
     let aux accu id kd src ty =
       match kd with
@@ -753,6 +872,25 @@ and t_b0_lhs =
         | Some _ -> Error.raise_exn e.exp_loc ("Unexpected symbol '"^v.var_id^"'. Abstract set or concrete constant expected.")
       in
       List.rev (List.fold_left aux [] (Nlist.to_list nle))
+=======
+  let get_constants (env:Global.t) (imp:_ implementation_desc) : t_constant list =
+    let aux lst (v,e) =
+      match Global.get_symbol_kind env v.T.var_id with
+      | None -> Error.raise_exn e.T.exp_loc ("Unknown symbol '"^v.T.var_id^"'.")
+      | Some Global.K_Concrete_Constant ->
+        begin match get_constant_kind env v.var_typ with
+          | C_Type -> lst
+          | C_Function | C_Constant ->
+            let c_type = to_b0_type v.var_loc env v.var_typ in
+            { c_name = mk_ident v.var_loc v.var_id;
+              c_type = Cst c_type;
+              c_init = to_b0_expr env [] e }::lst
+        end
+      | Some Global.K_Abstract_Set -> lst
+      | Some _ -> Error.raise_exn e.exp_loc ("Unexpected symbol '"^v.var_id^"'. Abstract set or concrete constant expected.")
+    in
+    List.rev (List.fold_left aux [] imp.imp_values)
+>>>>>>> wip
 
   let get_variables (env:Global.t) : t_variable list =
     let aux accu id kd src ty =
@@ -793,6 +931,7 @@ and t_b0_lhs =
     Global.fold_symbols aux env []
 
   let get_procedures (env:Global.t) (imp:_ implementation_desc) : t_procedure list =
+<<<<<<< HEAD
     match imp.imp_operations with
     | None -> []
     | Some (_,nle) ->
@@ -812,6 +951,24 @@ and t_b0_lhs =
 
   let get_promoted_procedures (lc:Utils.loc) (env:Global.t) : t_procedure list =
     let aux (accu:t_procedure list) (id:ident) (src:Global.t_op_source) (top:Global.t_op_type) : t_procedure list =
+=======
+    let to_arg op_name v = { arg_name=mk_ident v.T.var_loc v.var_id;
+                             arg_loc=v.T.var_loc;
+                             arg_type=to_b0_type v.var_loc env v.var_typ}
+    in
+    let aux (pr:_ operation) =
+      let ctx =  (List.map (fun v -> v.T.var_id) pr.op_out)@(List.map (fun v -> v.T.var_id) pr.op_in) in
+      { p_name = mk_ident pr.op_name.lid_loc pr.op_name.lid_str;
+        p_is_local = Global.is_operation_local env pr.op_name.lid_str;
+        p_args_in = List.map (to_arg pr.op_name.lid_str) pr.op_in;
+        p_args_out = List.map (to_arg pr.op_name.lid_str) pr.op_out;
+        p_body = Body (to_b0_subst env ctx pr.op_body) }
+    in
+    List.map aux imp.imp_operations
+
+  let get_promoted_procedures (env:Global.t) (imp:_ implementation_desc) : t_procedure list =
+    let aux (accu:t_procedure list) (id:string) (src:Global.t_op_source) (top:Global.t_op_type) : t_procedure list =
+>>>>>>> wip
       match src with
       | Global.OS_Imported_And_Promoted (lc,_) | Global.OS_Imported_Promoted_And_Refined (lc,_,_) ->
         let to_arg (x,ty)= { arg_name=mk_ident Utils.dloc x; arg_loc=lc; arg_type=to_b0_type lc env ty } in
@@ -825,6 +982,7 @@ and t_b0_lhs =
     Global.fold_operations aux env []
 
   let get_mch_types mch =
+<<<<<<< HEAD
     match mch.mch_sets with
     | None -> []
     | Some (_,lst) ->
@@ -833,24 +991,33 @@ and t_b0_lhs =
         | Concrete_Set (id,elts) -> { ty_name=mk_ident id.var_loc id.var_id; ty_def=D_Int }
       in
       List.map aux (Nlist.to_list lst)
+=======
+    let aux = function
+      | Abstract_Set id -> { ty_name=mk_ident id.T.var_loc id.var_id; ty_def=D_Int }
+      | Concrete_Set (id,elts) ->
+        { ty_name=mk_ident id.var_loc id.var_id;
+          ty_def=D_Enumerate (List.map (fun v -> mk_ident v.T.var_loc v.var_id) elts) }
+    in
+    List.map aux mch.mch_sets
+>>>>>>> wip
 
   let rec init_list n v =
     if n < 1 then []
     else v::(init_list (n-1) v)
 
-  let rec get_default_value (env:Global.t) (lc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
+  let rec get_default_value (lc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
     let mk exp0_type exp0_desc = { exp0_loc=lc; exp0_desc; exp0_type } in
     match ty with
     | T_Int -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
     | T_String -> mk ty (B0_Builtin_0 (B0_String ""))
     | T_Bool -> mk ty (B0_Builtin_0 B0_True)
     | T_Abstract s -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
-    | T_Array tg -> mk ty (B0_Array [])
+    | T_Array (_,tg) -> mk ty (B0_Array [])
     | T_Record lst ->
-      let aux (id,ty) = (id,get_default_value env lc ty) in
+      let aux (id,ty) = (id,get_default_value lc ty) in
       mk ty (B0_Record (List.map aux lst))
 
-let flatten_product (pr:Btype.t) : Btype.t Nlist.t =
+  let flatten_product (pr:Btype.t) : Btype.t Nlist.t =
   let rec aux (accu:Btype.t list) (ty:Btype.t) : Btype.t list =
     match Btype.view ty with
     | Btype.T_Product (t1,t2) -> aux (t2::accu) t1
@@ -869,6 +1036,7 @@ let flatten_product (pr:Btype.t) : Btype.t Nlist.t =
       end
      | _ -> None
 
+<<<<<<< HEAD
   let get_mch_constants (env:Global.t) : t_constant_or_fun list =
     let aux accu id kd src ty =
       match kd with
@@ -893,7 +1061,7 @@ let flatten_product (pr:Btype.t) : Btype.t Nlist.t =
                 Cst { c_name = mk_ident loc id;
                       c_type = c_type;
                       c_loc = loc;
-                      c_init = Init (get_default_value env loc c_type) }::accu
+                      c_init = Init (get_default_value loc c_type) }::accu
               | None ->
                 begin match to_b0_fun_type env ty with
                   | None -> (Error.print_error
@@ -908,49 +1076,13 @@ let flatten_product (pr:Btype.t) : Btype.t Nlist.t =
                     Fun { f_name = mk_ident loc id;
                           f_loc = loc;
                           f_args = Nlist.from_list_exn (List.mapi to_arg (Nlist.to_list t_args));
-                          f_ret = get_default_value env loc t_ret }::accu
+                          f_ret = get_default_value loc t_ret }::accu
                 end
             end
         end
       | _ -> accu
     in
     Global.fold_symbols aux env []
-
-(*
-    let lst = match mch.mch_concrete_constants with
-    | None -> []
-    | Some (_,nle) -> (*FIXME il faut ajouter les constantes des machines incluses*)
-      let aux lst v =
-        match Global.get_symbol_kind env v.var_id with
-        | None -> Error.raise_exn v.var_loc ("Unknown symbol '"^v.var_id^"'.")
-        | Some Global.K_Concrete_Constant ->
-          begin match (try Some(to_b0_type v.var_loc env v.var_typ) with Error.Error _ -> None) with
-            | Some c_type ->
-              Cst { c_name = mk_ident v.var_loc v.var_id;
-                    c_type = c_type;
-                    c_loc = v.var_loc;
-                    c_init = get_default_value env v.var_loc c_type }::lst
-            | None ->
-              begin match to_b0_fun_type env v.var_typ with
-                | None -> (Error.print_error
-                             {Error.err_loc=v.var_loc;
-                              err_txt=("The type of the constant "^v.var_id^" is neither a B0-type or a B0 function type ("^Btype.to_string v.var_typ^").")}; lst) (*FIXME*)
-              | Some (t_args,t_ret) ->
-                 let to_arg i ty =
-                   match Ident.make ("_arg"^string_of_int i) with
-                   | None -> assert false
-                   | Some id -> { arg_name=id; arg_loc=v.var_loc; arg_type=ty }
-                 in
-                 Fun { f_name = mk_ident v.var_loc v.var_id;
-                       f_loc = v.var_loc;
-                       f_args = Nlist.from_list_exn (List.mapi to_arg (Nlist.to_list t_args));
-                       f_ret = get_default_value env v.var_loc t_ret }::lst
-              end
-          end
-        | Some _ -> Error.raise_exn v.var_loc "Concrete constant expected."
-      in
-      List.rev (List.fold_left aux [] (Nlist.to_list nle))
-*)
 
   let get_mch_operations (env:Global.t) (mch:_ machine_desc) : t_procedure list =
     match mch.mch_operations with
@@ -965,8 +1097,45 @@ let flatten_product (pr:Btype.t) : Btype.t Nlist.t =
           p_body = Body { sub0_loc=op.op_name.lid_loc; sub0_desc=B0_Null} }
       in
       List.map aux (Nlist.to_list nle)
+=======
+  let get_mch_constants (env:Global.t) (mch:_ machine_desc) : t_constant list =
+    let aux lst v =
+      match Global.get_symbol_kind env v.T.var_id with
+      | None -> Error.raise_exn v.var_loc ("Unknown symbol '"^v.var_id^"'.")
+      | Some Global.K_Concrete_Constant ->
+        begin match get_constant_kind env v.var_typ with
+          | C_Type -> lst
+          | C_Function ->
+            begin match to_b0_fun_type v.var_loc env v.var_typ with
+              | Some (t_args,t_res) ->
+                { c_name = mk_ident v.var_loc v.var_id;
+                  c_type = Fun (t_args,t_res);
+                  c_init = get_default_value env v.var_loc t_res }::lst
+              | None -> lst (*FIXME*)
+            end
+          | C_Constant ->
+            let c_type = to_b0_type v.var_loc env v.var_typ in
+            { c_name = mk_ident v.var_loc v.var_id;
+              c_type = Cst c_type;
+              c_init = get_default_value env v.var_loc c_type }::lst
+        end
+      | Some _ -> Error.raise_exn v.var_loc "Concrete constant expected."
+    in
+    List.rev (List.fold_left aux [] mch.mch_concrete_constants)
 
-  let to_package (env:Global.t) (pkg_name:Ident.t_pkg_id) (comp:Typechecker.t_component) : t_package Error.t_result =
+  let get_mch_operations (env:Global.t) (mch:_ machine_desc) : t_procedure list =
+    let to_arg op_name v= { arg_name=mk_ident v.T.var_loc v.var_id; arg_loc=v.T.var_loc; arg_type=to_b0_type v.var_loc env v.var_typ } in
+    let aux op =
+      { p_name = mk_ident op.op_name.lid_loc op.op_name.lid_str;
+        p_is_local = false;
+        p_args_in = List.map (to_arg op.op_name.lid_str) op.op_in;
+        p_args_out = List.map (to_arg op.op_name.lid_str) op.op_out;
+        p_body = Body { sub0_loc=op.op_name.lid_loc; sub0_desc=B0_Null} }
+    in
+    List.map aux mch.mch_operations 
+>>>>>>> wip
+
+  let to_package (env:Global.t) (pkg_name:Ident.t_pkg_id) (comp:T.component) : t_package Error.t_result =
     try match comp.co_desc with
     | Implementation imp ->
       Ok { pkg_name;
@@ -974,21 +1143,26 @@ let flatten_product (pr:Btype.t) : Btype.t Nlist.t =
            pkg_types = get_type_decl_list env imp;
            pkg_constants = (get_promoted_constants env)@(get_constants env imp);
            pkg_variables = get_variables env;
+<<<<<<< HEAD
            pkg_procedures = (get_promoted_procedures comp.co_loc env)@(get_procedures env imp);
            pkg_init = match imp.imp_initialisation with
              | None -> None
              | Some (_,s) -> Some (to_b0_subst env [] s)
+=======
+           pkg_procedures = (get_promoted_procedures env imp)@(get_procedures env imp);
+           pkg_init = Utils.map_opt (to_b0_subst env []) imp.imp_initialisation;
+>>>>>>> wip
          }
     | Machine mch ->
       Ok { pkg_name;
-           pkg_dependencies = get_dependencies mch.mch_sees None None;
+           pkg_dependencies = get_dependencies mch.mch_sees [] [];
            pkg_types = get_mch_types mch;
            pkg_constants = get_mch_constants env;
            pkg_variables = get_variables env;
            pkg_procedures = get_mch_operations env mch;
            pkg_init = None
          }
-    | Refinement _ -> Error { Error.err_loc=comp.co_loc; err_txt="Machine or Implementation expected." }
+    | Refinement _ -> Error { Error.err_loc=comp.co_name.lid_loc; err_txt="Machine or Implementation expected." }
     with
     | Error.Error err -> Error err
 
@@ -1056,12 +1230,14 @@ struct
 
   let is_valid_rust_id (id:string) : bool =
     let reg = Str.regexp {|\([a-zA-Z][a-zA-Z0-9_]*\)\|\(_[a-zA-Z0-9_]+\)$|} in
-    not (SSet.mem id reserved_set) &&
     (Str.string_match reg id 0)
 
   let make x =
-    if is_valid_rust_id x then Some x
-    else None
+      if is_valid_rust_id x then
+        ( if SSet.mem x reserved_set then Some (x ^ "_")
+          else Some x )
+    else
+      None
 
   let make_pkg_id = make
 end

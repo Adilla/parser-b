@@ -16,7 +16,7 @@ let run_on_file filename =
   try
     let input = open_in filename in
     match Parser.parse_component_from_channel ~filename input with
-    | Ok c -> Print.print_component !out c
+    | Ok c -> Print.print_component !out (Syntax.P.u_comp c)
     | Error err -> print_error err
   with
   | Sys_error msg -> print_error_no_loc msg

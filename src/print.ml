@@ -1,6 +1,6 @@
 open Utils
 open Easy_format
-open Syntax
+open Syntax.R
 
 let mk_atom (s:string) : Easy_format.t = Atom (s,atom)
 let mk_label (a:Easy_format.t) (b:Easy_format.t) : Easy_format.t =
@@ -21,22 +21,20 @@ let rec get_or_list p =
   | Binary_Prop (Disjonction,p1,p2) -> (get_or_list p1)@[p2]
   | _ -> [p]
 
-let mk_var_list_comma (lst:_ var list) : Easy_format.t =
-  let lst = List.map (fun (v:_ var) -> mk_atom v.var_id) lst in
-  List (("",",","",list_1), lst)
+let mk_string_list_comma (lst:string list) : Easy_format.t =
+  List (("",",","",list_1), List.map mk_atom lst)
 
-let mk_var_nelist_comma (nlst:_ var Nlist.t) : Easy_format.t =
-  mk_var_list_comma (Nlist.to_list nlst)
+let mk_string_nelist_comma (nlst:string Nlist.t) : Easy_format.t =
+  mk_string_list_comma (Nlist.to_list nlst)
 
-let mk_var_nelist_comma2 (nlst:_ var Nlist.t) : Easy_format.t =
-  let lst = List.map (fun (v:_ var) -> mk_atom v.var_id) (Nlist.to_list nlst) in
-  List (("(",",",")",list_1), lst)
+let mk_string_nelist_comma_par (nlst:string Nlist.t) : Easy_format.t =
+  List (("(",",",")",list_1), List.map mk_atom (Nlist.to_list nlst))
 
-let rec ef_expr : ('lc,'ty) expression -> Easy_format.t = fun e ->
+let rec ef_expr : expression -> Easy_format.t = fun e ->
   match e.exp_desc with
   | Ident id -> mk_atom id
   | Dollar id -> mk_atom ( id ^ "$0")
-  | Builtin bi -> mk_atom (builtin_to_string bi)
+  | Builtin bi -> mk_atom (Syntax.builtin_to_string bi)
   | Pbool p -> mk_label (mk_atom "bool") (List(("(","",")",list_1),[ef_pred p]))
   | Application (f,a) ->
     begin
@@ -45,19 +43,19 @@ let rec ef_expr : ('lc,'ty) expression -> Easy_format.t = fun e ->
       | Builtin Unary_Minus, _ -> mk_label (mk_atom "-") (ef_expr_wp a)
       | Builtin Image, Couple(_,e1,e2) -> mk_label (ef_expr_wp e1) (List (("[","","]",list_1),[ef_expr e2]))
       | Builtin (Composition|Parallel_Product as bop), Couple(_,e1,e2) ->
-        List(("(",builtin_to_string bop,")",{ list_1 with space_before_separator=true }),
+        List(("(",Syntax.builtin_to_string bop,")",{ list_1 with space_before_separator=true }),
              [ef_expr_wp e1; ef_expr_wp e2])
       | Builtin bop, Couple(Infix,e1,e2) ->
-        List(("",builtin_to_string bop,"",{ list_1 with space_before_separator=true }),
+        List(("",Syntax.builtin_to_string bop,"",{ list_1 with space_before_separator=true }),
              [ef_expr_wp e1; ef_expr_wp e2])
       | _ -> mk_label (ef_expr_wp f) (List (("(","",")",list_1),[ef_expr a]))
     end
   | Comprehension (xlst,p) ->
     List(("{","","}",{ list with align_closing=false}),
-         [mk_var_nelist_comma xlst;mk_atom "|";ef_pred p])
+         [mk_string_nelist_comma xlst;mk_atom "|";ef_pred p])
   | Binder (bi,xlst,p,e) ->
-    let lst = mk_var_nelist_comma2 xlst in
-    let x = mk_label (mk_atom (binder_to_string bi)) lst in
+    let lst = mk_string_nelist_comma_par xlst in
+    let x = mk_label (mk_atom (Syntax.binder_to_string bi)) lst in
     let y = List(("(","|",")",list_1), [ef_pred p;ef_expr e]) in
     List (("",".","",list_1),[x;y])
   | Sequence nlst ->
@@ -72,7 +70,7 @@ let rec ef_expr : ('lc,'ty) expression -> Easy_format.t = fun e ->
   | Couple (Comma _,e1,e2) ->
     List(("","","",list_1),[ef_expr_wp e1;mk_atom ",";ef_expr_wp e2])
   | Record_Field_Access (e,fd) ->
-    mk_label (ef_expr_wp e) (mk_atom ("'" ^ fd.lid_str))
+    mk_label (ef_expr_wp e) (mk_atom ("'" ^ fd))
   | Record nlst ->
     let flst = List.map ef_struct_field (Nlist.to_list nlst) in
     let lst = List (("(",",",")",list_1),flst) in
@@ -89,10 +87,10 @@ and ef_expr_wp e =
   | Comprehension _ | Binder _ | Sequence _ | Extension _ | Record _
   | Record_Type _ -> ef_expr e
 
-and ef_struct_field (rf,e:'lc lident*('lc,'ty) expression) : Easy_format.t =
-  List(("",":","",list_1), [mk_atom rf.lid_str;ef_expr_wp e])
+and ef_struct_field (rf,e:string*expression) : Easy_format.t =
+  List(("",":","",list_1), [mk_atom rf;ef_expr_wp e])
 
-and ef_pred : ('lc,'ty) predicate -> Easy_format.t = fun p ->
+and ef_pred : predicate -> Easy_format.t = fun p ->
   match p.prd_desc with
   | P_Builtin Btrue -> mk_atom "btrue"
   | P_Builtin Bfalse -> mk_atom "bfalse"
@@ -103,20 +101,20 @@ and ef_pred : ('lc,'ty) predicate -> Easy_format.t = fun p ->
     let pars = List.map (fun p -> ef_pred_wp p) (get_or_list p) in
     List (("","or","",{ list_1 with space_before_separator=true}),pars)
   | Binary_Prop (bop,p1,p2) ->
-    List(("",prop_bop_to_string bop,"",{list_1 with space_before_separator=true}),
+    List(("",Syntax.prop_bop_to_string bop,"",{list_1 with space_before_separator=true}),
          [ef_pred_wp p1; ef_pred_wp p2])
   | Binary_Pred (bop,e1,e2) ->
-    List (("",pred_bop_to_string bop,"",{list_1 with space_before_separator=true}),
+    List (("",Syntax.pred_bop_to_string bop,"",{list_1 with space_before_separator=true}),
           [ef_expr e1; ef_expr e2])
   | Negation p ->
     mk_label (mk_atom "not") (List(("(","",")",list_1),[ef_pred p]))
   | Universal_Q (xlst,p) ->
-    let lst = mk_var_nelist_comma2 xlst in
+    let lst = mk_string_nelist_comma_par xlst in
     let x = mk_label (mk_atom "!") lst in
     let y = List(("(","",")",list_1), [ef_pred p]) in
     List(("",".","",{list_1 with space_after_separator=false}),[x;y])
   | Existential_Q (xlst,p) ->
-    let lst = mk_var_nelist_comma2 xlst in
+    let lst = mk_string_nelist_comma_par xlst in
     let x = mk_label (mk_atom "#") lst in
     let y = List(("(","",")",list_1), [ef_pred p]) in
     List(("",".","",{list_1 with space_after_separator=false}),[x;y])
@@ -137,35 +135,35 @@ let mk_sequence_nl lst =
                             wrap_body=`Force_breaks;
                  }),lst)
 
-let rec get_seq_list (s:_ substitution) =
+let rec get_seq_list (s:substitution) =
   match s.sub_desc with
   | Sequencement (s1,s2) -> (get_seq_list s1)@[s2]
   | _ -> [s]
 
-let rec get_par_list (s:_ substitution) =
+let rec get_par_list (s:substitution) =
   match s.sub_desc with
   | Parallel (s1,s2) -> (get_par_list s1)@[s2]
   | _ -> [s]
 
-let mk_expr_nelist_comma (lst:_ expression Nlist.t) : Easy_format.t =
+let mk_expr_nelist_comma (lst:expression Nlist.t) : Easy_format.t =
   let lst = List.map ef_expr (Nlist.to_list lst) in
   List (("",",","",list_1), lst)
 
-let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
+let rec ef_subst : substitution -> Easy_format.t = fun s ->
   match s.sub_desc with
   | Skip -> mk_atom "skip"
 
   | Affectation (Tuple xlst,e) ->
-    mk_sequence [mk_var_nelist_comma xlst;mk_atom ":=";ef_expr e]
+    mk_sequence [mk_string_nelist_comma xlst;mk_atom ":=";ef_expr e]
 
   | Affectation (Function(f,alst),e) ->
     let aux e = List(("(","",")",list),[ef_expr e]) in
     let lst_args = List(("","","",list),List.map aux (Nlist.to_list alst)) in
-    let lf = Label ((mk_atom f.var_id,label), lst_args) in
+    let lf = Label ((mk_atom f,label), lst_args) in
     mk_sequence [lf;mk_atom ":=";ef_expr e]
 
   | Affectation (Record(rf,fd),e) ->
-    let lf = mk_atom (rf.var_id ^ "'" ^ fd.lid_str) in
+    let lf = mk_atom (rf ^ "'" ^ fd) in
     mk_sequence [lf;mk_atom ":=";ef_expr e]
 
   | Pre (p,s) ->
@@ -248,7 +246,7 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
 
   | Any (xlst,p,s) ->
     let lb = { label with label_break=`Always } in
-    mk_sequence_nl [ Label((mk_atom "ANY",lb),mk_var_nelist_comma xlst);
+    mk_sequence_nl [ Label((mk_atom "ANY",lb),mk_string_nelist_comma xlst);
                      Label((mk_atom "WHERE",lb),ef_pred p);
                      Label((mk_atom "THEN",lb),ef_subst s);
                      mk_atom "END"]
@@ -256,23 +254,23 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
   | Let (xlst,ielst,s) ->
     let lb = { label with label_break=`Always } in
     let lst = { list with space_after_opening=false; space_before_closing=false; align_closing=false; } in
-    let ef_eq (v,e:_ var*_ expression) = mk_sequence [mk_atom v.var_id;mk_atom "=";ef_expr e] in
+    let ef_eq (v,e) = mk_sequence [mk_atom v;mk_atom "=";ef_expr e] in
     let defs = List(("","&","",lst),List.map ef_eq (Nlist.to_list ielst)) in
-    mk_sequence_nl [ Label((mk_atom "LET",lb),mk_var_nelist_comma xlst);
+    mk_sequence_nl [ Label((mk_atom "LET",lb),mk_string_nelist_comma xlst);
                      Label((mk_atom "BE",lb),defs);
                      Label((mk_atom "IN",lb),ef_subst s);
                      mk_atom "END"]
 
   | BecomesElt (xlst,e) ->
-    mk_sequence [mk_var_nelist_comma xlst; mk_atom "::"; ef_expr e]
+    mk_sequence [mk_string_nelist_comma xlst; mk_atom "::"; ef_expr e]
 
   | BecomesSuch (xlst,p) ->
-    Label((mk_var_nelist_comma xlst,label),
+    Label((mk_string_nelist_comma xlst,label),
           List((":(","",")",list),[ef_pred p]))
 
   | Var (xlst,s) ->
     let lb = {label with label_break=`Always} in
-    mk_sequence_nl [ Label((mk_atom "VAR",lb), mk_var_nelist_comma xlst);
+    mk_sequence_nl [ Label((mk_atom "VAR",lb), mk_string_nelist_comma xlst);
                      Label((mk_atom "IN",lb), ef_subst s);
                      mk_atom "END"]
 
@@ -283,21 +281,21 @@ let rec ef_subst : ('lc,'ty) substitution -> Easy_format.t = fun s ->
     in
     let lb = {label with space_after_label=false} in
     begin match xlst, args with
-      | [], [] -> mk_atom f.lid_str
+      | [], [] -> mk_atom f
       | [], _::_ ->
         let args = List(("(",",",")",lst), List.map (fun e -> ef_expr_wp e) args) in
-        Label((mk_atom f.lid_str,lb),args)
+        Label((mk_atom f,lb),args)
 
       | _::_, [] ->
-        mk_sequence [mk_var_list_comma xlst;
+        mk_sequence [mk_string_list_comma xlst;
                      mk_atom "<--";
-                     mk_atom f.lid_str]
+                     mk_atom f]
 
       | _::_, _::_ ->
         let args = List(("(",",",")",lst), List.map (fun e -> ef_expr_wp e) args) in
-        mk_sequence [mk_var_list_comma xlst;
+        mk_sequence [mk_string_list_comma xlst;
                      mk_atom "<--";
-                     Label((mk_atom f.lid_str,lb),args)]
+                     Label((mk_atom f,lb),args)]
     end
 
   | While (p,s,q,e) ->
@@ -337,38 +335,38 @@ let mk_clause (cname:string) (n:Easy_format.t) =
   Label ((mk_atom cname,
           {label with label_break=`Always;space_after_label=false}),n)
 
-let ef_minst (mi:_ machine_instanciation) : Easy_format.t =
+let ef_minst (mi:machine_instanciation) : Easy_format.t =
   match mi.mi_params with
-  | [] -> mk_atom mi.mi_mch.lid_str
+  | [] -> mk_atom mi.mi_mch
   | _::_ ->
-    Label ((mk_atom mi.mi_mch.lid_str,label),
+    Label ((mk_atom mi.mi_mch,label),
            List(("(",",",")",list),
                 List.map (fun e -> ef_expr_wp e) mi.mi_params))
 
-let ef_set (x:_ set) : Easy_format.t =
+let ef_set (x:set) : Easy_format.t =
   match x with
-  | Abstract_Set s -> mk_atom s.var_id
+  | Abstract_Set s -> mk_atom s
   | Concrete_Set (s,lst) ->
     let enums = List(("{",",","}",list),
-                     List.map (fun (e:_ var) -> mk_atom e.var_id) lst) in
-    List(("","","",list),[mk_atom s.var_id;mk_atom "=";enums])
+                     List.map (fun e -> mk_atom e) lst) in
+    List(("","","",list),[mk_atom s;mk_atom "=";enums])
 
-let ef_operation (op:_ operation) : Easy_format.t =
+let ef_operation (op:operation) : Easy_format.t =
   let name_args =
     match op.op_in with
-    | [] -> mk_atom op.op_name.lid_str
+    | [] -> mk_atom op.op_name
     | _::_ ->
       let lst = {list with align_closing=false;
                            space_after_opening=false;
                            space_before_closing=false}
       in
       let args = List(("(",",",")",lst),
-                      List.map (fun (v:_ var) -> mk_atom v.var_id) op.op_in) in
-      Label((mk_atom op.op_name.lid_str,label),args)
+                      List.map (fun v -> mk_atom v) op.op_in) in
+      Label((mk_atom op.op_name,label),args)
   in
   let spec = match op.op_out with
     | [] -> mk_sequence [name_args; mk_atom "="]
-    | _::_ -> mk_sequence [mk_var_list_comma op.op_out; mk_atom "<--"; name_args; mk_atom "="]
+    | _::_ -> mk_sequence [mk_string_list_comma op.op_out; mk_atom "<--"; name_args; mk_atom "="]
   in
   let lbl = {label with label_break=`Always;
                         indent_after_label=0;
@@ -392,15 +390,15 @@ let ef_minst_nelist nlst =
        List.map ef_minst (Nlist.to_list nlst))
 
 let ef_value_nelist nlst =
-  let ef (v,e:_ var*_ expression) = mk_sequence [mk_atom v.var_id;mk_atom "=";ef_expr e] in
+  let ef (v,e) = mk_sequence [mk_atom v;mk_atom "=";ef_expr e] in
   (List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
         List.map ef (Nlist.to_list nlst)))
 
-let mk_machine_name (name:ident) (params:_ var list) : Easy_format.t =
+let mk_machine_name (name:ident) (params) : Easy_format.t =
   match params with
   | [] -> mk_atom name
   | _::_ -> Label((mk_atom name,{label with space_after_label=false}),
-                  List(("(",",",")",list),List.map (fun (v: _ var) -> mk_atom v.var_id) params))
+                  List(("(",",",")",list),List.map (fun (v) -> mk_atom v) params))
 
 let mk_clause_list lst =
   List (("","\n","",
@@ -411,14 +409,14 @@ let mk_clause_list lst =
         lst)
 
 let mk_mch_name_nelist_comma nlst : Easy_format.t =
-  let lst = List.map (fun (v:_ lident) -> mk_atom v.lid_str) (Nlist.to_list nlst) in
+  let lst = List.map (fun (v) -> mk_atom v) (Nlist.to_list nlst) in
   List (("",",","",list_1), lst)
 
 let mk_op_name_nelist_comma nlst : Easy_format.t =
-  let lst = List.map (fun (v:_ lident) -> mk_atom v.lid_str) (Nlist.to_list nlst) in
+  let lst = List.map (fun (v) -> mk_atom v) (Nlist.to_list nlst) in
   List (("",",","",list_1), lst)
 
-let ef_clause : ('lc,'ty) clause -> Easy_format.t = fun c ->
+let ef_clause : clause -> Easy_format.t = fun c ->
   match c.cl_desc with
   | Constraints p -> mk_clause "CONSTRAINTS" (ef_pred p)
   | Imports lst -> mk_clause "IMPORTS" (ef_minst_nelist lst)
@@ -435,10 +433,10 @@ let ef_clause : ('lc,'ty) clause -> Easy_format.t = fun c ->
   | Promotes lst -> mk_clause "PROMOTES" (mk_op_name_nelist_comma lst)
   | Uses lst -> mk_clause "USES" (mk_mch_name_nelist_comma lst)
   | Sets lst -> mk_clause "SETS" (ef_set_nelist lst)
-  | Constants lst -> mk_clause "CONSTANTS" (mk_var_nelist_comma lst)
-  | Abstract_constants lst -> mk_clause "ABSTRACT_CONSTANTS" (mk_var_nelist_comma lst)
-  | Concrete_variables lst -> mk_clause "CONCRETE_VARIABLES" (mk_var_nelist_comma lst)
-  | Variables lst -> mk_clause "VARIABLES" (mk_var_nelist_comma lst)
+  | Constants lst -> mk_clause "CONSTANTS" (mk_string_nelist_comma lst)
+  | Abstract_constants lst -> mk_clause "ABSTRACT_CONSTANTS" (mk_string_nelist_comma lst)
+  | Concrete_variables lst -> mk_clause "CONCRETE_VARIABLES" (mk_string_nelist_comma lst)
+  | Variables lst -> mk_clause "VARIABLES" (mk_string_nelist_comma lst)
 
 let ef_machine name params clauses =
   let machine = mk_clause "MACHINE" (mk_machine_name name params) in
@@ -448,14 +446,14 @@ let ef_machine name params clauses =
 
 let ef_refinement name refines params clauses =
   let refinement = mk_clause "REFINEMENT" (mk_machine_name name params) in
-  let refines = mk_clause "REFINES" (mk_atom refines.lid_str) in
+  let refines = mk_clause "REFINES" (mk_atom refines) in
   let lst = List.map ef_clause clauses in
   let ed = [mk_atom "END"] in
   mk_clause_list (refinement::refines::(lst@ed))
 
 let ef_implementation name refines params clauses =
   let implementation = mk_clause "IMPLEMENTATION" (mk_machine_name name params) in
-  let refines = mk_clause "REFINES" (mk_atom refines.lid_str) in
+  let refines = mk_clause "REFINES" (mk_atom refines) in
   let lst = List.map ef_clause clauses in
   let ed = [mk_atom "END"] in
   mk_clause_list (implementation::refines::(lst@ed))

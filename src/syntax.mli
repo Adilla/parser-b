@@ -38,11 +38,10 @@ type e_builtin =
   | Max | Min | TRUE | FALSE
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
+
   (** Builtin constants*)
 
 val builtin_to_string : e_builtin -> string
-
-val e_builtin_eq: e_builtin -> e_builtin -> bool
 
 type p_builtin = Btrue | Bfalse
 
@@ -50,226 +49,296 @@ val expr_constants : e_builtin list
 val expr_infix_ops: e_builtin list
 val expr_prefix_postfix_ops: e_builtin list
 
-type ident = string
-val ident_eq: ident -> ident -> bool
-
-type 'lc lident = { lid_loc:'lc; lid_str:ident }
-val lident_eq: 'lc lident -> 'lc2 lident -> bool
-
 type expr_binder = Sum | Prod | Q_Union | Q_Intersection | Lambda
 
 val binder_to_string : expr_binder -> string
 
 type c_or_m = Maplet | Comma of bool | Infix
 
-type ('lc,'ty) var = {
-  var_loc:'lc;
-  var_typ:'ty;
-  var_id:ident
-}
-
-val var_eq : ('lc,'ty) var -> ('lc2,'ty2) var -> bool
-
-type ('lc,'ty) expression_desc =
-  | Ident of ident
-  | Dollar of ident
+type ('ident,'bvar,'rfield,'expression,'predicate) expression_desc =
+  | Ident of 'ident
+  | Dollar of 'ident
   | Builtin of e_builtin
-  | Pbool of ('lc,'ty) predicate
-  | Application of ('lc,'ty) expression * ('lc,'ty) expression
-  | Couple of c_or_m  * ('lc,'ty) expression * ('lc,'ty) expression
-  | Sequence of (('lc,'ty) expression) Nlist.t
-  | Extension of (('lc,'ty) expression) Nlist.t
-  | Comprehension of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
-  | Binder of expr_binder * ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) expression
-  | Record_Field_Access of ('lc,'ty) expression * 'lc lident
-  | Record of ('lc lident * ('lc,'ty) expression) Nlist.t
-  | Record_Type of ('lc lident * ('lc,'ty) expression) Nlist.t
+  | Pbool of 'predicate
+  | Application of 'expression * 'expression
+  | Couple of c_or_m  * 'expression * 'expression
+  | Sequence of 'expression Nlist.t
+  | Extension of 'expression Nlist.t
+  | Comprehension of 'bvar Nlist.t * 'predicate
+  | Binder of expr_binder * 'bvar Nlist.t * 'predicate * 'expression
+  | Record_Field_Access of 'expression * 'rfield
+  | Record of ('rfield * 'expression) Nlist.t
+  | Record_Type of ('rfield * 'expression) Nlist.t
 
-and ('lc,'ty) expression = {
-  exp_loc:'lc;
-  exp_typ:'ty;
-  exp_desc:('lc,'ty) expression_desc
-}
-
-and ('lc,'ty) predicate_desc =
+type ('bvar,'expression,'predicate) predicate_desc =
   | P_Builtin of p_builtin
-  | Binary_Prop of prop_bop * ('lc,'ty) predicate * ('lc,'ty) predicate
-  | Binary_Pred of pred_bop * ('lc,'ty) expression * ('lc,'ty) expression
-  | Negation of ('lc,'ty) predicate
-  | Universal_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
-  | Existential_Q of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
+  | Binary_Prop of prop_bop * 'predicate * 'predicate
+  | Binary_Pred of pred_bop * 'expression * 'expression
+  | Negation of 'predicate
+  | Universal_Q of 'bvar Nlist.t * 'predicate
+  | Existential_Q of 'bvar Nlist.t * 'predicate
 
-and ('lc,'ty) predicate = {
-  prd_loc:'lc;
-  prd_desc:('lc,'ty) predicate_desc
-}
+type ('mut_var,'rfield,'expression) lhs =
+  | Tuple of 'mut_var Nlist.t
+  | Function of 'mut_var * 'expression Nlist.t
+  | Record of 'mut_var * 'rfield
 
-val expr_eq : ('lc,'ty) expression -> ('lc2,'ty2) expression -> bool
-val pred_eq : ('lc,'ty) predicate -> ('lc2,'ty2) predicate -> bool
-
-type ('lc,'ty) substitution_desc =
+type ('bvar,'op_name,'mut_var,'rfield,'expression,'predicate,'substitution) substitution_desc =
   | Skip
-  | Affectation of ('lc,'ty) lhs * ('lc,'ty) expression
-  | Pre of ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Assert of ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Choice of ('lc,'ty) substitution Nlist.t
-  | IfThenElse of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Select of (('lc,'ty) predicate * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Case of ('lc,'ty) expression * (('lc,'ty) expression Nlist.t * ('lc,'ty) substitution) Nlist.t * ('lc,'ty) substitution option
-  | Any of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate * ('lc,'ty) substitution
-  | Let of ('lc,'ty) var Nlist.t * (('lc,'ty) var * ('lc,'ty) expression) Nlist.t * ('lc,'ty) substitution
-  | BecomesElt of ('lc,'ty) var Nlist.t * ('lc,'ty) expression
-  | BecomesSuch of ('lc,'ty) var Nlist.t * ('lc,'ty) predicate
-  | Var of ('lc,'ty) var Nlist.t * ('lc,'ty) substitution
-  | CallUp of ('lc,'ty) var list * 'lc lident * ('lc,'ty) expression list
-  | While of ('lc,'ty) predicate * ('lc,'ty) substitution * ('lc,'ty) predicate * ('lc,'ty) expression
-  | Sequencement of ('lc,'ty) substitution * ('lc,'ty) substitution
-  | Parallel of ('lc,'ty) substitution * ('lc,'ty) substitution
+  | Affectation of ('mut_var,'rfield,'expression) lhs * 'expression
+  | Pre of 'predicate * 'substitution
+  | Assert of 'predicate * 'substitution
+  | Choice of 'substitution Nlist.t
+  | IfThenElse of ('predicate * 'substitution) Nlist.t * 'substitution option
+  | Select of ('predicate * 'substitution) Nlist.t * 'substitution option
+  | Case of 'expression * ('expression Nlist.t * 'substitution) Nlist.t * 'substitution option
+  | Any of 'bvar Nlist.t * 'predicate * 'substitution
+  | Let of 'bvar Nlist.t * ('bvar * 'expression) Nlist.t * 'substitution
+  | BecomesElt of 'mut_var Nlist.t * 'expression
+  | BecomesSuch of  'mut_var Nlist.t * 'predicate
+  | Var of  'bvar Nlist.t * 'substitution
+  | CallUp of  'mut_var list * 'op_name * 'expression list
+  | While of 'predicate * 'substitution * 'predicate * 'expression
+  | Sequencement of 'substitution * 'substitution
+  | Parallel of 'substitution * 'substitution
 
-and ('lc,'ty) lhs =
-  | Tuple of ('lc,'ty) var Nlist.t
-  | Function of ('lc,'ty) var * ('lc,'ty) expression Nlist.t
-  | Record of ('lc,'ty) var * 'lc lident
-
-and ('lc,'ty) substitution = {
-  sub_loc:'lc;
-  sub_desc:('lc,'ty) substitution_desc
-}
-
-val subst_eq : ('lc,'ty) substitution -> ('lc2,'ty2) substitution -> bool
-
-type ('lc,'ty) operation =
-  { op_out: ('lc,'ty) var list;
-    op_name: 'lc lident;
-    op_in:('lc,'ty)  var list;
-    op_body: ('lc,'ty) substitution
+type ('op_name,'arg,'substitution) operation =
+  { op_out: 'arg list;
+    op_name: 'op_name;
+    op_in: 'arg list;
+    op_body: 'substitution
   }
 
-val operation_eq : ('lc,'ty) operation -> ('lc,'ty2) operation -> bool
-
-type ('lc,'ty) machine_instanciation =
-  { mi_mch: 'lc lident;
-    mi_params: ('lc,'ty) expression list
+type ('mch_name,'expression) machine_instanciation =
+  { mi_mch: 'mch_name;
+    mi_params: 'expression list
   }
 
-val minst_eq: ('lc,'ty) machine_instanciation -> ('lc2,'ty2) machine_instanciation -> bool
+type 'a set =
+  | Abstract_Set of 'a
+  | Concrete_Set of 'a * 'a list
 
-type ('lc,'ty) set =
-  | Abstract_Set of ('lc,'ty) var
-  | Concrete_Set of ('lc,'ty) var * ('lc,'ty) var list
-
-val set_eq: ('lc,'ty) set -> ('lc2,'ty2) set -> bool
-
-type ('lc,'ty) clause_desc =
-  | Constraints of ('lc,'ty) predicate
-  | Imports of (('lc,'ty) machine_instanciation) Nlist.t
-  | Sees of 'lc lident Nlist.t
-  | Includes of ('lc,'ty) machine_instanciation Nlist.t
-  | Extends of ('lc,'ty) machine_instanciation Nlist.t
-  | Promotes of 'lc lident Nlist.t
-  | Uses of 'lc lident Nlist.t
-  | Sets of ('lc,'ty) set Nlist.t
-  | Constants of ('lc,'ty) var Nlist.t
-  | Abstract_constants of ('lc,'ty) var Nlist.t
-  | Properties of ('lc,'ty) predicate
-  | Concrete_variables of ('lc,'ty) var Nlist.t
-  | Variables of ('lc,'ty) var Nlist.t
-  | Invariant of ('lc,'ty) predicate
-  | Assertions of ('lc,'ty) predicate Nlist.t
-  | Initialization of ('lc,'ty) substitution
-  | Operations of ('lc,'ty) operation Nlist.t
-  | Local_Operations of ('lc,'ty) operation Nlist.t
-  | Values of (('lc,'ty) var * ('lc,'ty) expression) Nlist.t
-
-and ('lc,'ty) clause = {
-  cl_loc:'lc;
-  cl_desc:('lc,'ty) clause_desc
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) machine_desc = {
+  mch_constraints: 'predicate option;
+  mch_sees: 'mch_name list;
+  mch_includes: ('mch_name,'expression) machine_instanciation list;
+  mch_promotes: 'op_name list;
+  mch_extends: ('mch_name,'expression) machine_instanciation list;
+  mch_uses: 'mch_name list;
+  mch_sets: 'symb set list;
+  mch_concrete_constants: 'symb list;
+  mch_abstract_constants: 'symb list;
+  mch_properties: 'predicate option;
+  mch_concrete_variables: 'symb list;
+  mch_abstract_variables: 'symb list;
+  mch_invariant: 'predicate option;
+  mch_assertions: 'predicate list;
+  mch_initialisation: 'substitution option;
+  mch_operations: ('op_name,'arg,'substitution) operation list;
 }
 
-val clause_eq: ('lc,'ty) clause -> ('lc2,'ty2) clause -> bool
-
-type ('lc,'ty) machine_desc = {
-  mch_constraints: ('lc * ('lc,'ty) predicate) option;
-  mch_sees: ('lc * 'lc lident Nlist.t) option;
-  mch_includes: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
-  mch_promotes: ('lc * 'lc lident Nlist.t) option;
-  mch_extends: ('lc * ('lc,'ty) machine_instanciation Nlist.t) option;
-  mch_uses: ('lc * 'lc lident Nlist.t) option;
-  mch_sets: ('lc * ('lc,'ty) set Nlist.t) option;
-  mch_concrete_constants: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_abstract_constants: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_properties: ('lc * ('lc,'ty) predicate) option;
-  mch_concrete_variables: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_abstract_variables: ('lc * ('lc,'ty) var Nlist.t) option;
-  mch_invariant: ('lc * ('lc,'ty) predicate) option;
-  mch_assertions: ('lc * ('lc,'ty) predicate Nlist.t) option;
-  mch_initialisation: ('lc * ('lc,'ty) substitution) option;
-  mch_operations: ('lc * ('lc,'ty) operation Nlist.t) option;
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) refinement_desc = {
+  ref_refines: 'mch_name;
+  ref_sees: 'mch_name list;
+  ref_includes: ('mch_name,'expression) machine_instanciation list;
+  ref_promotes: 'op_name list;
+  ref_extends: ('mch_name,'expression) machine_instanciation list;
+  ref_sets: 'symb set list;
+  ref_concrete_constants: 'symb list;
+  ref_abstract_constants: 'symb list;
+  ref_properties: 'predicate option;
+  ref_concrete_variables: 'symb list;
+  ref_abstract_variables: 'symb list;
+  ref_invariant: 'predicate option;
+  ref_assertions: 'predicate list;
+  ref_initialisation: 'substitution option;
+  ref_operations: ('op_name,'arg,'substitution) operation list;
+  ref_local_operations: ('op_name,'arg,'substitution) operation  list;
 }
 
-type ('lc,'ty) refinement_desc = {
-  ref_refines: 'lc lident;
-  ref_sees: ('lc*'lc lident Nlist.t) option;
-  ref_includes: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  ref_promotes: ('lc*'lc lident Nlist.t) option;
-  ref_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  ref_sets: ('lc*('lc,'ty) set Nlist.t) option;
-  ref_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_abstract_constants: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_properties: ('lc*('lc,'ty) predicate) option;
-  ref_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_abstract_variables: ('lc*('lc,'ty) var Nlist.t) option;
-  ref_invariant: ('lc*('lc,'ty) predicate) option;
-  ref_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
-  ref_initialisation: ('lc*('lc,'ty) substitution) option;
-  ref_operations: ('lc*('lc,'ty) operation Nlist.t) option;
-  ref_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) implementation_desc = {
+  imp_refines: 'mch_name;
+  imp_sees: 'mch_name list;
+  imp_imports: ('mch_name,'expression) machine_instanciation list;
+  imp_promotes: 'op_name list;
+  imp_extends: ('mch_name,'expression) machine_instanciation list;
+  imp_sets: 'symb set list;
+  imp_concrete_constants: 'symb list;
+  imp_properties: 'predicate option;
+  imp_values: ('symb*'expression) list;
+  imp_concrete_variables: 'symb list;
+  imp_invariant: 'predicate option;
+  imp_assertions: 'predicate list;
+  imp_initialisation: 'substitution option;
+  imp_operations: ('op_name,'arg,'substitution) operation list;
+  imp_local_operations: ('op_name,'arg,'substitution) operation list;
 }
 
-type ('lc,'ty) implementation_desc = {
-  imp_refines: 'lc lident;
-  imp_sees: ('lc*'lc lident Nlist.t) option;
-  imp_imports: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  imp_promotes: ('lc*'lc lident Nlist.t) option;
-  imp_extends: ('lc*('lc,'ty) machine_instanciation Nlist.t) option;
-  imp_sets: ('lc*('lc,'ty) set Nlist.t) option;
-  imp_concrete_constants: ('lc*('lc,'ty) var Nlist.t) option;
-  imp_properties: ('lc*('lc,'ty) predicate) option;
-  imp_values: ('lc*(('lc,'ty) var*('lc,'ty) expression) Nlist.t) option;
-  imp_concrete_variables: ('lc*('lc,'ty) var Nlist.t) option;
-  imp_invariant: ('lc*('lc,'ty) predicate) option;
-  imp_assertions: ('lc*('lc,'ty) predicate Nlist.t) option;
-  imp_initialisation: ('lc*('lc,'ty) substitution) option;
-  imp_operations: ('lc*('lc,'ty) operation Nlist.t) option;
-  imp_local_operations: ('lc*('lc,'ty) operation Nlist.t) option;
-}
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) component_desc =
+  | Machine of ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) machine_desc
+  | Refinement of ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) refinement_desc
+  | Implementation of ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) implementation_desc
 
-type ('lc,'ty) component_desc = 
-  | Machine of ('lc,'ty) machine_desc
-  | Refinement of ('lc,'ty) refinement_desc
-  | Implementation of ('lc,'ty) implementation_desc
+type ('mch_name,'op_name,'symb,'arg,'expression,'predicate,'substitution) clause_desc =
+    | Constraints of 'predicate
+    | Imports of ('mch_name,'expression) machine_instanciation Nlist.t
+    | Sees of 'symb Nlist.t
+    | Includes of ('mch_name,'expression) machine_instanciation Nlist.t
+    | Extends of  ('mch_name,'expression) machine_instanciation Nlist.t
+    | Promotes of 'symb Nlist.t
+    | Uses of 'symb Nlist.t
+    | Sets of 'symb set Nlist.t
+    | Constants of 'symb Nlist.t
+    | Abstract_constants of 'symb Nlist.t
+    | Properties of 'predicate
+    | Concrete_variables of 'symb Nlist.t
+    | Variables of 'symb Nlist.t
+    | Invariant of 'predicate
+    | Assertions of 'predicate Nlist.t
+    | Initialization of 'substitution
+    | Operations of ('op_name,'arg,'substitution) operation Nlist.t
+    | Local_Operations of ('op_name,'arg,'substitution) operation Nlist.t
+    | Values of ('symb * 'expression) Nlist.t
 
-type ('lc,'ty) component = {
-  co_loc: 'lc;
-  co_name: ident;
-  co_parameters: ('lc,'ty) var list;
-  co_desc: ('lc,'ty) component_desc
-}
+module R : sig
+  type ident = string
+  type bvar = string
+  type rfield = string
+  type mch_name = string
+  type op_name = string
+  type mut_var = string
+  type symb = string
+  type param = string
+  type arg = string
 
-val component_eq : ('lc,'ty) component -> ('lc2,'ty2) component -> bool
-val get_clauses : ('lc,'ty) component -> ('lc,'ty) clause list
+  type expression = {
+    exp_desc:(ident,bvar,rfield,expression,predicate) expression_desc
+  } (*FIXME unboxed*)
 
-val mk_machine : 'lc lident -> ('lc,'ty) var list -> ('lc,'ty) clause list -> (('lc,'ty) component,'lc Error.t) result
-val mk_refinement : 'lc lident -> ('lc,'ty) var list -> 'lc lident -> ('lc,'ty) clause list -> (('lc,'ty) component,'lc Error.t) result
-val mk_implementation : 'lc lident -> ('lc,'ty) var list -> 'lc lident -> ('lc,'ty) clause list -> (('lc,'ty) component,'lc Error.t) result
+  and predicate = {
+    prd_desc: (bvar,expression,predicate) predicate_desc
+  } (*FIXME unboxed*)
 
-type p_var = (Utils.loc,unit) var
-type p_lident = Utils.loc lident
-type p_expression = (Utils.loc,unit) expression
-type p_predicate = (Utils.loc,unit) predicate
-type p_substitution = (Utils.loc,unit) substitution
-type p_set = (Utils.loc,unit) set
-type p_machine_instanciation = (Utils.loc,unit) machine_instanciation
-type p_clause = (Utils.loc,unit) clause
-type p_operation = (Utils.loc,unit) operation
-type p_component = (Utils.loc,unit) component
+  type substitution = {
+    sub_desc: (bvar,op_name,mut_var,rfield,expression,predicate,substitution) substitution_desc
+  } (*FIXME unboxed*)
+
+  type nonrec set = symb set
+  type nonrec machine_instanciation = (mch_name,expression) machine_instanciation
+  type nonrec operation = (op_name,arg,substitution) operation
+
+  type component = {
+    co_name: mch_name;
+    co_parameters: param list;
+    co_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) component_desc
+  }
+
+  type clause = {
+    cl_loc: Utils.loc;
+    cl_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) clause_desc;
+  }
+
+  val get_clauses : component -> clause list
+
+end
+
+type lident = { lid_loc:Utils.loc; lid_str:string }
+
+module P : sig
+
+  type ident = string
+  type bvar = lident
+  type rfield = lident
+  type mch_name = lident
+  type op_name = lident
+  type mut_var = lident
+  type symb = lident
+  type param = lident
+  type arg = lident
+
+  type expression = {
+    exp_loc: Utils.loc;
+    exp_desc: (ident,bvar,rfield,expression,predicate) expression_desc
+  }
+
+  and predicate = {
+    prd_loc: Utils.loc;
+    prd_desc: (bvar,expression,predicate) predicate_desc
+  }
+
+  type substitution = {
+    sub_loc: Utils.loc;
+    sub_desc: (bvar,op_name,mut_var,rfield,expression,predicate,substitution) substitution_desc
+  }
+
+  type nonrec set = symb set
+  type nonrec machine_instanciation = (mch_name,expression) machine_instanciation
+  type nonrec operation = (op_name,arg,substitution) operation
+
+  type component = {
+    co_name: mch_name;
+    co_parameters: param list;
+    co_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) component_desc
+  }
+
+  type clause = {
+    cl_loc: Utils.loc;
+    cl_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) clause_desc;
+  }
+
+  val mk_machine_exn : lident -> lident list -> clause list -> component
+  val mk_refinement_exn : lident -> lident list -> lident -> clause list -> component
+  val mk_implementation_exn : lident -> lident list -> lident -> clause list -> component
+
+  val get_clauses : component -> clause list
+
+  val u_expr: expression -> R.expression
+  val u_pred: predicate -> R.predicate
+  val u_subst: substitution -> R.substitution
+  val u_comp: component -> R.component
+end
+
+module T : sig
+
+  type var = {
+    var_loc: Utils.loc;
+    var_typ: Btype.t;
+    var_id: string;
+  }
+
+  type ident = string
+  type bvar = var
+  type rfield = lident
+  type mch_name = lident
+  type op_name = lident
+  type mut_var = var
+  type symb = var
+  type param = var
+  type arg = var
+
+  type expression = {
+    exp_loc: Utils.loc;
+    exp_typ: Btype.t;
+    exp_desc: (ident,bvar,rfield,expression,predicate) expression_desc
+  }
+
+  and predicate = {
+    prd_loc: Utils.loc;
+    prd_desc: (bvar,expression,predicate) predicate_desc
+  }
+
+  type substitution = {
+    sub_loc: Utils.loc;
+    sub_desc: (bvar,op_name,mut_var,rfield,expression,predicate,substitution) substitution_desc
+  }
+
+  type nonrec set = symb set
+  type nonrec machine_instanciation = (mch_name,expression) machine_instanciation
+  type nonrec operation = (op_name,arg,substitution) operation
+
+  type component = {
+    co_name: mch_name;
+    co_parameters: param list;
+    co_desc: (mch_name,op_name,symb,arg,expression,predicate,substitution) component_desc
+  }
+end

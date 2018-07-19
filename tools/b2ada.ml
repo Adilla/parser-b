@@ -1,7 +1,7 @@
 let continue_on_error = ref false
 
 type machine_interface = Global.t_interface
-type t_item = Done of Typechecker.t_component*machine_interface*Global.t | InProgress
+type t_item = Done of Syntax.T.component*machine_interface*Global.t | InProgress
 
 let open_in (fn:string) : in_channel option =
   try Some (open_in fn) with Sys_error _ -> None
@@ -21,7 +21,7 @@ let print_error_no_loc msg =
   if not !continue_on_error then exit(1)
 
 let rec type_component_from_filename (ht:interface_table) (filename:string)
-  : (Typechecker.t_component*machine_interface*Global.t) Error.t_result =
+  : (Syntax.T.component*machine_interface*Global.t) Error.t_result =
   match safe_find ht filename with
   | Some (Done (cp,itf,env)) -> Ok (cp,itf,env)
   | Some InProgress ->
@@ -69,7 +69,7 @@ let open_ads (pkg_name:Codegen.Ada_ident.t_pkg_id) =
 let open_adb (pkg_name:Codegen.Ada_ident.t_pkg_id) =
   open_out ("./"^Codegen.Ada_ident.pkg_to_string pkg_name^".adb") (*FIXME*)
 
-let rec get_pkg_name (cp:_ Syntax.component) : Codegen.Ada_ident.t_pkg_id Error.t_result =
+let rec get_pkg_name (cp:Syntax.T.component) : Codegen.Ada_ident.t_pkg_id Error.t_result =
   let open Syntax in
   let aux (name:string) : Codegen.Ada_ident.t_pkg_id Error.t_result =
     match File.get_fullname_comp name with
@@ -82,10 +82,10 @@ let rec get_pkg_name (cp:_ Syntax.component) : Codegen.Ada_ident.t_pkg_id Error.
   in
   match cp.co_desc with
   | Machine _ ->
-    begin match Codegen.Ada_ident.make_pkg_id cp.co_name with
+    begin match Codegen.Ada_ident.make_pkg_id cp.co_name.lid_str with
     | Some x -> Ok x
-    | None -> Error { Error.err_loc=cp.co_loc;
-                      err_txt=("'"^cp.co_name^"' is not a valid ada identifier.") }
+    | None -> Error { Error.err_loc=cp.co_name.lid_loc;
+                      err_txt=("'"^cp.co_name.lid_str^"' is not a valid ada identifier.") }
     end
   | Refinement ref -> aux ref.ref_refines.lid_str
   | Implementation imp -> aux imp.imp_refines.lid_str

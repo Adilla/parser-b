@@ -78,7 +78,7 @@ let mk_fun_app (f:Easy_format.t) (args:Easy_format.t Nlist.t) : Easy_format.t  =
              indent_body = 2 } in
   mk_label 2 false `Auto f (mk_list "(" "," ")" st (Nlist.to_list args))
 
-let mk_array_access (f:Easy_format.t) (arg:Easy_format.t) : Easy_format.t  =
+let mk_array_access (f:Easy_format.t) (args:Easy_format.t Nlist.t) : Easy_format.t  =
   let st = { Easy_format.list with
              Easy_format.space_after_opening = false;
              stick_to_label = false;
@@ -89,7 +89,7 @@ let mk_array_access (f:Easy_format.t) (arg:Easy_format.t) : Easy_format.t  =
              align_closing = false;
              wrap_body = `Wrap_atoms;
              indent_body = 2 } in
-  mk_label 2 false `Auto f (mk_list "[" "" "]" st [arg])
+  mk_label 2 false `Auto f (mk_list "[" "][" "]" st (Nlist.to_list args))
 
 let add_par (e:Easy_format.t) : Easy_format.t =
   let st = { Easy_format.list with
@@ -117,7 +117,7 @@ let mk_array (lst:Easy_format.t list) : Easy_format.t =
              indent_body = 2 } in
   mk_list "vec![" "," "]" st lst
 
-let mk_array_init (sz:Easy_format.t) (def:Easy_format.t) : Easy_format.t =
+let rec mk_array_init (nle:Easy_format.t Nlist.t) (def:Easy_format.t) : Easy_format.t =
   let st = { Easy_format.list with
              Easy_format.space_after_opening = false;
              stick_to_label = false;
@@ -127,9 +127,19 @@ let mk_array_init (sz:Easy_format.t) (def:Easy_format.t) : Easy_format.t =
              space_before_closing = false;
              align_closing = false;
              wrap_body = `Wrap_atoms;
-             indent_body = 2 } in
-  let sz = mk_list "(" "" ") as usize" Easy_format.list [sz] in
-  mk_list "vec![" ";" "]" st [def;sz]
+             indent_body = 2 }
+  in
+  match Nlist.tl nle with
+  | [] ->
+    let sz = Nlist.hd nle in
+    let sz = mk_list "(" "" ") as usize" Easy_format.list [sz] in
+    mk_list "vec![" ";" "]" st [def;sz]
+  | hd::tl ->
+    let sz = Nlist.hd nle in
+    let sz = mk_list "(" "" ") as usize" Easy_format.list [sz] in
+    let def = mk_array_init (Nlist.make hd tl) def in
+    mk_list "vec![" ";" "]" st [def;sz]
+
 
 let rec is_by_ref_type = function
   | T_Int | T_Bool | T_Abstract _ -> false
@@ -167,10 +177,14 @@ let rec mk_expr clone (e0:t_b0_expr) : Easy_format.t =
     mk_list "i32::pow(" "," ")" Easy_format.list [mk_expr false e1;mk_expr false e2]
   | B0_Builtin_2 (op,e1,e2) -> mk_infix_op op (mk_expr_wp false e1) (mk_expr_wp false e2)
   | B0_Array lst -> mk_array (List.map (mk_expr false) lst)
-  | B0_Array_Init (sz,def) -> mk_array_init (mk_expr false sz) (mk_expr false def)
-  | B0_Array_Access (f,arg) ->
+  | B0_Array_Init (rg,def) ->
+    let rg = Nlist.map (fun (_,y) -> (*FIXME*) (mk_expr false y)) rg in
+    mk_array_init rg (mk_expr false def)
+  | B0_Array_Access (f,args) ->
+    let aux arg = mk_list "(" "" ") as usize" Easy_format.list [mk_expr false arg] in
     let aa =
-      mk_array_access (mk_expr_wp false f) (mk_list "(" "" ") as usize" Easy_format.list [mk_expr false arg])
+      let args = Nlist.map aux args in
+      mk_array_access (mk_expr_wp false f) args
     in
     if clone && is_by_ref_type e0.exp0_type then
       mk_list "(" "" ").clone()" Easy_format.list [aa]
@@ -252,7 +266,12 @@ let rec b0_type_to_string : t_b0_type -> string = function
   | T_Bool -> "bool"
   | T_String -> "String"
   | T_Abstract ts -> t_symb_to_string ts
-  | T_Array ty -> "Vec<" ^ b0_type_to_string ty ^ ">"
+  | T_Array (dim,ty) ->
+    let rec aux i str =
+      if i <= 0 then str
+      else "Vec<" ^ aux (i-1) str ^ ">"
+    in
+    aux dim (b0_type_to_string ty)
   | T_Record lst ->
     let aux (x,_) (y,_) =
       String.compare (Codegen.Rust_ident.to_string x) (Codegen.Rust_ident.to_string y)
@@ -260,6 +279,21 @@ let rec b0_type_to_string : t_b0_type -> string = function
     let lst = List.fast_sort aux lst in
     let lst = List.map (fun (_,ty) -> b0_type_to_string ty) lst in
     "(" ^ String.concat "," lst ^ ")"
+
+let rec get_default_value (ty:t_b0_type) : Easy_format.t =
+    match ty with
+    | T_Int -> mk_atom "0"
+    | T_String -> mk_atom "\"\""
+    | T_Bool -> mk_atom "true"
+    | T_Abstract s -> mk_atom "Default::default()"
+    | T_Array (_,tg) -> mk_atom "vec![]"
+    | T_Record lst ->
+      let aux (x,_) (y,_) =
+        String.compare (Codegen.Rust_ident.to_string x) (Codegen.Rust_ident.to_string y)
+      in
+      let lst = List.fast_sort aux lst in
+      let aux (_,ty) = get_default_value ty in
+      mk_list "(" "," ")" Easy_format.list (List.map aux lst)
 
 let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
   match s0.sub0_desc with
@@ -336,9 +370,9 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     mk_label 2 true `Auto mtch cases
   | B0_Var (vars,s) ->
     let aux (id,ty) = 
-      mk_label 2 true `Always_rec
-        (mk_atom ("let mut "^Codegen.Rust_ident.to_string id ^ ": " ^ b0_type_to_string ty ^ " = "))
-        (mk_atom "Default::default();")
+      mk_list
+        ("let mut "^Codegen.Rust_ident.to_string id ^ ": " ^ b0_type_to_string ty ^ " = ")
+        "" ";" Easy_format.list [get_default_value ty]
     in
     let st = Easy_format.list in
     let vars = mk_list "" "" "" st (List.map aux (Nlist.to_list vars)) in
@@ -500,7 +534,8 @@ let mk_var (v:t_variable) : Easy_format.t option =
   | None ->
     Some (mk_label 2 true `Auto
             (mk_atom ("static " ^ Codegen.Rust_ident.to_string v.v_name ^ ": RefCell<" ^ b0_type_to_string v.v_type ^ "> = "))
-            (mk_atom "RefCell::new(Default::default());"))
+            (mk_list "RefCell::new(" "" ");" Easy_format.list [get_default_value v.v_type])
+         )
   | Some _ -> None
 
 let mk_var_setter (v:t_variable) : Easy_format.t option =
@@ -524,10 +559,11 @@ let mk_arg_out (a:t_arg) : Easy_format.t =
     mk_atom (b0_type_to_string a.arg_type)
 
 let mk_ret_id (a:t_arg) : Easy_format.t = mk_atom (Codegen.Rust_ident.to_string a.arg_name)
+
 let mk_ret_decl (a:t_arg) : Easy_format.t =
-  mk_label 2 true `Always_rec
-    (mk_atom ("let mut "^Codegen.Rust_ident.to_string a.arg_name ^ ": " ^ b0_type_to_string a.arg_type ^ " = "))
-    (mk_atom "Default::default();")
+  mk_list 
+    ("let mut "^Codegen.Rust_ident.to_string a.arg_name ^ ": " ^ b0_type_to_string a.arg_type ^ " = ")
+    "" ";" Easy_format.list [get_default_value a.arg_type]
 
 let mk_proc_body (p:t_procedure) : Easy_format.t =
   let pr = mk_atom ("pub fn " ^ Codegen.Rust_ident.to_string p.p_name) in

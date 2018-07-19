@@ -5,9 +5,9 @@ module Local :
 sig
   type t
   val create : unit -> t
-  val add : t -> ident -> Btype.Open.t -> bool -> t
-  val get : t -> ident -> (Btype.Open.t*bool) option
-  val get_vars : t -> ident list
+  val add : t -> P.ident -> Btype.Open.t -> bool -> t
+  val get : t -> P.ident -> (Btype.Open.t*bool) option
+  val get_vars : t -> P.ident list
 end = struct
 
   module M = Map.Make( (*FIXME*)
@@ -20,10 +20,10 @@ end = struct
 
   let create () = M.empty
 
-  let add (ctx:t) (id:ident) (ty:Btype.Open.t) (ro:bool) : t =
+  let add (ctx:t) (id:P.ident) (ty:Btype.Open.t) (ro:bool) : t =
     M.add id (ty,ro) ctx
 
-  let get (ctx:t) (id:ident) : (Btype.Open.t*bool) option =
+  let get (ctx:t) (id:P.ident) : (Btype.Open.t*bool) option =
     try Some (M.find id ctx)
     with Not_found -> None
 
@@ -31,25 +31,48 @@ end = struct
 
 end
 
-type t_var0 = (loc,Btype.Open.t) var 
-type t_expression0 = (loc,Btype.Open.t) expression
-type t_predicate0 = (loc,Btype.Open.t) predicate
-type t_substitution0 = (loc,Btype.Open.t) substitution
+type o_var = {
+  var_loc: Utils.loc;
+  var_typ: Btype.Open.t;
+  var_id: string;
+}
 
-type t_var = (loc,Btype.t) var 
-type t_expression = (loc,Btype.t) expression
-type t_predicate = (loc,Btype.t) predicate
-type t_substitution = (loc,Btype.t) substitution
+type o_ident = string
+type o_bvar = o_var
+type o_rfield = lident
+type o_mch_name = lident
+type o_op_name = lident
+type o_mut_var = o_var
+type o_symb = o_var
+type o_param = o_var
+type o_arg = o_var
 
-let mk_expr exp_loc exp_typ exp_desc = { exp_loc; exp_typ; exp_desc }
-let mk_pred prd_loc prd_desc = { prd_loc; prd_desc }
-let mk_subst sub_loc sub_desc = { sub_loc; sub_desc;  }
+type o_expression = {
+  exp_loc: Utils.loc;
+  exp_typ: Btype.Open.t;
+  exp_desc: (o_ident,o_bvar,o_rfield,o_expression,o_predicate) expression_desc
+}
+
+and o_predicate = {
+  prd_loc: Utils.loc;
+  prd_desc: (o_bvar,o_expression,o_predicate) predicate_desc
+}
+
+type o_substitution = {
+  sub_loc: Utils.loc;
+  sub_desc: (o_bvar,o_op_name,o_mut_var,o_rfield,o_expression,o_predicate,o_substitution) substitution_desc
+}
+
+let mk_expr exp_loc exp_typ exp_desc : o_expression = { exp_loc; exp_typ; exp_desc }
+let mk_pred prd_loc prd_desc : o_predicate = { prd_loc; prd_desc }
+let mk_subst sub_loc sub_desc : o_substitution = { sub_loc; sub_desc;  }
 
 let declare (ctx:Local.t) (id:string) (ro:bool) : Local.t * Btype.Open.t = 
   let mt = Btype.Open.new_meta () in
   ( Local.add ctx id mt ro, mt )
 
-let declare_list (ctx:Local.t) (lst:p_var list) (ro:bool) : Local.t * t_var0 list =
+let declare_list (ctx:Local.t) (lst:lident list) (ro:bool) : Local.t * o_var list = assert false (*FIXME*)
+(*
   let (ctx,tvars) = List.fold_left
       (fun (ctx,tvars) v ->
          let (ctx,var_typ) = declare ctx v.var_id ro in
@@ -57,12 +80,16 @@ let declare_list (ctx:Local.t) (lst:p_var list) (ro:bool) : Local.t * t_var0 lis
       ) (ctx,[]) lst
   in
   (ctx,List.rev tvars)
+*)
 
-let declare_nelist (ctx:Local.t) (xlst:p_var Nlist.t) (ro:bool) : Local.t * t_var0 Nlist.t =
+let declare_nelist (ctx:Local.t) (xlst:lident Nlist.t) (ro:bool) : Local.t * o_var Nlist.t = assert false (*FIXME*)
+(*
   let (ctx,lst) = declare_list ctx (Nlist.to_list xlst) ro in
   (ctx,Nlist.from_list_exn lst)
+*)
 
-let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : Btype.Open.t =
+let ids_to_product (ctx:Local.t) (xlst:lident Nlist.t) : Btype.Open.t = assert false (*FIXME*)
+(*
   let aux pr v =
     match Local.get ctx v.var_id with
     | None -> assert false
@@ -71,6 +98,7 @@ let ids_to_product (ctx:Local.t) (xlst:p_var Nlist.t) : Btype.Open.t =
   match Local.get ctx (Nlist.hd xlst).var_id with
   | None -> assert false
   | Some (ty,_) -> List.fold_left aux ty (Nlist.tl xlst)
+*)
 
 let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Open.t =
   let open Btype.Open in
@@ -222,7 +250,7 @@ let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Open.t =
     | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
       Error.raise_exn lc "Not implemented (tree operators)."
   
-let get_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:ident) : Btype.Open.t Error.t_result =
+let get_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:P.ident) : Btype.Open.t Error.t_result =
   match Local.get ctx id with
   | Some (ty,_) -> Ok ty
   | None ->
@@ -231,7 +259,7 @@ let get_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (i
       | Error _ as err -> err
     end
 
-let get_writable_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:ident) : Btype.Open.t Error.t_result =
+let get_writable_ident_type (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (lc:loc) (id:P.ident) : Btype.Open.t Error.t_result =
   match Local.get ctx id with
   | Some (ty,false) -> Ok ty
   | Some (ty,_) -> Error { Error.err_loc=lc; err_txt=("The variable '"^id^"' is read-only") }
@@ -254,7 +282,7 @@ let rec weak_norm : Btype.Open.t -> Btype.Open.t = function
   | Btype.Open.T_UVar { contents=Btype.Open.Bound ty } -> weak_norm ty
   | ty -> ty
 
-let is_int_or_power_exn l (arg:t_expression0) : t_int_or_power =
+let is_int_or_power_exn l (arg:o_expression) : t_int_or_power =
   let open Btype.Open in
   match weak_norm arg.exp_typ with
   | T_Product (t1,t2) as ty ->
@@ -278,7 +306,7 @@ let is_int_or_power_exn l (arg:t_expression0) : t_int_or_power =
             ("This expression has type '"^ to_string ty^
              "' but an expression of product type was expected.")
 
-let type_set_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0): t_expression0 =
+let type_set_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:o_expression): o_expression =
   let open Btype.Open in
   let mt1 = new_meta () in
   let mt2 = new_meta () in
@@ -290,7 +318,7 @@ let type_set_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (ar
     let op = mk_expr op_lc op_ty_exp (Builtin Product) in
     mk_expr app_lc (mk_Power (mk_Product mt1 mt2)) (Application (op,arg))
 
-let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0) : t_expression0 =
+let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:o_expression) : o_expression =
   let open Btype.Open in
   let op_ty_exp = type_of_binary_fun t_int t_int t_int in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (new_meta ()) in
@@ -300,7 +328,7 @@ let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (ar
     let op = mk_expr op_lc op_ty_exp (Builtin Product) in
     mk_expr app_lc t_int (Application (op,arg))
 
-let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0) : t_expression0 =
+let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:o_expression) : o_expression =
   let open Btype.Open in
   let op_ty_exp = type_of_binary_fun t_int t_int t_int in
   let op_ty_inf = type_of_unary_fun arg.exp_typ (new_meta ()) in
@@ -310,7 +338,7 @@ let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) 
     let op = mk_expr op_lc op_ty_exp (Builtin Difference) in
     mk_expr app_lc t_int (Application (op,arg))
 
-let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:t_expression0) : t_expression0 =
+let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) (arg:o_expression) : o_expression =
   let open Btype.Open in
   let mt = new_meta () in
   let op_ty_exp = type_of_binary_fun (mk_Power mt) (mk_Power mt) (mk_Power mt) in
@@ -321,7 +349,7 @@ let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:Global.t) 
     let op = mk_expr op_lc op_ty_exp (Builtin Difference) in
     mk_expr app_lc (mk_Power mt) (Application (op,arg))
 
-let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e:p_expression) : t_expression0 =
+let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e:P.expression) : o_expression =
   let open Btype.Open in
   match e.exp_desc with
 
@@ -374,7 +402,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
   | Sequence nlst ->
     begin
       let te = type_expression_exn cl env ctx (Nlist.hd nlst) in
-      let aux (elt:p_expression) : t_expression0 =
+      let aux (elt:P.expression) : o_expression =
         let t_elt = type_expression_exn cl env ctx elt in
         match get_stype (Global.get_alias env) t_elt.exp_typ te.exp_typ with
         | Some ty -> t_elt
@@ -387,7 +415,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
   | Extension nlst ->
     begin
       let te0 = type_expression_exn cl env ctx (Nlist.hd nlst) in
-      let aux (elt:p_expression) : t_expression0 =
+      let aux (elt:P.expression) : o_expression =
         let t_elt = type_expression_exn cl env ctx elt in
         match get_stype (Global.get_alias env) t_elt.exp_typ te0.exp_typ with
         | Some _ -> t_elt
@@ -468,7 +496,7 @@ let rec type_expression_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e
                  ^"' but is expected to be a record.")
     end
 
-and type_predicate_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (p:p_predicate) : t_predicate0 =
+and type_predicate_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (p:P.predicate) : o_predicate =
   let open Btype.Open in
   match p.prd_desc with
   | P_Builtin _ as d -> mk_pred p.prd_loc d
@@ -535,17 +563,21 @@ and type_predicate_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (p:p_pr
     let (ctx,tids) = declare_nelist ctx ids true in
     mk_pred p.prd_loc (Existential_Q (tids,type_predicate_exn cl env ctx p))
 
-let type_var_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (v:p_var) : t_var0 =
+let type_var_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (v:lident) : o_var = assert false (*FIXME*)
+(*
   match get_ident_type cl env ctx v.var_loc v.var_id with
   | Ok var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
   | Error err -> raise (Error.Error err)
+*)
 
-let type_writable_var_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (v:p_var) : t_var0 =
+let type_writable_var_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (v:lident) : o_var = assert false (*FIXME*)
+(*
   match get_writable_ident_type cl env ctx v.var_loc v.var_id with
   | Ok var_typ -> { var_loc=v.var_loc; var_id=v.var_id; var_typ }
   | Error err -> raise (Error.Error err)
+*)
 
-let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (s0:p_substitution) : t_substitution0 =
+let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (s0:P.substitution) : o_substitution =
   let open Btype.Open in
   match s0.sub_desc with
   | Skip -> mk_subst s0.sub_loc Skip
@@ -561,15 +593,15 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
     mk_subst s0.sub_loc (Assert(p,s))
 
   | Affectation (Tuple xlst,e) ->
-    let rec mk_tuple (x:p_expression) : p_var list -> p_expression = function
+    let rec mk_tuple (x:P.expression) : lident list -> P.expression = function
         | [] -> x
         | hd::tl ->
-          let id = mk_expr hd.var_loc () (Ident hd.var_id) in
-          let cp = mk_expr x.exp_loc () (Couple (Comma false,x,id)) in
+          let id = { P.exp_loc=hd.lid_loc; exp_desc=(Ident hd.lid_str) } in
+          let cp = { P.exp_loc=x.exp_loc; exp_desc=(Couple (Comma false,x,id)) } in
           mk_tuple cp tl
     in
     let hd = Nlist.hd xlst in
-    let tuple = mk_tuple (mk_expr hd.var_loc () (Ident hd.var_id)) (Nlist.tl xlst) in
+    let tuple = mk_tuple { P.exp_loc=hd.lid_loc; exp_desc=(Ident hd.lid_str) } (Nlist.tl xlst) in
     let ttuple = type_expression_exn cl env ctx tuple in
     let te = type_expression_exn cl env ctx e in
     let () = match get_stype (Global.get_alias env) te.exp_typ ttuple.exp_typ with
@@ -583,9 +615,9 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
     let _ = type_writable_var_exn cl env ctx f in
     let rec mk_app (lc:Utils.loc) f = function
       | [] -> f
-      | x::tl -> mk_app lc (mk_expr lc () (Application (f,x))) tl
+      | x::tl -> mk_app lc { P.exp_loc=lc; exp_desc=(Application (f,x)) } tl
     in
-    let lhs = mk_app f.var_loc (mk_expr f.var_loc () (Ident f.var_id)) (Nlist.to_list nlst) in
+    let lhs = mk_app f.lid_loc { P.exp_loc=f.lid_loc; exp_desc=(Ident f.lid_str)} (Nlist.to_list nlst) in
     let tlhs = type_expression_exn cl env ctx lhs in
     let te = type_expression_exn cl env ctx e in
     let () = match get_stype (Global.get_alias env) te.exp_typ tlhs.exp_typ with
@@ -598,9 +630,11 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
 
   | Affectation (Record(rc,fd),e) ->
     let _ = type_writable_var_exn cl env ctx rc in
+    let rf_access =
+      { P.exp_loc=rc.lid_loc;
+        exp_desc=(Record_Field_Access ({ P.exp_loc=rc.lid_loc; exp_desc=(Ident rc.lid_str)},fd)) }
+       in
     let rc = type_var_exn cl env ctx rc in
-    let rf_access = mk_expr rc.var_loc ()
-        (Record_Field_Access (mk_expr rc.var_loc () (Ident rc.var_id),fd)) in
     let trf_access = type_expression_exn cl env ctx rf_access in
     let te = type_expression_exn cl env ctx e in
     let () = match get_stype (Global.get_alias env) te.exp_typ trf_access.exp_typ with
@@ -660,14 +694,14 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
 
   | Let (ids,nlst,s) ->
     let (ctx,tids) = declare_nelist ctx ids false in
-    let aux (v,e) =
+    let aux (v,e:lident*P.expression) =
       let te = type_expression_exn cl env ctx e in
-      match Local.get ctx v.var_id with
-      | None -> Error.raise_exn v.var_loc ("Unknown symbol '"^v.var_id^"'.")
+      match Local.get ctx v.lid_str with
+      | None -> Error.raise_exn v.lid_loc ("Unknown symbol '"^v.lid_str^"'.")
       | Some (ty_exp,_) ->
         begin match get_stype (Global.get_alias env) te.exp_typ ty_exp with
           | None -> unexpected_type_exn e.exp_loc te.exp_typ ty_exp
-          | Some var_typ -> ({var_loc=v.var_loc;var_typ;var_id=v.var_id},te)
+          | Some var_typ -> ({var_loc=v.lid_loc;var_typ;var_id=v.lid_str},te)
         end
     in
     let nlst = Nlist.map aux nlst in
@@ -675,9 +709,12 @@ let rec type_substitution_exn (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) 
     mk_subst s0.sub_loc (Let (tids,nlst,s))
 
   | BecomesElt (xlst,e) ->
-    let rec mk_tuple (x:p_var) : p_var list -> p_expression = function
-      | [] -> mk_expr x.var_loc () (Ident x.var_id)
-      | hd::tl -> mk_expr x.var_loc () (Couple (Comma false,mk_expr x.var_loc () (Ident x.var_id),mk_tuple hd tl))
+    let rec mk_tuple (x:lident) : lident list -> P.expression = function
+      | [] -> { P.exp_loc=x.lid_loc; exp_desc=(Ident x.lid_str) }
+      | hd::tl -> { P.exp_loc=x.lid_loc;
+                    exp_desc=(Couple (Comma false,
+                                      { P.exp_loc=x.lid_loc; exp_desc=(Ident x.lid_str)},
+                                      mk_tuple hd tl)) }
     in
     let tuple = mk_tuple (Nlist.hd xlst) (Nlist.tl xlst) in
     let ttuple = type_expression_exn cl env ctx tuple in
@@ -751,7 +788,7 @@ let close_exn (lc:loc) (ty:Btype.Open.t) : Btype.t =
        Btype.Open.to_string ty^"'.")
   | Some ty -> ty
 
-let close_var (v:t_var0) : t_var =
+let close_var (v:o_var) : T.var =
   match Btype.close v.var_typ with
   | None -> Error.raise_exn v.var_loc 
       ("The type of symbol '"^v.var_id^
@@ -761,17 +798,18 @@ let close_var (v:t_var0) : t_var =
 
 let close_var_nlist = Nlist.map ~f:close_var
 
-let mk_expr exp_loc exp_typ exp_desc =
-  let exp_typ = close_exn exp_loc exp_typ in
-  { exp_loc; exp_typ ; exp_desc }
+let mk_expr exp_loc exp_typ exp_desc : T.expression =
+  let exp_typ:Btype.t = close_exn exp_loc exp_typ in
+  { T.exp_loc; exp_typ ; exp_desc }
 
-let mk_pred prd_loc prd_desc = { prd_loc; prd_desc }
-let mk_subst sub_loc sub_desc = { sub_loc; sub_desc;  }
+let mk_pred prd_loc prd_desc = { T.prd_loc; prd_desc }
+let mk_subst sub_loc sub_desc = { T.sub_loc; sub_desc;  }
 
-let rec close_expr (e:t_expression0) : t_expression =
+let rec close_expr (e:o_expression) : T.expression =
   match e.exp_desc with
-  | Ident _ | Dollar _ | Builtin _ as d ->
-    mk_expr e.exp_loc e.exp_typ d
+  | Ident id -> mk_expr e.exp_loc e.exp_typ (Ident id)
+  | Dollar id -> mk_expr e.exp_loc e.exp_typ (Dollar id)
+  | Builtin _ as d -> mk_expr e.exp_loc e.exp_typ d
   | Pbool p ->
     mk_expr e.exp_loc e.exp_typ (Pbool (close_pred p))
   | Application (e1,e2) ->
@@ -795,7 +833,7 @@ let rec close_expr (e:t_expression0) : t_expression =
     let aux (id,e) = (id,close_expr e) in
     mk_expr e.exp_loc e.exp_typ (Record_Type(Nlist.map aux nlst))
 
-and close_pred (p:t_predicate0) : t_predicate =
+and close_pred (p:o_predicate) : T.predicate =
   match p.prd_desc with
   | P_Builtin _ as d -> mk_pred p.prd_loc d
   | Binary_Prop (bop,p1,p2) -> mk_pred p.prd_loc (Binary_Prop (bop,close_pred p1,close_pred p2))
@@ -804,7 +842,7 @@ and close_pred (p:t_predicate0) : t_predicate =
   | Universal_Q (xlst,p0) -> mk_pred p.prd_loc (Universal_Q (close_var_nlist xlst,close_pred p0)) 
   | Existential_Q (xlst,p0) -> mk_pred p.prd_loc (Existential_Q (close_var_nlist xlst,close_pred p0)) 
 
-let rec close_subst (s:t_substitution0) : t_substitution =
+let rec close_subst (s:o_substitution) : T.substitution =
   match s.sub_desc with
   | Skip ->
     mk_subst s.sub_loc Skip
@@ -852,14 +890,14 @@ let rec close_subst (s:t_substitution0) : t_substitution =
   | Sequencement (s1,s2) -> mk_subst s.sub_loc (Sequencement (close_subst s1,close_subst s2))
   | Parallel (s1,s2) -> mk_subst s.sub_loc (Parallel (close_subst s1,close_subst s2))
 
-let type_expression (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e:p_expression) : t_expression Error.t_result =
+let type_expression (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (e:P.expression) : T.expression Error.t_result =
   try Ok (close_expr (type_expression_exn cl env ctx e))
   with Error.Error err -> Error err
 
-let type_predicate (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (p:p_predicate) : t_predicate Error.t_result =
+let type_predicate (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (p:P.predicate) : T.predicate Error.t_result =
   try Ok (close_pred (type_predicate_exn cl env ctx p))
   with Error.Error err -> Error err
 
-let type_substitution (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (s:p_substitution) : t_substitution Error.t_result =
+let type_substitution (cl:Global.t_clause) (env:Global.t) (ctx:Local.t) (s:P.substitution) : T.substitution Error.t_result =
   try Ok (close_subst (type_substitution_exn cl env ctx s))
   with Error.Error err -> Error err

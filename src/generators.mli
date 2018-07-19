@@ -1,10 +1,6 @@
 (** Random generator for expressions, predicates, substitution and components*)
 open QCheck
-
-type expression = (unit,unit) Syntax.expression
-type predicate = (unit,unit) Syntax.predicate
-type substitution = (unit,unit) Syntax.substitution
-type component = (unit,unit) Syntax.component
+open Syntax.R
 
 val sized_expr : expression Gen.sized
 val sized_pred : predicate Gen.sized

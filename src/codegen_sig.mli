@@ -35,7 +35,7 @@ sig
     | T_Bool
     | T_String
     | T_Abstract of qident
-    | T_Array of t_b0_type
+    | T_Array of int*t_b0_type
     | T_Record of (t_id*t_b0_type) list
 
   type t_local_ident_kind = 
@@ -58,12 +58,14 @@ sig
     | B0_Builtin_0 of t_b0_constant
     | B0_Builtin_1 of t_b0_unary_op * t_b0_expr
     | B0_Builtin_2 of t_b0_binary_op * t_b0_expr * t_b0_expr
-    | B0_Array_Access of t_b0_expr * t_b0_expr
+    | B0_Array_Access of t_b0_expr * t_b0_expr Nlist.t
     | B0_Array of t_b0_expr list
-    | B0_Array_Init of t_b0_expr*t_b0_expr
+    | B0_Array_Init of t_b0_range*t_b0_expr
     | B0_Record of (t_id*t_b0_expr) list
     | B0_Record_Access of t_b0_expr*t_id
     | B0_Fun_App of qident*t_b0_expr Nlist.t
+
+  and t_b0_range = (t_b0_expr*t_b0_expr) Nlist.t
 
   and t_b0_expr =
     { exp0_loc: Utils.loc;
@@ -154,5 +156,5 @@ sig
       pkg_procedures: t_procedure list;
       pkg_init: t_b0_subst option }
 
-  val to_package : Global.t -> t_pkg_id -> Typechecker.t_component -> t_package Error.t_result
+  val to_package : Global.t -> t_pkg_id -> Syntax.T.component -> t_package Error.t_result
 end

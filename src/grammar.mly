@@ -2,15 +2,14 @@
 open Utils
 open Syntax
 
-let mk_builtin exp_loc bi = { exp_loc; exp_typ=(); exp_desc=(Builtin bi) }
-let mk_var var_loc var_id : p_var = { var_loc; var_typ=(); var_id } 
-let mk_minst mi_mch mi_params : p_machine_instanciation = { mi_mch; mi_params }
-let mk_expr exp_loc exp_desc : p_expression = { exp_loc; exp_desc; exp_typ=() }
-let mk_pred prd_loc prd_desc : p_predicate = { prd_loc; prd_desc }
-let mk_subst sub_loc sub_desc : p_substitution = { sub_loc; sub_desc }
-let mk_clause cl_loc cl_desc : p_clause = { cl_loc; cl_desc }
-let mk_lident lid_loc lid_str : p_lident = { lid_loc; lid_str }
-let mk_operation op_out op_name op_in op_body : p_operation = { op_out; op_name; op_in; op_body } 
+let mk_builtin exp_loc bi : P.expression = { P.exp_loc; exp_desc=(Builtin bi) }
+let mk_minst mi_mch mi_params : P.machine_instanciation = { mi_mch; mi_params }
+let mk_expr exp_loc exp_desc : P.expression = { P.exp_loc; exp_desc; }
+let mk_pred prd_loc prd_desc : P.predicate = { P.prd_loc; prd_desc }
+let mk_subst sub_loc sub_desc : P.substitution = { P.sub_loc; sub_desc }
+let mk_clause cl_loc cl_desc : P.clause = { P.cl_loc; cl_desc }
+let mk_lident lid_loc lid_str : lident = { lid_loc; lid_str }
+let mk_operation op_out op_name op_in op_body : P.operation = { op_out; op_name; op_in; op_body } 
 
 let mk_infix lc lc_bi bi a1 a2 =
   let f = mk_builtin lc_bi bi in
@@ -18,14 +17,14 @@ let mk_infix lc lc_bi bi a1 a2 =
 
 let mk_prefix exp_loc bi e =
   let f = mk_builtin exp_loc bi in
-  { exp_loc; exp_typ=(); exp_desc=Application(f,e) }
+  { P.exp_loc; exp_desc=Application(f,e) }
 
 let mk_binder exp_loc bi xlst p e =
-  { exp_loc; exp_typ=(); exp_desc=Binder(bi,xlst,p,e) }
+  { P.exp_loc; exp_desc=Binder(bi,xlst,p,e) }
 
-let expr_to_list (e:p_expression) : p_expression list =
+let expr_to_list (e:P.expression) : P.expression list =
   let rec aux lst e =
-    match e.exp_desc with
+    match e.P.exp_desc with
     | Couple (Comma b,e1,e2) ->
       if b then e::lst else aux (e2::lst) e1
     | _ -> e::lst
@@ -34,18 +33,19 @@ let expr_to_list (e:p_expression) : p_expression list =
 
 let rec expr_to_nonempty_list e = Nlist.from_list_exn (expr_to_list e)
 
-let set_true (e:p_expression) : p_expression =
-  match e.exp_desc with
+let set_true (e:P.expression) : P.expression =
+  match e.P.exp_desc with
   | Couple (Comma _,a,b) -> { e with exp_desc=(Couple(Comma true,a,b)) }
   | _ -> e
 
+(*
 let mk_machine_exn id params clauses =
-  match mk_machine id params clauses with
+  match P.mk_machine id params clauses with
   | Ok c -> c
   | Error err -> raise (Error.Error err)
 
 let mk_refinement_exn id params ref clauses =
-  match mk_refinement id params ref clauses with
+  match P.mk_refinement id params ref clauses with
   | Ok c -> c
   | Error err -> raise (Error.Error err)
 
@@ -53,6 +53,7 @@ let mk_implementation_exn id params ref clauses =
   match mk_implementation id params ref clauses with
   | Ok c -> c
   | Error err -> raise (Error.Error err)
+*)
 %}
 
 %token EOF
@@ -156,13 +157,13 @@ let mk_implementation_exn id params ref clauses =
 
 %start component_eof
 %start no_warning
-%type <Syntax.p_component> component_eof
-%type <Syntax.p_expression> expression
-%type <Syntax.p_predicate> predicate
-%type <Syntax.p_substitution> substitution
-%type <Syntax.p_substitution> level1_substitution
-%type <Syntax.p_clause> clause
-%type <Syntax.p_operation> operation
+%type <Syntax.P.component> component_eof
+%type <Syntax.P.expression> expression
+%type <Syntax.P.predicate> predicate
+%type <Syntax.P.substitution> substitution
+%type <Syntax.P.substitution> level1_substitution
+%type <Syntax.P.clause> clause
+%type <Syntax.P.operation> operation
 %type <unit> no_warning
 
 /* 10 */
@@ -204,13 +205,13 @@ let mk_implementation_exn id params ref clauses =
  * ***** EXPRESSIONS
  * ************************************************************************** *)
 
-var_list_comma:
-        | id=IDENT { [mk_var $startpos(id) id] }
-        | id=IDENT COMMA lst=var_list_comma { (mk_var $startpos(id) id)::lst }
+var_list_comma: (*FIXME*)
+        | id=IDENT { [mk_lident $startpos(id) id] }
+        | id=IDENT COMMA lst=var_list_comma { (mk_lident $startpos(id) id)::lst }
 
 var_nelist_comma:
-| id=IDENT { Nlist.make1 (mk_var $startpos(id) id) }
-| id=IDENT COMMA lst=var_list_comma { Nlist.make (mk_var $startpos(id) id) lst }
+| id=IDENT { Nlist.make1 (mk_lident $startpos(id) id) }
+| id=IDENT COMMA lst=var_list_comma { Nlist.make (mk_lident $startpos(id) id) lst }
 
 fields:
 | id=IDENT MEMBER_OF e=expression { Nlist.make1 (mk_lident $startpos(id) id,e) }
@@ -244,7 +245,7 @@ expression:
 | f=expression LPAR a=expression RPAR { mk_expr $startpos (Application (f,a)) }
 | LSQU e=expression RSQU { mk_expr $startpos (Sequence(expr_to_nonempty_list e)) }
 | op=E_PREFIX LPAR e=expression RPAR { mk_prefix $startpos op e }
-| b=E_BINDER id=IDENT DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b (Nlist.make1 (mk_var $startpos(id) id)) p e }
+| b=E_BINDER id=IDENT DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b (Nlist.make1 (mk_lident $startpos(id) id)) p e }
 | b=E_BINDER LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b ids p e }
 | LBRA_COMP ids=var_nelist_comma BAR p=predicate RBRA { mk_expr $startpos (Comprehension (ids,p)) }
 | STRUCT LPAR lst=fields RPAR { mk_expr $startpos (Record_Type lst)  }
@@ -270,9 +271,9 @@ predicate:
 | NOT LPAR p=predicate RPAR { mk_pred $startpos (Negation p) }
 | p=predicate op=b_prop q=predicate { mk_pred $startpos (Binary_Prop (op,p,q)) }
 | e1=expression op=b_pred e2=expression { mk_pred $startpos (Binary_Pred (op,e1,e2)) }
-| FORALL id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Universal_Q (Nlist.make1 (mk_var $startpos(id) id),p)) }
+| FORALL id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Universal_Q (Nlist.make1 (mk_lident $startpos(id) id),p)) }
 | FORALL LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate RPAR { mk_pred $startpos (Universal_Q (ids,p)) }
-| EXISTS id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q (Nlist.make1 (mk_var $startpos(id) id),p)) }
+| EXISTS id=IDENT DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q (Nlist.make1 (mk_lident $startpos(id) id),p)) }
 | EXISTS LPAR ids=var_nelist_comma RPAR DOT LPAR p=predicate RPAR { mk_pred $startpos (Existential_Q (ids,p)) }
 
 (* *****************************************************************************
@@ -292,7 +293,7 @@ whn: WHEN p=predicate THEN s=substitution { (p,s) }
 
 case_or: CASE_OR e=expression THEN s=substitution { (expr_to_nonempty_list e,s) }
 
-id_eq_expr: id=IDENT EQUAL e=expression { (mk_var $startpos(id) id,e) }
+id_eq_expr: id=IDENT EQUAL e=expression { (mk_lident $startpos(id) id,e) }
 
 callup_subst:
 | id=IDENT
@@ -312,10 +313,10 @@ level1_substitution:
 | ids=var_nelist_comma AFFECTATION e=expression { mk_subst $startpos (Affectation (Tuple ids,e)) }
 
 | id=IDENT LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
-     { mk_subst $startpos (Affectation (Function(mk_var $startpos(id) id,Nlist.make e1 lst),e2)) }
+     { mk_subst $startpos (Affectation (Function(mk_lident $startpos(id) id,Nlist.make e1 lst),e2)) }
 
 | id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression
-{ mk_subst $startpos (Affectation (Record (mk_var $startpos(id) id,mk_lident $startpos(fi) fi),e)) }
+{ mk_subst $startpos (Affectation (Record (mk_lident $startpos(id) id,mk_lident $startpos(fi) fi),e)) }
 
 | PRE p=predicate THEN s=substitution END { mk_subst $startpos (Pre (p,s)) }
 
@@ -364,11 +365,11 @@ op_name_nelist:
 component_eof: a=component EOF { a }
 
 component:
-| MACHINE h=machine_header lst=clause* END { let (id,params) = h in mk_machine_exn id params lst }
+| MACHINE h=machine_header lst=clause* END { let (id,params) = h in P.mk_machine_exn id params lst }
 | REFINEMENT h=machine_header REFINES abs=IDENT lst=clause* END
-  { let (id,params) = h in mk_refinement_exn id params (mk_lident $startpos(abs) abs) lst }
+  { let (id,params) = h in P.mk_refinement_exn id params (mk_lident $startpos(abs) abs) lst }
 | IMPLEMENTATION h=machine_header REFINES abs=IDENT lst=clause* END
-  { let (id,params) = h in mk_implementation_exn id params (mk_lident $startpos(abs) abs) lst }
+  { let (id,params) = h in P.mk_implementation_exn id params (mk_lident $startpos(abs) abs) lst }
 
 machine_header:
   id=IDENT { (mk_lident $startpos(id) id,[]) }
@@ -379,8 +380,8 @@ machine_instanciation:
 | id=IDENT LPAR e=expression RPAR { mk_minst (mk_lident $startpos(id) id) (expr_to_list e) }
 
 set :
-| id=IDENT { Abstract_Set (mk_var $startpos(id) id) }
-| id=IDENT EQUAL LBRA elts=var_list_comma RBRA { Concrete_Set (mk_var $startpos(id) id,elts) }
+| id=IDENT { Abstract_Set (mk_lident $startpos(id) id) }
+| id=IDENT EQUAL LBRA elts=var_list_comma RBRA { Concrete_Set (mk_lident $startpos(id) id,elts) }
 
 operation :
 | id=IDENT EQUAL s=level1_substitution
@@ -397,7 +398,7 @@ semicolon_pred_lst:
 | p=predicate SEMICOLON lst=semicolon_pred_lst { p::lst }
 
 valuation:
-| id=IDENT EQUAL e=expression { (mk_var $startpos(id) id,e) }
+| id=IDENT EQUAL e=expression { (mk_lident $startpos(id) id,e) }
 
 clause:
   CONSTRAINTS p=predicate { mk_clause $startpos (Constraints p) }

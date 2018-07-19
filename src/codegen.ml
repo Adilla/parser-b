@@ -12,7 +12,7 @@ struct
   type t_pkg_id = Ident.t_pkg_id
 
   type t_b0_constant =
-    | B0_Integer of int
+    | B0_Integer of Int32.t
     | B0_String of string
     | B0_MaxInt
     | B0_MinInt
@@ -87,7 +87,7 @@ struct
     | B0_Affectation of (Ident.t*t_b0_expr) Nlist.t
     | B0_Array_Affectation of Ident.t*t_b0_expr Nlist.t*t_b0_expr
     | B0_IfThenElse of (t_b0_expr*t_b0_subst) Nlist.t * t_b0_subst option
-    | B0_Case of t_b0_expr * (int Nlist.t*t_b0_subst) Nlist.t * t_b0_subst option
+    | B0_Case of t_b0_expr * (Int32.t Nlist.t*t_b0_subst) Nlist.t * t_b0_subst option
     | B0_Var of (Ident.t*t_b0_type) Nlist.t * t_b0_subst
     | B0_While of t_b0_expr * t_b0_subst
     | B0_CallUp of Ident.t list * qident * t_b0_expr list
@@ -304,13 +304,13 @@ struct
     in
     Nlist.from_list_exn (aux [] e)
 
-  let get_pos2 (elts:ident list) (id:ident) : int option =
+  let get_pos2 (elts:ident list) (id:ident) : Int32.t option =
     let rec aux p = function
       | [] -> None
       | hd::tl when String.equal id hd -> Some p
-      | _::tl -> aux (p+1) tl
+      | _::tl -> aux (Int32.succ p) tl
     in
-    aux 0 elts
+    aux Int32.zero elts
 
   type ckind = C_Type | C_Function | C_Constant
 
@@ -385,8 +385,8 @@ struct
             | _ -> Error.raise_exn e.exp_loc "This is not a valid B0 expression."
           in
           begin match bi with
-            | Successor -> add_lt (B0_Builtin_2(B0_Addition,to_b0_expr env ctx arg,add_lt (B0_Builtin_0 (B0_Integer 1))))
-            | Predecessor -> add_lt (B0_Builtin_2(B0_Difference,to_b0_expr env ctx arg,add_lt (B0_Builtin_0 (B0_Integer 1))))
+            | Successor -> add_lt (B0_Builtin_2(B0_Addition,to_b0_expr env ctx arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
+            | Predecessor -> add_lt (B0_Builtin_2(B0_Difference,to_b0_expr env ctx arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
             | Unary_Minus -> add_lt (B0_Builtin_1 (B0_Minus,to_b0_expr env ctx arg))
             | Product ->
               if is_int e.exp_typ then mk_bin_op B0_Product
@@ -425,7 +425,7 @@ struct
         | _ -> Error.raise_exn e.exp_loc "Ill-formed array."
       in
       let lst = Nlist.map aux nle in
-      let lst = List.fast_sort (fun (a,_) (b,_) -> a-b) (Nlist.to_list lst) in
+      let lst = List.fast_sort (fun (a,_) (b,_) -> Int32.compare a b) (Nlist.to_list lst) in
       let lst = List.map snd lst in
       if List.length lst = sz then add_lt (B0_Array lst)
       else Error.raise_exn e.exp_loc "Ill-formed array."
@@ -503,7 +503,7 @@ struct
     with
       Invalid_argument _ -> None
 
-  let get_enum (env:Global.t) (ctx:ident list) (e:_ expression) : int =
+  let get_enum (env:Global.t) (ctx:ident list) (e:_ expression) : Int32.t =
     match e.exp_desc with
     | Ident id ->
       begin match Btype.view e.exp_typ with
@@ -760,10 +760,10 @@ struct
   let rec get_default_value (env:Global.t) (lc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
     let mk exp0_type exp0_desc = { exp0_loc=lc; exp0_desc; exp0_type } in
     match ty with
-    | T_Int -> mk ty (B0_Builtin_0 (B0_Integer 0))
+    | T_Int -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
     | T_String -> mk ty (B0_Builtin_0 (B0_String ""))
     | T_Bool -> mk ty (B0_Builtin_0 B0_True)
-    | T_Abstract s -> mk ty (B0_Builtin_0 (B0_Integer 0))
+    | T_Abstract s -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
     | T_Array (sz,tg) ->
       let tg = match tg with
         | A_Int -> T_Int

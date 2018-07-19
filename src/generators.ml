@@ -30,9 +30,11 @@ let char_list : char list =
 let gen_string : string Gen.t = fun rd ->
   "str_" ^ (Gen.string_size ~gen:(Gen.oneofl char_list) (Gen.return 3) rd)
 
+let small_nat = Gen.map Int32.of_int Gen.small_nat
+
 let gen_e_constant_bi : e_builtin Gen.t = fun random ->
   match Gen.int_bound 43 random with
-  | 0 -> Integer (Gen.small_nat random)
+  | 0 -> Integer (small_nat random)
   | 1 -> String (gen_string random)
   | _ -> Gen.oneofl Syntax.expr_constants random
 

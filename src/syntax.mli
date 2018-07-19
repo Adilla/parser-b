@@ -21,7 +21,7 @@ type ftype =
   | Partial_Surjections | Total_Surjections | Bijections
 
 type e_builtin =
-  | Integer of int | String of string
+  | Integer of Int32.t | String of string
   | MaxInt | MinInt | Successor | Predecessor
   | INTEGER | NATURAL | NATURAL1 | INT | NAT | NAT1 | STRINGS | BOOLEANS
   | Empty_Set | Empty_Seq

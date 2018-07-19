@@ -10,13 +10,22 @@
     chars_read := ""
 (*     string_loc := loc *)
 
-  let int_of_int_lit (s:string) : int =
-    try
+  let int_of_int_lit (s:string) : Int32.t option =
     if String.get s 0 = '-' then
       let l=String.length s in
-      - (int_of_string (String.sub s 1 (l-1)))
-    else int_of_string s
-    with Failure _ -> (print_endline s; 0)
+      let s = String.sub s 1 (l-1) in
+      match Int32.of_string_opt s with
+      | None -> None
+      | Some i ->
+        if i >= Int32.zero then Some (Int32.neg i)
+        else if i = Int32.min_int then Some i
+        else None
+    else
+      match Int32.of_string_opt s with
+      | None -> None
+      | Some i ->
+        if i >= Int32.zero then Some i
+        else None
 
 let err lexbuf err_txt =
   let open Error in
@@ -254,7 +263,11 @@ rule token = parse
   | ident as id { ident_to_token lexbuf.Lexing.lex_start_p id }
  
 (*   | ren_ident as id { REN_IDENT ( get_loc lexbuf , id ) } *)
-  | int_lit as i  { CONSTANT (Syntax.Integer ( int_of_int_lit i )) }
+  | int_lit as i  {
+      match int_of_int_lit i with
+      | None -> err lexbuf "The literal is out of range."
+      | Some lit -> CONSTANT (Syntax.Integer ( lit ))
+    }
   | _   as c    { err lexbuf ("Unexpected character '" ^ String.make 1 c ^ "'.") }
   | eof         { EOF }
 

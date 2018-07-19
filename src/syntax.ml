@@ -16,7 +16,7 @@ type ftype =
   | Partial_Surjections | Total_Surjections | Bijections
 
 type e_builtin =
-  | Integer of int | String of string
+  | Integer of Int32.t | String of string
   | MaxInt | MinInt | Successor | Predecessor
   | INTEGER | NATURAL | NATURAL1 | INT | NAT | NAT1 | STRINGS | BOOLEANS
   | Empty_Set | Empty_Seq
@@ -622,7 +622,7 @@ let prop_bop_to_string : prop_bop -> string = function
   | Equivalence -> "<=>"
 
 let builtin_to_string : e_builtin -> string = function
-  | Integer i -> string_of_int i
+  | Integer i -> Int32.to_string i
   | String s -> "\"" ^ s ^ "\""
   | TRUE -> "TRUE"
   | FALSE -> "FALSE"

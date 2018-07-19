@@ -4,7 +4,7 @@ sig
   type t_pkg_id
 
   type t_b0_constant =
-    | B0_Integer of int
+    | B0_Integer of Int32.t
     | B0_String of string
     | B0_MaxInt
     | B0_MinInt
@@ -79,7 +79,7 @@ sig
     | B0_Affectation of (t_id*t_b0_expr) Nlist.t
     | B0_Array_Affectation of t_id*t_b0_expr Nlist.t*t_b0_expr
     | B0_IfThenElse of (t_b0_expr*t_b0_subst) Nlist.t * t_b0_subst option
-    | B0_Case of t_b0_expr * (int Nlist.t*t_b0_subst) Nlist.t * t_b0_subst option
+    | B0_Case of t_b0_expr * (Int32.t Nlist.t*t_b0_subst) Nlist.t * t_b0_subst option
     | B0_Var of (t_id*t_b0_type) Nlist.t * t_b0_subst
     | B0_While of t_b0_expr * t_b0_subst
     | B0_CallUp of t_id list * qident * t_b0_expr list

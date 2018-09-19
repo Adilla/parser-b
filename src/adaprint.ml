@@ -1,3 +1,4 @@
+open SyntaxCore
 open Codegen.Ada
 
 let mk_atom (s:string) : Easy_format.t =
@@ -30,10 +31,10 @@ let b0_binary_op_to_string : t_b0_binary_op -> string = function
   | B0_Disjonction -> "or else"
   | B0_Equality -> "="
   | B0_Disequality -> "/="
-  | B0_Inequality Syntax.Smaller_or_Equal -> "<="
-  | B0_Inequality Syntax.Strictly_Smaller -> "<"
-  | B0_Inequality Syntax.Greater_or_Equal -> ">="
-  | B0_Inequality Syntax.Strictly_Greater -> ">"
+  | B0_Inequality Smaller_or_Equal -> "<="
+  | B0_Inequality Strictly_Smaller -> "<"
+  | B0_Inequality Greater_or_Equal -> ">="
+  | B0_Inequality Strictly_Greater -> ">"
   | B0_Product -> "*"
   | B0_Difference -> "-"
   | B0_Addition -> "+"
@@ -133,8 +134,12 @@ let mk_array (lst:Easy_format.t list) : Easy_format.t =
 
 let rec mk_expr (e0:t_b0_expr) : Easy_format.t =
   match e0.exp0_desc with
-  | B0_Extern (ns,q_id,_) -> mk_ident {q_nspace=Some ns;q_id}
-  | B0_Ident (q_id,_) -> mk_ident {q_nspace=None;q_id}
+  | B0_Local_Ident (q_id,_) -> mk_ident {q_nspace=None;q_id}
+  | B0_Global_Ident (q_id,ki) ->
+    let q_nspace = match ki with
+      | IK_Constant opt | IK_Variable opt | IK_Enum opt -> opt
+    in
+    mk_ident {q_nspace;q_id}
   | B0_Builtin_0 cst -> mk_const cst
   | B0_Builtin_1 (op,e) -> mk_prefix_op op (mk_expr_wp e)
   | B0_Builtin_2 ((B0_Equality|B0_Disequality) as op,e1,e2) ->
@@ -179,6 +184,7 @@ let b0_type_to_string lc : t_b0_type -> string = function
   | T_Bool -> "Types.Bool"
   | T_String -> "string"
   | T_Abstract ts -> t_symb_to_string ts
+  | T_Enum ts -> t_symb_to_string ts
   | T_Array _ -> Error.raise_exn lc "Array types not supported."
   | T_Record _ -> Error.raise_exn lc "Record types not supported."
 
@@ -218,7 +224,12 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     let st = Easy_format.list in
     let case = mk_list "case" "" "is" st [mk_expr e] in
     let aux (lst,s) =
-      let lst = List.map (fun e -> mk_atom (Int32.to_string e)) (Nlist.to_list lst) in
+      let lst = List.map (function
+          | CS_Int i -> mk_atom (Int32.to_string i)
+          | CS_Bool true -> mk_atom "true"
+          | CS_Bool false -> mk_atom "false"
+          | CS_Enum e -> mk_ident e
+        ) (Nlist.to_list lst) in
       let st = Easy_format.list in
       let whn = mk_list "  when" "," "=>" st lst in
       mk_label 4 true `Auto whn (mk_subst s)
@@ -267,6 +278,7 @@ let mk_type (ty:t_type) : Easy_format.t =
              ^ t_symb_to_string ts ^ ";")
   | D_Int ->
     mk_atom ("subtype " ^ Codegen.Ada_ident.to_string ty.ty_name ^ " is Integer;")
+  | D_Enum _ -> assert false (*FIXME*)
 
 let t_mode_to_string b = if b then "out" else "in"
 

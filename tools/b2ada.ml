@@ -1,7 +1,8 @@
+module T = TSyntax
 let continue_on_error = ref false
 
 type machine_interface = Global.t_interface
-type t_item = Done of Syntax.T.component*machine_interface*Global.t | InProgress
+type t_item = Done of TSyntax.component*machine_interface option | InProgress
 
 let open_in (fn:string) : in_channel option =
   try Some (open_in fn) with Sys_error _ -> None
@@ -21,9 +22,9 @@ let print_error_no_loc msg =
   if not !continue_on_error then exit(1)
 
 let rec type_component_from_filename (ht:interface_table) (filename:string)
-  : (Syntax.T.component*machine_interface*Global.t) Error.t_result =
+  : (T.component*machine_interface option) Error.t_result =
   match safe_find ht filename with
-  | Some (Done (cp,itf,env)) -> Ok (cp,itf,env)
+  | Some (Done (cp,itf)) -> Ok (cp,itf)
   | Some InProgress ->
     Error { Error.err_loc=Utils.dloc;
             Error.err_txt="Error: dependency cycle detected." }
@@ -38,12 +39,10 @@ let rec type_component_from_filename (ht:interface_table) (filename:string)
             let () = close_in input in
             let () = Log.write "Typing file '%s'...\n%!" filename in
             let () = Hashtbl.add ht filename InProgress in
-            let env = Global.create () in
-            begin match Typechecker.type_component (f ht) env c with
-              | Ok cp ->
-                let itf = Global.to_interface env in
-                let () = Hashtbl.add ht filename (Done (cp,itf,env)) in
-                Ok (cp,itf,env)
+            begin match Typechecker.type_component (f ht) c with
+              | Ok (cp,itf) ->
+                let () = Hashtbl.add ht filename (Done (cp,itf)) in
+                Ok (cp,itf)
               | Error _ as err -> err
             end
           | Error _ as err -> err
@@ -57,7 +56,8 @@ and f (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : machine_inter
     in ( Error.print_error err; None )
   | Some fn ->
    begin match type_component_from_filename ht fn with
-     | Ok (_,itf,_) -> Some itf
+     | Ok (_,Some itf) -> Some itf
+     | Ok (_,None) -> assert false (*FIXME*)
      | Error err -> ( Error.print_error err; None )
    end
 
@@ -69,36 +69,36 @@ let open_ads (pkg_name:Codegen.Ada_ident.t_pkg_id) =
 let open_adb (pkg_name:Codegen.Ada_ident.t_pkg_id) =
   open_out ("./"^Codegen.Ada_ident.pkg_to_string pkg_name^".adb") (*FIXME*)
 
-let rec get_pkg_name (cp:Syntax.T.component) : Codegen.Ada_ident.t_pkg_id Error.t_result =
-  let open Syntax in
+let rec get_pkg_name (cp:T.component) : Codegen.Ada_ident.t_pkg_id Error.t_result =
   let aux (name:string) : Codegen.Ada_ident.t_pkg_id Error.t_result =
     match File.get_fullname_comp name with
     | None -> assert false
     | Some fn ->
       begin match Hashtbl.find_opt ht fn with
-      | Some (Done (c,_,_)) -> get_pkg_name c
+      | Some (Done (c,_)) -> get_pkg_name c
       | _ -> assert false
       end
   in
-  match cp.co_desc with
-  | Machine _ ->
-    begin match Codegen.Ada_ident.make_pkg_id cp.co_name.lid_str with
+  match cp.T.co_desc with
+  | T.Machine _ ->
+    begin match Codegen.Ada_ident.make_pkg_id cp.T.co_name.SyntaxCore.lid_str with
     | Some x -> Ok x
-    | None -> Error { Error.err_loc=cp.co_name.lid_loc;
-                      err_txt=("'"^cp.co_name.lid_str^"' is not a valid ada identifier.") }
+    | None -> Error { Error.err_loc=cp.T.co_name.SyntaxCore.lid_loc;
+                      err_txt=("'"^cp.T.co_name.SyntaxCore.lid_str^
+                               "' is not a valid ada identifier.") }
     end
-  | Refinement ref -> aux ref.ref_refines.lid_str
-  | Implementation imp -> aux imp.imp_refines.lid_str
+  | T.Refinement ref -> aux ref.T.ref_refines.SyntaxCore.lid_str
+  | T.Implementation imp -> aux imp.T.imp_refines.SyntaxCore.lid_str
 
 let run_on_file (filename:string) : unit = (*FIXME bind*)
   let () = Log.write "Processing file '%s'...\n%!" filename in
   match type_component_from_filename ht filename with
   | Error err -> print_error err
-  | Ok (cp,_,env) ->
+  | Ok (cp,_) ->
     begin match get_pkg_name cp with
       | Error err -> print_error err
       | Ok pkg_name ->
-        begin match Codegen.Ada.to_package env pkg_name cp with
+        begin match Codegen.Ada.to_package pkg_name cp with
           | Error err -> print_error err
           | Ok pkg ->
             let ads = open_ads pkg_name in
@@ -126,7 +126,7 @@ let add_path x =
 let set_alstm_opt () = (*FIXME options*)
   Typechecker.allow_becomes_such_that_in_implementation := true;
   Typechecker.allow_out_parameters_in_precondition := true;
-  Global.set_extended_sees true
+  Visibility.extended_sees := true 
 
 let args = [
   ("-c", Arg.Set continue_on_error,   "Continue on error" );

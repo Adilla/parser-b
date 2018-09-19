@@ -1,6 +1,6 @@
 (** Random generator for expressions, predicates, substitution and components*)
 open QCheck
-open Syntax.R
+open PSyntax
 
 val sized_expr : expression Gen.sized
 val sized_pred : predicate Gen.sized

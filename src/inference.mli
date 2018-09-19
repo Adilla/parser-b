@@ -1,16 +1,16 @@
 (** Type inference for expressions, predicate and substitutions *)
-open Utils
-open Syntax
 
-module Local :
-sig
-  type t
-  val create : unit -> t
-  val add : t -> P.ident -> Btype.Open.t -> bool -> t
-  val get : t -> P.ident -> (Btype.Open.t*bool) option
-  val get_vars : t -> P.ident list
-end
+val type_expression_exn :
+  ('mr,'cl) Visibility.clause ->
+  'mr Global.t -> Local.t -> PSyntax.expression ->
+  ('mr,'cl,Btype.Open.t) TSyntax.expression
 
-val type_expression  : Global.t_clause -> Global.t -> Local.t -> P.expression -> T.expression Error.t_result
-val type_predicate   : Global.t_clause -> Global.t -> Local.t -> P.predicate -> T.predicate Error.t_result
-val type_substitution: Global.t_clause -> Global.t -> Local.t -> P.substitution -> T.substitution Error.t_result
+val type_predicate_exn :
+  ('mr,'cl) Visibility.clause ->
+  'mr Global.t -> Local.t -> PSyntax.predicate ->
+  ('mr,'cl,Btype.Open.t) TSyntax.predicate
+
+val type_substitution_exn:
+  ('mr,'cl) Visibility.clause ->
+  'mr Global.t -> Local.t -> PSyntax.substitution ->
+  ('mr,'cl,Btype.Open.t) TSyntax.substitution

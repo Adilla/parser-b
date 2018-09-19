@@ -38,26 +38,26 @@ let _ = List.iter (fun (name, keyword) ->
     "WHERE"     , WHERE;
    "THEN"      , THEN;
    "SELECT"    , SELECT;
-   "TRUE"      , CONSTANT Syntax.TRUE;
-   "FALSE"     , CONSTANT Syntax.FALSE;
-   "MAXINT"    , CONSTANT Syntax.MaxInt;
-   "MININT"    , CONSTANT Syntax.MinInt;
-   "SIGMA"     , E_BINDER Syntax.Sum;
-   "INTEGER"   , CONSTANT Syntax.INTEGER;
-   "NATURAL1"  , CONSTANT Syntax.NATURAL1;
-   "NATURAL"   , CONSTANT Syntax.NATURAL;
-   "NAT1"      , CONSTANT Syntax.NAT1;
-   "NAT"       , CONSTANT Syntax.NAT;
-   "INT"       , CONSTANT Syntax.INT;
-   "BOOL"      , CONSTANT Syntax.BOOLEANS;
-   "STRING"    , CONSTANT Syntax.STRINGS;
-   "PI"        , E_BINDER Syntax.Prod;
-   "POW1"      , E_PREFIX (Syntax.Power_Set Syntax.Non_Empty);
-   "POW"       , E_PREFIX (Syntax.Power_Set Syntax.Full);
-   "FIN1"      , E_PREFIX (Syntax.Power_Set Syntax.Finite_Non_Empty);
-   "FIN"       , E_PREFIX (Syntax.Power_Set Syntax.Finite);
-   "UNION"     , E_BINDER Syntax.Q_Union;
-   "INTER"     , E_BINDER Syntax.Q_Intersection;
+   "TRUE"      , CONSTANT SyntaxCore.TRUE;
+   "FALSE"     , CONSTANT SyntaxCore.FALSE;
+   "MAXINT"    , CONSTANT SyntaxCore.MaxInt;
+   "MININT"    , CONSTANT SyntaxCore.MinInt;
+   "SIGMA"     , E_BINDER SyntaxCore.Sum;
+   "INTEGER"   , CONSTANT SyntaxCore.INTEGER;
+   "NATURAL1"  , CONSTANT SyntaxCore.NATURAL1;
+   "NATURAL"   , CONSTANT SyntaxCore.NATURAL;
+   "NAT1"      , CONSTANT SyntaxCore.NAT1;
+   "NAT"       , CONSTANT SyntaxCore.NAT;
+   "INT"       , CONSTANT SyntaxCore.INT;
+   "BOOL"      , CONSTANT SyntaxCore.BOOLEANS;
+   "STRING"    , CONSTANT SyntaxCore.STRINGS;
+   "PI"        , E_BINDER SyntaxCore.Prod;
+   "POW1"      , E_PREFIX (SyntaxCore.Power_Set SyntaxCore.Non_Empty);
+   "POW"       , E_PREFIX (SyntaxCore.Power_Set SyntaxCore.Full);
+   "FIN1"      , E_PREFIX (SyntaxCore.Power_Set SyntaxCore.Finite_Non_Empty);
+   "FIN"       , E_PREFIX (SyntaxCore.Power_Set SyntaxCore.Finite);
+   "UNION"     , E_BINDER SyntaxCore.Q_Union;
+   "INTER"     , E_BINDER SyntaxCore.Q_Intersection;
    "DEFINITIONS"        , DEFINITIONS;
    "ELSIF"              , ELSIF;
    "ELSE"               , ELSE;
@@ -110,59 +110,59 @@ let _ = List.iter (fun (name, keyword) ->
    "HIDDEN_CONSTANTS" , ABSTRACT_CONSTANTS;
 
    "bool"      , CBOOL;
-   "mod"       , E_INFIX_190 Syntax.Modulo;
-   "succ"      , E_PREFIX Syntax.Successor;
-   "pred"      , E_PREFIX Syntax.Predecessor;
-   "max"       , E_PREFIX Syntax.Max;
-   "min"       , E_PREFIX Syntax.Min;
-   "card"      , E_PREFIX Syntax.Cardinal;
-   "union"     , E_PREFIX Syntax.G_Union;
-   "inter"     , E_PREFIX Syntax.G_Intersection;
-   "prj1"      , E_PREFIX Syntax.First_Projection;
-   "prj2"      , E_PREFIX Syntax.Second_Projection;
-   "iterate"   , E_PREFIX Syntax.Iteration;
-   "closure"   , E_PREFIX Syntax.Closure;
-   "closure1"  , E_PREFIX Syntax.Transitive_Closure;
-   "dom"       , E_PREFIX Syntax.Domain;
-   "fnc"       , E_PREFIX Syntax.Fnc;
-   "rel"       , E_PREFIX Syntax.Rel;
+   "mod"       , E_INFIX_190 SyntaxCore.Modulo;
+   "succ"      , E_PREFIX SyntaxCore.Successor;
+   "pred"      , E_PREFIX SyntaxCore.Predecessor;
+   "max"       , E_PREFIX SyntaxCore.Max;
+   "min"       , E_PREFIX SyntaxCore.Min;
+   "card"      , E_PREFIX SyntaxCore.Cardinal;
+   "union"     , E_PREFIX SyntaxCore.G_Union;
+   "inter"     , E_PREFIX SyntaxCore.G_Intersection;
+   "prj1"      , E_PREFIX SyntaxCore.First_Projection;
+   "prj2"      , E_PREFIX SyntaxCore.Second_Projection;
+   "iterate"   , E_PREFIX SyntaxCore.Iteration;
+   "closure"   , E_PREFIX SyntaxCore.Closure;
+   "closure1"  , E_PREFIX SyntaxCore.Transitive_Closure;
+   "dom"       , E_PREFIX SyntaxCore.Domain;
+   "fnc"       , E_PREFIX SyntaxCore.Fnc;
+   "rel"       , E_PREFIX SyntaxCore.Rel;
    "not"       , NOT;
    "or"        , OR;
-    "id"        , E_PREFIX Syntax.Identity_Relation;
+    "id"        , E_PREFIX SyntaxCore.Identity_Relation;
    "rec"       , REC;
    "struct"    , STRUCT;
-   "seq1"       , E_PREFIX (Syntax.Sequence_Set Syntax.Non_Empty_Seq);
-   "seq"        , E_PREFIX (Syntax.Sequence_Set Syntax.All_Seq);
-   "iseq1"      , E_PREFIX (Syntax.Sequence_Set Syntax.Injective_Non_Empty_Seq);
-   "iseq"       , E_PREFIX (Syntax.Sequence_Set Syntax.Injective_Seq);
-   "perm"       , E_PREFIX (Syntax.Sequence_Set Syntax.Permutations);
-   "tree"       , E_PREFIX Syntax.Tree;
-   "btree"      , E_PREFIX Syntax.Btree;
-   "const"      , E_PREFIX Syntax.Const;
-   "top"        , E_PREFIX Syntax.Top;
-   "sons"       , E_PREFIX Syntax.Sons;
-   "prefix"     , E_PREFIX Syntax.Prefix;
-   "postfix"    , E_PREFIX Syntax.Postfix;
-   "sizet"      , E_PREFIX Syntax.SizeT;
-   "size"       , E_PREFIX Syntax.Size;
-   "mirror"     , E_PREFIX Syntax.Mirror;
-   "rank"       , E_PREFIX Syntax.Rank;
-   "ran"        , E_PREFIX Syntax.Range;
-   "father"     , E_PREFIX Syntax.Father;
-   "son"        , E_PREFIX Syntax.Son;
-   "arity"      , E_PREFIX Syntax.Arity;
-   "bin"        , E_PREFIX Syntax.Bin;
-   "left"       , E_PREFIX Syntax.Left;
-   "right"      , E_PREFIX Syntax.Right;
-   "infix"      , E_PREFIX Syntax.Infix;
-   "subtree"    , E_PREFIX Syntax.Subtree;
-   "first"      , E_PREFIX Syntax.First;
-   "front"      , E_PREFIX Syntax.Front;
-   "last"       , E_PREFIX Syntax.Last;
-   "tail"       , E_PREFIX Syntax.Tail;
-   "conc"       , E_PREFIX Syntax.G_Concatenation;
-   "size"       , E_PREFIX Syntax.Size;
-   "rev"        , E_PREFIX Syntax.Reverse;
+   "seq1"       , E_PREFIX (SyntaxCore.Sequence_Set SyntaxCore.Non_Empty_Seq);
+   "seq"        , E_PREFIX (SyntaxCore.Sequence_Set SyntaxCore.All_Seq);
+   "iseq1"      , E_PREFIX (SyntaxCore.Sequence_Set SyntaxCore.Injective_Non_Empty_Seq);
+   "iseq"       , E_PREFIX (SyntaxCore.Sequence_Set SyntaxCore.Injective_Seq);
+   "perm"       , E_PREFIX (SyntaxCore.Sequence_Set SyntaxCore.Permutations);
+   "tree"       , E_PREFIX SyntaxCore.Tree;
+   "btree"      , E_PREFIX SyntaxCore.Btree;
+   "const"      , E_PREFIX SyntaxCore.Const;
+   "top"        , E_PREFIX SyntaxCore.Top;
+   "sons"       , E_PREFIX SyntaxCore.Sons;
+   "prefix"     , E_PREFIX SyntaxCore.Prefix;
+   "postfix"    , E_PREFIX SyntaxCore.Postfix;
+   "sizet"      , E_PREFIX SyntaxCore.SizeT;
+   "size"       , E_PREFIX SyntaxCore.Size;
+   "mirror"     , E_PREFIX SyntaxCore.Mirror;
+   "rank"       , E_PREFIX SyntaxCore.Rank;
+   "ran"        , E_PREFIX SyntaxCore.Range;
+   "father"     , E_PREFIX SyntaxCore.Father;
+   "son"        , E_PREFIX SyntaxCore.Son;
+   "arity"      , E_PREFIX SyntaxCore.Arity;
+   "bin"        , E_PREFIX SyntaxCore.Bin;
+   "left"       , E_PREFIX SyntaxCore.Left;
+   "right"      , E_PREFIX SyntaxCore.Right;
+   "infix"      , E_PREFIX SyntaxCore.Infix;
+   "subtree"    , E_PREFIX SyntaxCore.Subtree;
+   "first"      , E_PREFIX SyntaxCore.First;
+   "front"      , E_PREFIX SyntaxCore.Front;
+   "last"       , E_PREFIX SyntaxCore.Last;
+   "tail"       , E_PREFIX SyntaxCore.Tail;
+   "conc"       , E_PREFIX SyntaxCore.G_Concatenation;
+   "size"       , E_PREFIX SyntaxCore.Size;
+   "rev"        , E_PREFIX SyntaxCore.Reverse;
   ]
 
 let ident_to_token loc id =
@@ -186,53 +186,52 @@ rule token = parse
   | commented_line     { token lexbuf }
   | '"'         { flush (); string lexbuf }
   
-  | "+->>"      { E_INFIX_125 (Syntax.Functions Syntax.Partial_Surjections) }
-  | "-->>"      { E_INFIX_125 (Syntax.Functions Syntax.Total_Surjections)  }
-  | ">->>"      { E_INFIX_125 (Syntax.Functions  Syntax.Bijections) }
-  | "/<<:"      { PREDICATE (Syntax.Inclusion Syntax.Non_Strict_Inclusion) }
+  | "+->>"      { E_INFIX_125 (SyntaxCore.Functions SyntaxCore.Partial_Surjections) }
+  | "-->>"      { E_INFIX_125 (SyntaxCore.Functions SyntaxCore.Total_Surjections)  }
+  | ">->>"      { E_INFIX_125 (SyntaxCore.Functions  SyntaxCore.Bijections) }
+  | "/<<:"      { PREDICATE (SyntaxCore.Inclusion SyntaxCore.Non_Strict_Inclusion) }
 
   | "|->"       { MAPLET  }
-  | "<->"       { E_INFIX_125 Syntax.Relations  }
-  | "<<|"       { E_INFIX_160 Syntax.Domain_Soustraction  }
-  | "|>>"       { E_INFIX_160 Syntax.Codomain_Soustraction }
-  | "+->"       { E_INFIX_125 (Syntax.Functions Syntax.Partial_Functions)  }
-  | "-->"       { E_INFIX_125 (Syntax.Functions Syntax.Total_Functions) }
+  | "<->"       { E_INFIX_125 SyntaxCore.Relations  }
+  | "<<|"       { E_INFIX_160 SyntaxCore.Domain_Soustraction  }
+  | "|>>"       { E_INFIX_160 SyntaxCore.Codomain_Soustraction }
+  | "+->"       { E_INFIX_125 (SyntaxCore.Functions SyntaxCore.Partial_Functions)  }
+  | "-->"       { E_INFIX_125 (SyntaxCore.Functions SyntaxCore.Total_Functions) }
   | "<--"       { LEFTARROW  }
-  | ">+>"       { E_INFIX_125 (Syntax.Functions Syntax.Partial_Injections)  }
-  | ">->"       { E_INFIX_125 (Syntax.Functions Syntax.Total_Injections) }
+  | ">+>"       { E_INFIX_125 (SyntaxCore.Functions SyntaxCore.Partial_Injections)  }
+  | ">->"       { E_INFIX_125 (SyntaxCore.Functions SyntaxCore.Total_Injections) }
   | "<=>"       { EQUIV  }
-  | "<<:"       { PREDICATE (Syntax.Inclusion Syntax.Strict) }
-  | "/<:"       { PREDICATE (Syntax.Inclusion Syntax.Non_Inclusion) }
-  | "\\|/"      { E_INFIX_160 Syntax.Tail_Restriction }
-  | "/|\\"      { E_INFIX_160 Syntax.Head_Restriction }
+  | "<<:"       { PREDICATE (SyntaxCore.Inclusion SyntaxCore.Strict) }
+  | "/<:"       { PREDICATE (SyntaxCore.Inclusion SyntaxCore.Non_Inclusion) }
+  | "\\|/"      { E_INFIX_160 SyntaxCore.Tail_Restriction }
+  | "/|\\"      { E_INFIX_160 SyntaxCore.Head_Restriction }
 
-  | "<-"        { E_INFIX_160 Syntax.Tail_Insertion }
-  | "->"        { E_INFIX_160 Syntax.Head_Insertion }
-  | "|>"        { E_INFIX_160 Syntax.Codomain_Restriction }
-  | "**"        { E_INFIX_200 Syntax.Power  }
-  | "{}"        { CONSTANT Syntax.Empty_Set  }
-  | "[]"        { CONSTANT Syntax.Empty_Seq  }
-  | "<>"        { CONSTANT Syntax.Empty_Seq  }
-  | ".."        { E_INFIX_170 Syntax.Interval  }
-  | "\\/"       { E_INFIX_160 Syntax.Union }
-  | "/\\"       { E_INFIX_160 Syntax.Intersection }
-  | "><"        { E_INFIX_160 Syntax.Direct_Product }
+  | "<-"        { E_INFIX_160 SyntaxCore.Tail_Insertion }
+  | "->"        { E_INFIX_160 SyntaxCore.Head_Insertion }
+  | "|>"        { E_INFIX_160 SyntaxCore.Codomain_Restriction }
+  | "**"        { E_INFIX_200 SyntaxCore.Power  }
+  | "{}"        { CONSTANT SyntaxCore.Empty_Set  }
+  | "[]"        { CONSTANT SyntaxCore.Empty_Seq  }
+  | "<>"        { CONSTANT SyntaxCore.Empty_Seq  }
+  | ".."        { E_INFIX_170 SyntaxCore.Interval  }
+  | "\\/"       { E_INFIX_160 SyntaxCore.Union }
+  | "/\\"       { E_INFIX_160 SyntaxCore.Intersection }
+  | "><"        { E_INFIX_160 SyntaxCore.Direct_Product }
   | "||"        { PARALLEL  }
-  | "<|"        { E_INFIX_160 Syntax.Domain_Restriction }
-  | "<+"        { E_INFIX_160 Syntax.Surcharge }
+  | "<|"        { E_INFIX_160 SyntaxCore.Domain_Restriction }
+  | "<+"        { E_INFIX_160 SyntaxCore.Surcharge }
   | "=>"        { IMPLY  }
-  | "/="        { PREDICATE Syntax.Disequality }
-  | "/:"        { PREDICATE Syntax.Non_Membership }
-  | "<:"        { PREDICATE (Syntax.Inclusion Syntax.Not_Strict) }
-  | "<="        { PREDICATE (Syntax.Inequality Syntax.Smaller_or_Equal) }
-  | ">="        { PREDICATE (Syntax.Inequality Syntax.Greater_or_Equal) }
+  | "/="        { PREDICATE SyntaxCore.Disequality }
+  | "/:"        { PREDICATE SyntaxCore.Non_Membership }
+  | "<:"        { PREDICATE (SyntaxCore.Inclusion SyntaxCore.Not_Strict) }
+  | "<="        { PREDICATE (SyntaxCore.Inequality SyntaxCore.Smaller_or_Equal) }
+  | ">="        { PREDICATE (SyntaxCore.Inequality SyntaxCore.Greater_or_Equal) }
   | ":="        { AFFECTATION  }
   | "::"        { BECOMES_ELT  }
-(*   | ":("        { BECOMES_SUCH  } *)
   | "=="        { EQUALEQUAL  }
   | "$0"        { DOLLAR_ZERO  }
 
-  | '/'         { E_INFIX_190 Syntax.Division }
+  | '/'         { E_INFIX_190 SyntaxCore.Division }
   | '.'         { DOT  }
   | '\''        { SQUOTE  }
   | '|'         { BAR  }
@@ -242,21 +241,21 @@ rule token = parse
   | ';'         { SEMICOLON  }
   | '['         { LSQU  }
   | ']'         { RSQU  }
-  | '%'         { E_BINDER Syntax.Lambda  }
+  | '%'         { E_BINDER SyntaxCore.Lambda  }
   | '&'         { AND  }
   | '!'         { FORALL  }
   | '#'         { EXISTS  }
   | '='         { EQUAL  }
   | ':'         { MEMBER_OF  }
-  | '<'         { PREDICATE (Syntax.Inequality Syntax.Strictly_Smaller) }
-  | '>'         { PREDICATE (Syntax.Inequality Syntax.Strictly_Greater) }
-  | '+'         { E_INFIX_180 Syntax.Addition  }
+  | '<'         { PREDICATE (SyntaxCore.Inequality SyntaxCore.Strictly_Smaller) }
+  | '>'         { PREDICATE (SyntaxCore.Inequality SyntaxCore.Strictly_Greater) }
+  | '+'         { E_INFIX_180 SyntaxCore.Addition  }
   | '-'         { MINUS  }
-  | '*'         { E_INFIX_190 Syntax.Product }
+  | '*'         { E_INFIX_190 SyntaxCore.Product }
   | ','         { COMMA  }
   | ')'         { RPAR  }
   | '('         { LPAR  }
-  | '^'         { E_INFIX_160 Syntax.Concatenation }
+  | '^'         { E_INFIX_160 SyntaxCore.Concatenation }
 
   | def_file as id {
       DEF_FILE ( String.sub id 1 ((String.length id)-2) ) }
@@ -266,7 +265,7 @@ rule token = parse
   | int_lit as i  {
       match int_of_int_lit i with
       | None -> err lexbuf "The literal is out of range."
-      | Some lit -> CONSTANT (Syntax.Integer ( lit ))
+      | Some lit -> CONSTANT (SyntaxCore.Integer ( lit ))
     }
   | _   as c    { err lexbuf ("Unexpected character '" ^ String.make 1 c ^ "'.") }
   | eof         { EOF }

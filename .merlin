@@ -1,5 +1,7 @@
 S src
+S tools
 PKG easy-format
 PKG qcheck
 PKG menhirLib
+PKG ppx_deriving.std
 B _build/**

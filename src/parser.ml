@@ -1,6 +1,6 @@
 open Utils
-open Syntax
 
+module P = PSyntax
 module I = Grammar.MenhirInterpreter
 
 let rec loop_exn (state:Lexer.state) (chkp:P.component I.checkpoint) : P.component =

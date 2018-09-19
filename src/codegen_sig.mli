@@ -20,7 +20,7 @@ sig
     | B0_Disjonction
     | B0_Equality
     | B0_Disequality
-    | B0_Inequality of Syntax.inequality
+    | B0_Inequality of SyntaxCore.inequality
     | B0_Product
     | B0_Difference
     | B0_Addition
@@ -35,37 +35,31 @@ sig
     | T_Bool
     | T_String
     | T_Abstract of qident
+    | T_Enum of qident
     | T_Array of int*t_b0_type
     | T_Record of (t_id*t_b0_type) list
 
-  type t_local_ident_kind = 
-    | LIK_In
-    | LIK_Out
-    | LIK_Var
-
   type t_ident_kind =
-    | IK_Local of t_local_ident_kind
-    | IK_Constant
-    | IK_Variable
-
-  type t_ext_ident_kind =
-    | EIK_Constant
-    | EIK_Variable
+    | IK_Constant of t_pkg_id option
+    | IK_Variable of t_pkg_id option
+    | IK_Enum of t_pkg_id option
 
   type t_exp0_desc =
-    | B0_Extern of t_pkg_id*t_id*t_ext_ident_kind
-    | B0_Ident of t_id*t_ident_kind
+    | B0_Local_Ident of t_id*Local.t_local_kind
+    | B0_Global_Ident of t_id*t_ident_kind
     | B0_Builtin_0 of t_b0_constant
     | B0_Builtin_1 of t_b0_unary_op * t_b0_expr
     | B0_Builtin_2 of t_b0_binary_op * t_b0_expr * t_b0_expr
     | B0_Array_Access of t_b0_expr * t_b0_expr Nlist.t
     | B0_Array of t_b0_expr list
-    | B0_Array_Init of t_b0_range*t_b0_expr
+    | B0_Array_Init of t_b0_range Nlist.t*t_b0_expr
     | B0_Record of (t_id*t_b0_expr) list
     | B0_Record_Access of t_b0_expr*t_id
     | B0_Fun_App of qident*t_b0_expr Nlist.t
 
-  and t_b0_range = (t_b0_expr*t_b0_expr) Nlist.t
+  and t_b0_range =
+    | R_Interval of t_b0_expr*t_b0_expr
+    | R_Concrete_Set of int*qident
 
   and t_b0_expr =
     { exp0_loc: Utils.loc;
@@ -105,13 +99,19 @@ sig
   
   type t_mut_ident_kind =
     | MIK_Variable
+    | MIK_Param
     | MIK_Local
+
+  type t_case =
+    | CS_Int of Int32.t
+    | CS_Bool of bool
+    | CS_Enum of qident
 
   type t_sub0_desc =
     | B0_Null
     | B0_Affectation of t_b0_lhs*t_b0_expr
     | B0_IfThenElse of (t_b0_expr*t_b0_subst) Nlist.t * t_b0_subst option
-    | B0_Case of t_b0_expr * (Int32.t Nlist.t*t_b0_subst) Nlist.t * t_b0_subst option
+    | B0_Case of t_b0_expr * (t_case Nlist.t*t_b0_subst) Nlist.t * t_b0_subst option
     | B0_Var of (t_id*t_b0_type) Nlist.t * t_b0_subst
     | B0_While of t_b0_expr * t_b0_subst
     | B0_CallUp of (t_mut_ident_kind*t_id) list * qident * t_b0_expr list
@@ -140,6 +140,7 @@ sig
   type t_type_def =
     | D_Int
     | D_Alias of qident
+    | D_Enum of t_id list
 
   type t_type =
     { ty_name: t_id;
@@ -156,5 +157,5 @@ sig
       pkg_procedures: t_procedure list;
       pkg_init: t_b0_subst option }
 
-  val to_package : Global.t -> t_pkg_id -> Syntax.T.component -> t_package Error.t_result
+  val to_package : t_pkg_id -> TSyntax.component -> t_package Error.t_result
 end

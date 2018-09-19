@@ -1,5 +1,5 @@
 (** S-expression generation*)
-open Syntax.R
+open PSyntax
 
 type t
 

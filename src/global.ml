@@ -1,67 +1,72 @@
 open Utils
-open Syntax
 
-let extended_sees = ref false
-let set_extended_sees b = extended_sees := b
+type lident = SyntaxCore.lident
+type loc = Utils.loc
 
-type t_kind = 
-  | K_Abstract_Variable | K_Concrete_Variable
-  | K_Abstract_Constant | K_Concrete_Constant
-  | K_Abstract_Set | K_Concrete_Set of P.ident list
-  | K_Enumerate
+type t_abstract = private T_Abs
+type t_concrete = private T_Conc
+type t_mch = private T_Mch
+type t_ref = private T_Ref
 
-type t_source =
-  | S_Current_Mch_Only of loc
-  | S_Seen_Mch_Only of lident
-  | S_Refined_Mch_Only of lident
-  | S_Included_Mch_Only of lident
-  | S_Current_And_Refined_Mch of loc*lident
-  | S_Included_And_Refined_Mch of lident*lident
-  | S_Imported_Mch_Only of lident
-  | S_Current_And_Imported_Mch of loc*lident
-  | S_Imported_And_Refined_Mch of lident*lident
-  | S_Current_Imported_And_Refined_Mch of loc*lident*lident
+type 'ac t_redeclared =
+  | Implicitely : t_concrete t_redeclared
+  | By_Machine : loc -> 'ac t_redeclared
+  | By_Included_Or_Imported : lident -> 'ac t_redeclared
 
-type t_source2 =
-  | Src_Current of loc
-  | Src_Current_Local of loc
-  | Src_Seen of lident
-  | Src_Refined of lident
-  | Src_Imported of lident
-  | Src_Included of lident
+type ('mr,'ac) t_decl =
+  | D_Machine : loc -> ('mr,'ac) t_decl
+  | D_Seen : lident -> ('mr,'ac) t_decl
+  | D_Included_Or_Imported : lident -> ('mr,'ac) t_decl
+  | D_Disappearing : (t_ref,t_abstract) t_decl
+  | D_Redeclared : 'ac t_redeclared -> (t_ref,'ac) t_decl
 
-type t_op_source =
-  | OS_Seen_Mch of lident
-  | OS_Current_Mch_Only of loc
-  | OS_Refined_Mch_Only of lident
-  | OS_Included_Mch_Only of lident
-  | OS_Current_And_Refined_Mch of loc*lident
-  | OS_Included_And_Refined_Mch of lident*lident
-  | OS_Local_Spec of loc
-  | OS_Local_Spec_And_Implem of loc*loc
-  | OS_Imported_Only of lident
-  | OS_Imported_And_Promoted of loc*lident
-  | OS_Imported_And_Refined of lident*lident
-  | OS_Imported_Promoted_And_Refined of loc*lident*lident
+type t_variable = private T_Var
+type t_constant = private T_Const
 
-type t_clause =
-  | C_Invariant_Or_Assertions
-  | C_Properties
-  | C_Operations
-  | C_Local_Operations
-  | C_Values
-  | C_Assert_Or_While_Invariant
+type _ t_global_kind = 
+  | K_Abstract_Variable : t_abstract t_global_kind
+  | K_Abstract_Constant : t_abstract t_global_kind
+  | K_Concrete_Variable : t_concrete t_global_kind
+  | K_Concrete_Constant : t_concrete t_global_kind
+  | K_Abstract_Set : t_concrete t_global_kind
+  | K_Concrete_Set : string list  -> t_concrete t_global_kind
+  | K_Enumerate : t_concrete t_global_kind
+
+type 'mr t_kind = Pack : 'ac t_global_kind*('mr,'ac) t_decl -> 'mr t_kind
+
+type 'a t_symbol_infos = {
+  sy_typ:Btype.t;
+  sy_kind:'a t_kind
+}
+
+type 'a t_op_decl =
+  | OD_Current : loc -> t_mch t_op_decl
+  | OD_Seen : lident -> 'a t_op_decl
+  | OD_Included_Or_Imported : lident -> 'a t_op_decl
+  | OD_Included_Or_Imported_And_Promoted : lident*loc -> t_mch t_op_decl
+  | OD_Refined : lident -> t_ref t_op_decl
+  | OD_Current_And_Refined : loc*lident -> t_ref t_op_decl
+  | OD_Included_Or_Imported_And_Refined : lident*lident -> t_ref t_op_decl
+  | OD_Included_Or_Imported_Promoted_And_Refined : lident*loc*lident -> t_ref t_op_decl
+  | OD_Local_Spec : loc -> t_ref t_op_decl
+  | OD_Local_Spec_And_Implem : loc*loc -> t_ref t_op_decl
+
+type 'a t_operation_infos =
+  { op_args_in: (string*Btype.t) list;
+    op_args_out: (string*Btype.t) list;
+    op_readonly:bool;
+    op_src: 'a t_op_decl; }
 
 module MachineInterface :
 sig
   type t
-  type t_symb = { id:string; typ:Btype.t; kind:t_kind; hidden:bool }
+  type t_symb = S : { id:string; typ:Btype.t; kind:'ac t_global_kind } -> t_symb
   type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   val make : t_symb list -> t_op list -> t
   val get_symbols : t -> t_symb list
   val get_operations : t -> t_op list
 end = struct
-  type t_symb = { id:string; typ:Btype.t; kind:t_kind; hidden:bool }
+  type t_symb = S : { id:string; typ:Btype.t; kind:'ac t_global_kind } -> t_symb
   type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   type t = t_symb list * t_op list
 
@@ -72,282 +77,152 @@ end
 
 type t_interface = MachineInterface.t
 
-type t_symbol_infos =
-  { sy_typ:Btype.t;
-    sy_kind:t_kind;
-    sy_src:t_source }
+type _ env_kind = Mch : t_mch env_kind | Ref : t_ref env_kind
 
-type t_operation_infos  =
-  { op_args_in: (string*Btype.t) list;
-    op_args_out: (string*Btype.t) list;
-    op_readonly:bool;
-    op_src: t_op_source; }
-
-type t = {
+type 'a t = {
+  kind:'a env_kind;
   mutable alias: Btype.t_alias;
-  symb:(string,t_symbol_infos) Hashtbl.t;
-  ops:(string,t_operation_infos) Hashtbl.t
+  symb:(string,'a t_symbol_infos) Hashtbl.t;
+  ops:(string,'a t_operation_infos) Hashtbl.t
 }
 
-let create () : t =
-  { alias=Btype.no_alias;
+let create_mch () : t_mch t =
+  { kind=Mch;
+    alias=Btype.no_alias;
+    symb=Hashtbl.create 47;
+    ops=Hashtbl.create 47 }
+
+let create_ref () : t_ref t =
+  { kind=Ref;
+    alias=Btype.no_alias;
     symb=Hashtbl.create 47;
     ops=Hashtbl.create 47 }
 
 let get_alias env = env.alias
 
-let get_symbol_type (env:t) (id:P.ident) : Btype.t option =
-  try Some (Hashtbl.find env.symb id).sy_typ
-  with Not_found -> None
+let get_symbol (env:'a t) (id:string) : 'a t_symbol_infos option =
+  Hashtbl.find_opt env.symb id
 
-let get_symbol_kind (env:t) (id:P.ident) : t_kind option =
-  try Some (Hashtbl.find env.symb id).sy_kind
-  with Not_found -> None
+type 'a t_source =
+  | S_Current : loc -> 'a t_source
+  | S_Seen : lident -> 'a t_source
+  | S_Refined : lident -> t_ref t_source
+  | S_Included_Or_Imported : lident -> 'a t_source
 
-let is_symbol_visible (cl:t_clause) (ki:t_kind) (src:t_source) : bool =
-  match cl, ki, src with
-  | C_Properties, (K_Abstract_Variable|K_Concrete_Variable), _ -> false
-  | C_Properties, _, _ -> true
-  | C_Invariant_Or_Assertions, (K_Abstract_Variable|K_Concrete_Variable), S_Seen_Mch_Only _ -> !extended_sees
-  | C_Invariant_Or_Assertions, _, _ -> true
-  | C_Operations, K_Abstract_Constant, (S_Refined_Mch_Only _|S_Imported_Mch_Only _|S_Imported_And_Refined_Mch _) -> false
-  | C_Operations, K_Abstract_Variable, (S_Refined_Mch_Only _|S_Imported_Mch_Only _|S_Imported_And_Refined_Mch _) -> false
-  | C_Operations, _, _ -> true
-  | C_Local_Operations, (K_Abstract_Constant|K_Abstract_Variable), S_Refined_Mch_Only _ -> false
-  | C_Local_Operations, _, _ -> true
-  | C_Values, K_Abstract_Constant, _ -> false
-  | C_Values, (K_Abstract_Variable|K_Concrete_Variable), _ -> false
-  | C_Values, _, _ -> true
-  | C_Assert_Or_While_Invariant, _, _ -> true
+type 'a t_op_source =
+  | SO_Current : loc -> 'a t_op_source
+  | SO_Seen : lident -> 'a t_op_source
+  | SO_Refined : lident -> t_ref t_op_source
+  | SO_Included_Or_Imported : lident -> 'a t_op_source
+  | SO_Local : loc -> t_ref t_op_source
 
-let get_symbol_type_in_clause (env:t) (loc:loc) (id:P.ident) (cl:t_clause) : Btype.t Error.t_result =
-  try
-    begin
-      let infos = Hashtbl.find env.symb id in
-      if is_symbol_visible cl infos.sy_kind infos.sy_src then
-        Ok infos.sy_typ
-      else
-        Error { Error.err_loc=loc;
-                err_txt="The identifier '"^id^"' is not visible in this clause." }
-    end
-  with
-    Not_found -> Error { Error.err_loc=loc;
-                         err_txt="Unknown identifier '"^id^"'." }
+let update_decl (type mr ac1 ac2) (ki:ac2 t_global_kind)
+    (decl:(mr,ac1) t_decl) (src:mr t_source) : mr t_kind option =
+  match decl, src with
+  | D_Machine l, S_Refined _ -> Some (Pack(ki,D_Redeclared (By_Machine l)))
+  | D_Disappearing, S_Current l -> Some (Pack(ki,D_Redeclared (By_Machine l)))
+  | D_Included_Or_Imported inc, S_Refined _ ->
+    Some (Pack(ki,D_Redeclared (By_Included_Or_Imported inc)))
+  | D_Disappearing, S_Included_Or_Imported inc ->
+    Some (Pack(ki,D_Redeclared (By_Included_Or_Imported inc)))
+  | D_Redeclared Implicitely, S_Included_Or_Imported inc ->
+    Some (Pack(ki,D_Redeclared (By_Included_Or_Imported inc)))
+  | _, _ -> None
 
-let is_symbol_writable ki src cl =
-  match ki, src, cl with
-  | (K_Abstract_Variable|K_Concrete_Variable),
-    (S_Current_Mch_Only _|S_Current_And_Refined_Mch _|S_Refined_Mch_Only _), _ -> true
-  | (K_Abstract_Variable|K_Concrete_Variable),
-    (S_Imported_And_Refined_Mch _|S_Current_And_Imported_Mch _|
-     S_Current_Imported_And_Refined_Mch _|S_Imported_Mch_Only _), C_Local_Operations -> true
-
-  | _, _, _ -> false
-
-let get_writable_symbol_type_in_clause (env:t) (loc:loc) (id:P.ident) (cl:t_clause) : Btype.t Error.t_result =
-  try
-    begin
-      let infos = Hashtbl.find env.symb id in
-      if is_symbol_visible cl infos.sy_kind infos.sy_src then
-        if is_symbol_writable infos.sy_kind infos.sy_src cl then
-          Ok infos.sy_typ
-        else
-          Error { Error.err_loc=loc;
-                  err_txt="The identifier '"^id^"' is not writable." }
-      else
-        Error { Error.err_loc=loc;
-                err_txt="The identifier '"^id^"' is not visible in this clause." }
-    end
-  with
-    Not_found -> Error { Error.err_loc=loc;
-                         err_txt="Unknown identifier '"^id^"'." }
-
-let kind_to_string = function
-  | K_Abstract_Variable -> "an abstract variable"
-  | K_Concrete_Variable -> "a concrete variable"
-  | K_Abstract_Constant -> "an abstract constant"
-  | K_Concrete_Constant -> "a concrete constant"
-  | K_Abstract_Set -> "an abstract set"
-  | K_Concrete_Set _ -> "a concrete set"
-  | K_Enumerate -> "an enumerate"
-
-let are_kind_compatible k1 k2 =
-  k1 = k2 ||
+let update_kind (type ac1 ac2)  (k1:ac1 t_global_kind) (k2:ac2 t_global_kind) : ac2 t_global_kind option =
   match k1, k2 with
-  | K_Abstract_Variable, K_Concrete_Variable -> true
-  | K_Abstract_Constant, K_Concrete_Constant -> true
-  | _, _ -> false
+  | K_Abstract_Variable, K_Abstract_Variable -> Some k2
+  | K_Abstract_Constant, K_Abstract_Constant -> Some k2
+  | K_Concrete_Variable,K_Concrete_Variable -> Some k2
+  | K_Concrete_Constant, K_Concrete_Constant -> Some k2
+  | K_Abstract_Set, K_Abstract_Set -> Some k2
+  | K_Concrete_Set lst1, K_Concrete_Set lst2 ->
+    begin try
+        if List.for_all2 String.equal lst1 lst2 then Some k2
+        else None
+      with Invalid_argument _ -> None
+    end
+  | K_Enumerate, K_Enumerate -> Some k2
+  | K_Abstract_Constant, K_Concrete_Constant -> Some k2
+  | K_Abstract_Variable, K_Concrete_Variable -> Some k2
+  | _, _ -> None
 
-let update_source (id:P.ident) (src1:t_source) (src2:t_source2) : t_source Error.t_result =
-  match src2, src1 with
-  | Src_Current lc, S_Refined_Mch_Only mch -> Ok (S_Current_And_Refined_Mch (lc,mch))
-  | Src_Current lc, S_Imported_Mch_Only mch -> Ok (S_Current_And_Imported_Mch (lc,mch))
-  | Src_Current lc, S_Imported_And_Refined_Mch (imp,ref) -> Ok (S_Current_Imported_And_Refined_Mch (lc,imp,ref))
-  | Src_Current lc, S_Current_Mch_Only _
-  | Src_Current lc, S_Seen_Mch_Only _
-  | Src_Current lc, S_Current_And_Refined_Mch _
-  | Src_Current lc, S_Current_And_Imported_Mch _
-  | Src_Current lc, S_Current_Imported_And_Refined_Mch _
-  | Src_Current lc, S_Included_Mch_Only _
-  | Src_Current lc, S_Included_And_Refined_Mch _ ->
-    Error { Error.err_loc=lc;
-            err_txt="The identifier '"^id^"' is already declared." }
+let add_alias (s:'a t) (alias:string) (ty:Btype.t) : bool =
+  match Btype.add_alias s.alias alias ty with
+  | None -> false
+  | Some alias -> (s.alias <- alias; true)
 
-  | Src_Seen mch, _ ->
-    Error { Error.err_loc=mch.lid_loc;
-            err_txt="The identifier '"^id^"' is already declared." }
-
-  | Src_Imported imp, S_Current_Mch_Only lc -> Ok (S_Current_And_Imported_Mch (lc,imp))
-  | Src_Imported imp, S_Refined_Mch_Only ref -> Ok (S_Imported_And_Refined_Mch (imp,ref))
-  | Src_Imported imp, S_Current_And_Refined_Mch (lc,ref) -> Ok (S_Current_Imported_And_Refined_Mch (lc,imp,ref))
-  | Src_Imported imp, S_Seen_Mch_Only _
-  | Src_Imported imp, S_Imported_Mch_Only _
-  | Src_Imported imp, S_Current_And_Imported_Mch _
-  | Src_Imported imp, S_Imported_And_Refined_Mch _
-  | Src_Imported imp, S_Current_Imported_And_Refined_Mch _
-  | Src_Imported imp, S_Included_And_Refined_Mch _
-  | Src_Imported imp, S_Included_Mch_Only _ ->
-    Error { Error.err_loc=imp.lid_loc;
-            err_txt="The identifier '"^id^"' is already declared." }
-
-  | Src_Refined ref, S_Current_Mch_Only lc -> Ok (S_Current_And_Refined_Mch (lc,ref))
-  | Src_Refined ref, S_Imported_Mch_Only imp -> Ok (S_Imported_And_Refined_Mch (imp,ref))
-  | Src_Refined ref, S_Current_And_Imported_Mch (lc,imp) -> Ok (S_Current_Imported_And_Refined_Mch (lc,imp,ref))
-  | Src_Refined ref, S_Included_Mch_Only mch -> Ok (S_Included_And_Refined_Mch (mch,ref))
-  | Src_Refined ref, S_Seen_Mch_Only _
-  | Src_Refined ref, S_Refined_Mch_Only _
-  | Src_Refined ref, S_Current_And_Refined_Mch _
-  | Src_Refined ref, S_Imported_And_Refined_Mch _
-  | Src_Refined ref, S_Current_Imported_And_Refined_Mch _
-  | Src_Refined ref, S_Included_And_Refined_Mch _ ->
-    Error { Error.err_loc=ref.lid_loc;
-            err_txt="The identifier '"^id^"' is already declared." }
-
-  | Src_Included ref, S_Refined_Mch_Only mch -> Ok (S_Included_And_Refined_Mch (ref,mch))
-  | Src_Included ref, S_Current_Mch_Only _
-  | Src_Included ref, S_Current_And_Refined_Mch _
-  | Src_Included ref, S_Seen_Mch_Only _
-  | Src_Included ref, S_Imported_Mch_Only _
-  | Src_Included ref, S_Current_And_Imported_Mch _
-  | Src_Included ref, S_Imported_And_Refined_Mch _
-  | Src_Included ref, S_Current_Imported_And_Refined_Mch _
-  | Src_Included ref, S_Included_And_Refined_Mch _
-  | Src_Included ref, S_Included_Mch_Only _ ->
-    Error { Error.err_loc=ref.lid_loc;
-            err_txt="The identifier '"^id^"' is already declared." }
-
-  | Src_Current_Local _, _ -> assert false
-
-let _add_symbol (env:t) (err_loc:loc) (id:P.ident) (sy_typ:Btype.t) (sy_kind:t_kind) (sy_src:t_source2) : unit Error.t_result =
-  try
-    begin
-      let infos = Hashtbl.find env.symb id in
-      match update_source id infos.sy_src sy_src with
-      | Ok sy_src ->
-        if are_kind_compatible infos.sy_kind sy_kind then
-          if Btype.equal infos.sy_typ sy_typ then
-            Ok (Hashtbl.replace env.symb id { sy_typ; sy_kind; sy_src })
-          else
-            Error { Error.err_loc;
-                    err_txt="The identifier '" ^ id ^ "' has type " 
-                            ^ Btype.to_string sy_typ
+  
+let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.t)
+    (ki:ac t_global_kind) (src:mr t_source) : unit Error.t_result =
+  let () = match src, ki with
+    | S_Included_Or_Imported inc, K_Abstract_Set ->
+      if add_alias env id (Btype.mk_Abstract_Set (Btype.T_Seen inc.SyntaxCore.lid_str) id) then ()
+      else assert false
+    | S_Included_Or_Imported inc, K_Concrete_Set _ ->
+      if add_alias env id (Btype.mk_Concrete_Set (Btype.T_Seen inc.SyntaxCore.lid_str) id) then ()
+      else assert false
+    | _, _ -> ()
+  in
+  match Hashtbl.find_opt env.symb id with
+  | Some infos ->
+    begin match infos.sy_kind with
+      | Pack (old_kind,old_decl) ->
+        if not (Btype.is_equal_modulo_alias env.alias infos.sy_typ sy_typ) then
+          Error { Error.err_loc;
+                  err_txt="The identifier '" ^ id ^ "' has type " 
+                          ^ Btype.to_string sy_typ
                           ^ " but was previously declared with type "
                           ^ Btype.to_string infos.sy_typ ^ "." }
         else
-          Error { Error.err_loc;
-                  err_txt="The identifier '" ^ id ^ "' is a " 
-                          ^ kind_to_string sy_kind
-                          ^ " but was previously declared as a "
-                          ^ kind_to_string infos.sy_kind ^ "." }
-      | Error _ as err -> err
+          begin match update_kind old_kind ki with
+            | None ->
+              Error { Error.err_loc;
+                      err_txt="The kind of the identifier '" ^ id ^ "' is different from previous declaration." } 
+            | Some kind ->
+              begin match update_decl kind old_decl src with
+                | None ->
+                  Error { Error.err_loc;
+                          err_txt="The identifier '" ^ id ^ "' clashes with previous declaration." } 
+                | Some sy_kind ->
+                  Ok (Hashtbl.replace env.symb id { sy_typ; sy_kind })
+              end
+          end
     end
-  with
-  | Not_found ->
-    let sy_src = match sy_src with
-      | Src_Current lc -> S_Current_Mch_Only lc
-      | Src_Seen mch -> S_Seen_Mch_Only mch
-      | Src_Imported mch -> S_Imported_Mch_Only mch
-      | Src_Refined mch -> S_Refined_Mch_Only mch
-      | Src_Included mch -> S_Included_Mch_Only mch
-      | Src_Current_Local _ -> assert false
+  | None ->
+    let sy_kind:mr t_kind =
+    match src with
+      | S_Current lc -> Pack (ki,D_Machine lc)
+      | S_Seen mch -> Pack (ki,D_Seen mch)
+      | S_Included_Or_Imported mch -> Pack (ki,D_Included_Or_Imported mch)
+      | S_Refined _ ->
+        begin match ki with
+          | K_Abstract_Variable -> Pack(ki,D_Disappearing)
+          | K_Abstract_Constant -> Pack(ki,D_Disappearing)
+          | K_Concrete_Variable -> Pack(ki,D_Redeclared Implicitely)
+          | K_Concrete_Constant -> Pack(ki,D_Redeclared Implicitely)
+          | K_Abstract_Set -> Pack(ki,D_Redeclared Implicitely)
+          | K_Concrete_Set _ -> Pack(ki,D_Redeclared Implicitely)
+          | K_Enumerate -> Pack(ki,D_Redeclared Implicitely)
+        end
     in
-    Ok (Hashtbl.add env.symb id { sy_typ; sy_kind; sy_src })
+    Ok (Hashtbl.add env.symb id { sy_typ; sy_kind })
 
-let add_symbol (env:t) (loc:loc) (id:P.ident) (typ:Btype.t) (kind:t_kind) : unit Error.t_result =
-  _add_symbol env loc id typ kind (Src_Current loc)
+let add_symbol (type mr ac) (env:mr t) (loc:loc) (id:string) (typ:Btype.t) (ki:ac t_global_kind) : unit Error.t_result =
+  _add_symbol env loc id typ ki (S_Current loc)
 
-type t_op_type = { args_in:(P.ident*Btype.t) list; args_out:(P.ident*Btype.t) list; }
+let update_op_source (type a) (current_source:a t_op_decl) (new_source:a t_op_source) : a t_op_decl option =
+  match current_source, new_source with
+  | OD_Refined ref, SO_Current l -> Some (OD_Current_And_Refined (l,ref))
+  | OD_Refined ref, SO_Included_Or_Imported inc -> Some (OD_Included_Or_Imported_And_Refined (inc,ref))
+  | OD_Included_Or_Imported inc, SO_Refined ref -> Some (OD_Included_Or_Imported_And_Refined (inc,ref))
+  | OD_Local_Spec spe, SO_Current imp -> Some (OD_Local_Spec_And_Implem (spe,imp))
+  | _, _ -> None
 
-let update_op_source (id:P.ident) (src1:t_op_source) (src2:t_source2) : t_op_source Error.t_result =
-  match src2, src1 with
-  | Src_Current lc, OS_Refined_Mch_Only ref -> Ok (OS_Current_And_Refined_Mch (lc,ref))
-  | Src_Current lc, OS_Local_Spec spe -> Ok (OS_Local_Spec_And_Implem (spe,lc))
-  | Src_Current lc, OS_Included_Mch_Only _
-  | Src_Current lc, OS_Included_And_Refined_Mch _
-  | Src_Current lc, OS_Seen_Mch _
-  | Src_Current lc, OS_Current_Mch_Only _
-  | Src_Current lc, OS_Current_And_Refined_Mch _
-  | Src_Current lc, OS_Local_Spec_And_Implem _
-  | Src_Current lc, OS_Imported_Only _
-  | Src_Current lc, OS_Imported_And_Promoted _
-  | Src_Current lc, OS_Imported_And_Refined _
-  | Src_Current lc, OS_Imported_Promoted_And_Refined _ ->
-    Error { Error.err_loc=lc;
-            err_txt="The operation '"^id^"' is already declared." }
-  | Src_Current_Local lc, OS_Current_Mch_Only lc2 -> Ok (OS_Local_Spec_And_Implem (lc,lc2))
-  | Src_Current_Local lc, OS_Included_Mch_Only _
-  | Src_Current_Local lc, OS_Included_And_Refined_Mch _
-  | Src_Current_Local lc, OS_Refined_Mch_Only _
-  | Src_Current_Local lc, OS_Local_Spec _
-  | Src_Current_Local lc, OS_Seen_Mch _
-  | Src_Current_Local lc, OS_Current_And_Refined_Mch _
-  | Src_Current_Local lc, OS_Local_Spec_And_Implem _
-  | Src_Current_Local lc, OS_Imported_Only _
-  | Src_Current_Local lc, OS_Imported_And_Promoted _
-  | Src_Current_Local lc, OS_Imported_And_Refined _
-  | Src_Current_Local lc, OS_Imported_Promoted_And_Refined _ ->
-    Error { Error.err_loc=lc;
-            err_txt="The operation '"^id^"' is already declared." }
-  | Src_Imported imp, OS_Refined_Mch_Only ref -> Ok (OS_Imported_And_Refined (imp,ref))
-  | Src_Imported imp, OS_Included_And_Refined_Mch _
-  | Src_Imported imp, OS_Included_Mch_Only _
-  | Src_Imported imp, OS_Current_Mch_Only _
-  | Src_Imported imp, OS_Local_Spec _
-  | Src_Imported imp, OS_Seen_Mch _
-  | Src_Imported imp, OS_Current_And_Refined_Mch _
-  | Src_Imported imp, OS_Local_Spec_And_Implem _
-  | Src_Imported imp, OS_Imported_Only _
-  | Src_Imported imp, OS_Imported_And_Promoted _
-  | Src_Imported imp, OS_Imported_And_Refined _
-  | Src_Imported imp, OS_Imported_Promoted_And_Refined _ ->
-    Error { Error.err_loc=imp.lid_loc;
-            err_txt="The operation '"^id^"' is already declared." }
-  | Src_Refined ref, OS_Current_Mch_Only lc -> Ok (OS_Current_And_Refined_Mch (lc,ref))
-  | Src_Refined ref, OS_Imported_Only imp -> Ok (OS_Imported_And_Refined (ref,imp))
-  | Src_Refined ref, OS_Imported_And_Promoted (lc,imp) -> Ok (OS_Imported_Promoted_And_Refined (lc,imp,ref))
-  | Src_Refined ref, OS_Included_Mch_Only mch -> Ok (OS_Included_And_Refined_Mch (mch,ref))
-  | Src_Refined ref, OS_Included_And_Refined_Mch _
-  | Src_Refined ref, OS_Refined_Mch_Only _
-  | Src_Refined ref, OS_Local_Spec _
-  | Src_Refined ref, OS_Seen_Mch _
-  | Src_Refined ref, OS_Current_And_Refined_Mch _
-  | Src_Refined ref, OS_Local_Spec_And_Implem _
-  | Src_Refined ref, OS_Imported_And_Refined _
-  | Src_Refined ref, OS_Imported_Promoted_And_Refined _ ->
-    Error { Error.err_loc=ref.lid_loc;
-            err_txt="The operation '"^id^"' is already declared." }
-  | Src_Included ref, OS_Refined_Mch_Only mch -> Ok (OS_Included_And_Refined_Mch (ref,mch))
-  | Src_Included mch, _ -> 
-    Error { Error.err_loc=mch.lid_loc;
-            err_txt="The operation '"^id^"' is already declared." }
-  | Src_Seen mch, _ -> 
-    Error { Error.err_loc=mch.lid_loc;
-            err_txt="The operation '"^id^"' is already declared." }
-
-let check_args_type (err_loc:loc) (args:t_op_type) args_in args_out : unit Error.t_result =
+let check_args_type env (err_loc:loc) (args_old:(string*Btype.t)list) (args_new:(string*Btype.t)list) : unit Error.t_result =
   let aux (x1,ty1) (x2,ty2) =
     if String.equal x1 x2 then
-      if Btype.equal ty1 ty2 then ()
+      if Btype.is_equal_modulo_alias env.alias ty1 ty2 then ()
       else Error.raise_exn err_loc
           ("The parameter '"^x1^"' has type '"^Btype.to_string ty1^
            "' but parameter of type '"^Btype.to_string ty2^"' was expected.")
@@ -355,266 +230,243 @@ let check_args_type (err_loc:loc) (args:t_op_type) args_in args_out : unit Error
         ("Parameter '"^x2^"' expected but '"^x1^"' was found.")
   in
   try
-    List.iter2 aux args_in args.args_in;
-    List.iter2 aux args_out args.args_out;
+    List.iter2 aux args_old args_new;
     Ok ()
   with
   | Invalid_argument _ ->
     Error { Error.err_loc; err_txt="Unexpected number of parameters." }
   | Error.Error err -> Error err
 
-let _add_operation (env:t) (err_loc:loc) (id:P.ident) (args:t_op_type) (op_readonly:bool) (op_src:t_source2) : unit Error.t_result =
-  let op_args_in = args.args_in in
-  let op_args_out = args.args_out in
-  try
-    begin
-      let infos = Hashtbl.find env.ops id in
-      match update_op_source id infos.op_src op_src with
-      | Error _ as err -> err
-      | Ok op_src ->
-        begin match check_args_type err_loc args infos.op_args_in infos.op_args_out with
+let _add_operation (type a) (env:a t) (err_loc:loc) (id:string) (op_args_in:(string*Btype.t)list)
+    (op_args_out:(string*Btype.t)list) (op_readonly:bool) (op_src:a t_op_source) : unit Error.t_result =
+  match Hashtbl.find_opt env.ops id with
+  | Some infos ->
+    begin match update_op_source infos.op_src op_src with
+      | None ->
+        Error { Error.err_loc;
+                err_txt="The operation '" ^ id ^ "' clashes with previous declaration." } 
+      | Some op_src ->
+        begin match check_args_type env err_loc infos.op_args_in op_args_in with
           | Error _ as err -> err
-          | Ok () -> Ok (Hashtbl.replace env.ops id { infos with op_src })
+          | Ok () ->
+            begin match check_args_type env err_loc infos.op_args_out op_args_out with
+              | Error _ as err -> err
+              | Ok () -> Ok (Hashtbl.replace env.ops id { infos with op_src })
+            end
         end
     end
-  with
-    Not_found ->
-    let op_src = match op_src with
-      | Src_Current lc -> OS_Current_Mch_Only lc
-      | Src_Current_Local lc -> OS_Local_Spec lc
-      | Src_Seen mch -> OS_Seen_Mch mch
-      | Src_Imported mch -> OS_Imported_Only mch
-      | Src_Refined mch -> OS_Refined_Mch_Only mch
-      | Src_Included mch -> OS_Included_Mch_Only mch
+  | None ->
+    let ret (op_src:a t_op_decl) =
+      Ok (Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly; op_src })
     in
-    Ok (Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly; op_src })
+    begin match op_src with
+      | SO_Current lc ->
+        begin match env.kind with
+          | Mch -> ret (OD_Current lc)
+          | Ref -> Error { Error.err_loc=lc;
+                           err_txt="This operation is not declared in the refined machine." }
+        end
+      | SO_Seen mch ->  ret (OD_Seen mch)
+      | SO_Refined mch -> ret (OD_Refined mch)
+      | SO_Included_Or_Imported mch -> ret (OD_Included_Or_Imported mch)
+      | SO_Local lc -> ret (OD_Local_Spec lc)
+    end
 
-let is_operation_visible is_readonly = function
-  | OS_Seen_Mch _ -> is_readonly
-  | OS_Current_Mch_Only _ | OS_Refined_Mch_Only _ | OS_Current_And_Refined_Mch _ -> false
-  | OS_Local_Spec _ | OS_Local_Spec_And_Implem _ | OS_Imported_Only _
-  | OS_Imported_And_Promoted _ | OS_Imported_And_Refined _
-  | OS_Imported_Promoted_And_Refined _ | OS_Included_Mch_Only _
-  | OS_Included_And_Refined_Mch _ -> true
+let get_operation (env:'a t) (id:string) : 'a t_operation_infos option =
+    Hashtbl.find_opt env.ops id
 
-let get_operation_type (env:t) (err_loc:loc) (id:P.ident) =
-  try
-    let infos = Hashtbl.find env.ops id in
-    if is_operation_visible infos.op_readonly infos.op_src then
-      Ok { args_in=infos.op_args_in; args_out=infos.op_args_out }
-    else
-      Error { Error.err_loc; err_txt="The operation '"^id^"' is not visible." }
-  with
-    Not_found -> Error { Error.err_loc; err_txt="Unknown operation '"^id^"'." }
+let rec find_duplicate : (string*'a) list -> string option = function
+  | [] -> None
+  | (x,_)::tl ->
+    let aux (y,_) = String.equal x y in
+    if List.exists aux tl then Some x
+    else find_duplicate tl
 
-let get_operation_type2 (env:t) (id:P.ident) : t_op_type option =
-  try
-    let infos = Hashtbl.find env.ops id in
-    Some { args_in=infos.op_args_in; args_out=infos.op_args_out }
-  with
-    Not_found -> None
+let add_mch_operation (env:t_mch t) (loc:loc) (id:string) (args_in) (args_out)
+    ~is_readonly : unit Error.t_result =
+  match find_duplicate (args_in@args_out) with
+  | None -> _add_operation env loc id args_in args_out is_readonly (SO_Current loc)
+  | Some arg ->
+    Error.raise_exn loc ("The argument '"^arg^"' appears twice in this operation declaration.")
 
-let is_operation_readonly (env:t) (id:P.ident) : bool =
-  try (Hashtbl.find env.ops id).op_readonly
-  with Not_found -> false
+let add_ref_operation (env:t_ref t) (loc:loc) (id:string) (args_in) (args_out)
+    ~is_local : unit Error.t_result =
+  let src = if is_local then SO_Local loc else SO_Current loc in
+  match find_duplicate (args_in@args_out) with
+  | None -> _add_operation env loc id args_in args_out false(*this is not relevant for refinements*) src
+  | Some arg ->
+    Error.raise_exn loc ("The argument '"^arg^"' appears twice in this operation declaration.")
 
-let is_operation_local (env:t) (id:P.ident) : bool =
+let promote_operation (type a) (env:a t) (loc:loc) (id:string) =
   match Hashtbl.find_opt env.ops id with
-  | None -> false
-  | Some op ->
-    begin match op.op_src with
-      | OS_Local_Spec _ | OS_Local_Spec_And_Implem _ -> true
-      | OS_Seen_Mch _
-      | OS_Included_Mch_Only _
-      | OS_Included_And_Refined_Mch _
-      | OS_Current_Mch_Only _
-      | OS_Refined_Mch_Only _
-      | OS_Current_And_Refined_Mch _
-      | OS_Imported_Only _
-      | OS_Imported_And_Promoted _
-      | OS_Imported_And_Refined _
-      | OS_Imported_Promoted_And_Refined _ -> false
+  | None -> Error { Error.err_loc=loc; err_txt="Unknown operation '"^id^"'." }
+  | Some infos ->
+    begin match infos.op_src with
+      | OD_Included_Or_Imported mch ->
+        begin match env.kind with
+          | Mch -> Ok (Hashtbl.replace env.ops id
+                         { infos with op_src=OD_Included_Or_Imported_And_Promoted (mch,loc) })
+          | Ref ->
+            Error { Error.err_loc=loc;
+                    err_txt="The operation '"^id^"' does not exist in the refined machine."}
+        end
+      | OD_Included_Or_Imported_And_Refined (inc,ref) ->
+        Ok (Hashtbl.replace env.ops id { infos with op_src=OD_Included_Or_Imported_Promoted_And_Refined (inc,loc,ref) })
+      | OD_Included_Or_Imported_Promoted_And_Refined _ ->
+        Error { Error.err_loc=loc; err_txt="The operation '"^id^"' is already promoted." }
+      | OD_Included_Or_Imported_And_Promoted _ ->
+        Error { Error.err_loc=loc; err_txt="The operation '"^id^"' is already promoted." }
+      | OD_Seen _ ->
+        Error { Error.err_loc=loc;
+                err_txt="The operation '"^id^"' is not an operation of an imported or included machine." }
+      | OD_Current_And_Refined _ ->
+        Error { Error.err_loc=loc;
+                err_txt="The operation '"^id^"' is not an operation of an imported or included machine." }
+      | OD_Local_Spec_And_Implem _ ->
+        Error { Error.err_loc=loc;
+                err_txt="The operation '"^id^"' is not an operation of an imported or included machine." }
+      | OD_Refined _ ->
+        Error { Error.err_loc=loc;
+                err_txt="The operation '"^id^"' is not an operation of an imported or included machine." }
+      | OD_Current _ ->
+        Error { Error.err_loc=loc;
+                err_txt="The operation '"^id^"' is not an operation of an imported or included machine." }
+      | OD_Local_Spec _ ->
+        Error { Error.err_loc=loc;
+                err_txt="The operation '"^id^"' is not an operation of an imported or included machine." }
     end
 
-let add_operation (env:t) (loc:loc) (id:P.ident) (args:t_op_type) (is_readonly:bool) (is_local:bool) : unit Error.t_result =
-  let src = if is_local then Src_Current_Local loc else Src_Current loc in
-  _add_operation env loc id args is_readonly src
-
-let promote_operation (env:t) (loc:loc) (id:P.ident) =
-  try
-    begin
-      let infos = Hashtbl.find env.ops id in
-      match infos.op_src with
-      | OS_Imported_Only mch ->
-        Ok (Hashtbl.replace env.ops id { infos with op_src=OS_Imported_And_Promoted (loc,mch) })
-      | OS_Imported_And_Refined (imp,ref) ->
-        Ok (Hashtbl.replace env.ops id { infos with op_src=OS_Imported_Promoted_And_Refined (loc,imp,ref) })
-      | OS_Imported_And_Promoted _ | OS_Imported_Promoted_And_Refined _ ->
-        Error { Error.err_loc=loc;
-                err_txt="The operation '"^id^"' is already promoted." }
-      | OS_Seen_Mch _ | OS_Current_Mch_Only _ | OS_Current_And_Refined_Mch _
-      | OS_Local_Spec_And_Implem _ | OS_Refined_Mch_Only _ | OS_Local_Spec _
-      | OS_Included_Mch_Only _ | OS_Included_And_Refined_Mch _ ->
-        Error { Error.err_loc=loc;
-                err_txt="The operation '"^id^"' is not an operation of an imported machine." }
-    end
-  with
-    Not_found -> Error { Error.err_loc=loc; err_txt="Unknown operation '"^id^"'." }
-
-let load_interface_for_seen_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
+let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
-  let res = Error.list_iter
-      (fun (r:t_symb) -> _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Seen mch)) (get_symbols itf)
+  let res =
+    Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
+        _add_symbol env mch.SyntaxCore.lid_loc id
+          (Btype.change_current (Btype.T_Seen mch.SyntaxCore.lid_str) typ)
+          kind (S_Seen mch)) (get_symbols itf)
   in
   match res with
   | Error _ as err -> err
-  | Ok _ ->
+  | Ok () ->
+    let change_current = List.map (fun (s,ty) -> (s,Btype.change_current (Btype.T_Seen mch.SyntaxCore.lid_str) ty)) in
     Error.list_iter (
-      fun (r:t_op) -> _add_operation env mch.lid_loc r.id {args_in=r.args_in;args_out=r.args_out} r.readonly (Src_Seen mch)
+      fun (r:t_op) -> _add_operation env mch.SyntaxCore.lid_loc r.id (change_current r.args_in) (change_current r.args_out) r.readonly (SO_Seen mch)
     ) (get_operations itf)
 
-let load_interface_for_included_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
+let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res =
-    Error.list_iter (fun (r:t_symb) ->
-        _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Included mch)) (get_symbols itf)
+    Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
+        _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Included_Or_Imported mch)) (get_symbols itf)
   in
   match res with
   | Error _ as err -> err
-  | Ok _ ->
+  | Ok () ->
     Error.list_iter (fun (r:t_op) ->
-        _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Included mch)
+        _add_operation env mch.SyntaxCore.lid_loc r.id r.args_in r.args_out r.readonly (SO_Included_Or_Imported mch)
       ) (get_operations itf)
 
-let load_interface_for_refined_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
+let load_interface_for_refined_machine (env:t_ref t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
-  let res =
-    Error.list_iter (fun (r:t_symb) ->
-        _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Refined mch)) (get_symbols itf)
+  let res = Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
+        _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Refined mch)) (get_symbols itf)
   in
   match res with
   | Error _ as err -> err
-  | Ok _ ->
+  | Ok () ->
     Error.list_iter (fun (r:t_op) ->
-        _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Refined mch)
+        _add_operation env mch.SyntaxCore.lid_loc r.id r.args_in r.args_out r.readonly (SO_Refined mch)
       ) (get_operations itf)
 
-let load_interface_for_imported_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
+let load_interface_for_extended_machine (env:'mr t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
-  let res = Error.list_iter (fun (r:t_symb) ->
-      _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Imported mch)) (get_symbols itf)
+  let res = Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
+      _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Included_Or_Imported mch)) (get_symbols itf)
   in
   match res with
   | Error _ as err -> err
-  | Ok _ -> Error.list_iter (
-      fun (r:t_op) -> _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Imported mch)
-    ) (get_operations itf)
-
-let load_interface_for_extended_machine (env:t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
-  let open MachineInterface in
-  let res = Error.list_iter (fun (r:t_symb) ->
-      _add_symbol env mch.lid_loc r.id r.typ r.kind (Src_Imported mch)) (get_symbols itf)
-  in
-  match res with
-  | Error _ as err -> err
-  | Ok _ -> Error.list_iter (
+  | Ok () ->
+    Error.list_iter (
       fun (r:t_op) ->
-       match _add_operation env mch.lid_loc r.id {args_in=r.args_in; args_out=r.args_out} r.readonly (Src_Imported mch) with
+       match _add_operation env mch.SyntaxCore.lid_loc r.id r.args_in r.args_out r.readonly (SO_Included_Or_Imported mch) with
          | Error _ as err -> err
-         | Ok () -> promote_operation env mch.lid_loc r.id
+         | Ok () -> promote_operation env mch.SyntaxCore.lid_loc r.id
     ) (get_operations itf)
 
-let to_interface (env:t) : MachineInterface.t =
-  let aux1 x symb lst =
-    match symb.sy_src with
-    | S_Current_Mch_Only _ | S_Current_And_Refined_Mch _ | S_Current_And_Imported_Mch _
-    | S_Current_Imported_And_Refined_Mch _ | S_Refined_Mch_Only _ | S_Included_Mch_Only _
-    | S_Included_And_Refined_Mch _ ->
-      { MachineInterface.
-        id=x; typ=symb.sy_typ; kind=symb.sy_kind; hidden=false }::lst
-    | S_Imported_And_Refined_Mch _ | S_Imported_Mch_Only _ ->
-      { MachineInterface.
-        id=x; typ=symb.sy_typ; kind=symb.sy_kind; hidden=true }::lst
-    | S_Seen_Mch_Only _  -> lst
+let is_exported_symbol (type mr ac) : (mr,ac) t_decl -> bool = function
+  | D_Machine _ -> true
+  | D_Included_Or_Imported _ -> true
+  | D_Redeclared _ -> true
+  | D_Seen _ -> false
+  | D_Disappearing -> false
+
+let to_interface (type mr) (env:mr t) : MachineInterface.t =
+  let aux1 (x:string) (symb:mr t_symbol_infos) (lst:MachineInterface.t_symb list) =
+    match symb.sy_kind with
+    | Pack (kind,decl) ->
+      if is_exported_symbol decl then
+        (MachineInterface.S { id=x; typ=symb.sy_typ; kind })::lst
+      else lst
   in
-  let aux2 x op lst =
+  let aux2 (id:string) (op:mr t_operation_infos) lst =
+    let x = { MachineInterface.id; args_in=op.op_args_in;
+              args_out=op.op_args_out; readonly=op.op_readonly }
+    in
     match op.op_src with
-    | OS_Seen_Mch _ | OS_Local_Spec _ | OS_Local_Spec_And_Implem _
-    | OS_Imported_And_Refined _ | OS_Imported_Only _ | OS_Included_Mch_Only _ -> lst
-    | OS_Current_Mch_Only _ | OS_Current_And_Refined_Mch _ | OS_Imported_And_Promoted _
-    | OS_Imported_Promoted_And_Refined _ | OS_Refined_Mch_Only _ | OS_Included_And_Refined_Mch _ ->
-      { MachineInterface.
-        id=x; args_in=op.op_args_in; args_out=op.op_args_out; readonly=op.op_readonly }::lst
+    | OD_Current _ -> x::lst
+    | OD_Refined _ -> x::lst
+    | OD_Current_And_Refined _ -> x::lst
+    | OD_Included_Or_Imported_Promoted_And_Refined _ -> x::lst
+    | OD_Included_Or_Imported_And_Refined _ -> x::lst
+    | OD_Included_Or_Imported_And_Promoted _ -> x::lst
+    | OD_Local_Spec _ -> lst
+    | OD_Local_Spec_And_Implem _ -> lst
+    | OD_Seen _ | OD_Included_Or_Imported _ -> lst
   in
   let lst1 = Hashtbl.fold aux1 env.symb [] in
   let lst2 = Hashtbl.fold aux2 env.ops [] in
   MachineInterface.make lst1 lst2
 
-let check_operation_coherence (env:t) (err_loc:loc) (is_imp:bool) : unit Error.t_result =
+let check_operation_coherence_ref (env:t_ref t) (err_loc:loc) : unit Error.t_result =
   try
     Hashtbl.iter (
       fun x op ->
         match op.op_src with
-        | OS_Seen_Mch _ -> ()
-        | OS_Included_Mch_Only _ -> ()
-        | OS_Included_And_Refined_Mch _ -> ()
-        | OS_Refined_Mch_Only _ ->
-          if is_imp then
-            Error.raise_exn err_loc ("The operation '"^x^"' is not refined.")
-        | OS_Local_Spec lc ->
+        | OD_Seen _ -> ()
+        | OD_Included_Or_Imported _ -> ()
+        | OD_Local_Spec_And_Implem _ -> ()
+        | OD_Current_And_Refined _ -> ()
+        | OD_Included_Or_Imported_Promoted_And_Refined _ -> ()
+        | OD_Refined _ -> ()
+(*           Error.raise_exn err_loc ("The operation '"^x^"' is not refined.") *)
+        | OD_Local_Spec lc ->
           Error.raise_exn lc ("The operation '"^x^"' is not implemented.")
-        | OS_Local_Spec_And_Implem _ -> ()
-        | OS_Imported_And_Refined _ ->
-          Error.raise_exn err_loc ("The operation '"^x^"' is not refined (missing promotion?).")
-        | OS_Imported_Only _ -> ()
-        | OS_Current_Mch_Only _ -> ()
-        | OS_Current_And_Refined_Mch _ -> ()
-        | OS_Imported_And_Promoted _ -> ()
-        | OS_Imported_Promoted_And_Refined _ -> ()
+        | OD_Included_Or_Imported_And_Refined _ -> ()
+(*           Error.raise_exn err_loc ("The operation '"^x^"' is not refined (missing promotion?).") *)
     ) env.ops; Ok ()
   with Error.Error err -> Error err
 
-let add_alias (s:t) (alias:string) (ty:Btype.t) : bool =
-  match Btype.add_alias s.alias alias ty with
-  | None -> false
-  | Some alias -> (s.alias <- alias; true)
+let check_operation_coherence_imp (env:t_ref t) (err_loc:loc) : unit Error.t_result =
+  try
+    Hashtbl.iter (
+      fun x op ->
+        match op.op_src with
+        | OD_Seen _ -> ()
+        | OD_Included_Or_Imported _ -> ()
+        | OD_Local_Spec_And_Implem _ -> ()
+        | OD_Current_And_Refined _ -> ()
+        | OD_Included_Or_Imported_Promoted_And_Refined _ -> ()
+        | OD_Refined _ ->
+            Error.raise_exn err_loc ("The operation '"^x^"' is not refined.")
+        | OD_Local_Spec lc ->
+          Error.raise_exn lc ("The operation '"^x^"' is not implemented.")
+        | OD_Included_Or_Imported_And_Refined _ ->
+          Error.raise_exn err_loc ("The operation '"^x^"' is not refined (missing promotion?).")
+    ) env.ops; Ok ()
+  with Error.Error err -> Error err
 
-let fold_symbols (f:'a -> P.ident -> t_kind -> t_source -> Btype.t -> 'a) (env:t) (accu:'a) : 'a =
-  let aux (id:P.ident) (ts:t_symbol_infos) (accu:'a) : 'a = f accu id ts.sy_kind ts.sy_src ts.sy_typ in
-  Hashtbl.fold aux env.symb accu
 
-let fold_operations (f:'a -> P.ident -> t_op_source -> t_op_type -> 'a) (env:t) (accu:'a) : 'a =
-  let aux (id:P.ident) (ts:t_operation_infos) (accu:'a) : 'a = f accu id ts.op_src { args_in=ts.op_args_in; args_out=ts.op_args_out } in
-  Hashtbl.fold aux env.ops accu
+let fold_symbols (f:string -> 'mr t_symbol_infos -> 'a -> 'a) (env:'mr t) : 'a -> 'a =
+  Hashtbl.fold f env.symb
 
-let get_op_source (env:t) (id:P.ident) =
-  match Hashtbl.find_opt env.ops id with
-  | None -> None
-  | Some op ->
-    begin match op.op_src with
-      | OS_Current_Mch_Only _ | OS_Refined_Mch_Only _ | OS_Current_And_Refined_Mch _
-      | OS_Local_Spec _ | OS_Local_Spec_And_Implem _
-      | OS_Included_Mch_Only _ | OS_Included_And_Refined_Mch _ -> None
-      | OS_Seen_Mch mch
-      | OS_Imported_Only mch
-      | OS_Imported_And_Promoted (_,mch)
-      | OS_Imported_And_Refined (mch,_)
-      | OS_Imported_Promoted_And_Refined (_,mch,_) -> Some mch.lid_str
-    end
-
-let get_symbol_source (env:t) (id:P.ident) : P.ident option =
-  match Hashtbl.find_opt env.symb id with
-  | None -> None
-  | Some ifn ->
-    begin match ifn.sy_src with
-      | S_Current_Mch_Only _
-      | S_Refined_Mch_Only _
-      | S_Current_And_Refined_Mch _
-      | S_Included_Mch_Only _
-      | S_Included_And_Refined_Mch _ -> None
-      | S_Seen_Mch_Only mch
-      | S_Imported_Mch_Only mch
-      | S_Current_And_Imported_Mch (_,mch)
-      | S_Imported_And_Refined_Mch (mch,_)
-      | S_Current_Imported_And_Refined_Mch (_,mch,_) -> Some mch.lid_str
-    end
+let fold_operations (f:string -> 'mr t_operation_infos -> 'a -> 'a) (env:'mr t) : 'a -> 'a =
+  Hashtbl.fold f env.ops

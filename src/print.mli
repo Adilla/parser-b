@@ -1,12 +1,11 @@
 (** Printing functions *)
-open Syntax.R
 
-val expression_to_format : expression -> Easy_format.t
-val predicate_to_format : predicate -> Easy_format.t
-val substitution_to_format : substitution -> Easy_format.t
-val component_to_format : component -> Easy_format.t 
+val expression_to_format : PSyntax.expression -> Easy_format.t
+val predicate_to_format : PSyntax.predicate -> Easy_format.t
+val substitution_to_format : PSyntax.substitution -> Easy_format.t
+val component_to_format : PSyntax.component -> Easy_format.t 
 
-val print_expression : out_channel -> expression -> unit
-val print_predicate : out_channel -> predicate -> unit
-val print_substitution : out_channel -> substitution -> unit
-val print_component : out_channel -> component -> unit
+val print_expression : out_channel -> PSyntax.expression -> unit
+val print_predicate : out_channel -> PSyntax.predicate -> unit
+val print_substitution : out_channel -> PSyntax.substitution -> unit
+val print_component : out_channel -> PSyntax.component -> unit

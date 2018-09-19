@@ -1,11 +1,12 @@
 (** Non-empty lists *)
 
-type 'a t
+type +'a t
 (** Non-empty lists of ['a] *)
 
-val equal : p:('a -> 'b -> bool) -> 'a t -> 'b t -> bool
+val equal : ('a -> 'b -> bool) -> 'a t -> 'b t -> bool
 (** [equal ~p l1 l2] tests if two lists are equal.
     Two elements [e1] and [e2] are considered equal when [~p e1 e2] returns [true] *)
+val lb_equal : p:('a -> 'b -> bool) -> 'a t -> 'b t -> bool
 
 val make: 'a -> 'a list -> 'a t
 (** [make hd tl] creates a non-empty list from [(hd::tl)].*)
@@ -31,5 +32,6 @@ val hd : 'a t -> 'a
 val tl : 'a t -> 'a list
 (** [tl nle] returns the tail of [nle] *)
 
-val map : f:('a -> 'b) -> 'a t -> 'b t
+val map : ('a -> 'b) -> 'a t -> 'b t
 (** map function for non-empty list*)
+val lb_map : f:('a -> 'b) -> 'a t -> 'b t

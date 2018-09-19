@@ -1,6 +1,9 @@
 type 'a t = 'a*'a list
 
-let equal ~p (hd1,tl1) (hd2,tl2) =
+let lb_equal ~p (hd1,tl1) (hd2,tl2) =
+  Utils.list_eq p (hd1::tl1) (hd2::tl2)
+
+let equal p (hd1,tl1) (hd2,tl2) =
   Utils.list_eq p (hd1::tl1) (hd2::tl2)
 
 let make hd tl = (hd,tl)
@@ -21,4 +24,5 @@ let from_list_exn = function
 
 let hd = fst
 let tl = snd
-let map ~f (hd,tl) = (f hd,List.map f tl)
+let lb_map ~f (hd,tl) = (f hd,List.map f tl)
+let map f (hd,tl) = (f hd,List.map f tl)

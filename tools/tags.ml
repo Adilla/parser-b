@@ -1,5 +1,6 @@
 open Utils
-open Syntax
+open SyntaxCore
+module P = PSyntax
 
 type scope =
   | Clause of string
@@ -33,7 +34,7 @@ let clause = function
   | 'p' -> "PARAMETERS"
   | _ -> ""
 
-let mk_tag (c:char) (lc:loc) (id:P.ident) (sc:P.ident option) : tag =
+let mk_tag (c:char) (lc:loc) (id:string) (sc:string option) : tag =
   { tagname = id;
     tagkind = c;
     tagfile = lc.Lexing.pos_fname;
@@ -78,7 +79,7 @@ let add_local_operation (tags:tags) (op:P.operation) : tags =
   (mk_tag 'l' op.op_name.lid_loc op.op_name.lid_str None)::tags
 
 let add_clause (tags:tags) (cl:P.clause) : tags =
-  match cl.cl_desc with
+  match cl with
   | Constraints _ | Imports _ | Sees _ | Includes _ | Extends _ | Uses _ | Properties _
   | Invariant _ | Assertions _ | Initialization _ | Values _ -> tags
   | Promotes nle -> List.fold_left add_promotes tags (Nlist.to_list nle)

@@ -2,5 +2,5 @@ type tag
 type tags
 
 val empty : tags
-val add_tags : tags -> Syntax.P.component -> tags
+val add_tags : tags -> PSyntax.component -> tags
 val print_tags : out_channel -> tags -> unit

@@ -1,7 +1,7 @@
 let continue_on_error = ref false
 
 type machine_interface = Global.t_interface
-type t_item = Done of machine_interface | InProgress
+type t_item = Done of machine_interface option | InProgress
 
 let open_in (fn:string) : in_channel option =
   try Some (open_in fn) with Sys_error _ -> None
@@ -20,7 +20,7 @@ let print_error_no_loc msg =
   Printf.fprintf stderr "%s\n" msg;
   if not !continue_on_error then exit(1)
 
-let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface Error.t_result =
+let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface option Error.t_result =
   match safe_find ht filename with
   | Some (Done itf) -> Ok itf
   | Some InProgress ->
@@ -37,7 +37,7 @@ let rec type_component_from_filename (ht:interface_table) (filename:string) : ma
             let () = close_in input in
             let () = Log.write "Typing file '%s'...\n%!" filename in
             let () = Hashtbl.add ht filename InProgress in
-            begin match Typechecker.get_interface (f ht) c with
+            begin match Typechecker.type_component (f ht) c with
               | Ok (_,itf) ->
                 let () = Hashtbl.add ht filename (Done itf) in
                 Ok itf
@@ -54,7 +54,10 @@ and f (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : machine_inter
     ( Error.print_error err; None )
   | Some fn ->
    begin match type_component_from_filename ht fn with
-     | Ok ok -> Some ok
+     | Ok (Some ok) -> Some ok
+     | Ok None ->
+       let err = { Error.err_loc=mch_loc; err_txt="The component '"^mch_name^"' is an implementation." } in (*FIXME*)
+       ( Error.print_error err; None )
      | Error err -> ( print_error err; None )
    end
 
@@ -74,7 +77,7 @@ let add_path x =
 let set_alstm_opt () =
   Typechecker.allow_becomes_such_that_in_implementation := true;
   Typechecker.allow_out_parameters_in_precondition := true;
-  Global.set_extended_sees true
+  Visibility.extended_sees := true
 
 let args = [
   ("-c"    , Arg.Set continue_on_error,   "Continue on error" );

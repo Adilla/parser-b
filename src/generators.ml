@@ -1,6 +1,6 @@
 open Utils
-open Syntax
-open Syntax.R
+open SyntaxCore
+open PSyntax
 open QCheck
 
 (*
@@ -33,13 +33,17 @@ let char_list : char list =
 let gen_string : string Gen.t = fun rd ->
   "str_" ^ (Gen.string_size ~gen:(Gen.oneofl char_list) (Gen.return 3) rd)
 
+let gen_lident : lident Gen.t = fun rd ->
+  { lid_str="id_" ^ (Gen.string_size ~gen:(Gen.oneofl char_list) (Gen.return 3) rd);
+    lid_loc=Utils.dloc }
+
 let small_nat = Gen.map Int32.of_int Gen.small_nat
 
-let gen_e_constant_bi : Syntax.e_builtin Gen.t = fun random ->
+let gen_e_constant_bi : e_builtin Gen.t = fun random ->
   match Gen.int_bound 43 random with
   | 0 -> Integer (small_nat random)
   | 1 -> String (gen_string random)
-  | _ -> Gen.oneofl Syntax.expr_constants random
+  | _ -> Gen.oneofl expr_constants random
 
 (*
 let gen_ident : ident Gen.t = gen_string
@@ -54,8 +58,8 @@ let split_int n rd =
   let k = Random.State.int rd (n + 1) in
   (k, n - k)
 
-let gen_string_nelist : string Nlist.t Gen.t =
-  fun rd -> Nlist.make (gen_string rd) (Gen.small_list gen_string rd)
+let gen_lident_nelist : lident Nlist.t Gen.t =
+  fun rd -> Nlist.make (gen_lident rd) (Gen.small_list gen_lident rd)
 
 let split_int_into_nel n rd =
   let rec aux n k = (*returns a list of size (k+1) which sum is n *)
@@ -77,9 +81,9 @@ let sized_nel (split:int Nlist.t Gen.sized) (gen:'a Gen.sized)
   let flst = split n rd in
   Nlist.make (gen (Nlist.hd flst) rd) (List.map (fun f -> gen f rd) (Nlist.tl flst))
 
-let mk_expr exp_desc = { exp_desc }
-let mk_pred prd_desc = { prd_desc }
-let mk_subst sub_desc = { sub_desc }
+let mk_expr exp_desc = { exp_desc; exp_loc=Utils.dloc; exp_par=false }
+let mk_pred prd_desc = { prd_desc; prd_loc=Utils.dloc; prd_par=false }
+let mk_subst sub_desc = { sub_desc; sub_loc=Utils.dloc; sub_be=false }
 
 let rec sized_expr : expression Gen.sized = fun n ->
   if n <= 0 then
@@ -104,7 +108,7 @@ let rec sized_expr : expression Gen.sized = fun n ->
              (sized_pair split_int sized_expr sized_expr (n-1)));
         Gen.map (fun (x,(e1,e2)) -> mk_expr (Couple(x,e1,e2)))
           (Gen.pair
-             (Gen.oneofl [Comma false;Maplet])
+             (Gen.oneofl [Comma;Maplet])
              (sized_pair split_int sized_expr sized_expr (n-1))
           );
         Gen.map (fun lst -> mk_expr (Sequence lst))
@@ -113,24 +117,24 @@ let rec sized_expr : expression Gen.sized = fun n ->
           (sized_nel split_int_into_nel sized_expr (n-1));
         Gen.map (fun (nel,p) -> mk_expr (Comprehension (nel,p)))
           (Gen.pair
-             gen_string_nelist
+             gen_lident_nelist
              (sized_pred (n-1)) );
         Gen.map (fun (bi,nel,(p,e)) -> mk_expr (Binder (bi,nel,p,e)))
           (Gen.triple
              (Gen.oneofl [Sum;Prod;Q_Union;Q_Intersection;Lambda])
-             gen_string_nelist
+             gen_lident_nelist
              (sized_pair split_int sized_pred sized_expr (n-1)) );
         Gen.map (fun (e,id) -> mk_expr (Record_Field_Access (e,id)))
-          (Gen.pair (sized_expr (n-1)) gen_string);
+          (Gen.pair (sized_expr (n-1)) gen_lident);
         Gen.map (fun nel -> mk_expr (Record nel))
           (sized_nel split_int_into_nel
              (fun fuel -> Gen.pair
-                 gen_string
+                 gen_lident
                  (sized_expr fuel) ) (n-1));
         Gen.map (fun nel -> mk_expr (Record_Type nel))
           (sized_nel split_int_into_nel
              (fun fuel -> Gen.pair
-                 gen_string
+                 gen_lident
                  (sized_expr fuel) ) (n-1));
       ]
 
@@ -156,11 +160,11 @@ and sized_pred : predicate Gen.sized = fun n ->
              (sized_pair split_int sized_expr sized_expr (n-1)));
         Gen.map (fun (nel,p) -> mk_pred (Universal_Q (nel,p)))
           (Gen.pair
-             gen_string_nelist
+             gen_lident_nelist
              (sized_pred (n-1)) );
         Gen.map (fun (nel,p) -> mk_pred (Existential_Q (nel,p)))
           (Gen.pair
-             gen_string_nelist
+             gen_lident_nelist
              (sized_pred (n-1)) );
       ]
 
@@ -195,17 +199,17 @@ let rec sized_subst : substitution Gen.sized = fun n rd ->
     Gen.oneof [
       Gen.return (mk_subst Skip);
       Gen.map (fun (id_nel,e_nel) -> mk_subst (Affectation (Tuple id_nel,e_nel)))
-        (Gen.pair gen_string_nelist gen_expr) ;
+        (Gen.pair gen_lident_nelist gen_expr) ;
       Gen.map (fun (id,e_nel,e)-> mk_subst (Affectation(Function(id,e_nel),e)))
-        (Gen.triple gen_string (gen_nel gen_expr) gen_expr);
+        (Gen.triple gen_lident (gen_nel gen_expr) gen_expr);
       Gen.map (fun (id,fd,e) -> mk_subst (Affectation (Record(id,fd),e)))
-        (Gen.triple gen_string gen_string gen_expr);
+        (Gen.triple gen_lident gen_lident gen_expr);
       Gen.map (fun (id_nel,e) -> mk_subst (BecomesElt (id_nel,e)))
-        (Gen.pair gen_string_nelist gen_expr);
+        (Gen.pair gen_lident_nelist gen_expr);
       Gen.map (fun (id_nel,p) -> mk_subst (BecomesSuch (id_nel,p)))
-        (Gen.pair gen_string_nelist gen_pred);
+        (Gen.pair gen_lident_nelist gen_pred);
       Gen.map (fun (id_lst,id,e_lst) -> mk_subst (CallUp (id_lst,id,e_lst)))
-        (Gen.triple (Gen.small_list gen_string) gen_string (Gen.small_list gen_expr))
+        (Gen.triple (Gen.small_list gen_lident) gen_lident (Gen.small_list gen_expr))
     ] rd
   else
     Gen.oneof [
@@ -229,13 +233,13 @@ let rec sized_subst : substitution Gen.sized = fun n rd ->
               (fun fuel -> Gen.pair (fun rd -> Nlist.make1 (gen_expr rd)) (sized_subst fuel))
               sized_subst (n-1)) );
       Gen.map (fun (id_nel,p,s) -> mk_subst (Any (id_nel,p,s)))
-        (Gen.triple gen_string_nelist gen_pred (sized_subst (n-1)));
+        (Gen.triple gen_lident_nelist gen_pred (sized_subst (n-1)));
       Gen.map (fun (id_nel,ie_nel,s) -> mk_subst (Let (id_nel,ie_nel,s)))
-        (Gen.triple gen_string_nelist
-           (gen_nel (Gen.pair gen_string gen_expr))
+        (Gen.triple gen_lident_nelist
+           (gen_nel (Gen.pair gen_lident gen_expr))
            (sized_subst (n-1)));
       Gen.map (fun (id_nel,s) -> mk_subst (Var (id_nel,s)))
-        (Gen.pair gen_string_nelist (sized_subst (n-1)));
+        (Gen.pair gen_lident_nelist (sized_subst (n-1)));
       Gen.map (fun (p,s,q,e) -> mk_subst (While (p,s,q,e)))
         (Gen.quad gen_pred (sized_subst (n-1)) gen_pred gen_expr);
       Gen.map (fun (s1,s2) -> mk_subst (Sequencement (s1,s2)))
@@ -247,7 +251,7 @@ let rec sized_subst : substitution Gen.sized = fun n rd ->
 let gen_subst : substitution Gen.t = sized_subst 7
 
 let gen_minst : machine_instanciation Gen.t = fun rd ->
-  { mi_mch=gen_string rd;
+  { mi_mch=gen_lident rd;
     mi_params=Gen.list_size (Gen.oneofl [0;1;2;3]) gen_expr rd }
 
 let small_list (gen:'a Gen.t) : ('a list) Gen.t =
@@ -258,47 +262,47 @@ let small_nelist (gen:'a Gen.t) : ('a Nlist.t) Gen.t = fun rd ->
   Nlist.from_list_exn lst
 
 let gen_set : set Gen.t =
-  Gen.oneof [ Gen.map (fun id -> Abstract_Set id) gen_string;
+  Gen.oneof [ Gen.map (fun id -> Abstract_Set id) gen_lident;
               Gen.map (fun (id,lst) -> Concrete_Set (id,lst)) 
-                (Gen.pair gen_string (small_list gen_string)) ]
+                (Gen.pair gen_lident (small_list gen_lident)) ]
 
 let gen_op : operation Gen.t = fun rd ->
-  { op_out = Gen.small_list gen_string rd;
-    op_name = gen_string rd;
-    op_in = Gen.small_list gen_string rd;
+  { op_out = Gen.small_list gen_lident rd;
+    op_name = gen_lident rd;
+    op_in = Gen.small_list gen_lident rd;
     op_body = gen_subst rd }
 
-let gen_machine : _ machine_desc Gen.t = fun rd -> {
+let gen_machine : machine Gen.t = fun rd -> {
     mch_constraints = Gen.opt gen_pred rd;
-    mch_sees = small_list gen_string rd;
+    mch_sees = small_list gen_lident rd;
     mch_includes = small_list gen_minst rd;
-    mch_promotes = small_list gen_string rd;
+    mch_promotes = small_list gen_lident rd;
     mch_extends = small_list gen_minst rd;
-    mch_uses = small_list gen_string rd;
+    mch_uses = small_list gen_lident rd;
     mch_sets = small_list gen_set rd;
-    mch_concrete_constants = small_list gen_string rd;
-    mch_abstract_constants = small_list gen_string rd;
+    mch_concrete_constants = small_list gen_lident rd;
+    mch_abstract_constants = small_list gen_lident rd;
     mch_properties = Gen.opt gen_pred rd;
-    mch_concrete_variables = small_list gen_string rd;
-    mch_abstract_variables = small_list gen_string rd;
+    mch_concrete_variables = small_list gen_lident rd;
+    mch_abstract_variables = small_list gen_lident rd;
     mch_invariant = Gen.opt gen_pred rd;
     mch_assertions = small_list gen_pred rd;
     mch_initialisation = Gen.opt gen_subst rd;
     mch_operations = small_list gen_op rd;
 }
 
-let gen_refinement : _ refinement_desc Gen.t = fun rd -> {
-  ref_refines = gen_string rd;
-  ref_sees = small_list gen_string rd;
+let gen_refinement : refinement Gen.t = fun rd -> {
+  ref_refines = gen_lident rd;
+  ref_sees = small_list gen_lident rd;
   ref_includes = small_list gen_minst rd;
-  ref_promotes = small_list gen_string rd;
+  ref_promotes = small_list gen_lident rd;
   ref_extends = small_list gen_minst rd;
   ref_sets = small_list gen_set rd;
-  ref_concrete_constants = small_list gen_string rd;
-  ref_abstract_constants = small_list gen_string rd;
+  ref_concrete_constants = small_list gen_lident rd;
+  ref_abstract_constants = small_list gen_lident rd;
   ref_properties = Gen.opt gen_pred rd;
-  ref_concrete_variables = small_list gen_string rd;
-  ref_abstract_variables = small_list gen_string rd;
+  ref_concrete_variables = small_list gen_lident rd;
+  ref_abstract_variables = small_list gen_lident rd;
   ref_invariant = Gen.opt gen_pred rd;
   ref_assertions = small_list gen_pred rd;
   ref_initialisation = Gen.opt gen_subst rd;
@@ -306,17 +310,17 @@ let gen_refinement : _ refinement_desc Gen.t = fun rd -> {
   ref_local_operations = small_list gen_op rd;
 }
 
-let gen_implementation : _ implementation_desc Gen.t = fun rd -> {
-  imp_refines = gen_string rd;
-  imp_sees = small_list gen_string rd;
+let gen_implementation : implementation Gen.t = fun rd -> {
+  imp_refines = gen_lident rd;
+  imp_sees = small_list gen_lident rd;
   imp_imports = small_list gen_minst rd;
-  imp_promotes = small_list gen_string rd;
+  imp_promotes = small_list gen_lident rd;
   imp_extends = small_list gen_minst rd;
   imp_sets = small_list gen_set rd;
-  imp_concrete_constants = small_list gen_string rd;
+  imp_concrete_constants = small_list gen_lident rd;
   imp_properties = Gen.opt gen_pred rd;
-  imp_values = small_list (Gen.pair gen_string gen_expr) rd;
-  imp_concrete_variables = small_list gen_string rd;
+  imp_values = small_list (Gen.pair gen_lident gen_expr) rd;
+  imp_concrete_variables = small_list gen_lident rd;
   imp_invariant = Gen.opt gen_pred rd;
   imp_assertions = small_list gen_pred rd;
   imp_initialisation = Gen.opt gen_subst rd;
@@ -329,13 +333,13 @@ let mk_ref (co_name,co_parameters,desc) = { co_name; co_parameters; co_desc=Refi
 let mk_imp (co_name,co_parameters,desc) = { co_name; co_parameters; co_desc=Implementation desc }
 
 let gen_machine : component Gen.t =
-  Gen.map mk_mch (Gen.triple gen_string (Gen.small_list gen_string) gen_machine)
+  Gen.map mk_mch (Gen.triple gen_lident (Gen.small_list gen_lident) gen_machine)
 
 let gen_refinement : component Gen.t =
-  Gen.map mk_ref (Gen.triple gen_string (Gen.small_list gen_string) gen_refinement)
+  Gen.map mk_ref (Gen.triple gen_lident (Gen.small_list gen_lident) gen_refinement)
 
 let gen_implementation : component Gen.t =
-  Gen.map mk_imp (Gen.triple gen_string (Gen.small_list gen_string) gen_implementation)
+  Gen.map mk_imp (Gen.triple gen_lident (Gen.small_list gen_lident) gen_implementation)
 
 let gen_component : component Gen.t =
   Gen.oneof [ gen_machine; gen_refinement; gen_implementation ]

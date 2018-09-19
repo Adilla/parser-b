@@ -1,4 +1,5 @@
 open Codegen.Rust
+open SyntaxCore
 
 let mk_atom (s:string) : Easy_format.t =
   let open Easy_format in Atom (s,atom)
@@ -30,10 +31,10 @@ let b0_binary_op_to_string : t_b0_binary_op -> string = function
   | B0_Disjonction -> "||"
   | B0_Equality -> "=="
   | B0_Disequality -> "!="
-  | B0_Inequality Syntax.Smaller_or_Equal -> "<="
-  | B0_Inequality Syntax.Strictly_Smaller -> "<"
-  | B0_Inequality Syntax.Greater_or_Equal -> ">="
-  | B0_Inequality Syntax.Strictly_Greater -> ">"
+  | B0_Inequality Smaller_or_Equal -> "<="
+  | B0_Inequality Strictly_Smaller -> "<"
+  | B0_Inequality Greater_or_Equal -> ">="
+  | B0_Inequality Strictly_Greater -> ">"
   | B0_Product -> "*"
   | B0_Difference -> "-"
   | B0_Addition -> "+"
@@ -140,17 +141,18 @@ let rec mk_array_init (nle:Easy_format.t Nlist.t) (def:Easy_format.t) : Easy_for
     let def = mk_array_init (Nlist.make hd tl) def in
     mk_list "vec![" ";" "]" st [def;sz]
 
-
 let rec is_by_ref_type = function
-  | T_Int | T_Bool | T_Abstract _ -> false
+  | T_Int | T_Bool | T_Abstract _ | T_Enum _ -> false
   | T_String | T_Array _ -> true
   | T_Record lst -> List.exists (fun (_,ty) -> is_by_ref_type ty) lst
 
 let rec mk_expr clone (e0:t_b0_expr) : Easy_format.t =
   match e0.exp0_desc with
-  | B0_Extern(pkg,id,EIK_Variable) ->
+  | B0_Global_Ident(id,IK_Variable (Some pkg)) ->
     mk_atom (Codegen.Rust_ident.pkg_to_string pkg^"::_get_"^Codegen.Rust_ident.to_string id^"()")
-  | B0_Extern(pkg,id,EIK_Constant) ->
+  | B0_Global_Ident (id,IK_Variable None) ->
+    mk_atom ("_get_"^Codegen.Rust_ident.to_string id^"()") 
+  | B0_Global_Ident(id,(IK_Constant (Some pkg)|IK_Enum (Some pkg))) ->
     if is_by_ref_type e0.exp0_type then
       if clone then
         mk_atom ("(" ^ Codegen.Rust_ident.pkg_to_string pkg ^ "::" ^ Codegen.Rust_ident.to_string id ^ ").clone()")
@@ -158,15 +160,15 @@ let rec mk_expr clone (e0:t_b0_expr) : Easy_format.t =
         mk_atom ("(" ^ Codegen.Rust_ident.pkg_to_string pkg ^ "::" ^ Codegen.Rust_ident.to_string id ^ ")")
     else
       mk_atom (Codegen.Rust_ident.pkg_to_string pkg ^ "::" ^ Codegen.Rust_ident.to_string id)
-  | B0_Ident (id,IK_Variable) -> mk_atom ("_get_"^Codegen.Rust_ident.to_string id^"()") 
-  | B0_Ident(id,(IK_Constant|IK_Local LIK_In)) ->
+  | B0_Local_Ident(id,Local.L_Param_In)
+  | B0_Global_Ident(id,(IK_Constant None|IK_Enum None)) ->
     if is_by_ref_type e0.exp0_type then
       if clone then
         mk_atom ("(*" ^ Codegen.Rust_ident.to_string id ^ ").clone()")
       else
         mk_atom ("*" ^ Codegen.Rust_ident.to_string id)
     else mk_atom (Codegen.Rust_ident.to_string id)
-  | B0_Ident(id,IK_Local (LIK_Var|LIK_Out)) ->
+  | B0_Local_Ident(id,(Local.L_Expr_Binder|Local.L_Subst_Binder|Local.L_Param_Out)) ->
     if clone then
       mk_atom (Codegen.Rust_ident.to_string id ^ ".clone()")
     else
@@ -178,9 +180,14 @@ let rec mk_expr clone (e0:t_b0_expr) : Easy_format.t =
   | B0_Builtin_2 (op,e1,e2) -> mk_infix_op op (mk_expr_wp false e1) (mk_expr_wp false e2)
   | B0_Array lst -> mk_array (List.map (mk_expr false) lst)
   | B0_Array_Init (rg,def) ->
-    let rg = Nlist.map (fun (_,y) -> (*FIXME*) (mk_expr false y)) rg in
+    let rg = Nlist.map (
+        function
+        | R_Interval (_,y) -> mk_expr false y (*FIXME*)
+        | R_Concrete_Set (i,_) -> mk_const (B0_Integer (Int32.of_int i))
+      ) rg
+    in
     mk_array_init rg (mk_expr false def)
-  | B0_Array_Access (f,args) ->
+  | B0_Array_Access (f,args) -> (*FIXME*)
     let aux arg = mk_list "(" "" ") as usize" Easy_format.list [mk_expr false arg] in
     let aa =
       let args = Nlist.map aux args in
@@ -224,16 +231,17 @@ let rec mk_expr clone (e0:t_b0_expr) : Easy_format.t =
 
 and mk_expr_wp clone (e0:t_b0_expr) : Easy_format.t =
   match e0.exp0_desc with
-  | B0_Extern(pkg,id,_) when not (is_by_ref_type e0.exp0_type)  -> mk_expr clone e0 (*FIXME*)
-  | B0_Ident(id,(IK_Constant|IK_Local LIK_In)) when not (is_by_ref_type e0.exp0_type) -> mk_expr clone e0
-  | B0_Builtin_0 _ | B0_Ident(_,IK_Local (LIK_Var|LIK_Out)) -> mk_expr clone e0
+  | B0_Global_Ident(id,_) when not (is_by_ref_type e0.exp0_type)  -> mk_expr clone e0 (*FIXME*)
+  | B0_Local_Ident(id,Local.L_Param_In) when not (is_by_ref_type e0.exp0_type) -> mk_expr clone e0
+  | B0_Global_Ident(id,IK_Constant None) when not (is_by_ref_type e0.exp0_type) -> mk_expr clone e0
+  | B0_Builtin_0 _ | B0_Local_Ident(_,(Local.L_Expr_Binder|Local.L_Subst_Binder|Local.L_Param_Out)) -> mk_expr clone e0
   | _ -> add_par (mk_expr clone e0)
 
 and mk_arg e =
   if is_by_ref_type e.exp0_type then
     match e.exp0_desc with
 (*     | B0_Extern (pkg,id) -> mk_atom (Codegen.Rust_ident.pkg_to_string pkg ^ "::" ^ Codegen.Rust_ident.to_string id) *)
-    | B0_Ident (id,IK_Local LIK_In) (*| B0_Ident (id,IK_Constant)*) -> mk_atom (Codegen.Rust_ident.to_string id)
+    | B0_Local_Ident (id,Local.L_Param_In) (*| B0_Ident (id,IK_Constant)*) -> mk_atom (Codegen.Rust_ident.to_string id)
     | _ -> mk_list "&(" "" ")" Easy_format.list [mk_expr false e]
   else
     mk_expr false e
@@ -266,6 +274,7 @@ let rec b0_type_to_string : t_b0_type -> string = function
   | T_Bool -> "bool"
   | T_String -> "String"
   | T_Abstract ts -> t_symb_to_string ts
+  | T_Enum ts -> t_symb_to_string ts
   | T_Array (dim,ty) ->
     let rec aux i str =
       if i <= 0 then str
@@ -285,7 +294,7 @@ let rec get_default_value (ty:t_b0_type) : Easy_format.t =
     | T_Int -> mk_atom "0"
     | T_String -> mk_atom "\"\""
     | T_Bool -> mk_atom "true"
-    | T_Abstract s -> mk_atom "Default::default()"
+    | T_Enum _ | T_Abstract _ -> mk_atom "Default::default()"
     | T_Array (_,tg) -> mk_atom "vec![]"
     | T_Record lst ->
       let aux (x,_) (y,_) =
@@ -301,7 +310,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
   | B0_Affectation (LHS_Variable (x,MIK_Variable),e) ->
     mk_label 2 false `Auto (mk_atom ("_set_"^Codegen.Rust_ident.to_string x))
       (mk_list "(" "" ");" Easy_format.list [mk_expr true e])
-  | B0_Affectation (LHS_Variable (x,MIK_Local),e) ->
+  | B0_Affectation (LHS_Variable (x,(MIK_Param|MIK_Local)),e) ->
     let st = Easy_format.list in
     mk_list "" "=" ";" st [mk_atom (Codegen.Rust_ident.to_string x);mk_expr true e]
   | B0_Affectation (LHS_Array(x,MIK_Variable,args),e) ->
@@ -317,16 +326,16 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
       (mk_atom "(_aux);")
     in
     mk_sequence_nl [aff1;aff2;aff3]
-  | B0_Affectation (LHS_Array(f,MIK_Local,args),e) ->
+  | B0_Affectation (LHS_Array(f,(MIK_Param|MIK_Local),args),e) ->
     let st = Easy_format.list in
-    let args = mk_list "[" "][" "]" st (List.map (mk_expr false) (Nlist.to_list args)) in
+    let args = mk_list "[(" ") as usize][(" ") as usize]" st (List.map (mk_expr false) (Nlist.to_list args)) in
     let arr = mk_label 2 false `Auto (mk_atom (Codegen.Rust_ident.to_string f)) args in
     let def = mk_expr true e in
     let st = Easy_format.list in
     mk_list "" "=" ";" st [arr;def]
   | B0_Affectation (LHS_Record(rd,MIK_Variable,fd),e) ->
     Error.raise_exn s0.sub0_loc "Not implemented: assignment of global record field." (*FIXME*)
-  | B0_Affectation (LHS_Record(rd,MIK_Local,fd),e) ->
+  | B0_Affectation (LHS_Record(rd,(MIK_Param|MIK_Local),fd),e) ->
     let st = Easy_format.list in
     let arr = mk_atom (Codegen.Rust_ident.to_string rd ^ "." ^ Codegen.Rust_ident.to_string fd) in
     let def = mk_expr true e in
@@ -354,7 +363,12 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
   | B0_Case (e,cases,def) ->
     let mtch = mk_label 2 true `Auto (mk_atom "match") (mk_expr false e) in
     let aux (lst,s) =
-      let lst = List.map (fun e -> mk_atom (Int32.to_string e)) (Nlist.to_list lst) in
+      let lst = List.map ( function
+          | CS_Int e -> mk_atom (Int32.to_string e)
+          | CS_Bool true -> mk_atom "true"
+          | CS_Bool false -> mk_atom "false"
+          | CS_Enum qid -> mk_ident qid
+        ) (Nlist.to_list lst) in
       let st = Easy_format.list in
       let whn = mk_list "" "," "=>" st lst in
       mk_label 4 true `Auto whn (mk_list "{" "" "}" Easy_format.list [mk_subst s])
@@ -412,7 +426,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
       | MIK_Variable ->
         mk_label 2 false `Auto (mk_atom ("_set_" ^ (Codegen.Rust_ident.to_string r)))
           (mk_list "(" "" ");" Easy_format.list [call])
-      | MIK_Local ->
+      | MIK_Local | MIK_Param ->
         let lhs = mk_atom (Codegen.Rust_ident.to_string r) in
         mk_list "" "=" ";" Easy_format.list [lhs;call]
     end
@@ -433,7 +447,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
         match is_var with
         | MIK_Variable ->
           mk_atom ("_set_" ^ (Codegen.Rust_ident.to_string x) ^ "(_x."^string_of_int i^");")
-        | MIK_Local ->
+        | MIK_Local | MIK_Param ->
           mk_atom (Codegen.Rust_ident.to_string x ^ " = _x." ^ string_of_int i ^ ";")
       ) ret in 
     mk_sequence_nl (call::affs)
@@ -454,6 +468,14 @@ let mk_type (ty:t_type) : Easy_format.t =
   match ty.ty_def with
   | D_Alias ts -> mk_atom ("pub type " ^ Codegen.Rust_ident.to_string ty.ty_name ^ " = " ^ t_symb_to_string ts ^ ";")
   | D_Int -> mk_atom ("pub type " ^ Codegen.Rust_ident.to_string ty.ty_name ^ " = i32;")
+  | D_Enum elts ->
+   begin
+     let hd = mk_atom ("pub type " ^ Codegen.Rust_ident.to_string ty.ty_name ^ " = i32;") in
+     let tl = List.mapi (fun i e ->
+         mk_atom ("pub const " ^ Codegen.Rust_ident.to_string e ^ ": i32 = " ^ string_of_int i ^ ";")
+       )  elts in
+     mk_list "" "" "" Easy_format.list (hd::tl)
+   end
 
 let mk_arg_in (a:t_arg) : Easy_format.t =
   let ref = if is_by_ref_type a.arg_type then "&" else "" in

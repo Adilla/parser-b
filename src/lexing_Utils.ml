@@ -3,16 +3,16 @@ type t_token = Grammar.token * Lexing.position * Lexing.position
 let token_to_string tk =
   let open Grammar in
   match tk with
-    | CONSTANT x -> Syntax.builtin_to_string x
-    | E_PREFIX x -> Syntax.builtin_to_string x
-    | PREDICATE x -> Syntax.pred_bop_to_string x
-    | E_BINDER x -> Syntax.binder_to_string x
-    | E_INFIX_125 x -> Syntax.builtin_to_string x
-    | E_INFIX_160 x -> Syntax.builtin_to_string x
-    | E_INFIX_170 x -> Syntax.builtin_to_string x
-    | E_INFIX_180 x -> Syntax.builtin_to_string x
-    | E_INFIX_190 x -> Syntax.builtin_to_string x
-    | E_INFIX_200 x -> Syntax.builtin_to_string x
+    | CONSTANT x -> SyntaxCore.builtin_to_string x
+    | E_PREFIX x -> SyntaxCore.builtin_to_string x
+    | PREDICATE x -> SyntaxCore.pred_bop_to_string x
+    | E_BINDER x -> SyntaxCore.binder_to_string x
+    | E_INFIX_125 x -> SyntaxCore.builtin_to_string x
+    | E_INFIX_160 x -> SyntaxCore.builtin_to_string x
+    | E_INFIX_170 x -> SyntaxCore.builtin_to_string x
+    | E_INFIX_180 x -> SyntaxCore.builtin_to_string x
+    | E_INFIX_190 x -> SyntaxCore.builtin_to_string x
+    | E_INFIX_200 x -> SyntaxCore.builtin_to_string x
     | PROPERTIES -> "PROPERTIES"
     | OF -> "OF"
     | LBRA_COMP -> "{"

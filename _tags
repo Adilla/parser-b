@@ -1,1 +1,1 @@
-true: use_menhir, package(qcheck), package(easy-format), package(menhirLib), package(str), table, debug, bin_annot, profile
+true: use_menhir, package(qcheck), package(easy-format), package(menhirLib), package(str), table, debug, bin_annot, profile, package(ppx_deriving.std)

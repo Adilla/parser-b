@@ -129,7 +129,7 @@ type tk_or_tk_list =
 
 type tree = tk_or_tk_list list
 
-let rec tree_subst (params:(string*t_token list) list) : t_token list -> tree =
+let tree_subst (params:(string*t_token list) list) : t_token list -> tree =
   List.map (function
   | (Grammar.IDENT id,_,_) as tk ->
     begin match List.assoc_opt id params with
@@ -138,7 +138,7 @@ let rec tree_subst (params:(string*t_token list) list) : t_token list -> tree =
     end
   | tk -> Token tk)
 
-let rec tree_subst_loc st ed (params:(string*t_token list) list) : t_token list -> tree =
+let tree_subst_loc st ed (params:(string*t_token list) list) : t_token list -> tree =
   List.map (function
   | (Grammar.IDENT id as tk,_,_) ->
     begin match List.assoc_opt id params with
@@ -155,8 +155,8 @@ let rec tree_pop : tree -> (t_token*tree) option = function
 
 let rec tree_top : tree -> t_token option = function
   | [] -> None
-  | (Token tk)::lst -> Some tk
+  | (Token tk)::_ -> Some tk
   | (List [])::lst -> tree_top lst
-  | (List (hd::tl))::lst -> Some hd
+  | (List (hd::_))::_ -> Some hd
 
 let token_to_tree tk = [Token tk]

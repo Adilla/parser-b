@@ -14,7 +14,7 @@ struct
   let mk_state (s:Lexer.state) : state =
     { lex_state=s; stack=[] }
 
-  let rec get_token_exn (s:state) : t_token =
+  let get_token_exn (s:state) : t_token =
     match s.stack with
     | [] -> Lexer.get_token_exn s.lex_state
     | hd::tl -> ( s.stack <- tl; hd )

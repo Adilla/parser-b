@@ -231,9 +231,9 @@ let rec mk_expr clone (e0:t_b0_expr) : Easy_format.t =
 
 and mk_expr_wp clone (e0:t_b0_expr) : Easy_format.t =
   match e0.exp0_desc with
-  | B0_Global_Ident(id,_) when not (is_by_ref_type e0.exp0_type)  -> mk_expr clone e0 (*FIXME*)
-  | B0_Local_Ident(id,Local.L_Param_In) when not (is_by_ref_type e0.exp0_type) -> mk_expr clone e0
-  | B0_Global_Ident(id,IK_Constant None) when not (is_by_ref_type e0.exp0_type) -> mk_expr clone e0
+  | B0_Global_Ident(_,_) when not (is_by_ref_type e0.exp0_type)  -> mk_expr clone e0 (*FIXME*)
+  | B0_Local_Ident(_,Local.L_Param_In) when not (is_by_ref_type e0.exp0_type) -> mk_expr clone e0
+  | B0_Global_Ident(_,IK_Constant None) when not (is_by_ref_type e0.exp0_type) -> mk_expr clone e0
   | B0_Builtin_0 _ | B0_Local_Ident(_,(Local.L_Expr_Binder|Local.L_Subst_Binder|Local.L_Param_Out)) -> mk_expr clone e0
   | _ -> add_par (mk_expr clone e0)
 
@@ -295,7 +295,7 @@ let rec get_default_value (ty:t_b0_type) : Easy_format.t =
     | T_String -> mk_atom "\"\""
     | T_Bool -> mk_atom "true"
     | T_Enum _ | T_Abstract _ -> mk_atom "Default::default()"
-    | T_Array (_,tg) -> mk_atom "vec![]"
+    | T_Array (_,_) -> mk_atom "vec![]"
     | T_Record lst ->
       let aux (x,_) (y,_) =
         String.compare (Codegen.Rust_ident.to_string x) (Codegen.Rust_ident.to_string y)
@@ -333,7 +333,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     let def = mk_expr true e in
     let st = Easy_format.list in
     mk_list "" "=" ";" st [arr;def]
-  | B0_Affectation (LHS_Record(rd,MIK_Variable,fd),e) ->
+  | B0_Affectation (LHS_Record(_,MIK_Variable,_),_) ->
     Error.raise_exn s0.sub0_loc "Not implemented: assignment of global record field." (*FIXME*)
   | B0_Affectation (LHS_Record(rd,(MIK_Param|MIK_Local),fd),e) ->
     let st = Easy_format.list in
@@ -452,7 +452,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
       ) ret in 
     mk_sequence_nl (call::affs)
 
-  | B0_Sequencement (s1,s2) ->
+  | B0_Sequencement (_,_) ->
     begin match get_seq_list s0 with
       | [] -> mk_atom "{};"
       | seqs ->

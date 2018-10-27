@@ -165,7 +165,7 @@ let _ = List.iter (fun (name, keyword) ->
    "rev"        , E_PREFIX SyntaxCore.Reverse;
   ]
 
-let ident_to_token loc id =
+let ident_to_token _ id =
   try Hashtbl.find keywords id
   with Not_found -> IDENT id
 

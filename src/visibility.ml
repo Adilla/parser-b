@@ -8,11 +8,11 @@ type t_mch_op = private C
 type t_ref_prop = private D
 type t_ref_inv = private E
 type t_ref_op = private F
-type t_imp_val = private G
-type t_imp_prop = private H
-type t_imp_inv = private I
-type t_imp_op = private J
-type t_imp_lop = private K
+type t_imp_prop = private G
+type t_imp_inv = private H
+type t_imp_op = private I
+type t_imp_lop = private J
+type t_imp_val = private K
 type 'cl t_assert = private L
 
 type ('mr,'cl) clause =

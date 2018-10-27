@@ -1,3 +1,4 @@
+open Blib
 let continue_on_error = ref false
 let out = ref stdout
 
@@ -16,8 +17,7 @@ let run_on_file filename =
   try
     let input = open_in filename in
     match Parser.parse_component_from_channel ~filename input with
-    | Ok c -> assert false (*FIXME*)
-(*       Sexp.sexp_to_channel !out (Sexp.sexp_of_component c) *)
+    | Ok c -> Sexp.sexp_to_channel !out (Sexp.sexp_of_component c)
     | Error err -> print_error err
   with
   | Sys_error msg -> print_error_no_loc msg

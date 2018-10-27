@@ -20,7 +20,7 @@ let sexp_to_string (x:t) : string =
 let sexp_to_channel (out:out_channel) (x:t) : unit =
   Easy_format.Pretty.to_channel out (to_easy_format x)
 
-let sexp_of_string (v:string) : t = Atom ("ident_" ^ v)
+(* let sexp_of_string (v:string) : t = Atom ("ident_" ^ v) *)
 let sexp_of_lident (v:lident) : t = Atom ("ident_" ^ v.lid_str)
 
 let rec sexp_of_expr : P.expression -> t = fun e ->
@@ -140,9 +140,11 @@ let rec sexp_of_subst : P.substitution -> t = fun s ->
     List [Atom "PAR";sexp_of_subst s1;sexp_of_subst s2]
 
 
+(*
 let add lst f = function
   | None -> lst
   | Some x -> (f x)::lst
+*)
 
 let sexp_of_set : P.set -> t = function
   | Abstract_Set v -> sexp_of_lident v
@@ -200,6 +202,6 @@ let sexp_of_imp name refines parameters clauses : t =
 
 let sexp_of_component co =
   match co.P.co_desc with
-  | Machine mch -> sexp_of_mch co.P.co_name co.P.co_parameters (P.get_clauses co)
+  | Machine _ -> sexp_of_mch co.P.co_name co.P.co_parameters (P.get_clauses co)
   | Refinement ref -> sexp_of_ref co.P.co_name ref.ref_refines co.P.co_parameters (P.get_clauses co)
   | Implementation imp -> sexp_of_imp co.P.co_name imp.imp_refines co.P.co_parameters (P.get_clauses co)

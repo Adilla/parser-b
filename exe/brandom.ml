@@ -1,3 +1,5 @@
+module G = Blib.Generators
+
 type kind_t = Expr | Pred | Subst | Mch | Ref | Imp | Comp
 
 let kind = ref Comp
@@ -24,12 +26,12 @@ let () =
   Arg.parse args (fun _ -> ()) ("Usage: "^ Sys.argv.(0) ^" [options]");
   Random.self_init ();
   let rd = Random.get_state () in
-  let open Print in
+  let open Blib.Print in
   match !kind with
-    | Expr -> print_expression !out (Generators.gen_expr rd)
-    | Pred -> print_predicate !out (Generators.gen_pred rd)
-    | Subst -> print_substitution !out (Generators.gen_subst rd)
-    | Comp -> print_component !out (Generators.gen_component rd)
-    | Mch -> print_component !out (Generators.gen_machine rd)
-    | Imp -> print_component !out (Generators.gen_implementation rd)
-    | Ref -> print_component !out (Generators.gen_refinement rd)
+    | Expr -> print_expression !out (G.gen_expr rd)
+    | Pred -> print_predicate !out (G.gen_pred rd)
+    | Subst -> print_substitution !out (G.gen_subst rd)
+    | Comp -> print_component !out (G.gen_component rd)
+    | Mch -> print_component !out (G.gen_machine rd)
+    | Imp -> print_component !out (G.gen_implementation rd)
+    | Ref -> print_component !out (G.gen_refinement rd)

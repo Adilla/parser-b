@@ -1,3 +1,5 @@
+open Blib
+
 let dump_string (i:int) (str:string) : unit =
   let out = open_out ("dump_test_" ^ string_of_int i) in
   let _ = Printf.fprintf out "%s" str in

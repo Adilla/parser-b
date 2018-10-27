@@ -1,8 +1,5 @@
+open Blib
 let continue_on_error = ref false
-let out = ref stdout
-
-let set_out s =
-  out := open_out s
 
 let print_error err =
   Error.print_error err;
@@ -15,8 +12,15 @@ let print_error_no_loc msg =
 let run_on_file filename =
   try
     let input = open_in filename in
-    match Parser.parse_component_from_channel ~filename input with
-    | Ok c -> Print.print_component !out c
+    let lb = Lexing.from_channel input in
+    match MacroTable.make filename lb with
+    | Ok mt ->
+      begin
+        Printf.fprintf stdout "##############################################################################\n";
+        Printf.fprintf stdout "### DEFINITIONS for machine %s\n" filename;
+        Printf.fprintf stdout "##############################################################################\n";
+        MacroTable.print stdout mt
+      end
     | Error err -> print_error err
   with
   | Sys_error msg -> print_error_no_loc msg
@@ -28,9 +32,8 @@ let add_path s =
 
 let args = [
   ("-c", Arg.Set continue_on_error, "Continue on error" );
-  ("-o", Arg.String set_out, "Output file" );
   ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
-  ("-I", Arg.String add_path, "Path for definitions files" )
+  ("-I", Arg.String add_path, "Path for definitions files" );
 ]
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

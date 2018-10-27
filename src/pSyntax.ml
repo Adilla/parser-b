@@ -16,8 +16,8 @@ type expression_desc =
   | Record_Type of (lident * expression) Nlist.t
 
 and expression = {
-    exp_loc: Utils.loc [@equal fun a b -> true];
-    exp_par: bool [@equal fun a b -> true];
+    exp_loc: Utils.loc [@equal fun _ _ -> true];
+    exp_par: bool [@equal fun _ _ -> true];
     exp_desc: expression_desc
 }
 
@@ -30,8 +30,8 @@ and predicate_desc =
   | Existential_Q of lident Nlist.t * predicate
 
 and predicate = {
-  prd_loc: Utils.loc [@equal fun a b -> true];
-  prd_par: bool [@equal fun a b -> true];
+  prd_loc: Utils.loc [@equal fun _ _ -> true];
+  prd_par: bool [@equal fun _ _ -> true];
   prd_desc: predicate_desc
 }
 [@@deriving eq]
@@ -62,8 +62,8 @@ type substitution_desc =
   | Parallel of substitution * substitution
 
 and substitution = {
-  sub_loc: Utils.loc [@equal fun a b -> true];
-  sub_be: bool [@equal fun a b -> true];
+  sub_loc: Utils.loc [@equal fun _ _ -> true];
+  sub_be: bool [@equal fun _ _ -> true];
   sub_desc: substitution_desc
 }
 [@@deriving eq]
@@ -297,7 +297,6 @@ let mk_machine_exn (co_name:lident) (co_parameters:lident list) (clauses:(Utils.
     co_desc=Machine (List.fold_left add_clause_mch_exn mch_desc clauses) }
 
 let add_clause_ref_exn (co:refinement) (loc,cl:Utils.loc*clause) : refinement =
-  let open SyntaxCore in
   match cl with
   | Sees lst -> ( check_empty_exn loc co.ref_sees; { co with ref_sees = Nlist.to_list lst } )
   | Sets lst -> ( check_empty_exn loc co.ref_sets; { co with ref_sets = Nlist.to_list lst } )
@@ -308,16 +307,16 @@ let add_clause_ref_exn (co:refinement) (loc,cl:Utils.loc*clause) : refinement =
   | Assertions lst -> ( check_empty_exn loc co.ref_assertions; { co with ref_assertions = Nlist.to_list lst } )
   | Initialization p -> ( check_none_exn loc co.ref_initialisation; { co with ref_initialisation = Some p } )
   | Operations lst -> ( check_empty_exn loc co.ref_operations; { co with ref_operations = Nlist.to_list lst } )
-  | Values lst -> Error.raise_exn loc "The clause VALUES is not allowed in refinements."
+  | Values _ -> Error.raise_exn loc "The clause VALUES is not allowed in refinements."
   | Local_Operations lst -> ( check_empty_exn loc co.ref_local_operations; { co with ref_local_operations = Nlist.to_list lst } )
   | Promotes lst -> ( check_empty_exn loc co.ref_promotes; { co with ref_promotes = Nlist.to_list lst } )
-  | Imports lst -> Error.raise_exn loc "The clause IMPORTS is not allowed in refinements."
+  | Imports _ -> Error.raise_exn loc "The clause IMPORTS is not allowed in refinements."
   | Abstract_constants lst -> ( check_empty_exn loc co.ref_abstract_constants; { co with ref_abstract_constants = Nlist.to_list lst } )
   | Variables lst -> ( check_empty_exn loc co.ref_abstract_variables; { co with ref_abstract_variables = Nlist.to_list lst } )
   | Constraints _ -> Error.raise_exn loc "The clause CONSTRAINTS is not allowed in refinements."
   | Includes lst -> ( check_empty_exn loc co.ref_includes; { co with ref_includes = Nlist.to_list lst } )
   | Extends lst -> ( check_empty_exn loc co.ref_extends; { co with ref_extends = Nlist.to_list lst } )
-  | Uses lst -> Error.raise_exn loc "The clause USES is not allowed in refinements."
+  | Uses _ -> Error.raise_exn loc "The clause USES is not allowed in refinements."
 
 let mk_refinement_exn co_name co_parameters refines clauses =
   let ref_desc =
@@ -342,7 +341,6 @@ let mk_refinement_exn co_name co_parameters refines clauses =
     co_desc=Refinement (List.fold_left add_clause_ref_exn ref_desc clauses) }
 
 let add_clause_imp_exn (co:implementation) (loc,cl:Utils.loc*clause) : implementation =
-  let open SyntaxCore in
   match cl with
   | Sees lst -> ( check_empty_exn loc co.imp_sees; { co with imp_sees = Nlist.to_list lst } )
   | Sets lst -> ( check_empty_exn loc co.imp_sets; { co with imp_sets = Nlist.to_list lst } )

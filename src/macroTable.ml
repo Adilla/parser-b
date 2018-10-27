@@ -150,8 +150,8 @@ and state_3_body_exn (s:L.state) (is_def_file:bool) (def_lst:macro list)
   | (INVARIANT, st, _ ) as next ->
     let rec aux : t_token list -> bool = function
       | [] -> false
-      | (INVARIANT,_,_)::tl -> false
-      | (WHILE,_,_)::tl -> true
+      | (INVARIANT,_,_)::_ -> false
+      | (WHILE,_,_)::_ -> true
       | _::tl -> aux tl
     in
     if aux tks_rev then
@@ -197,7 +197,7 @@ and state_7_eqeq_exn (s:L.state) is_def_file (def_lst:macro list) (lc,def_name:l
   | tk, st, _ -> raise_err st tk
 
 and parse_def_file_exn (def_lst:macro list) (fn:string) (input:in_channel) : macro list =
-  let s = L.mk_state (Base_Lexer.mk_state fn (Lexing.from_channel input)) in
+  let s = L.mk_state (Base_Lexer.mk_state ~filename:fn (Lexing.from_channel input)) in
   match L.get_token_exn s with
   | DEFINITIONS, _, _ ->  state_1_start_exn s true def_lst
   | tk, st, _ -> raise_err st tk
@@ -228,7 +228,7 @@ let make (fname:string) (lb:Lexing.lexbuf) : t Error.t_result =
   in
   let () = reset_opened_def_files () in
   if read_until_def_clause lb then
-    let s = L.mk_state (Base_Lexer.mk_state fname lb) in
+    let s = L.mk_state (Base_Lexer.mk_state ~filename:fname lb) in
     try Ok (parse_defs_exn s)
     with Error.Error err -> Error err
   else Ok (Hashtbl.create 1)

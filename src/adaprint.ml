@@ -92,6 +92,7 @@ let mk_proc_call (f:string) (args:Easy_format.t list) : Easy_format.t  =
              indent_body = 2 } in
   mk_label 2 false `Auto (mk_atom f) (mk_list "(" "," ");" st args)
 
+(*
 let mk_array_init (e:Easy_format.t) : Easy_format.t =
   let st = { Easy_format.list with
              Easy_format.space_after_opening = true;
@@ -104,6 +105,7 @@ let mk_array_init (e:Easy_format.t) : Easy_format.t =
              wrap_body = `Wrap_atoms;
              indent_body = 2 } in
   mk_list "(others =>" "" ")" st [e]
+*)
 
 let add_par (e:Easy_format.t) : Easy_format.t =
   let st = { Easy_format.list with
@@ -118,6 +120,7 @@ let add_par (e:Easy_format.t) : Easy_format.t =
              indent_body = 2 } in
   mk_list "(" "" ")" st [e]
 
+(*
 let mk_array (lst:Easy_format.t list) : Easy_format.t =
   let st = { Easy_format.list with
              Easy_format.space_after_opening = false;
@@ -131,6 +134,7 @@ let mk_array (lst:Easy_format.t list) : Easy_format.t =
              indent_body = 2 } in
   let aux i e = mk_label 2 true `Auto (mk_atom (string_of_int i ^ " =>")) e in
   mk_list "(" "," ")" st (List.mapi aux lst)
+*)
 
 let rec mk_expr (e0:t_b0_expr) : Easy_format.t =
   match e0.exp0_desc with
@@ -196,7 +200,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     let def = mk_expr e in
     let st = Easy_format.list in
     mk_list "" ":=" ";" st [var;def]
-  | B0_Affectation (LHS_Array _,e) ->
+  | B0_Affectation (LHS_Array _,_) ->
     Error.raise_exn s0.sub0_loc "Array types not supported."
   | B0_Affectation (LHS_Record _,_) ->
     Error.raise_exn s0.sub0_loc "Record types not supported."
@@ -259,7 +263,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     let args = (List.map mk_expr args)@
                (List.map (fun (_,x) -> mk_atom (Codegen.Ada_ident.to_string x)) out) in
     mk_proc_call (t_symb_to_string f) args
-  | B0_Sequencement (s1,s2) ->
+  | B0_Sequencement _ ->
     begin match get_seq_list s0 with
       | [] -> mk_atom "null;"
       | seqs ->
@@ -318,7 +322,7 @@ let mk_const (c:t_constant_or_fun) : Easy_format.t =
                       ^ b0_type_to_string c.c_loc c.c_type ^ " :=")
     in
     mk_label 2 true `Auto ty (mk_list "" "" ";" st [mk_expr c_init])
-  | Cst ({c_init=Promoted mch}) -> assert false (*FIXME*)
+  | Cst ({c_init=Promoted _}) -> assert false (*FIXME*)
 
 let mk_var (v:t_variable) : Easy_format.t =
   match v.v_promoted_from with
@@ -442,7 +446,7 @@ let mk_proc_body (p:t_procedure) : Easy_format.t option =
         st [mk_subst s]
     in
     Some (mk_sequence_nl [proc;mk_atom "is";body])
-  | Renames ts -> None
+  | Renames _ -> None
 
 let mk_fun_body (c:t_constant_or_fun) : Easy_format.t option =
   match c with
@@ -506,9 +510,11 @@ let print_package_body (out:out_channel) (pkg:t_package) : unit Error.t_result =
     end
   with Error.Error err -> Error err
 
+(*
 let is_cst = function
   | Fun _ -> true
   | Cst _ -> false
+*)
 
 let is_package_body_empty pkg =
   List.for_all (function Fun _ -> false | Cst _ -> true) pkg.pkg_constants &&

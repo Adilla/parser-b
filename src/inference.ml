@@ -1,4 +1,3 @@
-open Utils
 open SyntaxCore
 module P = PSyntax
 module T = TSyntax
@@ -343,7 +342,7 @@ let rec type_expression_exn : 'mr 'cl. ('mr,'cl) V.clause ->
       let aux (elt:P.expression) =
         let t_elt = type_expression_exn cl env ctx elt in
         match get_stype (Global.get_alias env) t_elt.T.exp_typ te.T.exp_typ with
-        | Some ty -> t_elt
+        | Some _ -> t_elt
         | None -> unexpected_type_exn elt.P.exp_loc t_elt.T.exp_typ te.T.exp_typ
       in
       let tlst = List.map aux (Nlist.tl nlst) in

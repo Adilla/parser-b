@@ -14,14 +14,14 @@ let check_extension filename =
   || (Filename.check_suffix filename ".imp")
   || (Filename.check_suffix filename ".ref")
 
-let continue_on_error = ref false
+(* let continue_on_error = ref false *)
 
 let debug fmt =
   if !debug_mode then Printf.kfprintf (fun _ -> prerr_newline ()) stderr fmt
   else Printf.ifprintf stderr fmt
 
 let print_error err =
-  Error.print_error err;
+  Blib.Error.print_error err;
   if not !continue_on_error then exit(1)
 
 let print_error_no_loc msg =
@@ -36,15 +36,15 @@ let run_on_file filename =
       try
         debug "Generating tags for file '%s'." filename;
         let input = open_in filename in
-        match Parser.parse_component_from_channel ~filename input with
+        match Blib.Parser.parse_component_from_channel ~filename input with
         | Ok c -> tags := Tags.add_tags !tags c
         | Error err -> print_error err
       with
-      | Sys_error err_txt -> print_error { Error.err_loc=Utils.dloc; err_txt } 
+      | Sys_error err_txt -> print_error { Blib.Error.err_loc=Blib.Utils.dloc; err_txt } 
     end
 
 let add_path s =
-  match File.add_path s with
+  match Blib.File.add_path s with
   | Ok _ -> ()
   | Error err -> print_error_no_loc err
 
@@ -53,7 +53,7 @@ let args = [
   ("-I"    , Arg.String add_path, "Path for definitions files" );
   ("-d"    , Arg.Set debug_mode, "Print debugging informations." );
   ("-e"    , Arg.Set check_ext, "Ignoring files with extension different from .mch, .ref or .imp" );
-  ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
+  ("-keep-macro-loc", Arg.Set Blib.MacroLexer.keep_macro_loc, "Keep macro locations");
   ("-o"    , Arg.String set_out, "Output file (default is standard output)" )
 ]
 

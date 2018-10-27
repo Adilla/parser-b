@@ -1,3 +1,4 @@
+open Blib
 module T = TSyntax
 let continue_on_error = ref false
 

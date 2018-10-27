@@ -277,7 +277,7 @@ let type_mch_init_exn (env:Global.t_mch Global.t) (s:P.substitution) : (Global.t
   let s = Inference.type_substitution_exn V.C_Mch_Op env Local.empty s in
   close_subst_exn Mch s 
 
-let get_mch_operation_context_exn (env:Global.t_mch Global.t) (op:P.operation) : Local.t*Local.t =
+let get_mch_operation_context_exn (_:Global.t_mch Global.t) (op:P.operation) : Local.t*Local.t =
   let aux ki ctx lid = 
     Local.add ctx lid.lid_str (Btype.Open.new_meta ()) ki
   in
@@ -293,14 +293,14 @@ let rec is_read_only (gl:'mr Global.t) (ctx:string list) (s:P.substitution) : bo
     List.for_all aux (Nlist.to_list xlst)
   | P.Affectation (P.Function(v,_),_) | P.Affectation (P.Record(v,_),_) ->
     List.exists (String.equal v.lid_str) ctx
-  | P.CallUp (args_out,id,args_in) ->
+  | P.CallUp (args_out,id,_) ->
     let aux v = List.exists (String.equal v.lid_str) ctx in
     List.for_all aux args_out &&
     (match Global.get_operation gl id.lid_str with
      | None -> Error.raise_exn s.P.sub_loc ("Unknown operation '"^id.lid_str^"'.")
      | Some infos -> infos.Global.op_readonly)
-  | P.Pre (p,s0) -> is_read_only gl ctx s0
-  | P.Assert (p,s0) -> is_read_only gl ctx s0
+  | P.Pre (_,s0) -> is_read_only gl ctx s0
+  | P.Assert (_,s0) -> is_read_only gl ctx s0
   | P.Choice nlst -> List.for_all (is_read_only gl ctx) (Nlist.to_list nlst)
   | P.IfThenElse (nlst,opt) | P.Select (nlst,opt) ->
     let aux (_,s0) = is_read_only gl ctx s0 in
@@ -319,7 +319,7 @@ let rec is_read_only (gl:'mr Global.t) (ctx:string list) (s:P.substitution) : bo
   | P.Any (xlst,_,s0) | P.Let (xlst,_,s0) | P.Var (xlst,s0) ->
     let ctx = List.fold_left (fun ctx v -> v.lid_str::ctx) ctx (Nlist.to_list xlst) in
     is_read_only gl ctx s0
-  | P.While (p1,s0,p2,e) -> is_read_only gl ctx s0
+  | P.While (_,s0,_,_) -> is_read_only gl ctx s0
   | P.Sequencement (s1,s2) | P.Parallel (s1,s2) ->
     is_read_only gl ctx s1 && is_read_only gl ctx s2
 
@@ -351,7 +351,7 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : (Gl
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
   let is_readonly = is_read_only env (Local.get_vars ctx) op.P.op_body in
-  match Global.add_mch_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out is_readonly with
+  match Global.add_mch_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_readonly with
   | Ok () -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
   | Error err -> raise (Error.Error err)
 
@@ -524,7 +524,6 @@ let check_signature (op:P.operation) args_in args_out =
   aux op.P.op_out args_out
 
 let get_ref_operation_context_exn (env:Global.t_ref Global.t) (op:P.operation) =
-  let open Inference in
   match Global.get_operation env op.P.op_name.lid_str with
   | None ->
     let aux ki ctx lid = 
@@ -569,7 +568,7 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : (Gl
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out false with
+  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false with
   | Ok () -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
   | Error err -> raise (Error.Error err)
 
@@ -748,11 +747,11 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out false with
+  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false with
   | Ok () ->
     begin match Global.get_operation env op.P.op_name.lid_str with
       | None -> assert false 
-      | Some { Global.op_src=Global.OD_Local_Spec_And_Implem (lc,_) } ->
+      | Some { Global.op_src=Global.OD_Local_Spec_And_Implem (_,_) } ->
         begin match SMap.find_opt op.P.op_name.lid_str lops with
           | None -> assert false
           | Some op_spec ->
@@ -789,7 +788,7 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out true with
+  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:true with
   | Ok () -> SMap.add op.P.op_name.lid_str op_body map
   | Error err -> raise (Error.Error err)
 

@@ -1,5 +1,4 @@
 %{
-open Utils
 open SyntaxCore
 open PSyntax
 
@@ -32,7 +31,7 @@ let expr_to_list (e:expression) : expression list =
   in
   aux [] e
 
-let rec expr_to_nonempty_list e = Nlist.from_list_exn (expr_to_list e)
+let expr_to_nonempty_list e = Nlist.from_list_exn (expr_to_list e)
 
 let mk_par (e:expression) : expression = { e with exp_par=true }
 let mk_par_p (p:predicate) : predicate = { p with prd_par=true }

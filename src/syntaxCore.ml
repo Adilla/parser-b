@@ -42,12 +42,6 @@ type e_builtin =
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 [@@deriving eq]
 
-let e_builtin_eq b1 b2 =
-  match b1, b2 with
-  | Integer i1, Integer i2 -> i1 == i2
-  | String s1, String s2 -> String.equal s1 s2
-  | _, _ -> b1 = b2
-
 let expr_constants = [
   MaxInt; MinInt; INTEGER; NATURAL; NATURAL1; INT; NAT; NAT1; STRINGS;
   BOOLEANS; Empty_Set; Empty_Seq; TRUE; FALSE ]

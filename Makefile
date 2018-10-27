@@ -1,38 +1,36 @@
 .PHONY: clean bformat btags brandom btype b2sexp test_random test_bformat_with_coverage bdefs b2ada b2rust
 
-OCB_OPT=-Is src,tools -use-ocamlfind
-
 all: bformat btags brandom btypecheck b2sexp bdefs b2ada b2rust
 
 bdefs:
-	ocamlbuild $(OCB_OPT) bdefs.native
+	dune build exe/bdefs.exe
 
 b2ada:
-	ocamlbuild $(OCB_OPT) b2ada.native
+	dune build exe/b2ada.exe
 
 b2rust:
-	ocamlbuild $(OCB_OPT) b2rust.native
+	dune build exe/b2rust.exe
 
 b2sexp:
-	ocamlbuild $(OCB_OPT) b2sexp.native
+	dune build exe/b2sexp.exe
 
 bformat:
-	ocamlbuild $(OCB_OPT) bformat.native
+	dune build exe/bformat.exe
 
 btypecheck:
-	ocamlbuild $(OCB_OPT) btypecheck.native
+	dune build exe/btypecheck.exe
 
 btags:
-	ocamlbuild $(OCB_OPT) btags.native
+	dune build exe/btags.exe
 
 brandom:
-	ocamlbuild $(OCB_OPT) brandom.native
+	dune build exe/brandom.exe
 
 test_random:
-	ocamlbuild $(OCB_OPT) test_random_print_parse.native && ./test_random_print_parse.native
+	dune build exe/test_random_print_parse.exe && ./_build/default/exe/test_random_print_parse.exe
 
 doc:
-	ocamlbuild $(OCB_OPT) doc.docdir/index.html
+	dune build @doc
 
 clean:
-	ocamlbuild -clean
+	dune clean

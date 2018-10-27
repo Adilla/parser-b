@@ -3,21 +3,21 @@ val extended_sees: bool ref
 
 type ('mr,_) t_global_ident = private 'mr G.t_kind
 type ('mr,_) t_mutable_ident = private 'mr G.t_kind
-type 'a t_assert
 
-type t_mch_prop
-type t_mch_inv
-type t_mch_op
+type t_mch_prop = private A
+type t_mch_inv = private B
+type t_mch_op = private C
 
-type t_ref_prop
-type t_ref_inv
-type t_ref_op
+type t_ref_prop = private D
+type t_ref_inv = private E
+type t_ref_op = private F
 
-type t_imp_prop
-type t_imp_inv
-type t_imp_op
-type t_imp_lop
-type t_imp_val
+type t_imp_prop = private G
+type t_imp_inv = private H
+type t_imp_op = private I
+type t_imp_lop = private J
+type t_imp_val = private K
+type 'a t_assert = private L
 
 type ('mr,'cl) clause =
   | C_Mch_Prop : (G.t_mch,t_mch_prop) clause

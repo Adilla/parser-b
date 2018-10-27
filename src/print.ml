@@ -1,4 +1,3 @@
-open Utils
 open Easy_format
 open SyntaxCore
 open PSyntax
@@ -67,7 +66,7 @@ let rec ef_expr : expression -> Easy_format.t = fun e ->
   | Extension nlst ->
     let lst = List.map (fun e -> ef_expr_wp e) (Nlist.to_list nlst) in
     List (("{",",","}",list_1),lst)
-  | Couple (Infix,e1,e2) -> assert false
+  | Couple (Infix,_,_) -> assert false
   | Couple (Maplet,e1,e2) ->
     List(("","","",list_1),[ef_expr_wp e1;mk_atom "|->";ef_expr_wp e2])
   | Couple (Comma,e1,e2) ->
@@ -463,16 +462,16 @@ let ef_implementation name refines params clauses =
 
 let ef_component co =
   match co.co_desc with
-  | Machine x -> ef_machine co.co_name co.co_parameters (get_clauses co)
+  | Machine _ -> ef_machine co.co_name co.co_parameters (get_clauses co)
   | Refinement x -> ef_refinement co.co_name x.ref_refines co.co_parameters (get_clauses co)
   | Implementation x -> ef_implementation co.co_name x.imp_refines co.co_parameters (get_clauses co)
 
 let expression_to_format = ef_expr
 let predicate_to_format = ef_pred
 let substitution_to_format = ef_subst
-let machine_to_format = ef_machine
-let refinement_to_format = ef_refinement
-let implementation_to_format = ef_implementation
+(* let machine_to_format = ef_machine *)
+(* let refinement_to_format = ef_refinement *)
+(* let implementation_to_format = ef_implementation *)
 let component_to_format = ef_component
 
 let print_expression out e = Easy_format.Pretty.to_channel out (ef_expr e)

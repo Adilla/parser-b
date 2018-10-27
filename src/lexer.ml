@@ -7,7 +7,7 @@ let mk_state_from_channel (filename:string) (input:in_channel) : state Error.t_r
   | Ok macros ->
     begin
       seek_in input 0;
-      Ok { s=L.mk_state (MacroLexer.mk_state filename (Lexing.from_channel input) macros);
+      Ok { s=L.mk_state (MacroLexer.mk_state ~filename (Lexing.from_channel input) macros);
          last = Grammar.EOF, Lexing.dummy_pos, Lexing.dummy_pos }
     end
   | Error _ as err -> err
@@ -15,7 +15,7 @@ let mk_state_from_channel (filename:string) (input:in_channel) : state Error.t_r
 let mk_state_from_string (input:string) : state Error.t_result =
   match MacroTable.make "" (Lexing.from_string input) with
   | Ok macros ->
-    Ok { s = L.mk_state (MacroLexer.mk_state "" (Lexing.from_string input) macros);
+    Ok { s = L.mk_state (MacroLexer.mk_state ~filename:"" (Lexing.from_string input) macros);
          last = Grammar.EOF, Lexing.dummy_pos, Lexing.dummy_pos }
   | Error _ as err -> err
 

@@ -1,3 +1,4 @@
+open Blib
 let continue_on_error = ref false
 
 type machine_interface = Global.t_interface

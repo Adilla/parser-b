@@ -1,6 +1,7 @@
-open Utils
-open SyntaxCore
-module P = PSyntax
+open Blib.Utils
+open Blib.SyntaxCore
+open Blib
+module P = Blib.PSyntax
 
 type scope =
   | Clause of string
@@ -93,15 +94,15 @@ let add_clause (tags:tags) (cl:P.clause) : tags =
 
 let add_tags (tags:tags) (co:P.component) =
   match co.P.co_desc with
-  | Machine mch ->
+  | Machine _ ->
     let tags = (mk_tag 'm' co.P.co_name.lid_loc co.P.co_name.lid_str None)::tags in
     let tags = List.fold_left add_params tags co.P.co_parameters in
     List.fold_left add_clause tags (P.get_clauses co)
-  | Refinement ref ->
+  | Refinement _ ->
     let tags = (mk_tag 'r' co.P.co_name.lid_loc co.P.co_name.lid_str None)::tags in
     let tags = List.fold_left add_params tags co.P.co_parameters in
     List.fold_left add_clause tags (P.get_clauses co)
-  | Implementation imp ->
+  | Implementation _ ->
     let tags = (mk_tag 'i' co.P.co_name.lid_loc co.P.co_name.lid_str None)::tags in
     let tags = List.fold_left add_params tags co.P.co_parameters in
     List.fold_left add_clause tags (P.get_clauses co)

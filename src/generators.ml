@@ -1,4 +1,3 @@
-open Utils
 open SyntaxCore
 open PSyntax
 open QCheck
@@ -257,9 +256,11 @@ let gen_minst : machine_instanciation Gen.t = fun rd ->
 let small_list (gen:'a Gen.t) : ('a list) Gen.t =
   Gen.list_size Gen.(1 -- 10) gen
 
+(*
 let small_nelist (gen:'a Gen.t) : ('a Nlist.t) Gen.t = fun rd ->
   let lst = small_list gen rd in
   Nlist.from_list_exn lst
+*)
 
 let gen_set : set Gen.t =
   Gen.oneof [ Gen.map (fun id -> Abstract_Set id) gen_lident;

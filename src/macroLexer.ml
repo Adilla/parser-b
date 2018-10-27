@@ -1,6 +1,5 @@
 open Lexing_Utils
 open Grammar
-open Utils
 
 module LList : sig
   type 'a t

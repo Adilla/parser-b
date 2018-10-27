@@ -1,5 +1,3 @@
-open Utils
-
 type lident = SyntaxCore.lident
 type loc = Utils.loc
 
@@ -426,7 +424,7 @@ let to_interface (type mr) (env:mr t) : MachineInterface.t =
   let lst2 = Hashtbl.fold aux2 env.ops [] in
   MachineInterface.make lst1 lst2
 
-let check_operation_coherence_ref (env:t_ref t) (err_loc:loc) : unit Error.t_result =
+let check_operation_coherence_ref (env:t_ref t) (_:loc) : unit Error.t_result =
   try
     Hashtbl.iter (
       fun x op ->

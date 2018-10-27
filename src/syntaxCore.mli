@@ -67,4 +67,5 @@ type c_or_m = Maplet | Comma | Infix
 [@@deriving eq]
 
 type lident = { lid_loc:Utils.loc; lid_str:string }
-[@@deriving eq]
+
+val equal_lident : lident -> lident -> bool

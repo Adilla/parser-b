@@ -9,7 +9,7 @@ module Make (
       type t
       type t_pkg_id
       val make:string -> t option
-      val to_string: t -> string
+(*       val to_string: t -> string *)
       val make_pkg_id:string -> t_pkg_id option
     end) =
 struct
@@ -211,13 +211,16 @@ struct
     | Prefix | Postfix | SizeT | Mirror | Rank | Father | Son | Subtree | Arity
     | Bin | Left | Right | Infix -> None
 
+(*
   let normalize_app e =
     let rec aux e args =
       match e.T.exp_desc with
       | T.Application (e1,e2) -> aux e1 (e2::args)
       | _ -> (e,args)
     in aux e []
+*)
 
+(*
   let get_args e : _ Nlist.t =
     let rec aux lst e =
       match e.T.exp_desc with
@@ -225,6 +228,7 @@ struct
       | _ -> e::lst
     in
     Nlist.from_list_exn (aux [] e)
+*)
 
   let is_int ty =
     match Btype.view ty with
@@ -266,7 +270,7 @@ struct
         | _ -> Error.raise_exn lc "Power types are not supported by the translator."
       end
     | Btype.T_Record lst -> T_Record (List.map (fun (id,ty) -> (mk_ident lc id,to_b0_type lc ty)) lst)
-    | Btype.T_Product (t1,t2) -> Error.raise_exn lc "Product types are not supported by the translator."
+    | Btype.T_Product _ -> Error.raise_exn lc "Product types are not supported by the translator."
 
   and get_array_dim lc rg =
     match Btype.view rg with
@@ -457,10 +461,12 @@ struct
     | T.Universal_Q _ -> Error.raise_exn p.T.prd_loc "This is not a valid B0-expression (Universal quantifier)."
     | T.Existential_Q _ -> Error.raise_exn p.T.prd_loc "This is not a valid B0-expression (Existensial quantifier)."
 
+(*
   let rec get_exp_nle e =
     match e.T.exp_desc with
     | T.Couple (_,x,y) -> Nlist.cons x (get_exp_nle y)
     | _ -> Nlist.make1 e
+*)
 
   let get_enum f (e:(_,_,Btype.t) T.expression) : t_case =
     match e.T.exp_desc with
@@ -617,7 +623,7 @@ struct
     | V.IVV_Concrete_Constant d -> IK_Other (IK_Constant (get_pkg d))
     | V.IVV_Enumerate d -> IK_Other (IK_Enum (get_pkg d))
     | V.IVV_Abstract_Set d -> IK_Abstract_Set (get_pkg d)
-    | V.IVV_Concrete_Set (elts,d) -> IK_Concrete_Set (get_pkg d)
+    | V.IVV_Concrete_Set (_,d) -> IK_Concrete_Set (get_pkg d)
 
   let from_imp_op (x:(G.t_ref,V.t_imp_op) V.t_global_ident) : t_full_ident_kind =
     let get_pkg : (G.t_ref,G.t_concrete) G.t_decl -> _ = function
@@ -629,7 +635,7 @@ struct
     | V.IOV_Concrete_Variable d -> IK_Other (IK_Variable (get_pkg d))
     | V.IOV_Concrete_Constant d -> IK_Other (IK_Constant (get_pkg d))
     | V.IOV_Enumerate d -> IK_Other (IK_Enum (get_pkg d))
-    | V.IOV_Concrete_Set (elts,d) -> IK_Concrete_Set (get_pkg d)
+    | V.IOV_Concrete_Set (_,d) -> IK_Concrete_Set (get_pkg d)
     | V.IOV_Abstract_Set d -> IK_Abstract_Set (get_pkg d)
 
   let from_imp_mut (x:(G.t_ref,V.t_imp_op) T.t_mutable_ident) : t_mut_ident_kind =
@@ -775,9 +781,9 @@ struct
     | T_Int -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
     | T_String -> mk ty (B0_Builtin_0 (B0_String ""))
     | T_Bool -> mk ty (B0_Builtin_0 B0_True)
-    | T_Abstract s -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
-    | T_Enum s -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero)) (*FIXME*)
-    | T_Array (_,tg) -> mk ty (B0_Array [])
+    | T_Abstract _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
+    | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero)) (*FIXME*)
+    | T_Array _ -> mk ty (B0_Array [])
     | T_Record lst ->
       let aux (id,ty) = (id,get_default_value lc ty) in
       mk ty (B0_Record (List.map aux lst))
@@ -847,7 +853,7 @@ struct
 
   let get_mch_operation (op:(G.t_mch,V.t_mch_op) T.operation) : t_procedure =
     match op with
-    | T.O_Specified { op_out; op_name; op_in; op_body } ->
+    | T.O_Specified { op_out; op_name; op_in } ->
       let to_arg v =
         { arg_name=mk_ident v.T.arg_loc v.T.arg_id;
           arg_loc=v.T.arg_loc;
@@ -909,7 +915,7 @@ struct
     "record"; "when"; "delta"; "loop"; "rem"; "while"; "digits"; "renames"; "with";
     "do"; "mod"; "requeue"; "xor" ]
 
-  let reserved = Hashtbl.create 47
+(*   let reserved = Hashtbl.create 47 *)
   let reserved_set = List.fold_left (fun x y -> SSet.add y x) SSet.empty reserved_list
 
   type t = string
@@ -946,7 +952,7 @@ struct
     "do"; "final"; "macro"; "override"; "priv"; "typeof"; "unsized"; "virtual";
     "yield"; "union"; "dyn"]
 
-  let reserved = Hashtbl.create 47
+(*   let reserved = Hashtbl.create 47 *)
   let reserved_set = List.fold_left (fun x y -> SSet.add y x) SSet.empty reserved_list
 
   type t = string

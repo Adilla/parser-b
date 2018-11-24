@@ -93,7 +93,7 @@ OPERATIONS
                       str_ovv: str_jzz,
                       str_bum: NATURAL1,
                       str_ocy: str_zqw,
-                      str_gay: MININT)))) \/
+                      str_gay: MININT)),INT)) \/
             [str_opa$0,
              str_xac$0,
              rec
@@ -927,7 +927,7 @@ OPERATIONS
                (!(str_uuh, str_rmp, str_sjx, str_qvr).
                 (!(str_fnk, str_xpw).
                  (not(str_gjs$0 < str_uhw$0) or not(str_yas$0 /<<: str_rhg$0)))|
-                str_uei))))
+                str_uei),INT)))
       END ||
       str_kmy, str_cbs, str_fpq, str_dqh, str_pql, str_xsn, str_iam, str_lzg,
       str_nie

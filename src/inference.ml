@@ -34,155 +34,164 @@ let ids_to_product (ctx:Local.t) (xlst:lident Nlist.t) : Btype.Open.t =
   | None -> assert false
   | Some (ty,_) -> List.fold_left aux ty (Nlist.tl xlst)
 
-let get_builtin_type_exn (lc:Utils.loc) (e:e_builtin) : Btype.Open.t =
+let get_builtin0_type (e:e_builtin_0) : Btype.Open.t =
   let open Btype.Open in
   match e with
-    (* Booleans *)
     | TRUE | FALSE -> t_bool
-    (* Integers *)
     | Integer _ | MaxInt | MinInt  -> t_int
-    (* String *)
     | String _ -> t_string
-    (* Arithmetic operators *)
-    | Unary_Minus | Successor | Predecessor  -> type_of_unary_fun t_int t_int
-    | Addition | Division | Modulo | Power  -> type_of_binary_fun t_int t_int t_int
-    | Max | Min  -> type_of_unary_fun (mk_Power t_int) t_int
-    (* Types *)
     | NATURAL | NATURAL1 | INT | NAT | NAT1 | INTEGER  -> mk_Power t_int
     | STRINGS  -> mk_Power t_string
     | BOOLEANS  -> mk_Power t_bool
-    (* Empty set/sequence *)
     | Empty_Set -> mk_Power (new_meta ())
     | Empty_Seq -> type_of_unary_fun t_int (new_meta ())
-    (* Arithmetic or Set operator *)
+
+let get_builtin1_type_exn lc (e:e_builtin_1) : Btype.Open.t*Btype.Open.t =
+  let open Btype.Open in
+  match e with
+    | Unary_Minus | Successor | Predecessor  -> (t_int,t_int)
+    | Max | Min  -> (mk_Power t_int,t_int)
+    | Identity_Relation  ->
+      let mt = new_meta () in
+      (mk_Power mt,type_of_unary_fun mt mt)
+    | Inverse_Relation  ->
+      let mt1 = new_meta () in
+      let mt2 = new_meta () in
+      (type_of_unary_fun mt1 mt2,type_of_unary_fun mt2 mt1)
+    | Closure | Transitive_Closure ->
+      let mt = new_meta () in
+      (type_of_unary_fun mt mt,type_of_unary_fun mt mt)
+    | Domain  ->
+      let t_arg = new_meta () in
+      let t_res = new_meta () in
+      (type_of_unary_fun t_arg t_res,mk_Power t_arg)
+    | Range  ->
+      let t_arg = new_meta () in
+      let t_res = new_meta () in
+      (type_of_unary_fun t_arg t_res,mk_Power t_res)
+    | Fnc  ->
+      let mt1 = new_meta () in
+      let mt2 = new_meta () in
+      let t_arg = mk_Power (mk_Product mt1 mt2) in
+      let t_res = mk_Power (mk_Product mt1 (mk_Power mt2)) in
+      (t_arg,t_res)
+    | Rel  ->
+      let t_arg = new_meta () in
+      let t_res = new_meta () in
+      (type_of_unary_fun t_arg (mk_Power t_res),type_of_unary_fun t_arg t_res)
+    (* Sequence operators *)
+    | Sequence_Set _ ->
+      let mt = new_meta () in
+      (mk_Power mt,mk_Power (type_of_sequence mt))
+    | Size  -> (type_of_sequence (new_meta ()),t_int)
+    | First | Last  ->
+      let mt = new_meta () in
+      (type_of_sequence mt,mt)
+    | Reverse | Front | Tail ->
+      let t_seq = type_of_sequence (new_meta ()) in
+      (t_seq,t_seq)
+    | G_Concatenation  ->
+      let t_seq = type_of_sequence (new_meta ()) in
+      (type_of_sequence t_seq,t_seq)
+    | Cardinal  -> (mk_Power (new_meta ()),t_int)
+    | Power_Set _ ->
+      let t_set = mk_Power (new_meta ()) in
+      (t_set,mk_Power t_set)
+    | G_Intersection | G_Union  ->
+      let t_set = mk_Power (new_meta ()) in
+      (mk_Power t_set,t_set)
+
+    | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
+    | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
+      Error.raise_exn lc "Not implemented (tree operators)."
+
+
+let get_builtin2_type (e:e_builtin_2) : Btype.Open.t*Btype.Open.t*Btype.Open.t =
+  let open Btype.Open in
+  match e with
     | Product  -> assert false
     | Difference -> assert false
-    (* Operations on sets *)
-    | Interval  -> type_of_binary_fun t_int t_int (mk_Power t_int)
+    | Addition | Division | Modulo | Power  -> (t_int,t_int,t_int)
+    | Interval  -> (t_int,t_int,mk_Power t_int)
     | Intersection | Union  ->
       let t_set = mk_Power (new_meta ()) in
-      type_of_binary_fun t_set t_set t_set
+      (t_set,t_set,t_set)
     | First_Projection ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
-      type_of_binary_fun (mk_Power mt1) (mk_Power mt2)
-        (type_of_unary_fun (mk_Product mt1 mt2) mt1)
+      (mk_Power mt1,mk_Power mt2,type_of_unary_fun (mk_Product mt1 mt2) mt1)
     | Second_Projection ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
-      type_of_binary_fun (mk_Power mt1) (mk_Power mt2)
-        (type_of_unary_fun (mk_Product mt1 mt2) mt2)
+      (mk_Power mt1,mk_Power mt2,type_of_unary_fun (mk_Product mt1 mt2) mt2)
     | Parallel_Product ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let mt3 = new_meta () in
       let mt4 = new_meta () in
-      type_of_binary_fun (type_of_unary_fun mt1 mt2) (type_of_unary_fun mt3 mt4)
-        (mk_Power (mk_Product (mk_Product mt1 mt3) (mk_Product mt2 mt4)))
+      (type_of_unary_fun mt1 mt2,type_of_unary_fun mt3 mt4,
+        mk_Power (mk_Product (mk_Product mt1 mt3) (mk_Product mt2 mt4)))
     | Direct_Product ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let mt3 = new_meta () in
-      type_of_binary_fun (type_of_unary_fun mt1 mt2) (type_of_unary_fun mt1 mt3)
-        (mk_Power (mk_Product mt1 (mk_Product mt2 mt3)))
-    | Cardinal  -> type_of_unary_fun (mk_Power (new_meta ())) t_int
-    | Power_Set _ ->
-      let t_set = mk_Power (new_meta ()) in
-      type_of_unary_fun t_set (mk_Power t_set)
-    | G_Intersection | G_Union  ->
-      let t_set = mk_Power (new_meta ()) in
-      type_of_unary_fun (mk_Power t_set) t_set
-    (* Operations on relations *)
+      (type_of_unary_fun mt1 mt2,type_of_unary_fun mt1 mt3,
+        mk_Power (mk_Product mt1 (mk_Product mt2 mt3)))
     | Composition ->
       let ty1 = new_meta () in
       let ty2 = new_meta () in
       let ty3 = new_meta () in
-      type_of_binary_fun (type_of_unary_fun ty1 ty2) (type_of_unary_fun ty2 ty3) (type_of_unary_fun ty1 ty3)
+      (type_of_unary_fun ty1 ty2,type_of_unary_fun ty2 ty3,type_of_unary_fun ty1 ty3)
     | Iteration ->
       let mt = new_meta () in
-      type_of_binary_fun (type_of_unary_fun mt mt) t_int (type_of_unary_fun mt mt)
+      (type_of_unary_fun mt mt,t_int,type_of_unary_fun mt mt)
     | Image  ->
       let t_arg = new_meta () in
       let t_res = new_meta () in
-      type_of_binary_fun (type_of_unary_fun t_arg t_res) (mk_Power t_arg) (mk_Power t_res)
+      (type_of_unary_fun t_arg t_res,mk_Power t_arg,mk_Power t_res)
     | Domain_Restriction
     | Domain_Soustraction ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let ty_rel = type_of_unary_fun mt1 mt2 in
       let ty_dom = mk_Power mt1 in
-      type_of_binary_fun ty_dom ty_rel ty_rel
+      (ty_dom,ty_rel,ty_rel)
     | Codomain_Restriction
     | Codomain_Soustraction ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
       let ty_rel = type_of_unary_fun mt1 mt2 in
       let ty_ran = mk_Power mt2 in
-      type_of_binary_fun ty_rel ty_ran ty_rel
+      (ty_rel,ty_ran,ty_rel)
     | Surcharge  ->
       let ty_f = type_of_unary_fun (new_meta ()) (new_meta ()) in
-      type_of_binary_fun ty_f ty_f ty_f
+      (ty_f,ty_f,ty_f)
     | Relations | Functions _ ->
       let mt1 = new_meta () in
       let mt2 = new_meta () in
-      type_of_binary_fun (mk_Power mt1) (mk_Power mt2) (mk_Power (type_of_unary_fun mt1 mt2))
-    | Identity_Relation  ->
-      let mt = new_meta () in
-      type_of_unary_fun (mk_Power mt) (type_of_unary_fun mt mt)
-    | Inverse_Relation  ->
-      let mt1 = new_meta () in
-      let mt2 = new_meta () in
-      type_of_unary_fun (type_of_unary_fun mt1 mt2) (type_of_unary_fun mt2 mt1)
-    | Closure | Transitive_Closure ->
-      let mt = new_meta () in
-      type_of_unary_fun (type_of_unary_fun mt mt) (type_of_unary_fun mt mt)
-    | Domain  ->
-      let t_arg = new_meta () in
-      let t_res = new_meta () in
-      type_of_unary_fun (type_of_unary_fun t_arg t_res) (mk_Power t_arg)
-    | Range  ->
-      let t_arg = new_meta () in
-      let t_res = new_meta () in
-      type_of_unary_fun (type_of_unary_fun t_arg t_res) (mk_Power t_res)
-    | Fnc  ->
-      let t_arg = new_meta () in
-      let t_res = new_meta () in
-      mk_Power(type_of_unary_fun t_arg t_res)
-    | Rel  ->
-      let t_arg = new_meta () in
-      let t_res = new_meta () in
-      type_of_unary_fun (type_of_unary_fun t_arg (mk_Power t_res)) (type_of_unary_fun t_arg t_res)
-    (* Sequence operators *)
-    | Sequence_Set _ ->
-      let mt = new_meta () in
-      type_of_unary_fun (mk_Power mt) (mk_Power (type_of_sequence mt))
-    | Size  -> type_of_unary_fun (type_of_sequence (new_meta ())) t_int 
-    | First | Last  ->
-      let mt = new_meta () in
-      type_of_unary_fun (type_of_sequence mt) mt
-    | Reverse | Front | Tail ->
-      let t_seq = type_of_sequence (new_meta ()) in
-      type_of_unary_fun t_seq t_seq
+      (mk_Power mt1,mk_Power mt2,mk_Power (type_of_unary_fun mt1 mt2))
     | Concatenation ->
       let t_seq = type_of_sequence (new_meta ()) in
-      type_of_binary_fun t_seq t_seq t_seq
+      (t_seq,t_seq,t_seq)
     | Head_Insertion ->
       let mt = new_meta () in
       let t_seq = type_of_sequence mt in
-      type_of_binary_fun mt t_seq t_seq
+      (mt,t_seq,t_seq)
     | Tail_Insertion ->
       let mt = new_meta () in
       let t_seq = type_of_sequence mt in
-      type_of_binary_fun t_seq mt t_seq
+      (t_seq,mt,t_seq)
     | Head_Restriction | Tail_Restriction  ->
       let t_seq = type_of_sequence (new_meta ()) in
-      type_of_binary_fun t_seq t_int t_seq
-    | G_Concatenation  ->
-      let t_seq = type_of_sequence (new_meta ()) in
-      type_of_unary_fun (type_of_sequence t_seq) t_seq
-    | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
-    | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
-      Error.raise_exn lc "Not implemented (tree operators)."
+      (t_seq,t_int,t_seq)
+    | Application ->
+      let mt1 = new_meta () in
+      let mt2 = new_meta () in
+      (type_of_unary_fun mt1 mt2,mt1,mt2)
+    | Couple _ ->
+      let mt1 = new_meta () in
+      let mt2 = new_meta () in
+      (mt1,mt2,mk_Product mt1 mt2)
 
 let unexpected_type_exn (lc:Utils.loc) (inf:Btype.Open.t) (exp:Btype.Open.t) =
   let str = Printf.sprintf
@@ -197,76 +206,23 @@ let rec weak_norm : Btype.Open.t -> Btype.Open.t = function
   | Btype.Open.T_UVar { contents=Btype.Open.Bound ty } -> weak_norm ty
   | ty -> ty
 
-let is_int_or_power_exn l (arg:('mr,'cl,Btype.Open.t) T.expression) : t_int_or_power =
+let is_int_or_power_exn l (arg1:('mr,'cl,Btype.Open.t) T.expression) (arg2:('mr,'cl,Btype.Open.t) T.expression) : t_int_or_power =
   let open Btype.Open in
-  match weak_norm arg.T.exp_typ with
-  | T_Product (t1,t2) as ty ->
-    begin match t1 with
+  match weak_norm arg1.T.exp_typ with
+  | T_Int -> C_Int
+  | T_Power _ -> C_Power
+  | T_UVar _ ->
+    begin match weak_norm arg2.T.exp_typ with
       | T_Int -> C_Int
       | T_Power _ -> C_Power
-      | T_UVar _ ->
-        begin match weak_norm t2 with
-          | T_Int -> C_Int
-          | T_Power _ -> C_Power
-          | T_UVar _ -> Error.raise_exn l "Cannot decide from this is an operation on integers or sets."
-          | _ -> Error.raise_exn arg.T.exp_loc
-                   ("This expression has type '"^ to_string ty^
-                    "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
-        end
-      | _ -> Error.raise_exn arg.T.exp_loc
-            ("This expression has type '"^ to_string ty^
-             "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
+      | T_UVar _ -> Error.raise_exn l "Cannot decide from this is an operation on integers or sets."
+      | ty2 -> Error.raise_exn arg2.T.exp_loc
+               ("This expression has type '"^ to_string ty2^
+                "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
     end
-  | ty -> Error.raise_exn arg.T.exp_loc
-            ("This expression has type '"^ to_string ty^
-             "' but an expression of product type was expected.")
-
-let type_set_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:'mr Global.t)
-    (arg:('mr,'cl,Btype.Open.t) T.expression): ('mr,'cl,Btype.Open.t) T.expression =
-  let open Btype.Open in
-  let mt1 = new_meta () in
-  let mt2 = new_meta () in
-  let op_ty_exp = type_of_binary_fun (mk_Power mt1) (mk_Power mt2) (mk_Power (mk_Product mt1 mt2)) in
-  let op_ty_inf = type_of_unary_fun arg.T.exp_typ (new_meta ()) in
-  match get_stype (Global.get_alias env) op_ty_exp op_ty_inf with
-  | None -> unexpected_type_exn op_lc op_ty_inf op_ty_exp
-  | Some _ ->
-    let op = mk_expr op_lc op_ty_exp (T.Builtin Product) in
-    mk_expr app_lc (mk_Power (mk_Product mt1 mt2)) (T.Application (op,arg))
-
-let type_int_product_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:'mr Global.t)
-    (arg:('mr,'cl,Btype.Open.t) T.expression) : ('mr,'cl,Btype.Open.t) T.expression =
-  let open Btype.Open in
-  let op_ty_exp = type_of_binary_fun t_int t_int t_int in
-  let op_ty_inf = type_of_unary_fun arg.T.exp_typ (new_meta ()) in
-  match get_stype (Global.get_alias env) op_ty_inf op_ty_exp with
-  | None -> unexpected_type_exn op_lc op_ty_inf op_ty_exp
-  | Some _ ->
-    let op = mk_expr op_lc op_ty_exp (T.Builtin Product) in
-    mk_expr app_lc t_int (T.Application (op,arg))
-
-let type_int_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:'mr Global.t)
-    (arg:('mc,'cl,Btype.Open.t) T.expression) : ('mr,'cl,Btype.Open.t) T.expression =
-  let open Btype.Open in
-  let op_ty_exp = type_of_binary_fun t_int t_int t_int in
-  let op_ty_inf = type_of_unary_fun arg.T.exp_typ (new_meta ()) in
-  match get_stype (Global.get_alias env) op_ty_inf op_ty_exp with
-  | None -> unexpected_type_exn op_lc op_ty_inf op_ty_exp
-  | Some _ ->
-    let op = mk_expr op_lc op_ty_exp (T.Builtin Difference) in
-    mk_expr app_lc t_int (T.Application (op,arg))
-
-let type_set_difference_exn (app_lc:Utils.loc) (op_lc:Utils.loc) (env:'mr Global.t)
-    (arg:('mr,'cl,Btype.Open.t) T.expression) : ('mr,'cl,Btype.Open.t) T.expression =
-  let open Btype.Open in
-  let mt = new_meta () in
-  let op_ty_exp = type_of_binary_fun (mk_Power mt) (mk_Power mt) (mk_Power mt) in
-  let op_ty_inf = type_of_unary_fun arg.T.exp_typ (new_meta ()) in
-  match get_stype (Global.get_alias env) op_ty_exp op_ty_inf with
-  | None -> unexpected_type_exn op_lc op_ty_inf op_ty_exp
-  | Some _ ->
-    let op = mk_expr op_lc op_ty_exp (T.Builtin Difference) in
-    mk_expr app_lc (mk_Power mt) (T.Application (op,arg))
+  | ty1 -> Error.raise_exn arg1.T.exp_loc
+           ("This expression has type '"^ to_string ty1^
+            "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
 
 let type_ident (type mr cl) (env:mr Global.t) (ctx:Local.t) id_loc (id_str:string)
     (cl:(mr,cl) V.clause) : (mr,cl) T.t_ident * Btype.Open.t =
@@ -295,46 +251,69 @@ let rec type_expression_exn : 'mr 'cl. ('mr,'cl) V.clause ->
     let ki,ty = type_ident env ctx e.P.exp_loc id_str cl in
     mk_expr e.P.exp_loc ty (T.Dollar ki)
 
-  | P.Builtin bi ->
-    mk_expr e.P.exp_loc (get_builtin_type_exn e.P.exp_loc bi) (T.Builtin bi)
+  | P.Builtin_0 bi ->
+    mk_expr e.P.exp_loc (get_builtin0_type bi) (T.Builtin_0 bi)
 
   | P.Pbool p ->
     let tp = type_predicate_exn cl env ctx p in
     mk_expr e.P.exp_loc t_bool (T.Pbool tp)
 
-  | P.Application (e1,e2) ->
-    begin
-      match e1.P.exp_desc with
-      | P.Builtin Product ->
-        let te2 = type_expression_exn cl env ctx e2 in
-        begin match is_int_or_power_exn e1.P.exp_loc te2 with
-          | C_Int -> type_int_product_exn e.P.exp_loc e1.P.exp_loc env te2
-          | C_Power -> type_set_product_exn e.P.exp_loc e1.P.exp_loc env te2
-        end
-      | P.Builtin Difference ->
-        let te2 = type_expression_exn cl env ctx e2 in
-        begin match is_int_or_power_exn e1.P.exp_loc te2 with
-          | C_Int -> type_int_difference_exn e.P.exp_loc e1.P.exp_loc env te2
-          | C_Power -> type_set_difference_exn e.P.exp_loc e1.P.exp_loc env te2
-        end
-      | _ ->
-        let te1 = type_expression_exn cl env ctx e1 in
-        let ty_fun_exp = type_of_unary_fun (new_meta ()) (new_meta ()) in
-        begin match get_stype (Global.get_alias env) te1.T.exp_typ ty_fun_exp with
-          | Some (T_Power (T_Product (a,b))) ->
-            let te2 = type_expression_exn cl env ctx e2 in
-            ( match get_stype (Global.get_alias env) te2.T.exp_typ a with
-              | Some _ -> mk_expr e.P.exp_loc b (T.Application (te1,te2))
-              | None -> unexpected_type_exn e2.P.exp_loc te2.T.exp_typ a )
-          | None -> unexpected_type_exn e1.P.exp_loc te1.T.exp_typ ty_fun_exp
-          | _ -> assert false
-        end
+  | P.Builtin_1 (bi,e) ->
+    let (ty_arg,ty_res) = get_builtin1_type_exn e.P.exp_loc bi in
+    let te = type_expression_exn cl env ctx e in
+    begin match get_stype (Global.get_alias env) ty_arg te.T.exp_typ with
+      | Some _ -> mk_expr e.P.exp_loc ty_res (T.Builtin_1 (bi,te))
+      | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ ty_arg
     end
-
-  | P.Couple (cm,e1,e2) ->
+  | P.Builtin_2 (Product,e1,e2) ->
     let te1 = type_expression_exn cl env ctx e1 in
     let te2 = type_expression_exn cl env ctx e2 in
-    mk_expr e.P.exp_loc (mk_Product te1.T.exp_typ te2.T.exp_typ) (T.Couple (cm,te1,te2))
+    let (ty_arg1,ty_arg2,ty_res) =
+      match is_int_or_power_exn e.P.exp_loc te1 te2 with
+      | C_Int -> (t_int,t_int,t_int)
+      | C_Power ->
+        let mt1 = new_meta () in
+        let mt2 = new_meta () in
+        (mk_Power mt1,mk_Power mt2,mk_Power (mk_Product mt1 mt2))
+    in
+    begin match get_stype (Global.get_alias env) ty_arg1 te1.T.exp_typ with
+      | None -> unexpected_type_exn e1.P.exp_loc te1.T.exp_typ ty_arg1
+      | Some _ ->
+        begin match get_stype (Global.get_alias env) ty_arg2 te2.T.exp_typ with
+          | None -> unexpected_type_exn e2.P.exp_loc te2.T.exp_typ ty_arg2
+          | Some _ -> mk_expr e.P.exp_loc ty_res (T.Builtin_2 (Product,te1,te2))
+        end
+    end
+  | P.Builtin_2 (Difference,e1,e2) ->
+    let te1 = type_expression_exn cl env ctx e1 in
+    let te2 = type_expression_exn cl env ctx e2 in
+    let (ty_arg1,ty_arg2,ty_res) =
+      match is_int_or_power_exn e.P.exp_loc te1 te2 with
+      | C_Int -> (t_int,t_int,t_int)
+      | C_Power ->
+        let mt = new_meta () in
+        (mk_Power mt,mk_Power mt,mk_Power mt)
+    in
+    begin match get_stype (Global.get_alias env) ty_arg1 te1.T.exp_typ with
+      | None -> unexpected_type_exn e1.P.exp_loc te1.T.exp_typ ty_arg1
+      | Some _ ->
+        begin match get_stype (Global.get_alias env) ty_arg2 te2.T.exp_typ with
+          | None -> unexpected_type_exn e2.P.exp_loc te2.T.exp_typ ty_arg2
+          | Some _ -> mk_expr e.P.exp_loc ty_res (T.Builtin_2 (Difference,te1,te2))
+        end
+    end
+  | P.Builtin_2 (bi,e1,e2) ->
+    let (ty_arg1,ty_arg2,ty_res) = get_builtin2_type bi in
+    let te1 = type_expression_exn cl env ctx e1 in
+    let te2 = type_expression_exn cl env ctx e2 in
+    begin match get_stype (Global.get_alias env) ty_arg1 te1.T.exp_typ with
+      | None -> unexpected_type_exn e1.P.exp_loc te1.T.exp_typ ty_arg1
+      | Some _ ->
+        begin match get_stype (Global.get_alias env) ty_arg2 te2.T.exp_typ with
+          | None -> unexpected_type_exn e2.P.exp_loc te2.T.exp_typ ty_arg2
+          | Some _ -> mk_expr e.P.exp_loc ty_res (T.Builtin_2 (bi,te1,te2))
+        end
+    end
 
   | P.Sequence nlst ->
     begin
@@ -557,7 +536,7 @@ let rec type_substitution_exn : 'mr 'cl.  ('mr,'cl) V.clause ->
         | [] -> x
         | hd::tl ->
           let id = { P.exp_loc=hd.lid_loc; exp_desc=(P.Ident hd.lid_str); exp_par=false } in
-          let cp = { P.exp_loc=x.P.exp_loc; exp_desc=(P.Couple (Comma,x,id)); exp_par=false } in
+          let cp = { P.exp_loc=x.P.exp_loc; exp_desc=(P.Builtin_2 (Couple Comma,x,id)); exp_par=false } in
           mk_tuple cp tl
     in
     let hd = Nlist.hd xlst in
@@ -575,7 +554,7 @@ let rec type_substitution_exn : 'mr 'cl.  ('mr,'cl) V.clause ->
     let _ = type_writable_var_exn cl env ctx ff in
     let rec mk_app (lc:Utils.loc) f = function
       | [] -> f
-      | x::tl -> mk_app lc { P.exp_loc=lc; exp_desc=(P.Application (f,x)); exp_par=false } tl
+      | x::tl -> mk_app lc { P.exp_loc=lc; exp_desc=(P.Builtin_2 (Application,f,x)); exp_par=false } tl
     in
     let lhs = mk_app ff.lid_loc
         { P.exp_loc=ff.lid_loc; exp_desc=(P.Ident ff.lid_str); exp_par=false} (Nlist.to_list nlst)
@@ -677,7 +656,7 @@ let rec type_substitution_exn : 'mr 'cl.  ('mr,'cl) V.clause ->
       | [] -> { P.exp_loc=x.lid_loc; exp_desc=(P.Ident x.lid_str); exp_par=false }
       | hd::tl -> { P.exp_loc=x.lid_loc;
                     exp_par=false;
-                    exp_desc=(P.Couple (Comma,
+                    exp_desc=(P.Builtin_2 (Couple Comma,
                                         { P.exp_loc=x.lid_loc; exp_desc=(P.Ident x.lid_str); exp_par=false},
                                         mk_tuple hd tl)) }
     in

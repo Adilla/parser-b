@@ -62,8 +62,9 @@ let print out (defs:t) : unit =
       | ASSERTIONS, _, _ | INITIALISATION, _, _ | OPERATIONS, _, _
       | LOCAL_OPERATIONS, _, _ | EOF, _, _ | PROPERTIES, _, _ ->
         (List.iter (L.push_token s) (next::accu);false)
-      | CONSTANT _, _, _ | E_PREFIX _, _, _ | PREDICATE _, _, _ | E_BINDER _, _, _
-      | E_INFIX_125 _, _, _ | E_INFIX_160 _, _, _ | E_INFIX_170 _, _, _
+      | CONSTANT _, _, _ | E_PREFIX_1 _, _, _ | E_PREFIX_2 _, _, _
+      | PREDICATE _, _, _ | E_BINDER _, _, _ | E_INFIX_125 _, _, _
+      | E_INFIX_160 _, _, _ | E_INFIX_170 _, _, _
       | E_INFIX_180 _, _, _ | E_INFIX_190 _, _, _ | E_INFIX_200 _, _, _
       | WHILE, _, _ | WHEN, _, _ | WHERE, _, _ | VARIANT, _, _ | VAR, _, _
       | TILDE, _, _ | THEN, _, _ | STRUCT, _, _ | SQUOTE, _, _ | SKIP, _, _
@@ -94,7 +95,7 @@ let print out (defs:t) : unit =
     | END ->
       (not is_def_file) &&
       (match L.preview_token_exn s with Grammar.EOF,_,_ -> true | _ -> false)
-    | CONSTANT _ | E_PREFIX _ | PREDICATE _ | E_BINDER _ | E_INFIX_125 _
+    | CONSTANT _ | E_PREFIX_1 _ | E_PREFIX_2 _ | PREDICATE _ | E_BINDER _ | E_INFIX_125 _
     | E_INFIX_160 _ | E_INFIX_170 _ | E_INFIX_180 _ | E_INFIX_190 _ | E_INFIX_200 _
     | WHILE | WHEN | WHERE | VARIANT | VAR | TILDE | THEN | STRUCT | SQUOTE | SKIP
     | SELECT | OF | LBRA_COMP | ELSIF | ELSE | CASE_OR | BEGIN | PRE | ASSERT

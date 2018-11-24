@@ -3,10 +3,10 @@ open SyntaxCore
 type expression_desc =
   | Ident of string
   | Dollar of string
-  | Builtin of e_builtin
+  | Builtin_0 of e_builtin_0
+  | Builtin_1 of e_builtin_1*expression
+  | Builtin_2 of e_builtin_2*expression*expression
   | Pbool of predicate
-  | Application of expression * expression
-  | Couple of c_or_m  * expression * expression
   | Sequence of expression Nlist.t
   | Extension of expression Nlist.t
   | Comprehension of lident Nlist.t * predicate

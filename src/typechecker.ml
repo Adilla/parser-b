@@ -76,13 +76,13 @@ let rec close_expr_exn  (e:(_,_,Btype.Open.t) T.expression) : (_,_,Btype.t) T.ex
     match e.T.exp_desc with
   | T.Ident id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Ident id)
   | T.Dollar id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Dollar id)
-  | T.Builtin _ as d -> mk_expr e.T.exp_loc e.T.exp_typ d
+  | T.Builtin_0 _ as d -> mk_expr e.T.exp_loc e.T.exp_typ d
+  | T.Builtin_1 (bi,e) ->
+    mk_expr e.T.exp_loc e.T.exp_typ (T.Builtin_1 (bi,close_expr_exn e))
+  | T.Builtin_2 (bi,e1,e2) ->
+    mk_expr e.T.exp_loc e.T.exp_typ (T.Builtin_2 (bi,close_expr_exn e1,close_expr_exn e2))
   | T.Pbool p ->
     mk_expr e.T.exp_loc e.T.exp_typ (T.Pbool (close_pred_exn p))
-  | T.Application (e1,e2) ->
-    mk_expr e.T.exp_loc e.T.exp_typ (T.Application (close_expr_exn e1,close_expr_exn e2))
-  | T.Couple (cm,e1,e2) ->
-    mk_expr e.T.exp_loc e.T.exp_typ (T.Couple (cm,close_expr_exn e1,close_expr_exn e2))
   | T.Sequence nlst ->
     mk_expr e.T.exp_loc e.T.exp_typ (T.Sequence (Nlist.map close_expr_exn nlst))
   | T.Extension nlst ->

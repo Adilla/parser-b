@@ -6,7 +6,7 @@
  (preprocess (pps ppx_deriving.std))
 )
 (menhir
-  (flags --table)
+  (flags --table --explain)
   (modules grammar))
 (ocamllex
   (modules lexer_base)) 

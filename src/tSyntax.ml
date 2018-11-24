@@ -34,10 +34,10 @@ type 'typ bvar = {
 type ('mr,'cl,'typ) expression_desc =
   | Ident of ('mr,'cl) t_ident
   | Dollar of ('mr,'cl) t_ident
-  | Builtin of e_builtin
+  | Builtin_0 of e_builtin_0
+  | Builtin_1 of e_builtin_1*('mr,'cl,'typ) expression
+  | Builtin_2 of e_builtin_2*('mr,'cl,'typ) expression*('mr,'cl,'typ) expression
   | Pbool of ('mr,'cl,'typ) predicate
-  | Application of ('mr,'cl,'typ) expression * ('mr,'cl,'typ) expression
-  | Couple of c_or_m  * ('mr,'cl,'typ) expression * ('mr,'cl,'typ) expression
   | Sequence of ('mr,'cl,'typ) expression Nlist.t
   | Extension of ('mr,'cl,'typ) expression Nlist.t
   | Comprehension of 'typ bvar Nlist.t * ('mr,'cl,'typ) predicate

@@ -1,8 +1,12 @@
 %{
 open SyntaxCore
 open PSyntax
+(*
+let mk_builtin_0 exp_loc bi : expression = { exp_loc; exp_desc=(Builtin_0 bi); exp_par=false }
+let mk_builtin_1 exp_loc bi e : expression = { exp_loc; exp_desc=(Builtin_1 (bi,e)); exp_par=false }
+let mk_builtin_2 exp_loc bi e1 e2 : expression = { exp_loc; exp_desc=(Builtin_2 (bi,e1,e2)); exp_par=false }
+   *)
 
-let mk_builtin exp_loc bi : expression = { exp_loc; exp_desc=(Builtin bi); exp_par=false }
 let mk_minst mi_mch mi_params : machine_instanciation = { mi_mch; mi_params }
 let mk_expr exp_loc exp_desc : expression = { exp_loc; exp_desc; exp_par=false }
 let mk_pred prd_loc prd_desc : predicate = { prd_loc; prd_desc; prd_par=false }
@@ -10,7 +14,7 @@ let mk_subst sub_loc sub_desc : substitution = { sub_loc; sub_desc; sub_be=false
 let mk_clause cl_loc cl_desc : Utils.loc*clause  = (cl_loc, cl_desc)
 let mk_lident lid_loc lid_str : lident = { lid_loc; lid_str }
 let mk_operation op_out op_name op_in op_body : operation = { op_out; op_name; op_in; op_body } 
-
+(*
 let mk_infix lc lc_bi bi a1 a2 =
   let f = mk_builtin lc_bi bi in
   mk_expr lc (Application (f,mk_expr lc (Couple(Infix,a1,a2))))
@@ -18,6 +22,7 @@ let mk_infix lc lc_bi bi a1 a2 =
 let mk_prefix exp_loc bi e =
   let f = mk_builtin exp_loc bi in
   { exp_loc; exp_desc=Application(f,e); exp_par=false }
+   *)
 
 let mk_binder exp_loc bi xlst p e =
   { exp_loc; exp_desc=Binder(bi,xlst,p,e); exp_par=false }
@@ -25,7 +30,7 @@ let mk_binder exp_loc bi xlst p e =
 let expr_to_list (e:expression) : expression list =
   let rec aux lst e =
     match e.exp_desc with
-    | Couple (Comma,e1,e2) ->
+    | Builtin_2(Couple Comma,e1,e2) ->
       if e.exp_par then e::lst else aux (e2::lst) e1
     | _ -> e::lst
   in
@@ -45,16 +50,17 @@ let mk_be (s:substitution) : substitution = { s with sub_be=true }
 %token WHERE
 %token THEN
 %token SELECT
-%token <SyntaxCore.e_builtin> CONSTANT 
-%token <SyntaxCore.e_builtin> E_PREFIX
+%token <SyntaxCore.e_builtin_0> CONSTANT 
+%token <SyntaxCore.e_builtin_1> E_PREFIX_1
+%token <SyntaxCore.e_builtin_2> E_PREFIX_2
 %token <SyntaxCore.pred_bop> PREDICATE
 %token <SyntaxCore.expr_binder> E_BINDER
-%token <SyntaxCore.e_builtin> E_INFIX_125
-%token <SyntaxCore.e_builtin> E_INFIX_160
-%token <SyntaxCore.e_builtin> E_INFIX_170
-%token <SyntaxCore.e_builtin> E_INFIX_180
-%token <SyntaxCore.e_builtin> E_INFIX_190
-%token <SyntaxCore.e_builtin> E_INFIX_200
+%token <SyntaxCore.e_builtin_2> E_INFIX_125
+%token <SyntaxCore.e_builtin_2> E_INFIX_160
+%token <SyntaxCore.e_builtin_2> E_INFIX_170
+%token <SyntaxCore.e_builtin_2> E_INFIX_180
+%token <SyntaxCore.e_builtin_2> E_INFIX_190
+%token <SyntaxCore.e_builtin_2> E_INFIX_200
 %token <string> STRING
 %token AFFECTATION
 %token COMMA
@@ -210,22 +216,23 @@ fields:
   | PARALLEL { Parallel_Product }
 
 expression:
-  c=CONSTANT { mk_expr $startpos (Builtin c) }
-| s=STRING { mk_expr $startpos (Builtin (String s)) }
+  c=CONSTANT { mk_expr $startpos (Builtin_0 c) }
+| s=STRING { mk_expr $startpos (Builtin_0 (String s)) }
 | id=IDENT { mk_expr $startpos (Ident id) }
 | id=IDENT DOLLAR_ZERO { mk_expr $startpos (Dollar id) }
 | LPAR e=expression RPAR { mk_par e }
 | CBOOL LPAR p=predicate RPAR { mk_expr $startpos (Pbool p) }
-| MINUS e=expression { mk_prefix $startpos Unary_Minus e } %prec unary_minus
-| e=expression TILDE { mk_expr $startpos (Application (mk_expr $startpos($2) (Builtin Inverse_Relation),e)) }
-| e1=expression op=infix_op e2=expression { mk_infix $startpos $startpos(op) op e1 e2 }
-| e1=expression LSQU e2=expression RSQU { mk_infix $startpos $startpos Image e1 e2 }
-| e1=expression MAPLET e2=expression { mk_expr $startpos (Couple (Maplet,e1,e2)) }
-| e1=expression COMMA e2=expression { mk_expr $startpos (Couple (Comma,e1,e2)) }
+| MINUS e=expression { mk_expr $startpos (Builtin_1(Unary_Minus,e)) } %prec unary_minus
+| e=expression TILDE { mk_expr $startpos (Builtin_1 (Inverse_Relation,e)) }
+| e1=expression op=infix_op e2=expression { mk_expr $startpos (Builtin_2(op,e1,e2)) }
+| e1=expression LSQU e2=expression RSQU { mk_expr $startpos (Builtin_2(Image,e1,e2)) }
+| e1=expression MAPLET e2=expression { mk_expr $startpos (Builtin_2(Couple Mapplet,e1,e2)) }
+| e1=expression COMMA e2=expression { mk_expr $startpos (Builtin_2(Couple Comma,e1,e2)) }
 | LBRA e=expression RBRA { mk_expr $startpos (Extension (expr_to_nonempty_list e)) } 
-| f=expression LPAR a=expression RPAR { mk_expr $startpos (Application (f,a)) }
+| f=expression LPAR a=expression RPAR { mk_expr $startpos (Builtin_2(Application,f,a)) }
 | LSQU e=expression RSQU { mk_expr $startpos (Sequence(expr_to_nonempty_list e)) }
-| op=E_PREFIX LPAR e=expression RPAR { mk_prefix $startpos op e }
+| op=E_PREFIX_1 LPAR e=expression RPAR { mk_expr $startpos (Builtin_1(op,e)) }
+| op=E_PREFIX_2 LPAR e1=expression COMMA e2=expression RPAR { mk_expr $startpos (Builtin_2(op,e1,e2)) }
 | b=E_BINDER id=IDENT DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b (Nlist.make1 (mk_lident $startpos(id) id)) p e }
 | b=E_BINDER LPAR ids=ident_nelist_comma RPAR DOT LPAR p=predicate BAR e=expression RPAR { mk_binder $startpos b ids p e }
 | LBRA_COMP ids=ident_nelist_comma BAR p=predicate RBRA { mk_expr $startpos (Comprehension (ids,p)) }

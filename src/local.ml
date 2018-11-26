@@ -6,15 +6,28 @@ type t_local_kind =
   | L_Param_In
   | L_Param_Out
 
-type t = (Btype.Open.t*t_local_kind) M.t
+type t_type =
+  { kind:t_local_kind;
+    mutable typ: Btype.t option }
+
+type t = t_type M.t
 
 let empty = M.empty
 
-let add (ctx:t) (id:string) (ty:Btype.Open.t) (ro:t_local_kind) : t =
-  M.add id (ty,ro) ctx
+let declare (ctx:t) (id:string) (kind:t_local_kind) : t =
+  M.add id { typ=None; kind } ctx
 
-let get (ctx:t) (id:string) : (Btype.Open.t*t_local_kind) option =
-  try Some (M.find id ctx)
-  with Not_found -> None
+let declare_with_type (ctx:t) (id:string) (ty:Btype.t) (kind:t_local_kind) : t =
+  M.add id { typ=Some ty; kind } ctx
+
+let set_type (ctx:t) (id:string) (ty:Btype.t) : unit =
+  match M.find_opt id ctx with
+  | None -> assert false (*FIXME*)
+  | Some rc -> ( rc.typ <- Some ty )
+
+let get (ctx:t) (id:string) : (Btype.t option*t_local_kind) option =
+  match M.find_opt id ctx with
+  | None -> None
+  | Some rc -> Some (rc.typ,rc.kind)
 
 let get_vars ctx = List.map fst (M.bindings ctx)

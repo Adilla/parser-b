@@ -36,12 +36,10 @@ let mk_assert_clause (type mr cl) (cl:(mr,cl) clause) : (mr,cl t_assert) clause 
   | C_Mch_Op -> C_Mch_Assert
   | C_Ref_Op -> C_Ref_Assert
   | C_Imp_Op -> C_Imp_Assert
-  | _ -> assert false (*FIXME*)
+  | _ -> assert false
 
 type ('mr,_) t_global_ident = 'mr Global.t_kind
 type ('mr,_) t_mutable_ident = 'mr Global.t_kind
-
-
 
 let make_mch_prop : G.t_mch G.t_kind -> (G.t_mch,t_mch_prop) t_global_ident option = function
   | G.Pack(G.K_Abstract_Variable,_) -> None
@@ -202,13 +200,4 @@ let get_mutable_in_clause (type mr cl) (cl:(mr,cl) clause) (ki:mr G.t_kind) : (m
   | C_Ref_Op -> make_ref_mut ki
   | C_Imp_Op -> make_imp_mut ki
   | C_Imp_Lop -> make_imp_lmut ki
-  | C_Mch_Prop -> assert false (*FIXME*)
-  | C_Mch_Inv -> assert false (*FIXME*)
-  | C_Mch_Assert -> assert false (*FIXME*)
-  | C_Ref_Prop -> assert false (*FIXME*)
-  | C_Ref_Inv -> assert false (*FIXME*)
-  | C_Ref_Assert -> assert false (*FIXME*)
-  | C_Imp_Prop -> assert false (*FIXME*)
-  | C_Imp_Inv -> assert false (*FIXME*)
-  | C_Imp_Val -> assert false (*FIXME*)
-  | C_Imp_Assert -> assert false (*FIXME*)
+  | _ -> assert false

@@ -266,17 +266,17 @@ substitution:
 | s1=substitution SEMICOLON s2=substitution { mk_subst $startpos($2) (Sequencement (s1,s2)) }
 | s1=substitution PARALLEL s2=substitution { mk_subst $startpos($2) (Parallel (s1,s2)) }
 
-elsif: ELSIF p=predicate THEN s=substitution { (p,s) }
+%inline elsif: ELSIF p=predicate THEN s=substitution { (p,s) }
 
-els: ELSE s=substitution { s }
+%inline els: ELSE s=substitution { s }
 
-whn: WHEN p=predicate THEN s=substitution { (p,s) }
+%inline whn: WHEN p=predicate THEN s=substitution { (p,s) }
 
-case_or: CASE_OR e=expression THEN s=substitution { (expr_to_nonempty_list e,s) }
+%inline case_or: CASE_OR e=expression THEN s=substitution { (expr_to_nonempty_list e,s) }
 
-id_eq_expr: id=IDENT EQUAL e=expression { (mk_lident $startpos(id) id,e) }
+%inline id_eq_expr: id=IDENT EQUAL e=expression { (mk_lident $startpos(id) id,e) }
 
-callup_subst:
+%inline callup_subst:
 | id=IDENT
  { mk_subst $startpos (CallUp ([],mk_lident $startpos(id) id,[])) }
 | id=IDENT LPAR e=expression RPAR
@@ -337,26 +337,26 @@ level1_substitution:
 
 component_eof: a=component EOF { a }
 
-component:
+%inline component:
 | MACHINE h=machine_header lst=clause* END { let (id,params) = h in mk_machine_exn id params lst }
 | REFINEMENT h=machine_header REFINES abs=IDENT lst=clause* END
   { let (id,params) = h in mk_refinement_exn id params (mk_lident $startpos(abs) abs) lst }
 | IMPLEMENTATION h=machine_header REFINES abs=IDENT lst=clause* END
   { let (id,params) = h in mk_implementation_exn id params (mk_lident $startpos(abs) abs) lst }
 
-machine_header:
+%inline machine_header:
   id=IDENT { (mk_lident $startpos(id) id,[]) }
 | id=IDENT LPAR lst=ident_list_comma RPAR { (mk_lident $startpos(id) id,lst) }
 
-machine_instanciation:
+%inline machine_instanciation:
 | id=IDENT { mk_minst (mk_lident $startpos(id) id) [] }
 | id=IDENT LPAR e=expression RPAR { mk_minst (mk_lident $startpos(id) id) (expr_to_list e) }
 
-set :
+%inline set :
 | id=IDENT { Abstract_Set (mk_lident $startpos(id) id) }
 | id=IDENT EQUAL LBRA elts=ident_list_comma RBRA { Concrete_Set (mk_lident $startpos(id) id,elts) }
 
-operation :
+%inline operation :
 | id=IDENT EQUAL s=level1_substitution
  { mk_operation [] (mk_lident $startpos(id) id) [] s }
 | id=IDENT LPAR lst=ident_nelist_comma RPAR EQUAL s=level1_substitution
@@ -370,10 +370,10 @@ semicolon_pred_lst:
 | p=predicate { [p] }
 | p=predicate SEMICOLON lst=semicolon_pred_lst { p::lst }
 
-valuation:
+%inline valuation:
 | id=IDENT EQUAL e=expression { (mk_lident $startpos(id) id,e) }
 
-clause:
+%inline clause:
   CONSTRAINTS p=predicate { mk_clause $startpos (Constraints p) }
 | SEES lst=ident_nelist_comma { mk_clause $startpos (Sees lst) }
 | INCLUDES lst=separated_nonempty_list ( COMMA, machine_instanciation ) { mk_clause $startpos (Includes (Nlist.from_list_exn lst)) }

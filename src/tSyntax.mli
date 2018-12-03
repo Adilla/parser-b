@@ -25,23 +25,23 @@ type arg = {
 
 type rfield = lident
 
-type 'typ bvar = {
+type bvar = {
   bv_loc:Utils.loc;
   bv_id:string;
-  bv_typ:'typ;
+  bv_typ:Btype.t;
 }
 
 type ('mr,'cl,'typ) expression_desc =
   | Ident of ('mr,'cl) t_ident
   | Dollar of ('mr,'cl) t_ident
-  | Builtin of e_builtin
+  | Builtin_0 of e_builtin_0
+  | Builtin_1 of e_builtin_1*('mr,'cl,'typ) expression
+  | Builtin_2 of e_builtin_2*('mr,'cl,'typ) expression*('mr,'cl,'typ) expression
   | Pbool of ('mr,'cl,'typ) predicate
-  | Application of ('mr,'cl,'typ) expression * ('mr,'cl,'typ) expression
-  | Couple of c_or_m  * ('mr,'cl,'typ) expression * ('mr,'cl,'typ) expression
   | Sequence of ('mr,'cl,'typ) expression Nlist.t
   | Extension of ('mr,'cl,'typ) expression Nlist.t
-  | Comprehension of 'typ bvar Nlist.t * ('mr,'cl,'typ) predicate
-  | Binder of expr_binder * 'typ bvar Nlist.t * ('mr,'cl,'typ) predicate * ('mr,'cl,'typ) expression
+  | Comprehension of bvar Nlist.t * ('mr,'cl,'typ) predicate
+  | Binder of expr_binder * bvar Nlist.t * ('mr,'cl,'typ) predicate * ('mr,'cl,'typ) expression
   | Record_Field_Access of ('mr,'cl,'typ) expression * rfield
   | Record of (rfield * ('mr,'cl,'typ) expression) Nlist.t
   | Record_Type of (rfield * ('mr,'cl,'typ) expression) Nlist.t
@@ -57,8 +57,8 @@ and ('mr,'cl,'typ) predicate_desc =
   | Binary_Prop of prop_bop * ('mr,'cl,'typ) predicate * ('mr,'cl,'typ) predicate
   | Binary_Pred of pred_bop * ('mr,'cl,'typ) expression * ('mr,'cl,'typ) expression
   | Negation of ('mr,'cl,'typ) predicate
-  | Universal_Q of 'typ bvar Nlist.t * ('mr,'cl,'typ) predicate
-  | Existential_Q of 'typ bvar Nlist.t * ('mr,'cl,'typ) predicate
+  | Universal_Q of bvar Nlist.t * ('mr,'cl,'typ) predicate
+  | Existential_Q of bvar Nlist.t * ('mr,'cl,'typ) predicate
 
 and ('mr,'cl,'typ) predicate = {
   prd_loc: Utils.loc;
@@ -91,11 +91,11 @@ type ('mr,'cl,'typ) substitution_desc =
   | IfThenElse of (('mr,'cl,'typ) predicate * ('mr,'cl,'typ) substitution) Nlist.t * ('mr,'cl,'typ) substitution option
   | Select of (('mr,'cl,'typ) predicate * ('mr,'cl,'typ) substitution) Nlist.t * ('mr,'cl,'typ) substitution option
   | Case of ('mr,'cl,'typ) expression * (('mr,'cl,'typ) expression Nlist.t * ('mr,'cl,'typ) substitution) Nlist.t * ('mr,'cl,'typ) substitution option
-  | Any of 'typ bvar Nlist.t * ('mr,'cl,'typ) predicate * ('mr,'cl,'typ) substitution
-  | Let of 'typ bvar Nlist.t * ('typ bvar * ('mr,'cl,'typ) expression) Nlist.t * ('mr,'cl,'typ) substitution
+  | Any of bvar Nlist.t * ('mr,'cl,'typ) predicate * ('mr,'cl,'typ) substitution
+  | Let of bvar Nlist.t * (bvar * ('mr,'cl,'typ) expression) Nlist.t * ('mr,'cl,'typ) substitution
   | BecomesElt of ('mr,'cl,'typ) mut_var Nlist.t * ('mr,'cl,'typ) expression
   | BecomesSuch of ('mr,'cl,'typ) mut_var Nlist.t * ('mr,'cl,'typ) predicate
-  | Var of 'typ bvar Nlist.t * ('mr,'cl,'typ) substitution
+  | Var of bvar Nlist.t * ('mr,'cl,'typ) substitution
   | CallUp of ('mr,'cl,'typ) mut_var list * called_op * ('mr,'cl,'typ) expression list
   | While of ('mr,'cl,'typ) predicate * ('mr,'cl,'typ) substitution * ('mr,'cl V.t_assert,'typ) predicate * ('mr,'cl V.t_assert,'typ) expression
   | Sequencement of ('mr,'cl,'typ) substitution * ('mr,'cl,'typ) substitution

@@ -51,10 +51,11 @@ let close_exn (lc:loc) (ty:Btype.Open.t) : Btype.t =
   match Btype.close ty with
   | None ->
     Error.raise_exn lc
-      ("The type of this expression could not be fully infered. The type infered so far is '"^
+      ("The type of this expression could not be fully inferred. The type infered so far is '"^
        Btype.Open.to_string ty^"'.")
   | Some ty -> ty
 
+(*
 let close_bvar (v:Btype.Open.t T.bvar) : Btype.t T.bvar =
   match Btype.close v.T.bv_typ with
   | None -> Error.raise_exn v.T.bv_loc 
@@ -64,6 +65,7 @@ let close_bvar (v:Btype.Open.t T.bvar) : Btype.t T.bvar =
   | Some bv_typ -> { T.bv_loc=v.T.bv_loc; bv_id=v.T.bv_id; bv_typ }
 
 let close_bvar_nlist = Nlist.lb_map ~f:close_bvar
+*)
 
 let mk_expr exp_loc exp_typ exp_desc : (_,_,Btype.t) T.expression =
   let exp_typ = close_exn exp_loc exp_typ in
@@ -76,21 +78,21 @@ let rec close_expr_exn  (e:(_,_,Btype.Open.t) T.expression) : (_,_,Btype.t) T.ex
     match e.T.exp_desc with
   | T.Ident id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Ident id)
   | T.Dollar id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Dollar id)
-  | T.Builtin _ as d -> mk_expr e.T.exp_loc e.T.exp_typ d
+  | T.Builtin_0 _ as d -> mk_expr e.T.exp_loc e.T.exp_typ d
+  | T.Builtin_1 (bi,e) ->
+    mk_expr e.T.exp_loc e.T.exp_typ (T.Builtin_1 (bi,close_expr_exn e))
+  | T.Builtin_2 (bi,e1,e2) ->
+    mk_expr e.T.exp_loc e.T.exp_typ (T.Builtin_2 (bi,close_expr_exn e1,close_expr_exn e2))
   | T.Pbool p ->
     mk_expr e.T.exp_loc e.T.exp_typ (T.Pbool (close_pred_exn p))
-  | T.Application (e1,e2) ->
-    mk_expr e.T.exp_loc e.T.exp_typ (T.Application (close_expr_exn e1,close_expr_exn e2))
-  | T.Couple (cm,e1,e2) ->
-    mk_expr e.T.exp_loc e.T.exp_typ (T.Couple (cm,close_expr_exn e1,close_expr_exn e2))
   | T.Sequence nlst ->
     mk_expr e.T.exp_loc e.T.exp_typ (T.Sequence (Nlist.map close_expr_exn nlst))
   | T.Extension nlst ->
     mk_expr e.T.exp_loc e.T.exp_typ (T.Extension (Nlist.map close_expr_exn nlst))
   | T.Comprehension (xlst,p) ->
-    mk_expr e.T.exp_loc e.T.exp_typ (T.Comprehension (close_bvar_nlist xlst,close_pred_exn p))
+    mk_expr e.T.exp_loc e.T.exp_typ (T.Comprehension (xlst,close_pred_exn p))
   | T.Binder (bi,xlst,p,e0) ->
-    mk_expr e.T.exp_loc e.T.exp_typ (T.Binder (bi,close_bvar_nlist xlst,close_pred_exn p,close_expr_exn e0))
+    mk_expr e.T.exp_loc e.T.exp_typ (T.Binder (bi,xlst,close_pred_exn p,close_expr_exn e0))
   | T.Record_Field_Access (e0,id) ->
     mk_expr e.T.exp_loc e.T.exp_typ (T.Record_Field_Access (close_expr_exn e0,id))
   | T.Record nlst ->
@@ -106,8 +108,8 @@ and close_pred_exn (p:(_,_,Btype.Open.t) T.predicate) : (_,_,Btype.t) T.predicat
   | T.Binary_Prop (bop,p1,p2) -> mk_pred p.T.prd_loc (T.Binary_Prop (bop,close_pred_exn p1,close_pred_exn p2))
   | T.Binary_Pred (bop,e1,e2) -> mk_pred p.T.prd_loc (T.Binary_Pred (bop,close_expr_exn e1,close_expr_exn e2))
   | T.Negation p0 -> mk_pred p.T.prd_loc (T.Negation (close_pred_exn p0))
-  | T.Universal_Q (xlst,p0) -> mk_pred p.T.prd_loc (T.Universal_Q (close_bvar_nlist xlst,close_pred_exn p0)) 
-  | T.Existential_Q (xlst,p0) -> mk_pred p.T.prd_loc (T.Existential_Q (close_bvar_nlist xlst,close_pred_exn p0)) 
+  | T.Universal_Q (xlst,p0) -> mk_pred p.T.prd_loc (T.Universal_Q (xlst,close_pred_exn p0)) 
+  | T.Existential_Q (xlst,p0) -> mk_pred p.T.prd_loc (T.Existential_Q (xlst,close_pred_exn p0)) 
 
 type t_comp_type = Mch | Ref | Imp
 let mk_subst sub_loc sub_desc = { T.sub_loc; sub_desc; }
@@ -171,13 +173,13 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,_,Btype.Open.t) T.substitution) : 
     if t = Imp then
       Error.raise_exn s.T.sub_loc "The subsitution 'Any' is not allowed in implementations."
     else
-      mk_subst s.T.sub_loc (T.Any (close_bvar_nlist xlst,close_pred_exn p,close_subst_exn t s0))
+      mk_subst s.T.sub_loc (T.Any (xlst,close_pred_exn p,close_subst_exn t s0))
   | T.Let (xlst,nlst,s0) ->
     if t = Imp then
       Error.raise_exn s.T.sub_loc "The subsitution 'Let' is not allowed in implementations."
     else
-      let aux (v,e) = (close_bvar v,close_expr_exn e) in
-      mk_subst s.T.sub_loc (T.Let (close_bvar_nlist xlst,Nlist.map aux nlst,close_subst_exn t s0))
+      let aux (v,e) = (v,close_expr_exn e) in
+      mk_subst s.T.sub_loc (T.Let (xlst,Nlist.map aux nlst,close_subst_exn t s0))
   | T.BecomesElt (xlst,e) ->
     if t = Imp then
       Error.raise_exn s.T.sub_loc "The subsitution 'Becomes Element' is not allowed in implementations."
@@ -192,7 +194,7 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,_,Btype.Open.t) T.substitution) : 
     if t = Mch then
       Error.raise_exn s.T.sub_loc ("Substitution 'Var' is not allowed in abstract machines.")
     else
-      mk_subst s.T.sub_loc (T.Var (close_bvar_nlist xlst,close_subst_exn t s0))
+      mk_subst s.T.sub_loc (T.Var (xlst,close_subst_exn t s0))
   | T.CallUp (args_out,id,args_in) ->
     mk_subst s.T.sub_loc (T.CallUp (List.map close_mut_var args_out,id,List.map close_expr_exn args_in))
   | T.While (p1,s0,p2,e) ->
@@ -232,21 +234,18 @@ let declare_set_exn (env:'mr Global.t) (s:P.set) : unit =
       ) elts
 
 let declare_local_symbol (ctx:Local.t) (lid:lident) : Local.t =
-  Local.add ctx lid.lid_str (Btype.Open.new_meta ()) Local.L_Expr_Binder
+  Local.declare ctx lid.lid_str Local.L_Expr_Binder
 
 let promote_symbol_exn (type mr ac) (env:mr Global.t) (ctx:Local.t)
     (ki:ac Global.t_global_kind) (lid:lident) : unit =
-      match Local.get ctx lid.lid_str with
-      | None -> assert false
-      | Some (ty,_) ->
-        begin match Btype.close ty with
-          | None -> Error.raise_exn lid.lid_loc ("The type of '"^lid.lid_str^"' could not be fully infered. Type infered: "^Btype.Open.to_string ty^".")
-          | Some ty ->
-           begin match Global.add_symbol env lid.lid_loc lid.lid_str ty ki with
-             | Ok () -> ()
-             | Error err -> raise (Error.Error err)
-           end
-        end
+  match Local.get ctx lid.lid_str with
+  | None -> assert false
+  | Some (None,_) -> Error.raise_exn lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred.")
+  | Some (Some ty,_) ->
+    begin match Global.add_symbol env lid.lid_loc lid.lid_str ty ki with
+      | Ok () -> ()
+      | Error err -> raise (Error.Error err)
+    end
 
 let declare_mch_constants_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.t_mch,cl) V.clause)
     (cconst:lident list) (aconst:lident list) (prop:P.predicate option)
@@ -278,9 +277,7 @@ let type_mch_init_exn (env:Global.t_mch Global.t) (s:P.substitution) : (Global.t
   close_subst_exn Mch s 
 
 let get_mch_operation_context_exn (_:Global.t_mch Global.t) (op:P.operation) : Local.t*Local.t =
-  let aux ki ctx lid = 
-    Local.add ctx lid.lid_str (Btype.Open.new_meta ()) ki
-  in
+  let aux ki ctx lid = Local.declare ctx lid.lid_str ki in
   let ctx0 = List.fold_left (aux Local.L_Param_In) Local.empty op.P.op_in in
   let ctx  = List.fold_left (aux Local.L_Param_Out) ctx0 op.P.op_out in
   (ctx0,ctx)
@@ -341,8 +338,9 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : (Gl
   let type_arg_exn ctx lid : T.arg =
     match Local.get ctx lid.lid_str with
     | None ->assert false
-    | Some (ty,_) ->
-      let arg_typ = close_exn lid.lid_loc ty in
+    | Some (None,_) ->
+      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+    | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
   let op_in = List.map (type_arg_exn ctx) op.P.op_in in
@@ -444,8 +442,9 @@ let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
 
 let declare_local_symbol_in_ref (env:Global.t_ref Global.t) (ctx:Local.t) (lid:lident) : Local.t =
   match Global.get_symbol env lid.lid_str with
-  | None -> Local.add ctx lid.lid_str (Btype.Open.new_meta ()) Local.L_Expr_Binder
-  | Some infos -> Local.add ctx lid.lid_str (infos.Global.sy_typ :> Btype.Open.t) Local.L_Expr_Binder
+  | None -> Local.declare ctx lid.lid_str Local.L_Expr_Binder
+  | Some infos ->
+    Local.declare_with_type ctx lid.lid_str infos.Global.sy_typ Local.L_Expr_Binder
 
 let declare_ref_constants_exn (type cl) (env:Global.t_ref Global.t) (cl:(Global.t_ref,cl) V.clause)
     (cconst:lident list) (aconst:lident list) (prop:P.predicate option)
@@ -526,15 +525,13 @@ let check_signature (op:P.operation) args_in args_out =
 let get_ref_operation_context_exn (env:Global.t_ref Global.t) (op:P.operation) =
   match Global.get_operation env op.P.op_name.lid_str with
   | None ->
-    let aux ki ctx lid = 
-      Local.add ctx lid.lid_str (Btype.Open.new_meta ()) ki
-    in
+    let aux ki ctx lid = Local.declare ctx lid.lid_str ki in
     let ctx0 = List.fold_left (aux Local.L_Param_In) Local.empty op.P.op_in in
     let ctx  = List.fold_left (aux Local.L_Param_Out) ctx0 op.P.op_out in
     (ctx0,ctx)
   | Some infos ->
     let aux (lk:Local.t_local_kind) (ctx:Local.t) (s,ty:string*Btype.t) =
-      Local.add ctx s (ty :> Btype.Open.t) lk
+      Local.declare_with_type ctx s ty lk
     in
     let ctx0 = List.fold_left (aux Local.L_Param_In) Local.empty infos.Global.op_args_in in
     let ctx = List.fold_left (aux Local.L_Param_Out) ctx0 infos.Global.op_args_out in
@@ -559,8 +556,9 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : (Gl
   let type_arg_exn ctx lid : T.arg =
     match Local.get ctx lid.lid_str with
     | None ->assert false
-    | Some (ty,_) ->
-      let arg_typ = close_exn lid.lid_loc ty in
+    | Some (None,_) ->
+      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+    | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
   let op_in = List.map (type_arg_exn ctx) op.P.op_in in
@@ -737,9 +735,10 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
   let op_body = close_subst_exn Imp op_body in
   let type_arg_exn ctx lid : T.arg =
     match Local.get ctx lid.lid_str with
-    | None ->assert false
-    | Some (ty,_) ->
-      let arg_typ = close_exn lid.lid_loc ty in
+    | None -> assert false
+    | Some (None,_) ->
+      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+    | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
   let op_in = List.map (type_arg_exn ctx) op.P.op_in in
@@ -779,8 +778,9 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
   let type_arg_exn ctx lid : T.arg =
     match Local.get ctx lid.lid_str with
     | None ->assert false
-    | Some (ty,_) ->
-      let arg_typ = close_exn lid.lid_loc ty in
+    | Some (None,_) ->
+      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+    | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
   let op_in = List.map (type_arg_exn ctx) op.P.op_in in

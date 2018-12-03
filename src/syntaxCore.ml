@@ -22,52 +22,33 @@ type ftype =
   | Partial_Surjections | Total_Surjections | Bijections
 [@@deriving eq]
 
-type e_builtin =
-  | Integer of Int32.t | String of string
-  | MaxInt | MinInt | Successor | Predecessor
-  | INTEGER | NATURAL | NATURAL1 | INT | NAT | NAT1 | STRINGS | BOOLEANS
-  | Empty_Set | Empty_Seq
-  | Product | Difference | Addition | Division | Modulo | Power
-  | Interval | Union | Intersection | Relations | First_Projection
-  | Second_Projection | Composition | Direct_Product | Parallel_Product | Iteration
-  | Image | Domain_Restriction | Domain_Soustraction | Codomain_Restriction
-  | Codomain_Soustraction | Surcharge | Functions of ftype | Concatenation | Head_Insertion
-  | Tail_Insertion | Head_Restriction | Tail_Restriction
+type e_builtin_0 =
+  | Integer of Int32.t | String of string | MaxInt | MinInt | INTEGER | NATURAL
+  | NATURAL1 | INT | NAT | NAT1 | STRINGS | BOOLEANS | Empty_Set | Empty_Seq
+  | TRUE | FALSE
+[@@deriving eq]
+
+type e_builtin_1 =
+  | Successor | Predecessor
   | Cardinal | Power_Set of power_set | Identity_Relation | Inverse_Relation
   | Closure | Transitive_Closure | Domain | Range | Fnc | Rel
   | Sequence_Set of stype | Size | First | Last | Front | Tail | Reverse
-  | G_Union | G_Intersection | G_Concatenation | Unary_Minus
-  | Max | Min | TRUE | FALSE
+  | G_Union | G_Intersection | G_Concatenation | Unary_Minus | Max | Min
   | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
   | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix
 [@@deriving eq]
 
-let expr_constants = [
-  MaxInt; MinInt; INTEGER; NATURAL; NATURAL1; INT; NAT; NAT1; STRINGS;
-  BOOLEANS; Empty_Set; Empty_Seq; TRUE; FALSE ]
+type t_couple = Mapplet | Comma
+[@@deriving eq]
 
-let expr_infix_ops =
-  [ Product; Difference; Addition; Division; Modulo; Power; Interval; Union;
-    Intersection; Relations; Composition; Direct_Product; Parallel_Product;
-    Domain_Restriction; Domain_Soustraction; Codomain_Restriction;
-    Codomain_Soustraction; Surcharge; Concatenation; Head_Insertion;
-    Tail_Insertion; Head_Restriction; Tail_Restriction;
-    Functions Partial_Functions; Functions Total_Functions;
-    Functions Partial_Injections; Functions Total_Injections;
-    Functions Partial_Surjections; Functions Total_Surjections;
-    Functions Bijections; Image
-  ]
-
-let expr_prefix_postfix_ops =
-  [ Unary_Minus; First_Projection; Second_Projection; Iteration; Max; Min;
-    Cardinal; Identity_Relation; Closure; Transitive_Closure; Domain; Range; Fnc;
-    Rel; Size; First; Last; Front; Tail; Reverse; G_Union; G_Intersection;
-    G_Concatenation; Tree; Btree; Const; Top; Sons; Prefix; Postfix; SizeT;
-    Mirror; Rank; Father; Son; Subtree; Arity; Bin; Left; Right; Infix;
-    Sequence_Set All_Seq; Sequence_Set Non_Empty_Seq; Sequence_Set Injective_Seq;
-    Sequence_Set Injective_Non_Empty_Seq; Sequence_Set Permutations; Power_Set Full;
-    Power_Set Non_Empty; Power_Set Finite; Power_Set Finite_Non_Empty;
-    Inverse_Relation; Successor; Predecessor ]
+type e_builtin_2 =
+  | Product | Difference | Addition | Division | Modulo | Power | Interval
+  | Union | Intersection | Relations | First_Projection | Second_Projection
+  | Composition | Direct_Product | Parallel_Product | Iteration | Image
+  | Domain_Restriction | Domain_Soustraction | Codomain_Restriction
+  | Codomain_Soustraction | Surcharge | Functions of ftype | Concatenation | Head_Insertion
+  | Tail_Insertion | Head_Restriction | Tail_Restriction | Application | Couple of t_couple
+[@@deriving eq]
 
 type p_builtin = Btrue | Bfalse
 [@@deriving eq]
@@ -101,7 +82,7 @@ let prop_bop_to_string : prop_bop -> string = function
   | Implication -> "=>"
   | Equivalence -> "<=>"
 
-let builtin_to_string : e_builtin -> string = function
+let builtin0_to_string : e_builtin_0 -> string = function
   | Integer i -> Int32.to_string i
   | String s -> "\"" ^ s ^ "\""
   | TRUE -> "TRUE"
@@ -118,6 +99,8 @@ let builtin_to_string : e_builtin -> string = function
   | BOOLEANS -> "BOOL"
   | Empty_Set -> "{}"
   | Empty_Seq -> "[]"
+
+let builtin1_to_string : e_builtin_1 -> string = function
   | Successor -> "succ"
   | Predecessor -> "pred"
   | Cardinal -> "card"
@@ -148,14 +131,32 @@ let builtin_to_string : e_builtin -> string = function
   | G_Concatenation -> "conc"
   | Max -> "max"
   | Min -> "min"
+  | Unary_Minus -> "-"
+  | Inverse_Relation -> "~"
+  | Tree -> "tree"
+  | Btree -> "btree"
+  | Const -> "const"
+  | Top -> "top"
+  | Sons -> "sons"
+  | Prefix -> "prefix"
+  | Postfix -> "postfix"
+  | SizeT -> "sizet"
+  | Mirror -> "mirror"
+  | Rank -> "rank"
+  | Father -> "father"
+  | Son -> "son"
+  | Subtree -> "subtree"
+  | Arity -> "arity"
+  | Bin -> "bin"
+  | Left -> "left"
+  | Right -> "right"
+  | Infix -> "infix"
+
+let builtin2_to_string : e_builtin_2 -> string = function
   | First_Projection -> "prj1"
   | Second_Projection -> "prj2"
   | Iteration -> "iterate"
-
   | Image -> ".[.]"
-  | Unary_Minus -> "-"
-  | Inverse_Relation -> "~"
-
   | Product -> "*"
   | Difference -> "-"
   | Addition -> "+"
@@ -186,26 +187,10 @@ let builtin_to_string : e_builtin -> string = function
   | Tail_Insertion -> "<-"
   | Head_Restriction -> "/|\\"
   | Tail_Restriction -> "\\|/"
-
-  | Tree -> "tree"
-  | Btree -> "btree"
-  | Const -> "const"
-  | Top -> "top"
-  | Sons -> "sons"
-  | Prefix -> "prefix"
-  | Postfix -> "postfix"
-  | SizeT -> "sizet"
-  | Mirror -> "mirror"
-  | Rank -> "rank"
-  | Father -> "father"
-  | Son -> "son"
-  | Subtree -> "subtree"
-  | Arity -> "arity"
-  | Bin -> "bin"
-  | Left -> "left"
-  | Right -> "right"
-  | Infix -> "infix"
-
+  | Application -> ".(.)"
+  | Couple Mapplet -> "|->"
+  | Couple Comma -> ","
+  
 let binder_to_string = function
   | Sum -> "SIGMA"
   | Prod -> "PI"

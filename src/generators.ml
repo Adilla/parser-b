@@ -2,17 +2,6 @@ open SyntaxCore
 open PSyntax
 open QCheck
 
-(*
-type var = (unit,unit) Syntax.var
-type expression = (unit,unit) Syntax.expression
-type predicate = (unit,unit) Syntax.predicate
-type substitution = (unit,unit) Syntax.substitution
-type component = (unit,unit) Syntax.component
-type set = (unit,unit) Syntax.set
-type machine_instanciation = (unit,unit) Syntax.machine_instanciation
-type operation = (unit,unit) Syntax.operation
-*)
-
 let pred_op_list =
   [ Equality; Disequality; Membership; Non_Membership;
     Inclusion Not_Strict; Inclusion Strict; Inclusion Non_Inclusion;
@@ -38,20 +27,47 @@ let gen_lident : lident Gen.t = fun rd ->
 
 let small_nat = Gen.map Int32.of_int Gen.small_nat
 
-let gen_e_constant_bi : e_builtin Gen.t = fun random ->
-  match Gen.int_bound 43 random with
-  | 0 -> Integer (small_nat random)
-  | 1 -> String (gen_string random)
-  | _ -> Gen.oneofl expr_constants random
+let gen_e_constant_bi : e_builtin_0 Gen.t =
+  Gen.oneof [
+    Gen.map (fun i -> Integer i) small_nat;
+    Gen.map (fun s -> String s) gen_string;
+    Gen.return MaxInt;
+    Gen.return MinInt;
+    Gen.return INTEGER;
+    Gen.return NATURAL;
+    Gen.return NATURAL1;
+    Gen.return INT;
+    Gen.return NAT;
+    Gen.return NAT1;
+    Gen.return STRINGS;
+    Gen.return BOOLEANS;
+    Gen.return Empty_Set;
+    Gen.return Empty_Seq;
+    Gen.return TRUE;
+    Gen.return FALSE;
+  ]
 
-(*
-let gen_ident : ident Gen.t = gen_string
+let gen_builtin_1 : e_builtin_1 Gen.t =
+  Gen.oneofl
+    [ Successor; Predecessor; Cardinal; Power_Set Full; Power_Set Non_Empty;
+      Power_Set Finite; Power_Set Finite_Non_Empty; Identity_Relation;
+      Inverse_Relation; Closure; Transitive_Closure; Domain; Range; Fnc; Rel;
+      Sequence_Set All_Seq; Sequence_Set Non_Empty_Seq; Sequence_Set Injective_Seq;
+      Sequence_Set Injective_Non_Empty_Seq; Sequence_Set Permutations; Size;
+      First; Last; Front; Tail; Reverse; G_Union; G_Intersection; G_Concatenation;
+      Unary_Minus; Max; Min; Tree; Btree; Const; Top; Sons; Prefix; Postfix; SizeT;
+      Mirror; Rank; Father; Son; Subtree; Arity; Bin; Left; Right; Infix ]
 
-let gen_rfield : unit lident Gen.t = fun rd -> { lid_loc=(); lid_str=gen_ident rd }
-let gen_op_name : unit lident Gen.t = fun rd -> { lid_loc=(); lid_str=gen_ident rd }
-let gen_mch_name : unit lident Gen.t = fun rd -> { lid_loc=(); lid_str=gen_ident rd }
-let gen_var : var Gen.t = fun rd -> { var_loc=(); var_typ=(); var_id=gen_ident rd }
-*)
+let gen_builtin_2 : e_builtin_2 Gen.t =
+  Gen.oneofl
+    [ Product; Difference; Addition; Division; Modulo; Power; Interval; Union;
+      Intersection; Relations; First_Projection; Second_Projection; Composition;
+      Direct_Product; Parallel_Product; Iteration; Image; Domain_Restriction;
+      Domain_Soustraction; Codomain_Restriction; Codomain_Soustraction; Surcharge;
+      Functions Partial_Functions; Functions Total_Functions; Functions Partial_Injections;
+      Functions Total_Injections; Functions Partial_Surjections; Functions Total_Surjections;
+      Functions Bijections; Concatenation; Head_Insertion; Tail_Insertion;
+      Head_Restriction; Tail_Restriction; Application; Couple Comma; Couple Mapplet ]
 
 let split_int n rd =
   let k = Random.State.int rd (n + 1) in
@@ -89,27 +105,16 @@ let rec sized_expr : expression Gen.sized = fun n ->
     Gen.oneof
       [ Gen.map (fun id -> mk_expr (Ident id)) gen_string;
         Gen.map (fun id -> mk_expr (Dollar id)) gen_string;
-        Gen.map (fun bi -> mk_expr (Builtin bi)) gen_e_constant_bi ]
+        Gen.map (fun bi -> mk_expr (Builtin_0 bi)) gen_e_constant_bi ]
 
   else
     Gen.oneof
       [ Gen.map (fun p -> mk_expr (Pbool p)) (sized_pred (n-1));
-        Gen.map (fun (e1,e2) -> mk_expr (Application (e1,e2)))
-          (sized_pair split_int sized_expr sized_expr (n-1));
-        Gen.map (fun (bi,e2) -> mk_expr (Application (mk_expr (Builtin bi),e2)))
-          (Gen.pair
-             (Gen.oneofl expr_prefix_postfix_ops) 
-             (sized_expr (n-1)));
-        Gen.map (fun (bi,(e1,e2)) ->
-            mk_expr (Application (mk_expr (Builtin bi),mk_expr (Couple(Infix,e1,e2)))))
-          (Gen.pair
-             (Gen.oneofl expr_infix_ops)
+        Gen.map (fun (bi,e) -> mk_expr (Builtin_1(bi,e)))
+          (Gen.pair gen_builtin_1 (sized_expr (n-1)));
+        Gen.map (fun (bi,(e1,e2)) -> mk_expr (Builtin_2(bi,e1,e2)))
+          (Gen.pair gen_builtin_2
              (sized_pair split_int sized_expr sized_expr (n-1)));
-        Gen.map (fun (x,(e1,e2)) -> mk_expr (Couple(x,e1,e2)))
-          (Gen.pair
-             (Gen.oneofl [Comma;Maplet])
-             (sized_pair split_int sized_expr sized_expr (n-1))
-          );
         Gen.map (fun lst -> mk_expr (Sequence lst))
           (sized_nel split_int_into_nel sized_expr (n-1));
         Gen.map (fun lst -> mk_expr (Extension lst))

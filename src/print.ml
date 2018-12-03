@@ -32,26 +32,45 @@ let mk_string_nelist_comma (nlst:lident Nlist.t) : Easy_format.t =
 let mk_string_nelist_comma_par (nlst:lident Nlist.t) : Easy_format.t =
   List (("(",",",")",list_1), List.map mk_atom_from_lident (Nlist.to_list nlst))
 
+let is_infix = function
+  | First_Projection | Second_Projection | Iteration -> false
+  | Product | Difference | Addition | Division | Modulo | Power | Interval | Union
+  | Intersection | Relations | Composition | Direct_Product | Parallel_Product
+  | Domain_Restriction | Domain_Soustraction | Codomain_Restriction
+  | Codomain_Soustraction | Surcharge | Functions _ | Concatenation | Head_Insertion
+  | Tail_Insertion | Head_Restriction | Tail_Restriction | Couple _ -> true
+  | Application | Image -> assert false
+
+
 let rec ef_expr : expression -> Easy_format.t = fun e ->
   match e.exp_desc with
   | Ident id -> mk_atom id
   | Dollar id -> mk_atom ( id ^ "$0")
-  | Builtin bi -> mk_atom (builtin_to_string bi)
+  | Builtin_0 bi -> mk_atom (builtin0_to_string bi)
+  | Builtin_1 (Inverse_Relation,e) -> mk_label (ef_expr_wp e) (mk_atom "~")
+  | Builtin_1 (Unary_Minus,e) -> mk_label (mk_atom "-") (ef_expr_wp e)
+  | Builtin_1 (bi,e) ->
+    mk_label (mk_atom (builtin1_to_string bi)) (List (("(","",")",list_1),[ef_expr e]))
+  | Builtin_2 (Application,f,a) ->
+    mk_label (ef_expr_wp f) (List (("(","",")",list_1),[ef_expr a]))
+  | Builtin_2 (Image,e1,e2) ->
+    mk_label (ef_expr_wp e1) (List (("[","","]",list_1),[ef_expr e2]))
+  | Builtin_2 (Couple Comma,e1,e2) ->
+    List(("(",",",")",{ list_1 with space_before_separator=true }),
+           [ef_expr_wp e1; ef_expr_wp e2])
+  | Builtin_2 (Composition,e1,e2) ->
+    List(("(",";",")",{ list_1 with space_before_separator=true }),
+           [ef_expr_wp e1; ef_expr_wp e2])
+  | Builtin_2 (Parallel_Product,e1,e2) ->
+    List(("(","||",")",{ list_1 with space_before_separator=true }),
+         [ef_expr_wp e1; ef_expr_wp e2])
+  | Builtin_2 (bi,e1,e2) ->
+    if is_infix bi then
+      List(("",builtin2_to_string bi,"",{ list_1 with space_before_separator=true }),
+           [ef_expr_wp e1; ef_expr_wp e2])
+    else
+      mk_label (mk_atom (builtin2_to_string bi)) (List (("(",",",")",list_1),[ef_expr e1;ef_expr e2]))
   | Pbool p -> mk_label (mk_atom "bool") (List(("(","",")",list_1),[ef_pred p]))
-  | Application (f,a) ->
-    begin
-      match f.exp_desc, a.exp_desc with
-      | Builtin Inverse_Relation, _ -> mk_label (ef_expr_wp a) (mk_atom "~")
-      | Builtin Unary_Minus, _ -> mk_label (mk_atom "-") (ef_expr_wp a)
-      | Builtin Image, Couple(_,e1,e2) -> mk_label (ef_expr_wp e1) (List (("[","","]",list_1),[ef_expr e2]))
-      | Builtin (Composition|Parallel_Product as bop), Couple(_,e1,e2) ->
-        List(("(",builtin_to_string bop,")",{ list_1 with space_before_separator=true }),
-             [ef_expr_wp e1; ef_expr_wp e2])
-      | Builtin bop, Couple(Infix,e1,e2) ->
-        List(("",builtin_to_string bop,"",{ list_1 with space_before_separator=true }),
-             [ef_expr_wp e1; ef_expr_wp e2])
-      | _ -> mk_label (ef_expr_wp f) (List (("(","",")",list_1),[ef_expr a]))
-    end
   | Comprehension (xlst,p) ->
     List(("{","","}",{ list with align_closing=false}),
          [mk_string_nelist_comma xlst;mk_atom "|";ef_pred p])
@@ -66,11 +85,6 @@ let rec ef_expr : expression -> Easy_format.t = fun e ->
   | Extension nlst ->
     let lst = List.map (fun e -> ef_expr_wp e) (Nlist.to_list nlst) in
     List (("{",",","}",list_1),lst)
-  | Couple (Infix,_,_) -> assert false
-  | Couple (Maplet,e1,e2) ->
-    List(("","","",list_1),[ef_expr_wp e1;mk_atom "|->";ef_expr_wp e2])
-  | Couple (Comma,e1,e2) ->
-    List(("","","",list_1),[ef_expr_wp e1;mk_atom ",";ef_expr_wp e2])
   | Record_Field_Access (e,fd) ->
     mk_label (ef_expr_wp e) (mk_atom ("'" ^ fd.lid_str))
   | Record nlst ->
@@ -84,10 +98,20 @@ let rec ef_expr : expression -> Easy_format.t = fun e ->
 
 and ef_expr_wp e =
   match e.exp_desc with
-  | Application _ | Couple _ -> List(("(","",")",list_1),[ef_expr e])
-  | Record_Field_Access _ | Ident _ | Dollar _ | Pbool _ | Builtin _
-  | Comprehension _ | Binder _ | Sequence _ | Extension _ | Record _
-  | Record_Type _ -> ef_expr e
+  | Builtin_2 (Composition,_,_)
+  | Builtin_2 (Couple Comma,_,_)
+  | Builtin_2 (Parallel_Product,_,_)
+  | Builtin_2 (Image,_,_)
+  | Builtin_2 (Application,_,_) -> ef_expr e
+
+  | Builtin_1 (Unary_Minus,_)
+  | Builtin_1 (Inverse_Relation,_) -> List(("(","",")",list_1),[ef_expr e])
+
+  | Builtin_2 (bi,_,_) when is_infix bi -> List(("(","",")",list_1),[ef_expr e])
+
+  | Builtin_1 _ | Builtin_2 _ | Record_Field_Access _ | Ident _ | Dollar _
+  | Pbool _ | Builtin_0 _ | Comprehension _ | Binder _ | Sequence _
+  | Extension _ | Record _ | Record_Type _ -> ef_expr e
 
 and ef_struct_field (rf,e:lident*expression) : Easy_format.t =
   List(("",":","",list_1), [mk_atom_from_lident rf;ef_expr_wp e])

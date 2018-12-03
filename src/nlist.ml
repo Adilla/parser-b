@@ -24,5 +24,15 @@ let from_list_exn = function
 
 let hd = fst
 let tl = snd
-let lb_map ~f (hd,tl) = (f hd,List.map f tl)
-let map f (hd,tl) = (f hd,List.map f tl)
+
+let lb_map ~f (hd,tl) =
+  let hd = f hd in
+  let tl = List.map f tl in
+  (hd,tl)
+
+let map f (hd,tl) =
+  let hd = f hd in
+  let tl = List.map f tl in
+  (hd,tl)
+
+let rev (hd,tl) = from_list_exn (List.rev (hd::tl))

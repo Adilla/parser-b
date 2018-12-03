@@ -197,19 +197,8 @@ struct
     | TRUE -> Some B0_True
     | FALSE -> Some B0_False
     | String s -> Some (B0_String s)
-    | Successor | Predecessor | INTEGER | NATURAL | NATURAL1 | INT | NAT
-    | NAT1 | STRINGS | BOOLEANS | Empty_Set | Empty_Seq | Product | Difference
-    | Addition | Division | Modulo | Power | Interval | Union | Intersection
-    | Relations | First_Projection | Second_Projection | Composition | Direct_Product
-    | Parallel_Product | Iteration | Image | Domain_Restriction | Domain_Soustraction
-    | Codomain_Restriction | Codomain_Soustraction | Surcharge | Functions _
-    | Concatenation | Head_Insertion | Tail_Insertion | Head_Restriction | Tail_Restriction
-    | Cardinal | Power_Set  _ | Identity_Relation | Inverse_Relation | Closure
-    | Transitive_Closure | Domain | Range | Fnc | Rel | Sequence_Set _ | Size
-    | First | Last | Front | Tail | Reverse | G_Union | G_Intersection
-    | G_Concatenation | Unary_Minus | Max | Min | Tree | Btree | Const | Top | Sons
-    | Prefix | Postfix | SizeT | Mirror | Rank | Father | Son | Subtree | Arity
-    | Bin | Left | Right | Infix -> None
+    | INTEGER | NATURAL | NATURAL1 | INT | NAT
+    | NAT1 | STRINGS | BOOLEANS | Empty_Set | Empty_Seq -> None
 
 (*
   let normalize_app e =
@@ -282,12 +271,14 @@ struct
       if is_valid_range_type rg then 1
       else Error.raise_exn lc "Only arrays indexed by integers or concrete sets are supported."
 
+(*
   let is_func e =
     try
       let _ = to_b0_type e.T.exp_loc e.T.exp_typ in
       false
     with
     Error.Error _ -> true
+*)
 
   let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) ->
     ('mr,'cl,Btype.t) T.expression -> t_b0_expr = fun f e ->
@@ -304,67 +295,50 @@ struct
         | IK_Concrete_Set _ | IK_Abstract_Set _ ->
           Error.raise_exn e.T.exp_loc "This is not a valid B0 expression (Abstract or concrete set)."
       end
-    | T.Builtin bi ->
+    | T.Builtin_0 bi ->
       begin match to_b0_constant bi with
         | None -> Error.raise_exn e.T.exp_loc ("This is not a valid B0 constant.")
         | Some bi -> add_lt (B0_Builtin_0 bi)
       end
-    | T.Pbool p -> pred_to_b0_expr f p
-    | T.Application (ff,arg) ->
-      begin match ff.T.exp_desc with
-        | T.Builtin bi ->
-          let mk_bin_op op =
-            match arg.T.exp_desc with
-            | T.Couple (_,arg1,arg2) ->
-              let arg1 = to_b0_expr f arg1 in
-              let arg2 = to_b0_expr f arg2 in
-              add_lt (B0_Builtin_2 (op,arg1,arg2))
-            | _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0 expression."
-          in
-          begin match bi with
-            | Successor ->
-              add_lt (B0_Builtin_2(B0_Addition,to_b0_expr f arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
-            | Predecessor ->
-              add_lt (B0_Builtin_2(B0_Difference,to_b0_expr f arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
-            | Unary_Minus ->
-              add_lt (B0_Builtin_1 (B0_Minus,to_b0_expr f arg))
-            | Product ->
-              if is_int e.T.exp_typ then mk_bin_op B0_Product
-              else add_lt (get_array_init f arg)
-            | Difference -> mk_bin_op B0_Difference
-            | Addition -> mk_bin_op B0_Addition
-            | Division -> mk_bin_op B0_Division
-            | Modulo -> mk_bin_op B0_Modulo
-            | Power -> mk_bin_op B0_Power
-            | _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
-          end
-        | T.Ident (T.K_Global (id_str,ki)) when is_func ff ->
+    | T.Builtin_1 (Unary_Minus,arg) ->
+      add_lt (B0_Builtin_1 (B0_Minus,to_b0_expr f arg))
+    | T.Builtin_1 (Successor,arg) ->
+      add_lt (B0_Builtin_2(B0_Addition,to_b0_expr f arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
+    | T.Builtin_1 (Predecessor,arg) ->
+      add_lt (B0_Builtin_2(B0_Difference,to_b0_expr f arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
+    | T.Builtin_1 (_,_) ->
+      Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
+    | T.Builtin_2 (Product,arg1,arg2) ->
+      if is_int e.T.exp_typ then
+        add_lt (B0_Builtin_2 (B0_Product,to_b0_expr f arg1,to_b0_expr f arg2))
+      else
+        add_lt (get_array_init e.T.exp_loc f arg1 arg2)
+    | T.Builtin_2 (Difference,arg1,arg2) ->
+      add_lt (B0_Builtin_2 (B0_Difference,to_b0_expr f arg1,to_b0_expr f arg2))
+    | T.Builtin_2 (Addition,arg1,arg2) ->
+      add_lt (B0_Builtin_2 (B0_Addition,to_b0_expr f arg1,to_b0_expr f arg2))
+    | T.Builtin_2 (Division,arg1,arg2) ->
+      add_lt (B0_Builtin_2 (B0_Division,to_b0_expr f arg1,to_b0_expr f arg2))
+    | T.Builtin_2 (Modulo,arg1,arg2) ->
+      add_lt (B0_Builtin_2 (B0_Modulo,to_b0_expr f arg1,to_b0_expr f arg2))
+    | T.Builtin_2 (Power,arg1,arg2) ->
+      add_lt (B0_Builtin_2 (B0_Power,to_b0_expr f arg1,to_b0_expr f arg2))
+    | T.Builtin_2 (Application,ff,arg) ->
+      let ff = to_b0_expr f ff in
           let rec get_args arg =
             match arg.T.exp_desc with
-            | T.Couple (_,a1,a2) -> Nlist.cons (to_b0_expr f a1) (get_args a2)
-            | _ -> Nlist.make1 (to_b0_expr f arg)
-          in
-          let args = get_args arg in
-          begin match f ki with
-            | IK_Other IK_Constant q_nspace ->
-              add_lt (B0_Fun_App({ q_nspace; q_id=mk_ident ff.T.exp_loc id_str },args))
-            | IK_Other IK_Enum _ | IK_Other IK_Variable _
-            | IK_Concrete_Set _ | IK_Abstract_Set _ ->
-              Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
-          end
-        | _ ->
-          let ff = to_b0_expr f ff in
-          let rec get_args arg =
-            match arg.T.exp_desc with
-            | T.Couple (_,a1,a2) -> Nlist.cons (to_b0_expr f a1) (get_args a2)
+            | T.Builtin_2 (Couple _,a1,a2) -> Nlist.cons (to_b0_expr f a1) (get_args a2)
             | _ -> Nlist.make1 (to_b0_expr f arg)
           in
           let args = get_args arg in
           add_lt (B0_Array_Access(ff,args))
-      end
+
+    | T.Builtin_2 (_,_,_) ->
+      Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
+    | T.Pbool p -> pred_to_b0_expr f p
     | T.Extension nle ->
       let aux i e = match e.T.exp_desc with
-        | T.Couple (_,e1,e2) ->
+        | T.Builtin_2 (Couple _,e1,e2) ->
           begin match (to_b0_expr f e1).exp0_desc with
             | B0_Builtin_0 (B0_Integer j) ->
               if (Int32.of_int i) = j then (j,to_b0_expr f e2)
@@ -382,7 +356,6 @@ struct
           (mk_ident id.lid_loc id.lid_str,to_b0_expr f e)) (Nlist.to_list lst)
         ))
     | T.Dollar _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Dollar)."
-    | T.Couple _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Couple)."
     | T.Sequence _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Sequence)."
     | T.Comprehension _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Comprehension)."
     | T.Binder _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Binder)."
@@ -392,20 +365,22 @@ struct
       add_lt (B0_Record_Access (e,fd))
     | T.Record_Type _ -> Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Record type)."
 
-  and get_array_init : 'mr 'cl.(('mr,'cl) V.t_global_ident -> t_full_ident_kind) -> ('mr,'cl,Btype.t) T.expression -> t_exp0_desc = fun f e ->
-    match e.T.exp_desc with
-    | T.Couple (_,e1,e2) ->
-      let v = match e2.T.exp_desc with
-        | T.Extension lst ->
-          begin match Nlist.to_list lst with
-            | [s] -> to_b0_expr f s
-            | _ -> Error.raise_exn e.T.exp_loc "Invalid array initialisation (not a singleton)."
-          end
-        | _ -> Error.raise_exn e.T.exp_loc "Invalid array initialisation (not a singleton)."
-      in
-      B0_Array_Init (get_array_range f e1,v)
-    | _ -> Error.raise_exn e.T.exp_loc "Invalid array initialisation."
-  
+  and get_array_init : 'mr 'cl. Utils.loc -> (('mr,'cl) V.t_global_ident -> t_full_ident_kind) ->
+    ('mr,'cl,Btype.t) T.expression ->
+    ('mr,'cl,Btype.t) T.expression ->
+    t_exp0_desc = fun lc f e1 e2 ->
+    let v = match e2.T.exp_desc with
+      | T.Extension lst ->
+        begin match Nlist.to_list lst with
+          | [s] -> to_b0_expr f s
+          | _ ->
+            Error.raise_exn lc "Invalid array initialisation (not a singleton)."
+        end
+      | _ ->
+        Error.raise_exn lc "Invalid array initialisation (not a singleton)."
+    in
+    B0_Array_Init (get_array_range f e1,v)
+
   and get_array_range : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) -> ('mr,'cl,Btype.t) T.expression -> t_b0_range Nlist.t = fun f e ->
     match e.T.exp_desc with
     | T.Ident (T.K_Global (id,ki)) ->
@@ -416,22 +391,18 @@ struct
         | IK_Abstract_Set _ | IK_Other _ ->
           Error.raise_exn e.T.exp_loc "Invalid array range."
       end
-    | T.Application (ff,arg) ->
-      begin match ff.T.exp_desc, arg.T.exp_desc with
-        | T.Builtin Interval, T.Couple (_,int_start,int_end) ->
-          let min = to_b0_expr f int_start in
-          let max = to_b0_expr f int_end in
-          Nlist.make1 (R_Interval (min,max))
-        | T.Builtin Product, T.Couple (_,st,ed) ->
-          let rg1 = get_array_range f st in
-          let rg2 = get_array_range f ed in
-          begin match Nlist.to_list rg2 with
-            | [x] -> Nlist.from_list_exn ((Nlist.to_list rg1)@[x]) (*FIXME*)
-            | _ -> Error.raise_exn e.T.exp_loc "Invalid array range."
-          end
-        | _, _ -> Error.raise_exn e.T.exp_loc "Invalid array range."
+    | T.Builtin_2 (Interval,int_start,int_end) ->
+      let min = to_b0_expr f int_start in
+      let max = to_b0_expr f int_end in
+      Nlist.make1 (R_Interval (min,max))
+    | T.Builtin_2(Product,st,ed) ->
+      let rg1 = get_array_range f st in
+      let rg2 = get_array_range f ed in
+      begin match Nlist.to_list rg2 with
+        | [x] -> Nlist.from_list_exn ((Nlist.to_list rg1)@[x]) (*FIXME*)
+        | _ -> Error.raise_exn e.T.exp_loc "Invalid array range."
       end
-    | _ -> Error.raise_exn e.T.exp_loc "Invalid array range."
+    |  _ -> Error.raise_exn e.T.exp_loc "Invalid array range."
 
   and pred_to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) -> ('mr,'cl,Btype.t) T.predicate -> t_b0_expr = fun f p ->
     let add_loc exp0_desc = { exp0_loc = p.T.prd_loc; exp0_type = T_Bool; exp0_desc } in
@@ -470,9 +441,9 @@ struct
 
   let get_enum f (e:(_,_,Btype.t) T.expression) : t_case =
     match e.T.exp_desc with
-    | T.Builtin (Integer i) -> CS_Int i
-    | T.Builtin TRUE -> CS_Bool true
-    | T.Builtin FALSE -> CS_Bool false
+    | T.Builtin_0 (Integer i) -> CS_Int i
+    | T.Builtin_0 TRUE -> CS_Bool true
+    | T.Builtin_0 FALSE -> CS_Bool false
 (*
     | Ident (K_Local (id,_)) ->
       let q_id = mk_ident e.T.exp_loc id in

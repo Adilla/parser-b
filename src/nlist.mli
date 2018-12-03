@@ -36,4 +36,7 @@ val tl : 'a t -> 'a list
 val map : ('a -> 'b) -> 'a t -> 'b t
 (** map function for non-empty list*)
 
+val rev : 'a t -> 'a t
+(** reverse function for non-empty list*)
+
 val lb_map : f:('a -> 'b) -> 'a t -> 'b t

@@ -27,16 +27,11 @@ let rec sexp_of_expr : P.expression -> t = fun e ->
   match e.P.exp_desc with
   | Ident id ->  Atom ("ident_" ^ id)
   | Dollar id -> Atom ("ident_" ^ id ^ "$0")
-  | Builtin bi -> Atom (builtin_to_string bi)
+  | Builtin_0 bi -> Atom (builtin0_to_string bi)
+  | Builtin_1 (bi,e) -> List [Atom (builtin1_to_string bi);sexp_of_expr e]
+  | Builtin_2 (bi,e1,e2) ->
+    List [Atom (builtin2_to_string bi);sexp_of_expr e1;sexp_of_expr e2]
   | Pbool p -> List [Atom "bool"; (sexp_of_pred p)]
-  | Application (e1,e2) -> List [Atom "App";sexp_of_expr e1;sexp_of_expr e2]
-  | Couple (cm,e1,e2) ->
-    let atm = match cm with
-      | Maplet -> "Pair_maplet"
-      | Comma -> "Pair_comma"
-      | Infix -> "Pair_infix"
-    in
-    List [Atom atm;sexp_of_expr e1;sexp_of_expr e2]
   | Sequence elst ->
     List ((Atom "Seq")::(List.map sexp_of_expr (Nlist.to_list elst)))
   | Extension elst ->

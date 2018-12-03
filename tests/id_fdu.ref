@@ -1,0 +1,5353 @@
+REFINEMENT
+  id_fdu(
+    id_pyy, id_aud, id_sao, id_xbv, id_zgp, id_tyk, id_fkf, id_mrf, id_uxa
+  )
+
+REFINES
+  id_wga
+
+SEES
+  id_aha, id_nwz, id_gyd, id_yqc, id_kxa
+
+INCLUDES
+  id_iqq (
+    {struct
+       (id_zsl: str_odg,
+        id_pgn: str_gmx$0,
+        id_fpc: top(STRING),
+        id_usl: (str_iba --> str_vkm$0),
+        id_dqr: [],
+        id_sjy: bool(not(str_drf$0 <: str_hlc))),
+     str_cqg$0,
+     NATURAL,
+     struct(id_tif: str_pjg),
+     str_cqg,
+     NATURAL,
+     INT}
+  )
+
+PROMOTES
+  id_uir, id_gil, id_dzy, id_wcz
+
+EXTENDS
+  id_xrl (
+    (FALSE -
+     INTER
+       (id_eiz, id_cos, id_zbf, id_vri, id_eda, id_fax, id_dcd, id_fyw,
+        id_mvp).
+     (not(str_pzh = str_sph)|
+      [str_fxo,
+       str_njb,
+       {bool
+          (#
+             (id_ltn, id_yza, id_dpb, id_ypz, id_mji, id_xkn, id_cos, id_ksa,
+              id_tcu, id_dvp, id_ibe).
+           (BOOL < {}))},
+       str_jul$0])),
+    const
+      ((struct
+          (id_apn: MAXINT,
+           id_sqk: STRING,
+           id_ccy: str_gir,
+           id_swz: str_kqi$0,
+           id_qwa: str_gtw,
+           id_vpl: bool(not(NATURAL /<<: str_jwy)),
+           id_prq: str_tqb$0,
+           id_ggu: str_nyb) ||
+        bool(STRING /= str_vxa$0)'id_lui))
+  )
+
+SETS
+  id_dez;
+  
+    id_nzh
+    =
+    { id_owp, id_lag, id_cwk, id_ebd, id_fuv, id_amd, id_ebd, id_zxi }
+  ;
+   id_qtn = { id_boz, id_ret, id_epa, id_owx, id_wuk, id_har, id_hgc } ;
+   id_dge = { id_gkb, id_leg, id_hsn, id_uwd, id_aws } ;
+  id_wlq
+
+CONSTANTS
+  id_brs, id_hdc, id_axr, id_faq
+
+ABSTRACT_CONSTANTS
+  id_vtf
+
+PROPERTIES
+  not
+    ([] /:
+     {str_mes,
+      INTER
+        (id_ooz, id_mpj, id_zft, id_byo, id_wpq, id_ysg, id_cqt, id_rsg,
+         id_wxv, id_elu).
+      (str_orh$0 /= "str_ofp"| str_nht$0),
+      MAXINT,
+      [],
+      %(id_mbr, id_zvj, id_axz). (str_mwe <= 271| {}),
+      INTER(id_uya, id_pkc, id_vyx, id_ybm).
+      (str_icg /: str_qfe$0 <=> str_qpo$0 < str_lpi$0| str_dxx$0),
+      str_mxo})
+
+CONCRETE_VARIABLES
+  id_uol, id_ruc, id_fdm, id_mjg, id_ilx, id_xsy, id_jdn, id_gcj
+
+VARIABLES
+  id_otl
+
+ASSERTIONS
+  str_obs >= str_vny$0 =>
+  (#(id_fxs, id_lhf, id_uhy, id_dxt, id_uqj, id_puv, id_gss, id_ahy, id_hzb).
+   (#(id_rqk).(str_col > NATURAL => str_lmp <: str_inx$0)) or
+   #(id_orb, id_ivf, id_zsc, id_jpm, id_dcz).(str_xrb$0 = MININT));
+  !
+    (id_wsq, id_oxh, id_fqu, id_scn, id_lrz, id_ovi, id_eev, id_hdm, id_lng,
+     id_rtx).
+  (not
+     (#(id_uaa, id_dcy, id_tbv, id_bhq, id_kje).
+      (!
+         (id_zeg, id_szz, id_izr, id_fls, id_wwh, id_qol, id_jgh, id_ksw,
+          id_ksh).
+       (not(str_uiz$0 < str_icm or str_snr$0 /= str_hpf) <=>
+        "str_bic" > str_fdu))));
+  not
+    (#(id_ydn).
+     (not
+        ({ id_ixs, id_tjk | MAXINT : str_prl$0 } <<:
+         {%(id_mzu, id_wyf, id_vpj, id_xzn, id_awa).
+          (str_xqn$0 /= str_mdo$0| NAT)})));
+  NAT <-> str_qqj /<<: str_nte$0 <<| rec(id_ajn: str_fut, id_vru: str_zst$0) or
+  not(TRUE <= str_pyr$0 or 864 = {});
+  #
+    (id_xlm, id_xtp, id_qlp, id_vdj, id_hnl, id_xvo, id_vkb, id_lhm, id_emj,
+     id_gdt).
+  (#(id_nir).
+   (not
+      (!
+         (id_ybq, id_phb, id_sst, id_kzn, id_kdh, id_evp, id_nte, id_kcq,
+          id_efa, id_zff).
+       (INT > str_wbb$0 <=>
+        ([] /: INTEGER <=>
+         #(id_zox, id_eup, id_gbo, id_not, id_mpp, id_gui, id_lpg, id_jok).
+         (MAXINT : str_gcw$0))))));
+  {str_psg,
+   {str_aky},
+   POW([str_kwq$0, str_zyf, str_gud$0, str_yvw, NATURAL]),
+   str_ymk$0} <=
+  str_tpu$0 <-> struct(id_twm: str_cfl, id_lms: str_vws$0);
+  ((INTEGER = str_egf => str_aqg$0 = str_jkh$0) => NATURAL <: str_aur) or
+  !(id_uxq, id_qpi, id_eyq, id_qom, id_ogm, id_ewr).
+  (not
+     (#(id_qxr, id_kcu, id_pqn, id_zfs, id_bqn, id_wzx, id_twp, id_mfa).
+      (#(id_toa, id_dic, id_ulk, id_qbb, id_apn, id_nbl, id_vif).
+       (str_auy >= NAT))));
+  #
+    (id_brn, id_zyz, id_smg, id_bry, id_jpl, id_xmw, id_xec, id_ciu, id_jkk,
+     id_kkr).
+  (#(id_bkr, id_zlt).
+   (#(id_hdx, id_axb, id_lnb, id_gtc, id_tzf, id_zhk).
+    (!(id_pfj, id_ctn, id_fhm).
+     (not(not(str_sgx$0 /<: str_spq <=> str_zya$0 < str_msv))))));
+  !(id_ixq).
+  (not
+     (card(str_pkg) <:
+      rec
+        (id_ikp: {},
+         id_ptn: str_unr$0,
+         id_svy:
+         SIGMA
+           (id_lht, id_vao, id_yxi, id_dvm, id_mpq, id_vfg, id_ytr, id_med,
+            id_hsl, id_gnh, id_ktt).
+         (str_qre < str_fte| str_sak),
+         id_kuj: str_tfe,
+         id_gzw: str_uyw$0,
+         id_srm: bool(INTEGER <: str_shp))))
+
+INITIALISATION
+  ASSERT
+    #(id_bij, id_yjv, id_wgq, id_ype, id_mcq, id_rme).
+    (not
+       (!
+          (id_bkb, id_uyj, id_wdl, id_xdh, id_orw, id_ozg, id_axv, id_qvt,
+           id_lfi, id_kbn).
+        (#(id_xby, id_vqs, id_itu, id_bmh, id_amt, id_pfo, id_rcq).
+         (str_jpl /= str_ljn)) <=>
+        (str_wcq$0 /= str_fdu or str_dqs$0 <= str_ewq$0)))
+  THEN
+    VAR
+      id_rpf, id_zrs, id_jpx, id_goh, id_yzn, id_jiu
+    IN
+      ASSERT
+        not
+          (#(id_epz, id_eia, id_zjz).
+           (!
+              (id_jgi, id_tom, id_xcv, id_uct, id_cjf, id_ajt, id_rrl,
+               id_mmh, id_lbw, id_lyg, id_vev).
+            (!
+               (id_shf, id_jwz, id_gvd, id_dqq, id_ocm, id_ogr, id_ukv,
+                id_htm, id_ntx, id_jdk, id_alc).
+             (str_kxe$0 /<: str_qlw$0) or
+             !(id_ajt, id_qut, id_roo).(not(str_ubo$0 = str_nmk)))))
+      THEN
+        CHOICE
+          CASE
+            rec
+              (id_wro:
+               pred
+                 (bool
+                    ({ id_svq, id_zzp, id_kqg, id_adj, id_avw, id_snv, id_zdq
+                       |
+                       BOOL >= str_kde } /<:
+                     struct
+                       (id_tsl: str_blw,
+                        id_vla: str_poi$0,
+                        id_ofw: MININT,
+                        id_aqx: str_axd$0,
+                        id_gdy: str_cal,
+                        id_hjz: str_syj)
+                       'id_hbr)),
+               id_bjy: str_msa$0,
+               id_eel: str_ott$0,
+               id_xal: MAXINT,
+               id_bdm: [],
+               id_fvd: BOOL,
+               id_lei: INT)
+            OF
+            EITHER
+              {bool(not(str_wbb$0 /: MAXINT)), str_wnk}'id_wkb
+                [struct
+                   (id_jvf: INT,
+                    id_iof: 5,
+                    id_zkp: [],
+                    id_jkh: str_vrg$0,
+                    id_lyk: INT,
+                    id_cij: [],
+                    id_gbi: str_tnp,
+                    id_ygg: (INT \|/ str_gkw))]
+            THEN
+              ANY
+                id_fec, id_kph, id_hdb, id_dki, id_xit
+              WHERE
+                !
+                  (id_pxf, id_kqm, id_kmb, id_bzd, id_cnf, id_fxp, id_mwc,
+                   id_xvt).
+                (bool
+                   (!(id_ide, id_qrj, id_fll, id_cmy).(str_piw$0 /<<: NAT1)) ..
+                 MAXINT <=
+                 rec
+                   (id_mxb:
+                    struct
+                      (id_igk: MAXINT,
+                       id_znl: str_vpj$0,
+                       id_vjh: str_dch$0,
+                       id_qcl: TRUE,
+                       id_bhp: str_ldb$0),
+                    id_nfl: str_yoc$0))
+              THEN
+                id_fvz, id_cjf, id_qdn, id_eye, id_mim, id_dud, id_xsj,
+                id_vwf, id_tvi, id_adq, id_xip :(
+                  str_shc <
+                  bool
+                    (#(id_fqn, id_ven, id_gvi).
+                     (not
+                        (!
+                           (id_jzz, id_yjz, id_gou, id_msd, id_kke, id_fis,
+                            id_abk, id_bdw, id_znu, id_tea).
+                         (str_jrh$0 /<<: {BOOL}))))
+                ) ;
+                id_gun, id_mah, id_phk, id_wrb, id_eow, id_nky, id_uup
+                ::
+                {bool(FALSE /<: str_buj),
+                 str_vsd$0,
+                 bool
+                   (!
+                      (id_wsk, id_loj, id_foh, id_kmt, id_jic, id_crb,
+                       id_kst, id_sbg, id_vai).
+                    ({ id_gyi, id_rzk, id_jim, id_hnd | str_ijr$0 /<<: INT } >
+                     MININT))}
+              END
+            OR
+              top
+                (struct
+                   (id_fbf: str_pyq$0,
+                    id_fij:
+                    struct
+                      (id_hkm: str_wjq$0,
+                       id_srp: str_lru,
+                       id_olu: str_ziw$0,
+                       id_pvn:
+                       struct
+                         (id_zxp: str_wfn$0,
+                          id_oio: str_fpn$0,
+                          id_xzo: STRING,
+                          id_wcb: NATURAL,
+                          id_xss: str_igi),
+                       id_ctl: str_wuo$0,
+                       id_kji: {NATURAL, NAT},
+                       id_iqx: NAT),
+                    id_wpj:
+                    { id_fad | str_ohb <= str_zqa$0 & str_ckc <: NAT }))
+            THEN
+              id_crs
+              :=
+              {str_tqc$0,
+               NATURAL1,
+               str_klq,
+               {str_dta, bool(str_rfd$0 : FALSE), NAT, {NATURAL1}, BOOL},
+               { id_cvh, id_hnh, id_pus, id_tcy, id_bsc, id_vhp, id_axr,
+                 id_qfx, id_chw
+                 |
+                 #
+                   (id_lef, id_rsd, id_yxq, id_cpz, id_ckb, id_fec, id_tdn,
+                    id_hfg).
+                 (str_nuh$0 /= NATURAL => str_xls /= TRUE) }}
+            END
+          END
+        OR
+          id_scr, id_cxn, id_qmj, id_chl, id_uyd, id_bdn, id_ycq
+          <--
+          id_stb
+            ({ id_bcn, id_rxk, id_rvm, id_mbc, id_fhm, id_fqn, id_wye
+               |
+               str_ubi$0 : NATURAL =>
+               (#(id_hae, id_cki, id_zey).
+                (#
+                   (id_eak, id_cgd, id_klz, id_iic, id_zxe, id_pfa, id_kaf,
+                    id_rkc).
+                 (str_hgl$0 /: str_afw$0)) or
+                (str_vnb /= INT & str_jxz /: str_nld$0)) },
+             { id_esv, id_beq
+               |
+               !
+                 (id_det, id_doh, id_nnw, id_udw, id_knb, id_gsh, id_oxo,
+                  id_yku, id_juq, id_itz, id_lqk).
+               (!(id_yym).
+                ([FALSE, str_byd$0, str_iim, NAT1, TRUE, []] >=
+                 bool(str_jmy >= str_kub))) &
+               str_uon$0 /<: str_qdo$0 },
+             rec
+               (id_hxe:
+                bool
+                  (!(id_aoe, id_kdi, id_kez, id_kgx, id_skt, id_wgd, id_sfz).
+                   (MAXINT <<: NAT1)),
+                id_jrx: POW({ id_pok | not(str_nfy <: STRING & FALSE < []) }),
+                id_caa: str_vkp),
+             [NATURAL,
+              [rec
+                 (id_ekh: NAT,
+                  id_lrr: str_zdz$0,
+                  id_ovo: str_hha,
+                  id_ixd: 386,
+                  id_vso: BOOL),
+               str_ndq$0,
+               { id_mkd, id_ovs, id_shx, id_cyz, id_sui, id_ovo
+                 |
+                 MAXINT /: str_nvm$0 & str_xge$0 = str_bul$0 }],
+              TRUE,
+              [],
+              str_oju$0,
+              {NAT, str_chy$0, NAT, str_yjz, str_bcx, MININT, NAT1, str_mmi},
+              MAXINT]
+               'id_nmu)
+        END
+      END
+    END
+  END
+
+LOCAL_OPERATIONS
+  id_kcq, id_ave, id_nyg, id_glh
+  <--
+  id_hfb (id_cvk, id_yum, id_xel, id_vol)
+  =
+  ASSERT
+    !
+      (id_nce, id_mys, id_bjg, id_hfh, id_vlo, id_fjo, id_pes, id_etf,
+       id_izy, id_qlt).
+    (#(id_lqw, id_xqn).
+     (PI(id_nqy, id_uxw, id_bcf, id_mlo, id_ndj, id_gop, id_wiq).
+      (str_dpu /: str_cjw$0|
+       { id_gnu, id_rlk, id_hvn, id_zqk, id_xdr | NATURAL1 <<: MAXINT }) =
+      FALSE'id_nzc))
+  THEN
+    WHILE
+      not
+        (#(id_jzk).
+         (!
+            (id_puu, id_way, id_bta, id_lhz, id_dwm, id_afo, id_woi, id_kkl,
+             id_dul, id_otd).
+          (!
+             (id_hft, id_tba, id_vrz, id_prz, id_qzg, id_xni, id_dlm, id_ylf,
+              id_snb, id_rxq, id_kcs).
+           (!(id_auk).(MAXINT'id_vbm > "str_vzp")))))
+    DO
+      IF
+        !(id_uto, id_nfu, id_bpq, id_asi).
+        (not
+           (#
+              (id_ksk, id_hmu, id_rdz, id_ujj, id_mfn, id_hqu, id_ejh,
+               id_ajt, id_xke).
+            (struct
+               (id_erz: str_ubq$0,
+                id_cib:
+                rec
+                  (id_nbv: MININT,
+                   id_uec: str_dpt,
+                   id_zhe: str_gxf$0,
+                   id_mya: str_yqr),
+                id_qex: str_knm,
+                id_idy: str_ppm,
+                id_ksi: INTEGER,
+                id_dbl: str_oig$0) <=
+             [str_rzg$0, str_csv, str_kuq$0, str_jkg$0, FALSE, TRUE,
+              str_vuk$0])))
+      THEN
+        id_tva
+          (UNION(id_hmn, id_ctp, id_hxd, id_aoq, id_hjd, id_isg).
+           (bool(str_tjw$0 /<: STRING) <=
+            rec
+              (id_sxr:
+               INTER
+                 (id_fei, id_lda, id_ocw, id_dqy, id_lzp, id_hlb, id_uvy,
+                  id_ipb, id_ogu, id_bnk, id_xwx).
+               (str_asv$0 > str_fkh| INTEGER))|
+            PI
+              (id_kyg, id_uhm, id_qkr, id_kld, id_rsz, id_fzg, id_myc, id_was).
+            (FALSE < NAT|
+             struct
+               (id_vce: STRING,
+                id_mmp: "str_jar",
+                id_atx: str_lhl,
+                id_ndq: NAT,
+                id_cvn: MAXINT,
+                id_gyg: str_nad$0))),
+           [[MININT[str_mjd],
+             (str_fxj$0 * str_bdx$0),
+             { id_ril, id_prs, id_yku, id_lll, id_wly, id_zup, id_mlj,
+               id_had, id_uil
+               |
+               str_cpd /<: str_jaa$0 },
+             str_sor],
+            str_bec,
+            str_pdf$0,
+            (str_may + str_bba$0'id_bxq),
+            str_uge$0,
+            str_ryk$0,
+            NATURAL],
+           [str_mgj$0,
+            { id_tak, id_mmo, id_opk, id_vhm
+              |
+              { id_cli, id_qxm, id_jkf, id_ayb, id_evz, id_akp, id_jks,
+                id_asm, id_yak, id_qql, id_fqo
+                |
+                MININT = 1 } \|/
+              struct
+                (id_ngx: str_zsv$0,
+                 id_efc: str_awy$0,
+                 id_kvn: BOOL,
+                 id_vmr: str_zzi$0,
+                 id_pwt: NAT1,
+                 id_thp: str_ows,
+                 id_pqo: str_wqf,
+                 id_uuj: str_pda)
+                'id_ojz >=
+              NAT1 },
+            str_mjt,
+            str_npe$0,
+            str_pii,
+            STRING,
+            TRUE,
+            MININT],
+           UNION
+             (id_ewr, id_ygi, id_jbt, id_pyc, id_isi, id_bse, id_fly, id_cxs,
+              id_kno, id_exy).
+           (str_vtd$0 <: str_yqu$0|
+            rec
+              (id_dgl:
+               SIGMA
+                 (id_bnj, id_nwj, id_yux, id_iqq, id_taa, id_nuh, id_msb,
+                  id_uul, id_msp, id_igg, id_puw).
+               (str_bih$0 : TRUE & str_pmy$0 >= str_ygc|
+                (STRING ;
+                 SIGMA
+                   (id_okm, id_qrv, id_flj, id_hbn, id_lgk, id_fwq, id_gwl).
+                 (INT <<: str_wth| MAXINT))))
+              'id_cud),
+           {str_edq$0,
+            { id_dla, id_ipl, id_uum, id_mcm, id_uyr
+              |
+              !(id_vfv, id_edj, id_cbc, id_lfr, id_rhi, id_caf).
+              (!(id_ijx, id_iqy, id_xtr).
+               (not
+                  (!
+                     (id_mrj, id_xwf, id_odp, id_bzk, id_bhy, id_rsd, id_mum,
+                      id_wle, id_eia, id_gjk, id_ozt).
+                   (not(str_ydx$0 <= str_ivn$0))))) }},
+           {(UNION(id_egp, id_pco, id_qxo).
+             (#(id_col, id_guc, id_oyy, id_nnx, id_eea, id_zkv, id_dcv).
+              (NATURAL1 /<: str_ive$0 & str_qcq /= {})|
+              {str_suu, str_xrn$0, str_ywg, str_oro, str_two, str_chy$0,
+               str_tyo$0, MAXINT}) <->
+             str_yly'id_whh)},
+           SIGMA(id_arc, id_uib, id_pel, id_cdo, id_cdk, id_lad).
+           (#
+              (id_xur, id_uuw, id_esc, id_ajr, id_ybl, id_jrk, id_jqe,
+               id_mqr, id_wag, id_yye, id_avr).
+            (str_grw$0 /<<: str_jam)|
+            [bool
+               (!(id_pni, id_vwb, id_yqq, id_whs, id_gex, id_jxc, id_idy).
+                (!(id_rvm).(not(STRING /<: str_fah))))]))
+      ELSIF
+        !
+          (id_ufh, id_xsa, id_mhy, id_bvw, id_mik, id_lou, id_bzn, id_qgp,
+           id_dyh, id_voj, id_saw).
+        (#(id_jhn).
+         ((NATURAL >= str_yfi$0 &
+           #
+             (id_ydk, id_pir, id_kzq, id_dis, id_tll, id_ddo, id_imq, id_zsg,
+              id_rlo, id_mqy, id_dox).
+           (str_xis < MAXINT)) =>
+          (not(str_zwt$0 : []) or str_acj = BOOL)))
+      THEN
+        id_hen, id_dbp, id_zlp, id_str, id_qgu, id_kvd
+        <--
+        id_wdg
+          ([{ id_nso, id_wii, id_iot, id_yze, id_ovq, id_glr, id_fqu, id_ohg,
+              id_klc, id_mma
+              |
+              str_gcy /: str_gen },
+            SIGMA(id_jma, id_uqg, id_uec, id_rqw, id_aga).
+            (not(str_baz /<: NATURAL)| bool({} >= 2)),
+            str_cer$0,
+            {},
+            { id_skf | NAT > NATURAL },
+            INTEGER,
+            str_bcr],
+           { id_sjs, id_amt, id_vsm, id_hyk, id_eei, id_elw, id_ykg
+             |
+             #(id_jmn, id_grp).
+             (#
+                (id_qdv, id_clr, id_qmc, id_tdd, id_akd, id_yew, id_dho,
+                 id_gka, id_eoe).
+              (!(id_riu, id_rim, id_wnx, id_bfx, id_iwc).
+               (!(id_qyi, id_jqr).(str_ovj$0 /<: str_hcj)))) <=>
+             !
+               (id_rdo, id_kjc, id_lys, id_ydk, id_nwz, id_ena, id_uge, id_ygg).
+             (str_lwf$0 > []) },
+           SIGMA
+             (id_cpa, id_jfl, id_afc, id_tkb, id_nyb, id_knu, id_hac, id_pwn,
+              id_wkq).
+           (#(id_eve, id_zxt, id_ero).
+            (#(id_rxf, id_ali).
+             (#(id_tam, id_dgo, id_tjd, id_cfc, id_kos, id_gjr, id_rmj).
+              ({} <<: str_roi => NATURAL1 /= TRUE) or
+              #
+                (id_nlv, id_vkv, id_eoh, id_qyc, id_dlf, id_nyg, id_yuw,
+                 id_onc, id_ket, id_iiz).
+              (str_esy > str_otx$0)))|
+            str_tfj),
+           closure1
+             (struct
+                (id_cxg: NATURAL1,
+                 id_aeq: str_fkw,
+                 id_scr: MININT,
+                 id_vpg:
+                 { id_jkx, id_zeo, id_gbo, id_fmt, id_knv
+                   |
+                   #
+                     (id_vvi, id_itq, id_hhy, id_vlr, id_dwi, id_dzy, id_gna,
+                      id_mts, id_zko, id_vnv).
+                   (not(str_dbn <= str_hem$0)) },
+                 id_dcl: str_ncw,
+                 id_vdp: MININT)
+                'id_bej))
+      ELSIF
+        not(str_xzs$0 /<: str_ezb) or
+        not
+          (not
+             (#
+                (id_sqj, id_gtz, id_drh, id_mvv, id_opd, id_wek, id_hwd,
+                 id_wii, id_gnf, id_oom).
+              (str_eqx >= str_erj$0))) or
+        str_jhv$0 > str_jac$0
+      THEN
+        PRE
+          str_ghm /<: str_bia$0 =>
+          (!(id_dvb, id_yas).(#(id_jjv).(not(not(str_xss$0 : 8)))) or
+           str_ade$0 /= str_kfm)
+        THEN
+          PRE
+            {str_ycq,
+             bool(not(NAT1 /<<: str_ybk$0)),
+             str_mgv$0,
+             str_ydb,
+             MININT} >=
+            [str_vgh$0,
+             struct
+               (id_eia: TRUE,
+                id_joh: str_nxc$0,
+                id_gji: str_gtr$0,
+                id_yml: MININT,
+                id_asm: str_dvm,
+                id_btv: str_sne$0,
+                id_myr: str_gyh$0,
+                id_asw: str_qlg),
+             bool({} >= {}),
+             str_euu$0,
+             INT,
+             FALSE,
+             str_szm$0,
+             str_gis]
+          THEN
+            CASE
+              succ
+                (SIGMA(id_pkd, id_txi, id_rho, id_omw, id_nyl).
+                 (#
+                    (id_wvd, id_ooz, id_qrb, id_bhj, id_qcy, id_ydk, id_smr,
+                     id_wqd, id_ltw).
+                  (str_whp <= str_oxq)|
+                  {struct(id_pbv: str_rok$0)'id_zee,
+                   {str_nyp, str_gov$0, TRUE, str_fbj, str_jwh, str_bim,
+                    str_gpt},
+                   str_gku$0}))
+              OF
+              EITHER
+                PI(id_jxt).
+                (MININT <= str_zrv$0 or
+                 #(id_pda).
+                 (not
+                    (str_ppl$0 /<: str_ixv or
+                     (NATURAL1 /: str_yus$0 => NATURAL1 /<: str_wad)))|
+                 bool(str_awc$0 /: str_xur$0))
+              THEN
+                id_pzw
+                ::
+                [str_vfg,
+                 struct(id_cdm: INT, id_eww: []),
+                 str_fdy$0,
+                 BOOL,
+                 {struct(id_xdx: str_bms, id_yaw: (str_kqa$0 ; str_qlz)),
+                  str_gyt$0,
+                  { id_zll, id_zru, id_pih, id_lde, id_jug | str_vwa$0 > INT },
+                  str_xji$0'id_vkz,
+                  str_xfk},
+                 str_urv]
+              OR
+                (rec
+                   (id_xtn:
+                    [BOOL, { id_mtq, id_fwu | str_jbk$0 /= NAT1 }, INT, NAT1],
+                    id_nyv: bool(str_erz$0 = str_iit$0)) ><
+                 rev
+                   (struct
+                      (id_jft: str_bdy,
+                       id_rmb: STRING,
+                       id_uun: str_fhb,
+                       id_tqg: NATURAL1,
+                       id_bns: TRUE)))
+              THEN
+                skip
+              END
+            END
+          END
+        END
+      ELSIF
+        !(id_eln).
+        (#(id_tkp).
+         (PI(id_phm, id_uqc, id_rls, id_pda).
+          (!(id_mfc, id_tlx, id_jiw, id_vkb, id_zsf, id_rhi).
+           (not(str_zwb$0 /= str_eha))|
+           str_laj$0) <=
+          bool(str_axl$0 : str_lgm$0)))
+      THEN
+        id_auq 
+          (
+            {str_dwd,
+             bool
+               (!(id_bry, id_twm, id_mmd, id_jen, id_hwr, id_jlr).
+                (("str_jqn" <= str_qtt => str_oeq <: BOOL) &
+                 SIGMA
+                   (id_vrx, id_tvo, id_yay, id_wkn, id_hsv, id_oat, id_plw,
+                    id_ouc, id_qrv, id_pdh, id_vhy).
+                 (BOOL /: str_vlj| str_fwj) >=
+                 BOOL)),
+             str_bys,
+             NAT,
+             [],
+             str_wvi$0,
+             str_bnu}
+          )
+          (
+            {rec
+               (id_kyw: str_emg,
+                id_hap: MAXINT,
+                id_xjg: STRING,
+                id_qxn:
+                struct
+                  (id_zts: INTEGER,
+                   id_aks: str_hqu,
+                   id_rby: str_wxq$0,
+                   id_tpf: str_ptx$0,
+                   id_ivz: [FALSE, str_zno$0'id_lme]),
+                id_wdd: str_gai$0,
+                id_ouk: str_xaq$0,
+                id_pml: str_blg$0,
+                id_drs: (str_jmz$0 +-> TRUE)),
+             (NAT ** str_ymu$0)}
+          )
+          (
+            [NAT1,
+             rec
+               (id_idb: str_ruc,
+                id_eqm: TRUE,
+                id_igh: str_uow,
+                id_ngb: MININT),
+             "str_epu",
+             struct
+               (id_xhd: str_dha,
+                id_nja: [{}, str_bea$0, str_ygt, str_hio$0, str_wql$0],
+                id_vtw:
+                [str_lsw, str_lcd, str_ure, str_xtb, str_kaq, str_wzr$0,
+                 str_hre],
+                id_unz: INTEGER,
+                id_gvh: [],
+                id_pqd: str_yes$0),
+             {str_veo, str_wvj, str_ujk, str_zgg$0, str_ikb$0, str_ogz$0},
+             str_bka$0,
+             FALSE,
+             str_khp]
+              'id_yfk
+          )
+          (
+            { id_mlu, id_mrx, id_sqr, id_snh, id_ypq, id_jhg, id_plf
+              |
+              !(id_fwk, id_gif, id_vaq, id_blq, id_ncj).
+              (INTER(id_oko, id_oor).
+               (str_nlv <<: str_cxl$0|
+                rec(id_iul: bool(NATURAL = str_dzf$0), id_hvb: []))
+                 'id_sss =
+               str_mkd$0) }
+          )
+        
+        :=
+        {[str_hqf$0, str_nij, str_cet, str_apj$0],
+         bool(({str_zsx$0, str_oac$0, str_ojs$0, MININT} || NAT1) > {}),
+         str_ssg,
+         978,
+         NATURAL1,
+         str_mgg$0,
+         rec
+           (id_jqh: str_ueh$0,
+            id_evv: str_hpg$0,
+            id_qef: str_zqt$0,
+            id_fct: str_rki,
+            id_zun: str_nri,
+            id_mjd: str_kky$0,
+            id_emm: FALSE),
+         INT}
+      ELSIF
+        not
+          (#(id_ewr, id_sxq, id_inw).
+           ({str_yor,
+             { id_wsx | str_nje <= str_yru },
+             FALSE'id_txy'id_loi,
+             str_gtb,
+             str_ekb$0,
+             str_nux} /=
+            str_qzs))
+      THEN
+        skip
+      ELSIF
+        bool
+          (struct
+             (id_jqv: str_mbv$0,
+              id_bru: str_oyq$0,
+              id_wzf: str_akw$0,
+              id_ohs:
+              bool
+                (#
+                   (id_vxy, id_uhd, id_ptq, id_lkk, id_tte, id_ueu, id_jjv,
+                    id_jbo, id_phg, id_ylt).
+                 (BOOL /: {})),
+              id_ujk: MININT,
+              id_psg: str_apw,
+              id_fnn: str_nuh$0,
+              id_ulu: str_lxr$0) :
+           {str_wrn$0, {}, str_gaq}) /<:
+        str_noy$0
+      THEN
+        ASSERT
+          #(id_oxx, id_zme, id_ijc, id_mja, id_zuw, id_xrg, id_sje, id_dxo).
+          (bool(bool(str_beq$0 <: TRUE) /= str_rkb$0) :
+           rec
+             (id_cos: str_fpn,
+              id_thu: str_fua,
+              id_zop:
+              [str_fcs, str_hfa, str_xja, str_wui$0, str_cmy, str_htt$0]))
+        THEN
+          skip
+        END
+      END
+    INVARIANT
+      STRING /<<:
+      [str_hkk,
+       [bool(NATURAL1 : str_zno)'id_hdu,
+        {struct
+           (id_iaz: str_qnz$0,
+            id_vqu: [],
+            id_ohj: NATURAL,
+            id_ugy: str_wll,
+            id_xet: str_dji,
+            id_dnp: NAT1,
+            id_hqf: MININT,
+            id_vrt: str_wpv$0)}],
+       str_pbb$0,
+       str_otp$0,
+       str_fsc,
+       str_oqg]
+    VARIANT
+      {str_abu,
+       str_acy,
+       struct
+         (id_lwy: str_kko, id_mlp: str_hpv, id_ujy: str_liv$0, id_csf: 97)
+         'id_kmc,
+       str_ckj,
+       str_fsw,
+       ["str_xqi",
+        rec
+          (id_nyv: NATURAL1,
+           id_qhe: str_dmv$0,
+           id_fao: BOOL,
+           id_ptn: str_vbl,
+           id_xry: str_qku),
+        str_zfx$0,
+        INT,
+        str_aqw$0],
+       (str_opo$0 -> INTEGER)}
+        'id_eun
+    END
+  END;
+
+  id_ali, id_hwg, id_wme, id_dyt, id_yer, id_eqn, id_kfn
+  <--
+  id_yma (id_dmc, id_web, id_tdg, id_cbr, id_ljf)
+  =
+  WHILE
+    !(id_ipx, id_sjx, id_mvh, id_cuq, id_ros, id_fvd).
+    (#(id_mkc, id_jos, id_amk, id_shp).
+     (!(id_nap, id_ceh, id_rrw, id_xir).
+      (not(str_ttt /<<: str_wog or (not({} <: str_zot) => str_qev = str_ubb)))))
+  DO
+    SELECT
+      {str_itb$0,
+       struct(id_yxp: str_uxv$0, id_zze: {}, id_ghy: NATURAL1),
+       str_lcl$0} <
+      rec
+        (id_oof: "str_apv",
+         id_sdw: NAT,
+         id_yhb: (str_nnj >< str_tit),
+         id_rtr: str_zgd,
+         id_efd: bool(str_kuj$0 < {}),
+         id_wbv: "str_qqb",
+         id_xrt: tail(str_aei),
+         id_rqy: str_wdu)
+    THEN
+      ANY
+        id_huo, id_bay, id_tog, id_vyd, id_usm, id_klz, id_xfw, id_qpg,
+        id_egp, id_uia, id_vrk
+      WHERE
+        #(id_yoj, id_gne).
+        (#(id_hwy, id_lqp, id_pnk, id_bmq, id_ncn, id_dyq, id_uxz).
+         (#(id_awf, id_rpp, id_kip, id_zod, id_nkj).
+          (#(id_fvp, id_nma, id_dvq, id_mwt, id_riu, id_uqb, id_pup, id_sju).
+           (#
+              (id_wcn, id_phy, id_gjn, id_egc, id_plh, id_rjx, id_scs,
+               id_sla, id_mri, id_qyj, id_ilb).
+            ([str_dmx$0, str_zmh, MAXINT, str_ztr, str_gec, str_kuu] <:
+             str_soi$0)))))
+      THEN
+        CHOICE
+          id_wab, id_ssd, id_gxl, id_nxv, id_tjg, id_axm, id_wen, id_jic
+          :=
+          { id_fel, id_xzl, id_pha, id_ywz, id_jxt, id_eyc, id_gba
+            |
+            #
+              (id_ndm, id_mam, id_wwq, id_jmf, id_kop, id_qgn, id_jgc,
+               id_pth, id_oiy, id_cfz).
+            (!(id_jfj, id_hez, id_lnh, id_gny, id_que, id_dox, id_sgp).
+             (!(id_shi, id_eux, id_rom, id_ids, id_nhm, id_gqu).
+              (#(id_dap).
+               (!
+                  (id_btq, id_qdu, id_rqc, id_yfx, id_aia, id_gmd, id_mvx,
+                   id_ayw, id_dfy).
+                (!(id_pui, id_rtc, id_dzj, id_oze, id_hwl, id_hwa).
+                 (str_zzp >= str_tvh$0)))))) }
+        OR
+          ANY
+            id_rpx, id_usw, id_ogu, id_djf, id_sel, id_zqm
+          WHERE
+            !(id_tls, id_whu, id_mje, id_mzo, id_aeo).
+            ((#(id_jlv, id_fsl, id_sop, id_msx, id_zkj, id_zvf, id_mun).
+              (str_tmr$0 <<: str_ixz$0) or
+              !
+                (id_sau, id_xnd, id_zsh, id_unn, id_dgo, id_quk, id_skg,
+                 id_bbl, id_kid, id_uas).
+              (str_hvs$0 < str_uxo)) =>
+             #(id_nsa, id_llc, id_ggd, id_olc, id_uxo, id_qtz).
+             (#(id_vtx, id_qen).([] < TRUE)))
+          THEN
+            id_mtc'id_jhy
+            :=
+            INTER(id_dhc, id_vid).
+            ({str_xib, str_glw, str_cco$0, STRING} <<:
+             rec
+               (id_zwn: FALSE,
+                id_fct: BOOL,
+                id_moj: BOOL,
+                id_kyy: FALSE,
+                id_wfv: "str_cvq",
+                id_zjy: 5,
+                id_lri: str_uni$0)|
+             rec(id_dlk: (str_zdm <+ str_ufj$0)))
+              'id_xvj
+          END
+        OR
+          id_gmc 
+            (
+              arity
+                (PI(id_nmo, id_ble, id_mot).
+                 (MAXINT >= str_slv &
+                  not
+                    (str_ycs$0 /:
+                     struct
+                       (id_iyd: str_rxz, id_psw: str_tok$0, id_piq: str_tua))|
+                  "str_sfd"))
+                'id_ioh
+            )
+            (
+              rec
+                (id_bxo: "str_dzd",
+                 id_xzh: str_kmc,
+                 id_hsm: str_jnf,
+                 id_xwf: [],
+                 id_ntl: str_zei,
+                 id_nhs: str_jai$0,
+                 id_oqg: TRUE,
+                 id_cyb: str_ymu$0'id_cjz'id_uvb) ><
+              struct
+                (id_puq: str_vqr$0,
+                 id_zvd:
+                 rec
+                   (id_zok: [],
+                    id_fxx: str_zzi,
+                    id_dtp: [],
+                    id_nak: str_lnn,
+                    id_cdu: str_and,
+                    id_uvt: NATURAL,
+                    id_xmm: str_xwu,
+                    id_gjq: str_uzm),
+                 id_fnr: "str_pwo",
+                 id_cbp: max(str_idx))
+            )
+            (
+              rec
+                (id_cda:
+                 rec
+                   (id_iso: str_wec,
+                    id_jnb: str_xrj$0,
+                    id_wqe: {STRING, str_cvc, 8}),
+                 id_vrp:
+                 [str_rzs,
+                  str_kts$0,
+                  rec
+                    (id_nel: str_wad$0,
+                     id_rzq: %(id_sai). (str_pvo$0 > str_skv$0| str_ktm$0),
+                     id_jvd: str_cqh$0,
+                     id_ioi: INT,
+                     id_ryk: NAT,
+                     id_akm: str_jrd,
+                     id_ksi: str_fzb$0,
+                     id_zjt: []),
+                  str_pgy$0,
+                  str_cax],
+                 id_wun:
+                 rec
+                   (id_crq: NAT1,
+                    id_gtc: str_xtx,
+                    id_cck: str_fay$0,
+                    id_cvw: str_vpa,
+                    id_qvx: str_hlh,
+                    id_mze: FALSE,
+                    id_ymh: str_uif,
+                    id_nkx: str_eif$0))
+            )
+            (
+              bool
+                (not
+                   (not
+                      (UNION(id_ikw, id_rri, id_cre, id_vja, id_ewl).
+                       (str_qyi$0 < str_psx$0| str_flc) >
+                       card(str_lnd)) <=>
+                    str_ilp$0 >= str_tsp$0))
+            )
+            (
+              {NATURAL,
+               struct(id_acm: str_omj$0),
+               MAXINT,
+               str_yvx$0,
+               prj1
+                 ({INTEGER, 8, str_fhr, str_esd, str_bjl, str_wvx$0,
+                   str_uqa$0, str_msh},
+                  [[struct
+                      (id_ysb: str_ywt,
+                       id_kfy: str_hzr$0,
+                       id_dde: str_htj,
+                       id_kpa: [],
+                       id_zip: str_vdg,
+                       id_csy: str_dmv$0),
+                    str_sry,
+                    str_khm,
+                    str_lmj,
+                    str_hsd,
+                    str_vvy$0]])}
+            )
+            (
+              ({{ id_zhb, id_qub, id_vlh, id_hgo, id_zod, id_lea, id_jom,
+                  id_hvb, id_wym, id_pai
+                  |
+                  #(id_bfc, id_myr, id_yae).
+                  (BOOL /: str_ceo or str_ubs /<: str_veb$0) =>
+                  "str_zjx" : NATURAL1 },
+                { id_fvp, id_itm, id_xwn, id_oqq, id_bsq, id_xue, id_nxn
+                  |
+                  str_yrh > str_btn$0 },
+                STRING} ||
+               str_jox$0)
+            )
+            (
+              tail
+                ({str_fae,
+                  {MAXINT,
+                   bool(NAT /: str_hwe$0),
+                   { id_uko, id_yej, id_ffp, id_jmb, id_hgk, id_prz, id_rmh,
+                     id_ooi
+                     |
+                     !
+                       (id_nyl, id_ulx, id_ccq, id_fvs, id_jmk, id_nbm, id_yno).
+                     (str_jcl <<: STRING) }},
+                  str_pbs$0,
+                  str_qgk,
+                  str_nep})
+            )
+            (
+              UNION(id_fof).
+              (not
+                 (str_jtu /<<: [] <=>
+                  (str_ghj <= str_efb or
+                   (str_blh /<<: str_qfj$0 &
+                    str_neo = str_yie &
+                    INTEGER = str_vnc)))|
+               str_zas)
+            )
+            (
+              union
+                (rec
+                   (id_rxj:
+                    {str_ieb,
+                     MININT,
+                     str_zzl$0,
+                     [NAT1, str_eqw, str_lts$0, NAT1, str_lju, str_uqi,
+                      str_jri$0, str_eow$0],
+                     str_hsm},
+                    id_fai:
+                    bool(str_tci$0 /<: MININT <=> "str_pbm" /<: str_lio))
+                   'id_yoh)
+            )
+          
+          :=
+          ({ id_lcq, id_mho, id_uiv, id_ffb, id_cue, id_exp, id_lqk, id_uom,
+             id_jmh, id_fcc, id_wxw
+             |
+             #
+               (id_ntz, id_qug, id_sfy, id_azb, id_kif, id_lek, id_kpt,
+                id_vqr, id_lzk, id_woe).
+             (not
+                (!
+                   (id_pzd, id_zfy, id_muu, id_llx, id_yif, id_nhu, id_qki,
+                    id_fai, id_nkx, id_zru, id_ehk).
+                 (str_nau$0 < MAXINT))) } >+>
+           struct
+             (id_eor: str_wzw,
+              id_hop: str_nsi,
+              id_mzg: str_gih$0,
+              id_yca: str_qmh,
+              id_uqt: "str_cai",
+              id_ggh: "str_wlm",
+              id_qcz: str_exx$0,
+              id_vdu: str_lro)) **
+          str_rqn$0
+        OR
+          id_wez, id_jzo, id_fxc, id_ftz, id_dgx, id_oaf, id_ocg, id_ham,
+          id_jyr
+          ::
+          {str_xuk$0,
+           { id_jeh, id_klq, id_elc, id_uze, id_tgz, id_tly, id_wrk, id_tui
+             |
+             #(id_vao, id_bjx, id_ofy, id_cqa).
+             (#(id_kmm, id_als, id_yzg, id_cex).
+              (not(#(id_hxx, id_lod, id_ovd, id_got).(str_cfd$0 <= str_ose)))) },
+           str_wok,
+           str_esn$0,
+           str_ksw$0,
+           str_aet$0,
+           NATURAL1}
+            'id_fqe
+        END
+      END
+    END ;
+    IF
+      (str_kum$0 /<<: str_rdx$0 & (str_euf$0 > str_gyd or str_ars < str_tit)) =>
+      !(id_imo, id_fhh).
+      (NAT : [] or
+       (!
+          (id_dab, id_gos, id_gti, id_wch, id_kzs, id_eou, id_xjs, id_wjc,
+           id_hsj, id_klv).
+        (str_tch < str_gls) &
+        str_omu$0 : str_dzo))
+    THEN
+      skip
+    ELSIF
+      { id_thx, id_zuu, id_rgj
+        |
+        !(id_eio, id_vhv, id_nyh, id_mjy, id_yky, id_fdb, id_bxf).
+        (#(id_lwu, id_ufo, id_kdm, id_uol, id_fym, id_qer, id_zlf, id_hyy).
+         (!(id_gpc).(not(str_fsv$0 <= str_ndh$0)))) } >
+      str_upn'id_pst
+    THEN
+      id_vvk, id_ttz, id_cbr, id_ozh, id_fja, id_tkm, id_nmh
+      <--
+      id_let
+        ({ id_pat, id_smp, id_lql
+           |
+           not
+             (!(id_rgm, id_zgw, id_frb, id_zra).
+              (rel(BOOL) <
+               bool
+                 (!(id_hwp, id_crn, id_iai, id_shg, id_rso).
+                  (str_hgs /<<: INT)))) },
+         tree
+           ({FALSE,
+             str_caw,
+             struct
+               (id_dbf: struct(id_qxs: 5349),
+                id_dxq: str_sfb$0,
+                id_lyl: str_qjs$0,
+                id_lfe: struct(id_jbz: INTEGER),
+                id_ebt: seq(BOOL),
+                id_yya: [str_xpp, str_jzg, BOOL, str_ywt, str_jlw, FALSE]),
+             str_gmd,
+             NAT1,
+             str_sns$0,
+             str_ihn$0,
+             str_iua$0}),
+         {(str_osl$0 <+ sizet(str_ncj)),
+          size
+            ({ id_fqv, id_rgj, id_zxw, id_baz, id_twh, id_xxj, id_ack,
+               id_jef, id_ibp
+               |
+               str_ngb$0 < str_kzx <=>
+               (str_rlv$0 <= str_fep$0 => str_ezx /<: str_led) })},
+         (MAXINT \/
+          (bool
+             (#(id_xln, id_qie, id_iit, id_pqj, id_fsw, id_two, id_ebc).
+              (#(id_ume, id_nsx, id_dqv, id_zzd, id_dyo, id_qmp, id_aiv).
+               (#
+                  (id_rir, id_nbg, id_gpn, id_dhv, id_wps, id_amq, id_how,
+                   id_cel, id_rly, id_cgs).
+                (str_tst$0 /: str_rgp$0)))) +->
+           rec(id_nnd: TRUE, id_mpd: str_yqy$0, id_ngd: MININT))),
+         bool
+           (struct
+              (id_wkr:
+               struct
+                 (id_wml:
+                  rec
+                    (id_rbt: TRUE,
+                     id_wda: str_fvy$0,
+                     id_rsq: MININT,
+                     id_dnq: str_mxn$0,
+                     id_eaj: str_ayt,
+                     id_ccg: str_gbn,
+                     id_wyk: TRUE),
+                  id_mdu: BOOL,
+                  id_hff:
+                  rec(id_wnu: str_dij, id_zpp: NATURAL, id_czv: STRING),
+                  id_vbe: str_zap$0,
+                  id_uho: FALSE,
+                  id_xob: str_hdn,
+                  id_hop: NAT1)) /:
+            MAXINT'id_lap),
+         rec
+           (id_dtg: str_ewu,
+            id_fmx: [NAT1, str_zht, NAT1, str_iqq, str_lgb$0, str_wgc],
+            id_lae:
+            bool
+              (#(id_mrs, id_gia, id_wwl, id_yzv, id_ags).
+               (#(id_lax).(not(MININT <<: str_ulx$0)))),
+            id_hat: UNION(id_zkr, id_xsm). (FALSE /= NAT1| INTEGER),
+            id_jet: str_yps),
+         struct
+           (id_ice:
+            struct
+              (id_zws: str_gvs'id_hyh,
+               id_qvu:
+               bool
+                 (NAT /<: str_syx <=>
+                  !(id_was, id_tqv, id_ktn, id_rkd, id_szh).
+                  (str_uxh$0 /<<: [] & str_rlf > str_jez$0)))),
+         postfix
+           (prj1
+              (MAXINT /
+               UNION
+                 (id_jys, id_via, id_bui, id_brd, id_roo, id_wue, id_ign,
+                  id_cup, id_axj).
+               (str_uvc$0 /<: str_ikx| str_xhf),
+               struct
+                 (id_wen: str_rrk,
+                  id_tyi: { id_wox, id_jkr, id_qbb | str_kqw /: INT },
+                  id_uis: INT,
+                  id_nzr: str_bsj$0,
+                  id_kxd: str_wtj,
+                  id_hqi: FALSE,
+                  id_uyt: str_npo$0) \/
+               str_wwb)),
+         rec
+           (id_acb: str_vjv,
+            id_fpn: infix(BOOL),
+            id_fxg:
+            [str_igc$0,
+             {},
+             {STRING, str_dme$0, str_zac, str_xmx, BOOL},
+             rec
+               (id_hgd: MININT,
+                id_jkx: bool(INTEGER /<: str_avk)'id_ybn,
+                id_xvv: str_uwt,
+                id_lzd: str_cld,
+                id_btl: NATURAL,
+                id_bkz: TRUE)]),
+         rec
+           (id_zdr: bool(STRING >= INT),
+            id_etx: str_bfl,
+            id_xyz:
+            struct
+              (id_gnh: NAT1,
+               id_haj: str_thk$0,
+               id_zla: str_cib$0,
+               id_yjt: %(id_gwq, id_pvw). ([] = str_wqi| str_qeq$0),
+               id_uva: str_evb$0,
+               id_zmn: str_qxk$0),
+            id_lbz: NATURAL,
+            id_xrm:
+            %(id_wiz, id_fhg, id_vqc, id_vvv, id_spl).
+            (NATURAL1 /<: str_cbs| str_xpl$0),
+            id_gkc: str_plk$0,
+            id_gmj:
+            %(id_bor, id_auw).
+            (FALSE /<: INT|
+             {NATURAL1, FALSE, TRUE, str_sth, FALSE, str_jvp, str_mbt}),
+            id_qnd: str_dye))
+    ELSE
+      id_vuz, id_qan, id_xlm, id_bep, id_jfg, id_zus, id_vvm, id_gcl, id_rxv,
+      id_jru
+      ::
+      rec
+        (id_zit: FALSE,
+         id_poh: [str_fqw, str_gep, INT, MAXINT, str_pzq$0, str_nbk],
+         id_eao: rec(id_aet: 49, id_tre: str_iel$0),
+         id_xdq: INT,
+         id_poo: str_uze$0,
+         id_oie:
+         rec
+           (id_ovt: str_thk$0,
+            id_fnh:
+            (INTEGER \|/
+             rec
+               (id_aig: str_phq$0,
+                id_kvc:
+                SIGMA(id_ile, id_jpj, id_thh).
+                (str_quz$0 /: str_aes$0| INTEGER),
+                id_ido: str_kzo,
+                id_icq: str_wwh,
+                id_jbr: str_xbv,
+                id_qvc: str_cgh,
+                id_gvt: str_kse))))
+    END
+  INVARIANT
+    #
+      (id_dvb, id_evo, id_oxd, id_epx, id_whe, id_ibt, id_fuq, id_stq,
+       id_lwk, id_gxx, id_wxb).
+    ({FALSE, [], STRING, str_lux} /:
+     [str_ykb, FALSE, TRUE, str_vsm$0, str_cvg$0] <+ str_weg$0) or
+    #(id_imv, id_wfe, id_gig, id_igy, id_tsz, id_exn, id_awa, id_mmf, id_aub).
+    (str_ews /<<: str_uqv)
+  VARIANT
+    bool
+      (not
+         (MAXINT <: (str_xob || str_ful) &
+          #(id_ofy, id_pso, id_mye, id_cmi, id_wry, id_gbw, id_jdd).
+          (not(str_pcs >= str_tgh$0))))
+  END;
+
+  id_ohr, id_nke, id_mlo, id_ydn, id_zma, id_uyg, id_aul, id_qoc, id_boy,
+  id_iaz
+  <--
+  id_yib
+  =
+  CHOICE
+    CHOICE
+      SELECT
+        not
+          (#
+             (id_zma, id_kdb, id_qos, id_nsk, id_xhq, id_cje, id_lqy, id_dil,
+              id_vbi).
+           (#
+              (id_nsm, id_hwn, id_bcv, id_jdw, id_leh, id_aum, id_jsu,
+               id_xcd, id_vyl, id_imk, id_iyv).
+            (#
+               (id_ijj, id_rkt, id_vgh, id_hdz, id_sex, id_dcj, id_map,
+                id_jdy, id_yru, id_xcw).
+             (!
+                (id_tjf, id_qtk, id_htd, id_dmg, id_ihm, id_xsr, id_ntn,
+                 id_aml, id_nja).
+              (not(str_mda$0 /= str_mqy <=> str_vkl$0 <<: STRING))))))
+      THEN
+        skip
+      WHEN
+        !(id_vlf, id_kqt, id_vuq, id_hci, id_ckl, id_wgl).
+        (!(id_eds, id_zom, id_gbu, id_yzz, id_hpi, id_aji, id_ysz, id_rjt).
+         (not
+            (prefix(str_bhe$0) <:
+             { id_rsf, id_apf, id_ykp, id_vcs, id_ite, id_fkc, id_wsn,
+               id_avm, id_dhr
+               |
+               #(id_yvk, id_ybz, id_iad, id_krz, id_kll).(MAXINT >= str_exm) })))
+      THEN
+        id_uan :(
+          #
+            (id_osd, id_sus, id_xco, id_wiz, id_sqv, id_tqi, id_ifl, id_xzm,
+             id_urn, id_xbw).
+          (!(id_pkl, id_kza).
+           (!(id_fyt).
+            (!(id_syq, id_amf, id_dey, id_prn).({} /: str_vuj$0) or
+             MAXINT <= NATURAL1 or
+             not(MININT /= str_meg))))
+        )
+      WHEN
+        (!
+           (id_pxx, id_cvh, id_zuh, id_exo, id_kas, id_hpl, id_gjx, id_jes,
+            id_nyb).
+         (str_sdo$0 /<<: str_xhb$0) <=>
+         #(id_fwn, id_xvr, id_emg, id_zhj, id_elh, id_iuy).
+         (str_ylp$0 < NATURAL <=> FALSE : BOOL)) or
+        str_lyx <= str_mcw
+      THEN
+        id_zsp, id_vym, id_ohb, id_ccy
+        <--
+        id_fte
+          ((bool
+              (not
+                 (!(id_szo, id_gxw, id_pez, id_bff, id_nvl, id_hzo, id_whs).
+                  (str_wlw = str_ncj) or
+                  str_wal$0 <<: NATURAL1)) +->>
+            son
+              ({ id_zgy, id_jro, id_fbi, id_zpc, id_rxq, id_jbq, id_rpf
+                 |
+                 str_udb < [] })),
+           SIGMA(id_kot, id_xgo, id_ghc, id_hpk).
+           (!(id_tah, id_ctk, id_xjo, id_yrn, id_iwg, id_wov).
+            (#
+               (id_hup, id_mwg, id_aev, id_mhk, id_kie, id_qbu, id_xab,
+                id_akp, id_ibg).
+             (#
+                (id_xpk, id_cwv, id_imw, id_irc, id_xuk, id_cng, id_gtt,
+                 id_qtg, id_tzi, id_aoe, id_fxm).
+              (not(BOOL : str_ttc$0))))|
+            {{str_zhw, FALSE, MININT, str_gyp$0, BOOL}, str_sxc, INT}),
+           bool
+             (929 >= str_xvb$0 <=>
+              #(id_mfo, id_mkx, id_jvh, id_yta, id_chu, id_mhl).
+              (not(NAT = iseq(str_hvm$0) /|\ str_hjo))),
+           %(id_diz, id_gdt).
+           (not
+              (not(#(id_nlh).(STRING /<<: str_unh)) &
+               (str_sss$0 = str_hgm <=> NATURAL1 /<: INTEGER))|
+            {INTEGER}),
+           struct
+             (id_xxb: str_uvz,
+              id_uan: str_ibi$0,
+              id_xaf: str_zsv$0,
+              id_sgn:
+              {struct
+                 (id_vik: "str_rud",
+                  id_qer: str_pha,
+                  id_ble: str_pou,
+                  id_rdg: str_bfc$0,
+                  id_lec: str_swu,
+                  id_jjn: str_wjn$0,
+                  id_ybc: INT,
+                  id_hkv: NAT),
+               [str_vtf$0, str_otg, { id_jbe | NATURAL > str_cfs }, BOOL, 55],
+               [],
+               str_itj$0,
+               str_qzg,
+               str_yth,
+               MAXINT,
+               {"str_kwz", BOOL, INTEGER, BOOL, str_fqo$0}})
+             'id_owx,
+           struct
+             (id_swe:
+              %
+                (id_osu, id_twa, id_ubz, id_tup, id_eub, id_bde, id_ter,
+                 id_jux).
+              (MAXINT > str_xwc| str_dwf$0)
+                'id_qkh,
+              id_ovb:
+              bool
+                (!
+                   (id_vkf, id_sqs, id_tfv, id_dgh, id_cjg, id_pte, id_ezz,
+                    id_lhj, id_yhf, id_kgw).
+                 (str_dmb$0 /: str_boe) or
+                 not(MAXINT = str_jgl))),
+           { id_dzm
+             |
+             #(id_sap, id_irj, id_vca, id_qzl, id_ewy, id_ksi).
+             (not
+                (not
+                   (!(id_dgx, id_hhp, id_xoq, id_dta, id_fju).
+                    (!
+                       (id_hnl, id_hei, id_lsc, id_vmv, id_rsn, id_loo, id_rii).
+                     (#(id_gcp).(str_rbv$0 < str_byh)))))) },
+           rec
+             (id_khe: str_mbz$0,
+              id_luj: last(str_jbh$0),
+              id_wvh: str_rpz$0,
+              id_ida: str_thq,
+              id_zjm: BOOL,
+              id_zzd:
+              rec(id_dle: (str_rju$0 +->> str_xzq), id_bmi: str_his$0),
+              id_wpy: {BOOL, seq1(str_pxu$0)'id_mgd, str_pyu$0},
+              id_pjs: NAT))
+      WHEN
+        not
+          (#(id_hgv).
+           (!
+              (id_fus, id_drv, id_ebz, id_atf, id_gql, id_hcd, id_vbz,
+               id_apz, id_jna, id_fgu).
+            (#
+               (id_cqh, id_naj, id_ebm, id_lzg, id_qxs, id_wgu, id_wgg,
+                id_cpn, id_fnd, id_wbv).
+             (struct
+                (id_hzd: NAT,
+                 id_dqi: str_rss$0,
+                 id_dxd: str_gvy$0,
+                 id_ekt: INT,
+                 id_jli: NATURAL1,
+                 id_mzi: str_uwp)
+                'id_sur >
+              MAXINT))))
+      THEN
+        skip
+      WHEN
+        ran
+          (struct
+             (id_bkg:
+              UNION
+                (id_pgi, id_gki, id_mbq, id_ung, id_xgl, id_sga, id_san,
+                 id_iks, id_wiq, id_seo, id_unv).
+              (str_jfc /<: BOOL| FALSE),
+              id_ydh: {str_ggr, TRUE, "str_gay", str_vit$0},
+              id_uky: str_hgn,
+              id_tjv: str_shj,
+              id_wke: str_flk$0,
+              id_haq: str_jgg$0,
+              id_iqh: str_cyt$0)) >
+        bool(str_rmq$0 /= str_vdr$0)
+      THEN
+        id_uwt, id_tnd, id_kgl, id_dhs, id_bdj, id_xqs, id_shx
+        ::
+        ((rec
+            (id_fvt: str_jnz,
+             id_bzd: str_eve,
+             id_tdc: str_djg$0,
+             id_xrv: str_yts,
+             id_rrc: str_xlo,
+             id_pmu: str_kgu$0,
+             id_okq: str_zou,
+             id_xya: str_gky$0) mod
+          str_knv$0) >+>
+         rec
+           (id_etx: (str_xoo /|\ str_gcv$0),
+            id_kpw: str_hfl$0,
+            id_iit: str_dup$0,
+            id_kmd: rank(str_qto),
+            id_led: str_enr$0,
+            id_ajo: str_emq$0))
+          'id_ash
+      WHEN
+        (str_atq$0 > str_bql => str_cqn /<<: str_vdk$0) <=>
+        #(id_jld, id_ipf, id_iip, id_xtd, id_xje, id_ftj, id_let).
+        (str_emr <<:
+         rec
+           (id_muo: str_udv,
+            id_qtd: (MAXINT /|\ NAT1),
+            id_uvd: str_pjp'id_jrx))
+      THEN
+        id_suv 
+          (
+            rec
+              (id_uvk: str_wrj$0,
+               id_olr: INT,
+               id_xdz: BOOL,
+               id_orj: MININT,
+               id_izj: str_jbw)
+              ({NAT} -
+               [{ id_vqc, id_xeo, id_sxr, id_oqm, id_hio, id_kiz, id_fhk,
+                  id_zrz, id_ive, id_wst, id_sxr
+                  |
+                  str_nyi : str_bvd },
+                pred(NATURAL1),
+                MININT,
+                str_eqk,
+                str_iib,
+                NATURAL1])
+          )
+        
+        :=
+        {str_diz$0,
+         rec
+           (id_lal: str_xei,
+            id_szi: bool(bool(str_koo <: NATURAL1) /<: {str_btc$0}),
+            id_yrx: str_khh$0),
+         634,
+         NAT,
+         str_qog$0,
+         struct(id_fge: str_buf, id_key: str_mzh$0, id_rii: str_umo$0),
+         str_wpl}
+      END ;
+      ANY
+        id_imd, id_fhi, id_coa, id_iux
+      WHERE
+        !
+          (id_hio, id_act, id_ukr, id_dgh, id_dxf, id_sje, id_dja, id_zrr,
+           id_oco, id_hlb, id_tau).
+        ({str_zgj, str_soe, str_ouz, str_tar, {}, str_dtn$0, "str_pce"} >=
+         {str_mqm$0,
+          str_xev$0'id_buy,
+          INT,
+          bool(str_gga > str_eiy$0),
+          str_vkz$0,
+          str_brp})
+      THEN
+        ASSERT
+          not
+            (not
+               (not
+                  (#(id_tmv).(not(str_jhf$0 <: str_vij$0)) or
+                   #
+                     (id_kiz, id_pdz, id_ybr, id_gib, id_mnz, id_sel, id_qqm,
+                      id_dse, id_gjr, id_gfn, id_enu).
+                   (str_uym$0 > str_jpm))))
+        THEN
+          id_grx, id_efs, id_ird, id_mcc, id_kfq, id_lnk, id_zbh, id_qei
+          <--
+          id_jim
+            (rec
+               (id_jeg:
+                succ
+                  (struct
+                     (id_gxm: str_onk$0,
+                      id_xrq: str_evo$0,
+                      id_sxt: str_rfv$0,
+                      id_bnu: STRING,
+                      id_tdm: str_fqe) /
+                   first
+                     (struct
+                        (id_glb: str_rpu$0,
+                         id_jrl: NATURAL,
+                         id_ylj: [],
+                         id_pmx: str_jly$0,
+                         id_kvp: str_qgo$0,
+                         id_imd: BOOL)))
+                  'id_pge,
+                id_isv: str_dvb$0),
+             struct
+               (id_kgy: MAXINT,
+                id_osx:
+                rec
+                  (id_ovy: INTEGER,
+                   id_fdy: str_dog,
+                   id_abv: NAT,
+                   id_lbd: str_mxz$0,
+                   id_mrs: str_hof,
+                   id_jen:
+                   [{ id_idg | str_olx > INTEGER },
+                    perm
+                      ({str_noy,
+                        {INT, MININT, BOOL, str_cpa$0, str_ste, INT, MININT}}),
+                    INTEGER,
+                    NATURAL1],
+                   id_qge: TRUE)),
+             bool
+               (!(id_piu, id_hae, id_gcc).
+                (bool(str_bjz$0 /= TRUE => str_hje$0 /= NAT) <
+                 left(MAXINT)'id_rsn)))
+        END
+      END
+    OR
+      id_mqf'id_itc
+      :=
+      {struct(id_dug: str_zha$0),
+       bool
+         (#(id_xxc, id_zpz, id_diu, id_tnq, id_vru, id_jhu).
+          (!(id_uex, id_ant).(NATURAL /<<: STRING))),
+       {},
+       "str_zwm",
+       STRING,
+       [],
+       rec(id_uiv: [str_ieu, NAT1, STRING, str_kmi], id_fnx: str_dyb$0)}
+    OR
+      id_jcr'id_llr
+      :=
+      ((bool(str_lln$0 : str_qcw) +->> str_chn) ,
+       rec
+         (id_bna: str_kwl,
+          id_alz: NAT,
+          id_qcm: str_rqa$0,
+          id_vky:
+          [rec(id_zpd: FALSE, id_khb: 9, id_rkf: NAT, id_jch: str_sbq$0)],
+          id_ijj: str_qen$0))
+        'id_ylz
+    OR
+      id_uah, id_bpt, id_qzr, id_xqj, id_pdk, id_kvy
+      :=
+      struct
+        (id_tnp:
+         rec
+           (id_edk: bool(str_odg$0 = NATURAL1),
+            id_zvl: str_iqr,
+            id_aqn: str_zqw$0,
+            id_pft: str_yfo,
+            id_khy: FALSE,
+            id_bhf: INTEGER,
+            id_tum: str_evt$0,
+            id_xsp: str_pku)) \/
+      INTER(id_ggl, id_yef, id_hkx, id_vbv, id_vlt, id_gyt, id_jhv, id_egu).
+      (str_hwt : FALSE & [] /: str_prx| str_ogw$0 |>> STRING)
+    OR
+      id_ygk 
+        (
+          {mirror({size(FALSE), str_wss$0}),
+           NATURAL1,
+           str_ykk,
+           struct
+             (id_joy: STRING,
+              id_kee: str_mig$0,
+              id_eay: str_xgw,
+              id_dzp:
+              rec
+                (id_cot:
+                 struct
+                   (id_ffw: str_hyl,
+                    id_pkx: str_jjx$0,
+                    id_thl: str_eqk$0,
+                    id_wou: str_lym$0,
+                    id_rdn: str_mvw,
+                    id_rss: str_pdl,
+                    id_pgg: str_xmr,
+                    id_nge: TRUE)),
+              id_hwq: str_fsw,
+              id_ntm: NAT1)}
+        )
+        (
+          SIGMA(id_kkz, id_dvl, id_ozv, id_ozq, id_ksc, id_zcy).
+          (#(id_edj, id_rnm, id_yvu, id_mki, id_eac, id_vtj, id_cbd, id_whs).
+           (#(id_ixu, id_zgg).
+            (INTEGER : BOOL <=>
+             #
+               (id_bcv, id_ezb, id_akm, id_uju, id_ahk, id_wfp, id_kch,
+                id_ypp, id_qgr).
+             (#(id_lti, id_wtz, id_egs, id_mqi).(str_qaz <= FALSE))))|
+           max(INT))
+        )
+        (
+          {fnc
+             (SIGMA(id_nft, id_xha, id_pvw, id_rpw, id_nmp, id_toy).
+              (!(id_rfw, id_xxy).
+               ((BOOL /<: {} <=> str_btf <= MAXINT) <=>
+                (str_riq /: NAT1 <=> [] >= str_gcp$0))|
+               str_ryi))}
+        )
+        (
+          tree
+            (bool
+               (!
+                  (id_xcf, id_loe, id_tre, id_dno, id_qff, id_kdr, id_ulx,
+                   id_lcu, id_vsb).
+                (NATURAL1 /<<: str_qdl$0))) ><
+          struct
+            (id_swa: str_clr$0,
+             id_mcl: [],
+             id_jum: {str_wfj$0, str_lxu, MAXINT, FALSE, NAT, {}},
+             id_dwr:
+             struct
+               (id_ubo: NATURAL1,
+                id_yaa: str_zpy,
+                id_nly: str_sdz,
+                id_tcj: str_ber$0,
+                id_qaw: str_ngh,
+                id_jmn: str_azv))
+        )
+        (
+          bool
+            (#(id_zio, id_dzm, id_uym, id_jsi).
+             (!(id_tkt, id_xqx, id_ugi, id_sxt, id_hjq, id_gzt).
+              (bool([] <= str_rrh) <=
+               { id_xvm, id_eko, id_yvk, id_not | INT /: str_xbx$0 })))
+        )
+        (
+          {str_hot$0,
+           SIGMA
+             (id_epl, id_wqu, id_qun, id_ntt, id_ylv, id_asc, id_ijl, id_vhh,
+              id_oml).
+           (str_dvh$0 <= str_piu$0| NATURAL1),
+           { id_zde, id_rii, id_tuo, id_dyd, id_bch, id_ypi, id_vyh, id_ukm,
+             id_twv, id_kxx, id_zsa
+             |
+             #
+               (id_vqp, id_yjd, id_pen, id_kkf, id_cex, id_saw, id_tcd,
+                id_wre, id_khe, id_sro, id_ujn).
+             (#(id_otc, id_phu).(str_tuq /: INTEGER)) }}
+        )
+        (
+          SIGMA(id_asn).
+          (str_zfw$0 /<: str_fqp|
+           bool
+             (!(id_qoj, id_gfv, id_mpq, id_uac, id_gcp, id_dek).
+              (#(id_ohs, id_qze, id_uio, id_kkt, id_adr).
+               (#(id_bqb, id_seu, id_joz, id_fjd, id_xjk, id_ath).
+                (str_vxf$0 /= { id_rzm, id_rzc, id_irv | BOOL /<: str_mbe$0 })))))
+        )
+        (
+          {perm
+             ([[NAT1],
+               [str_bgq$0,
+                (str_tsp$0 + str_apj),
+                str_idb,
+                str_nsz,
+                str_bwo$0,
+                str_hqd,
+                str_kjz],
+               str_xjx,
+               str_wzm,
+               bool(str_ifh <: str_cng$0)]),
+           NAT,
+           str_kgh$0,
+           NATURAL}
+        )
+        (
+          [str_lnq,
+           struct(id_qrb: str_wuq'id_imn),
+           ({ id_mqu, id_aim, id_krg, id_vtz, id_azq, id_qtw, id_vgu, id_thg,
+              id_opd, id_agi
+              |
+              str_hjg$0 > str_qwo } /
+            struct
+              (id_zqn: str_isp,
+               id_ivj: str_cnh,
+               id_jes: str_oze,
+               id_bqz: str_xgg$0,
+               id_nig: str_buc))]
+            'id_ddo
+        )
+      
+      :=
+      rec
+        (id_xbw: [],
+         id_aoy:
+         mirror
+           (struct
+              (id_gzm:
+               { id_exz, id_gun, id_pew, id_saw, id_isa, id_ilp, id_bwx
+                 |
+                 str_zxn =
+                 STRING \|/
+                 rec
+                   (id_qcf: str_nws$0,
+                    id_yps: str_ycc$0,
+                    id_zdb: str_woj,
+                    id_rqn: str_fuu$0,
+                    id_jaj: str_bym) })),
+         id_xsx: str_ojr,
+         id_brx: str_emw$0,
+         id_ooc: STRING)
+    END
+  OR
+    LET
+      id_vow, id_mqy, id_qmg, id_oih, id_nbf
+    BE
+      id_lhq
+      =
+      [bool
+         (not
+            (!(id_ltq, id_zmb, id_ewh, id_lhg, id_qyc, id_jpz).
+             (!
+                (id_lfr, id_ivv, id_rmr, id_izm, id_ahf, id_bpi, id_xjq,
+                 id_dxt).
+              (str_sqi > NATURAL))))]
+        'id_cvi
+        'id_xri&
+      id_crk
+      =
+      INTER(id_aix, id_nqv, id_xfy, id_teo, id_zww, id_gii).
+      (struct
+         (id_rkg: str_hfq$0,
+          id_wxk: INTEGER,
+          id_sqo: str_jrm$0,
+          id_yiv: FALSE,
+          id_xwq: str_jfp,
+          id_qeb: TRUE,
+          id_sit: str_iaj$0) <<:
+       str_irv$0 <=>
+       str_ugv >= NAT|
+       rec(id_ntb: {"str_ofc"'id_rwc, str_ird, []}))&
+      id_yzz
+      =
+      PI(id_eos).
+      ({ id_rcq, id_jdw, id_zjq, id_ukf, id_psq
+         |
+         !
+           (id_fxw, id_mht, id_vnm, id_dvb, id_oem, id_ddq, id_pis, id_uhx,
+            id_bib, id_vzo).
+         (not(NATURAL < str_xgz)) } /<<:
+       SIGMA(id_lyi, id_ate). (str_wsy = str_epu$0| str_xjk)|
+       [str_wto$0, str_pyv, str_jan$0, NATURAL, str_nht$0, str_cil$0, FALSE])&
+      id_zic
+      =
+      { id_gdg, id_vjy, id_vry, id_gzg, id_wmt, id_pzr, id_hgt, id_uzz,
+        id_cmn, id_sdi, id_tcr
+        |
+        not
+          (!(id_gbg, id_hvs, id_cug, id_pup).
+           (#
+              (id_twt, id_tuz, id_hku, id_hev, id_blk, id_gyz, id_ovr,
+               id_lkp, id_isn, id_mou, id_nbt).
+            (!
+               (id_yef, id_dax, id_lxp, id_auk, id_hua, id_bec, id_xuo, id_uvz).
+             (!(id_fzn, id_mzp, id_gdd, id_jzm, id_bpj).(INT > INTEGER) or
+              str_len <= NAT)))) }&
+      id_vmh
+      =
+      %(id_ova, id_tfy, id_mit, id_bhh, id_lxn, id_cpa, id_nfr, id_pjk).
+      (!
+         (id_ynk, id_mun, id_ptk, id_kbg, id_eif, id_hwi, id_afa, id_phb,
+          id_ycj, id_gqm, id_ady).
+       (BOOL = str_onq$0 <=> str_rmt >= str_dju)|
+       rec
+         (id_jwe: BOOL,
+          id_dqf: TRUE,
+          id_guo: [],
+          id_wcu: FALSE,
+          id_itp: str_swr$0'id_yzf,
+          id_oiq:
+          { id_qej, id_dbu, id_bco, id_ojv, id_caz, id_jaw, id_qit, id_cia,
+            id_anb, id_fnw, id_ljy
+            |
+            str_blu /: NAT1 },
+          id_gbl: [STRING, NAT1, str_wfn$0, str_jsm, str_zou, [], [], NAT]))&
+      id_adm
+      =
+      bool
+        (!
+           (id_kji, id_rau, id_zvy, id_vmj, id_dkc, id_bms, id_woh, id_gmd,
+            id_fpl).
+         (PI(id_ref, id_jol, id_uod, id_yyx, id_tfd, id_noh, id_dsy).
+          (!
+             (id_dnc, id_cab, id_icg, id_kss, id_eae, id_ivr, id_gwr, id_nbi,
+              id_hgp, id_trr, id_zcj).
+           (TRUE <<: str_aho$0)|
+           str_cov) <:
+          rec
+            (id_ddj: str_pya,
+             id_hij: {},
+             id_kqj: str_amv$0,
+             id_aqu: str_gnj$0,
+             id_xpp: str_mqo$0,
+             id_pry: str_dmk$0) -->>
+          {}))&
+      id_ewb
+      =
+      rec
+        (id_sez: ({str_hob$0, str_aoz, BOOL, str_cek}~),
+         id_rdn:
+         [str_fga$0, str_wjj, str_dys, str_lrs, str_wtx, str_rli, str_svh$0],
+         id_lka:
+         bool((str_dyg = str_qjs or str_ncz$0 < []) <=> NATURAL <: 459),
+         id_rhc: str_jse,
+         id_tsm: [],
+         id_rrk: str_qob$0)
+    IN
+      id_miz, id_qqb, id_kqu, id_dta
+      <--
+      id_wtr
+        (rec
+           (id_tma:
+            rel
+              ({({%
+                    (id_jfl, id_oui, id_qpe, id_zpz, id_tjh, id_rny, id_tor,
+                     id_rti, id_xwu, id_xvt, id_mpz).
+                  (NAT /= str_ajj$0| NAT1),
+                  str_lvy$0} +->>
+                 {str_ynk, str_ien, NAT1}),
+                37,
+                BOOL,
+                str_pcp,
+                str_att,
+                str_tel,
+                str_mga$0})))
+    END
+  OR
+    skip
+  END;
+
+  id_zwg <-- id_rtj =
+  IF
+    #(id_gug, id_jcp, id_hqb, id_yki, id_srp, id_mnd, id_bew, id_kce, id_xmx).
+    (MAXINT /<: "str_igk") or
+    (#(id_hkp, id_rfp, id_qqf).(BOOL /<: str_gah) <=>
+     !(id_yji, id_ajl, id_luo, id_tup, id_bza, id_czg, id_tqt).
+     (str_oba$0 < str_tlg$0 or TRUE = str_abk))
+  THEN
+    ANY
+      id_uin, id_fit, id_hpz, id_nrj, id_kwq, id_ogb, id_ipe, id_rtb, id_tmn,
+      id_qbj
+    WHERE
+      INTEGER'id_yts |-> {"str_kfk", MININT, str_wzi$0, INT, []} < str_xdv$0 or
+      !
+        (id_exv, id_nqe, id_kys, id_zbg, id_hje, id_agx, id_uae, id_bud,
+         id_uvb, id_zlr, id_mwq).
+      (str_gmr$0 <: str_gwi$0 => str_djz$0 = TRUE)
+    THEN
+      id_oes 
+        (
+          [rel
+             ([MAXINT,
+               sizet
+                 (front
+                    (rec
+                       (id_tmr: FALSE,
+                        id_ajj: str_env$0,
+                        id_zzj: TRUE,
+                        id_mqr: TRUE,
+                        id_fom: str_qux$0,
+                        id_qhu: FALSE))),
+               str_hpm$0,
+               str_xxv,
+               BOOL,
+               str_fqm,
+               [str_fkv, str_trp, str_auf$0]])]
+        )
+        (
+          struct
+            (id_pix:
+             [NAT, str_pmc$0, str_wjf, str_eoa$0, TRUE, [], NAT1, MAXINT],
+             id_gjg: pred(str_bqe ^ str_mcl$0),
+             id_waz: str_fsy,
+             id_twz: str_age,
+             id_ztd:
+             rec
+               (id_pli: BOOL,
+                id_jdh: str_qnq$0,
+                id_lfl: str_pcm,
+                id_rej:
+                UNION
+                  (id_qlg, id_pmv, id_esr, id_mwf, id_njr, id_kmb, id_ztz,
+                   id_fbd, id_fwp, id_hij, id_zcu).
+                (NAT <= str_xex$0| str_ats$0)),
+             id_tsc: {str_ivd, str_ayq, STRING, BOOL, str_ewr$0, str_hjp$0})
+        )
+        (
+          top
+            (prj2
+               (struct
+                  (id_zql: NATURAL1,
+                   id_mwo: str_ldc$0,
+                   id_sad: STRING,
+                   id_fwu: 6,
+                   id_bmo: str_yhd$0,
+                   id_ohe: str_tbe,
+                   id_sad: str_dlq)
+                  'id_zsg,
+                SIGMA(id_hsx, id_roj, id_vwo, id_xwe).
+                ("str_ebn" /: str_uhe| str_ujb$0))
+               'id_ggf)
+        )
+        (
+          {{ id_fib, id_mxh, id_cja, id_vbp, id_ekx, id_ibh, id_vrq, id_dvd,
+             id_drn, id_abr, id_lni
+             |
+             not
+               (not(str_xmz$0 /<: str_fbu$0 => str_mex$0 <<: str_qnd) &
+                !(id_ynl, id_qpt, id_ref).(str_djg /<<: str_cwv$0)) }}
+        )
+        (
+          struct
+            (id_nul: str_oln,
+             id_uzm: str_rme$0,
+             id_oim: INTEGER,
+             id_zoy: str_adg$0,
+             id_dqs:
+             (INTER(id_lit).
+              (MININT : str_vvv$0|
+               { id_zan, id_ema, id_law, id_aaq, id_ock, id_fji
+                 |
+                 str_nku <= NATURAL }) ->
+              {min(6),
+               SIGMA(id_pxo, id_cdb, id_jyi, id_uay, id_hoj).
+               (str_bed /<<: str_jnu$0| str_eba),
+               {},
+               NATURAL1}),
+             id_mtp: MAXINT,
+             id_ohc: STRING)
+        )
+      
+      :=
+      [str_tkb$0,
+       NAT1,
+       str_rdn,
+       str_iim,
+       str_aah,
+       rec
+         (id_hhc: STRING,
+          id_rbc: fnc(str_nsc$0),
+          id_vbp:
+          { id_vyy, id_oqk, id_muh | str_nyp$0 = str_irf & 9 <: str_hix$0 },
+          id_hrs:
+          INTER
+            (id_ttc, id_rlm, id_xgr, id_sod, id_lsn, id_jmy, id_kqb, id_utj,
+             id_ugg).
+          (str_jnk$0 /: str_xnq$0| str_cnt)),
+       MAXINT] ;
+      VAR
+        id_cat, id_elx, id_jsj, id_qgc, id_mpd
+      IN
+        id_eqp, id_tdg, id_lqk, id_uli
+        :=
+        {MAXINT,
+         str_sxf,
+         MININT,
+         "str_ies",
+         str_oqs$0,
+         str_iza$0,
+         [struct
+            (id_tdr: prefix(str_gbo),
+             id_hqt:
+             rec
+               (id_rly: str_stf,
+                id_tcz: str_som$0,
+                id_zgt: str_csm,
+                id_ugm: NAT)),
+          str_oix$0,
+          str_vtl$0,
+          str_kke,
+          str_pri$0,
+          str_oqg$0'id_jjc'id_qkz]}
+      END
+    END
+  ELSIF
+    !
+      (id_vcr, id_skq, id_zju, id_ekr, id_lhs, id_rip, id_bxs, id_isk,
+       id_ipo, id_smc).
+    (#(id_nfz, id_amq, id_bzg, id_uci, id_nbl, id_qzc, id_gie, id_gho).
+     (INTEGER <: bool(#(id_khb, id_zrl).(str_dmd$0 < str_cgm$0))) <=>
+     #
+       (id_ipd, id_hrb, id_pps, id_ssk, id_tpi, id_rkx, id_vqo, id_ruc,
+        id_axw, id_xkp).
+     (MININT /= str_otv$0))
+  THEN
+    id_shu, id_wrw, id_kzr, id_vit, id_eiv, id_tra, id_cwv <-- id_vkx
+  ELSIF
+    !(id_yhq, id_ygj, id_ovr, id_skx, id_ueo).
+    (!(id_vpe).
+     (!(id_ebx).
+      (!(id_stx, id_vsv, id_sth).
+       (#(id_ozj, id_qkg, id_rbd).
+        ({str_ytt$0, str_qdi$0, str_dxb$0, str_xaj$0, str_lmw, str_tuu$0,
+          str_drb$0, str_pwj} =
+         str_qad)))))
+  THEN
+    id_gap
+    :=
+    rec
+      (id_exh:
+       [str_dbx,
+        str_ttz,
+        [str_yeq,
+         struct(id_eyl: INTEGER, id_bia: str_quy, id_exo: (FALSE ; MAXINT)),
+         str_nad,
+         str_van,
+         { id_fvk, id_bpa, id_oug, id_utj, id_ejh, id_yki, id_ajd, id_uxo
+           |
+           #
+             (id_zei, id_wnm, id_jwg, id_mvm, id_lub, id_odk, id_pcn, id_vpa,
+              id_zmo, id_soz).
+           (BOOL <<: STRING) },
+         str_eto$0,
+         str_qpp$0,
+         str_rvl]])
+  ELSIF
+    #(id_lxa, id_ypb).(str_yyo > str_hcc) <=>
+    #(id_sea, id_ukw).
+    (not
+       (not
+          (!(id_fhd, id_mpp, id_lfm, id_snr, id_eoo, id_kun).(NAT <= str_mdn))))
+  THEN
+    id_ffr, id_bue, id_kca, id_gct, id_ook, id_flm, id_cjc
+    <--
+    id_hlb
+      (dom
+         (PI(id_okx, id_tkz, id_pyi, id_exc, id_sze, id_hut, id_rso).
+          (str_fyr$0 : str_vmc|
+           { id_fup, id_joh, id_awt, id_mhg, id_rug, id_oll, id_bmr, id_khw
+             |
+             !
+               (id_ynp, id_cqr, id_xqx, id_xda, id_ykw, id_fhz, id_kux,
+                id_rts, id_gwz, id_vws).
+             (!
+                (id_uhi, id_itm, id_bzz, id_rij, id_aaj, id_ozv, id_zlm,
+                 id_ltc, id_xyj, id_xxq).
+              (!
+                 (id_dao, id_bgk, id_fmj, id_iqv, id_drp, id_ewc, id_tzf,
+                  id_mha, id_jjl, id_pmx, id_yhz).
+               (!
+                  (id_tzg, id_qmt, id_vpu, id_zsz, id_ekg, id_gsv, id_lwm,
+                   id_eun, id_wso, id_yyg).
+                (str_dbi = str_wcv$0)))) })),
+       { id_fpt, id_fol, id_yli, id_rhm, id_rdr, id_kyi
+         |
+         !(id_qax, id_swh, id_wlv, id_xkf, id_pqk).
+         (struct(id_mam: NATURAL1, id_bsj: NAT, id_age: str_cbt) <
+          { id_gyp, id_cje, id_zcd, id_nws, id_pnz, id_jpi, id_ttw, id_gqx,
+            id_ece, id_oxy
+            |
+            str_jpb =
+            struct
+              (id_nrv: str_ctm, id_rqe: {}, id_dil: NATURAL1, id_rjj: str_iec) }) })
+  ELSIF
+    !(id_nqn, id_aol, id_coh, id_xab, id_jjf, id_vlx, id_lhf).
+    (not
+       (not
+          (rec
+             (id_vgl: str_aln$0,
+              id_pau: str_kmn,
+              id_xzk: str_cwc$0,
+              id_vxk: str_ptp) <<:
+           [] +-> str_hbs'id_qlf)))
+  THEN
+    id_app 
+      (
+        rec
+          (id_qbc: const({}),
+           id_ugq:
+           front
+             (bool
+                (#(id_vno, id_knn, id_qwk, id_gxz, id_lqb, id_hlh).
+                 (not(NAT1 <= str_kvg$0))))
+             'id_yue)
+      )
+    
+    :=
+    struct
+      (id_nhp:
+       tail
+         ({ id_aeo, id_lfe, id_vah
+            |
+            #(id_lym, id_mwt, id_ynr, id_tht, id_etw, id_omf).
+            (NATURAL1 /<<: str_mdu$0) } -->>
+          str_zok$0),
+       id_hrs:
+       [str_ffn,
+        str_xtx,
+        (str_drb$0 , {}),
+        str_dvi,
+        str_jtx$0,
+        str_pvm$0,
+        NAT,
+        str_tvh$0])
+  ELSIF
+    !(id_ypy, id_tsy).(str_poh /: INT => str_sml /<<: str_xwk) &
+    INT : str_zkz$0 &
+    (#
+       (id_usm, id_qwn, id_xcd, id_nld, id_hze, id_wil, id_czv, id_myn,
+        id_kkn, id_qko).
+     (str_lpi$0 /<<: str_rff or str_edz$0 /: str_fwy$0) <=>
+     str_jnk$0 = str_uqj$0)
+  THEN
+    ANY
+      id_uif, id_wvb, id_udt
+    WHERE
+      str_pag$0 <
+      INTER
+        (id_peo, id_ecf, id_pby, id_yit, id_opn, id_vzm, id_jud, id_ayd,
+         id_bna, id_oft, id_oet).
+      (!(id_brw, id_ial, id_nhy).(not(str_jli /: str_msh))|
+       { id_qgq, id_dkj, id_xat, id_whz, id_frm, id_wcr, id_mry, id_gbx
+         |
+         str_wji /<:
+         { id_dhi, id_qqg, id_feu, id_bjc, id_xsc, id_gea, id_ale, id_otj,
+           id_euz, id_ztx
+           |
+           [] > str_rvs } })
+    THEN
+      PRE
+        !
+          (id_hew, id_vzz, id_clc, id_veo, id_fbc, id_epp, id_ysh, id_qmm,
+           id_ehz, id_vej).
+        (!
+           (id_eni, id_nme, id_pmw, id_oid, id_kio, id_gdm, id_bhm, id_fwx,
+            id_trr).
+         (!
+            (id_nye, id_eov, id_eoo, id_chv, id_gmq, id_bst, id_aya, id_qth,
+             id_pig, id_gge, id_otu).
+          (#(id_naa, id_imd, id_gyd, id_ige).(not(9 = str_hit$0)) &
+           str_jqn <= str_tpk &
+           NAT1 <= str_pqu)))
+      THEN
+        id_ajt 
+          (
+            struct
+              (id_nby:
+               { id_xeq, id_qvu, id_swh, id_bll
+                 |
+                 !
+                   (id_kst, id_ith, id_qjh, id_ozj, id_tgs, id_gpm, id_cvf,
+                    id_cme).
+                 (str_iuf$0 /<<:
+                  { id_nuh, id_lek, id_txy, id_nrm, id_ypx, id_oso, id_mxo,
+                    id_osk, id_sig, id_cpq, id_bci
+                    |
+                    MAXINT <<: str_nxn$0 }
+                    'id_fjd) }
+                 'id_pgd)
+          )
+          (
+            [str_ivp,
+             str_suf,
+             ({ id_wjh, id_txv, id_jbh, id_tvl, id_esm, id_fjj, id_dtj,
+                id_lxv, id_nrt, id_avk
+                |
+                !
+                  (id_ths, id_sol, id_xaq, id_seu, id_iop, id_kvi, id_xtd,
+                   id_wov).
+                (!(id_kvh).(str_gzf$0 <= str_grw)) }
+                'id_mse -->
+              str_lvu$0)
+               'id_dle]
+          )
+          (
+            {bool(4 < str_uay),
+             str_qqo$0,
+             [str_qag],
+             str_wwa,
+             str_aey,
+             sizet
+               (%(id_cgf, id_tgw, id_pfi).
+                (str_pvo <: str_afr$0|
+                 { id_mbq, id_cpm, id_qwr, id_upd, id_tvy, id_enz, id_fvw,
+                   id_err, id_xxc, id_mwm, id_iaw
+                   |
+                   not(str_nes /<: str_jlh$0) }))}
+          )
+          (
+            INTER(id_inx).
+            (UNION(id_fnk, id_kli, id_xlh, id_ior, id_hbr).
+             (STRING >= str_ghe$0|
+              iterate
+                (NAT,
+                 [str_nlu$0, str_gxc$0, str_pgx$0, str_wni, str_nxm,
+                  str_qdf$0, "str_zel", str_luh])) /=
+             rec(id_art: str_vpv, id_vhg: left(str_jwp$0))|
+             str_xnk)
+          )
+          (
+            %
+              (id_nno, id_ikj, id_qxl, id_xyz, id_ynl, id_ife, id_gmj,
+               id_kdp, id_jtm).
+            (str_vwj /<: struct(id_dcs: bool({} /<: str_mko$0))|
+             iterate(INT >-> str_bhz, MININT))
+              'id_jjc
+          )
+          (
+            PI
+              (id_bzu, id_nhl, id_fjn, id_tpf, id_zqu, id_bgj, id_xut,
+               id_uud, id_dkx, id_yzk).
+            (#(id_pcz, id_qla, id_mlu, id_sfv, id_ylz, id_ygn).
+             (!(id_ixy).(str_oxt$0 <: str_zrn))|
+             btree
+               ({ id_vzp, id_tkq, id_rip, id_icc, id_rhj, id_yhh
+                  |
+                  !
+                    (id_xsp, id_txt, id_zre, id_yyu, id_hfo, id_zku, id_tlt,
+                     id_juu).
+                  (NATURAL : FALSE) })
+               'id_fsj)
+          )
+          (
+            PI(id_dkp, id_uvo, id_nsf, id_gwi, id_utx, id_uul).
+            (not
+               (INT = str_kaw =>
+                #(id_gvl, id_bdy, id_gio, id_bkh).(str_fha$0 > str_fdh$0))|
+             bool(607 = TRUE))
+          )
+          (
+            POW
+              (INTER(id_tga, id_ydo, id_egv, id_btg).
+               (not(str_zek$0 = NAT)|
+                (rec
+                   (id_hir: str_ssp,
+                    id_hsk: "str_lsp",
+                    id_omj: str_djp,
+                    id_qro: str_twq$0,
+                    id_ogg: str_bfq,
+                    id_uwj: NAT1,
+                    id_isz: str_xqi,
+                    id_cvm: str_rox) /\
+                 rec
+                   (id_ocx: str_kfg$0,
+                    id_vhu: str_shp,
+                    id_fqk: str_dfg$0,
+                    id_vby: NATURAL)) +
+                TRUE))
+          )
+          (
+            bool
+              (str_ckg \/ INT /<<:
+               [str_hch,
+                rec
+                  (id_tnh: prj1(str_vqh$0, str_ldh$0),
+                   id_aeo: str_aha,
+                   id_tta: str_khn$0,
+                   id_yog: str_www,
+                   id_xea: str_dkp$0,
+                   id_bdt: str_vbe$0),
+                SIGMA(id_rbx). (str_ofs = NATURAL| INTEGER),
+                NAT1,
+                MAXINT,
+                str_tja$0,
+                INT])
+          )
+        
+        :=
+        UNION(id_big).
+        (not
+           (bool
+              (!
+                 (id_flp, id_xdp, id_qnw, id_asg, id_nbl, id_jcv, id_qhz,
+                  id_lpf).
+               (NAT1 /= str_wdc)) /<<:
+            str_its)|
+         bool(str_reu /: str_rwr) >-> str_cel$0) ||
+        skip
+      END
+    END
+  ELSIF
+    rec
+      (id_xni: [bin(str_huj$0), NATURAL1, FALSE, str_szl$0, str_eyo, NAT1],
+       id_ctb: MAXINT) <
+    INTEGER -->>
+    rec
+      (id_yqz:
+       struct
+         (id_laq: NATURAL,
+          id_kpw: INT,
+          id_jzj: str_epv$0,
+          id_lpr: BOOL,
+          id_aii: str_lmc$0,
+          id_lcx: str_ckc,
+          id_owi: FALSE),
+       id_jjw: "str_uos")
+  THEN
+    id_ecl, id_mza, id_bfh, id_fcq, id_vnm, id_kbm, id_uoq
+    :=
+    struct
+      (id_jmo: [str_rdv, str_xhj, NATURAL1, FALSE, str_fdt, FALSE],
+       id_pbx: str_evr$0,
+       id_eoq: str_qqm$0,
+       id_ows:
+       {str_bwb,
+        INT,
+        str_qsb$0,
+        struct
+          (id_tbt: str_xie$0,
+           id_tqb: NAT,
+           id_fld: str_zow,
+           id_ocs: str_ruw,
+           id_esi: str_oui,
+           id_hgc: str_vua$0,
+           id_buo: bool(str_beu$0 = "str_fjv"),
+           id_eam: str_xut),
+        [],
+        str_duk,
+        rec(id_pfg: "str_toz", id_pfo: NATURAL1)},
+       id_tfs: 6,
+       id_zpy: str_qxt,
+       id_pez: { id_drl, id_uou | [] /= MININT },
+       id_gjz: str_ile)
+  ELSE
+    id_ycx
+    ::
+    sons
+      (rec
+         (id_kdl:
+          (PI(id_rdw, id_trs, id_dug, id_kun, id_jrs, id_xdm, id_qbm).
+           (str_vfv$0 <= str_bke| str_yfj) >->
+           4),
+          id_xkm: [bool(str_umo /: str_zri$0), str_yqs],
+          id_qfh: {MAXINT, str_gao$0, str_vxk$0, NAT1, str_ppx$0, FALSE}))
+  END;
+
+  id_nuf, id_qek <-- id_gqp (id_xcj, id_wjt) =
+  PRE
+    %(id_qwr, id_oym, id_cxx, id_pne, id_mif, id_kcl, id_rja, id_wja).
+    (not(INT > INT)| bool(not(not(str_qlu$0 /<<: str_ofm)))) /:
+    { id_cck | NATURAL /<: str_fdw$0 }
+  THEN
+    ASSERT
+      !(id_hqf, id_qgh, id_byn, id_iyl, id_qcc).
+      (!
+         (id_nlp, id_obh, id_dwe, id_jux, id_sgy, id_plf, id_blu, id_ghy,
+          id_zrf, id_dqw, id_nqv).
+       (not
+          ((str_pwd$0 <<: str_xlz$0 or
+            (NATURAL1 /: str_kuc or str_rxg$0 >= str_nbr$0)) <=>
+           str_vzv$0 <: str_ymt$0)))
+    THEN
+      SELECT
+        !
+          (id_bcf, id_gim, id_nhm, id_swe, id_snh, id_mad, id_utv, id_tzu,
+           id_cdw, id_tik).
+        ((#(id_ftf, id_uqa).(str_jxf$0 = str_fao) <=> str_jcw < str_fvn) or
+         (not(str_lip$0 <<: str_ago$0) => {} : str_mxm$0))
+      THEN
+        id_ubj, id_tbr, id_xaj
+        ::
+        arity
+          ([[id(FALSE)],
+            bool
+              (#(id_pce, id_xmv, id_eyi, id_pwb, id_ssd, id_fej, id_pry).
+               (str_tke /<<: str_nng or str_pnr$0 /<<: str_xse))])
+      WHEN
+        inter(INTEGER) -->> 8 <=
+        { id_pnl, id_nte, id_swh, id_rlr, id_hrx, id_gbl, id_pol, id_see,
+          id_aau, id_xfj
+          |
+          #
+            (id_znv, id_ikv, id_fya, id_yvf, id_deo, id_gfb, id_jzl, id_fvh,
+             id_too).
+          (!(id_hzl, id_tna, id_muf, id_qxg, id_ofk, id_wfa).
+           (!(id_mxm, id_mgn, id_ptc).(str_nsj$0 = str_azw))) }
+      THEN
+        skip
+      WHEN
+        #
+          (id_ccj, id_jdg, id_puj, id_pyy, id_zue, id_dxb, id_fcz, id_dbu,
+           id_ibv).
+        (SIGMA(id_ela, id_yrq, id_uzo, id_uwj, id_ddd, id_jcw, id_nbj).
+         (str_afe$0 /= FALSE| str_hsz) >
+         str_ngr =>
+         #(id_pmz, id_lcx, id_lig, id_joq, id_ygi, id_euo).
+         (#(id_sto, id_cgy, id_ajw, id_wfy, id_aoj, id_pvu).
+          (!(id_ufx, id_iyj, id_frv, id_rgj, id_yel, id_sek, id_lul).
+           (str_pfj /<: str_pqz))))
+      THEN
+        id_yuq, id_kkm, id_xxb, id_kch, id_sdx, id_csu, id_naj, id_gzt
+        :=
+        rec
+          (id_pcg: bool("str_lrp" /= str_jaf),
+           id_gcx: NATURAL,
+           id_cvr: MININT,
+           id_oxd: str_bhl$0,
+           id_jjh: str_ncb,
+           id_hil:
+           UNION(id_djg, id_yex, id_moc, id_fia, id_hds, id_bkl, id_thg).
+           (str_phc >= MAXINT|
+            UNION
+              (id_opp, id_pau, id_toc, id_rve, id_vrj, id_fsc, id_cot,
+               id_ftz, id_zvp, id_xqe).
+            (#
+               (id_tlm, id_wcf, id_bfe, id_lks, id_ucd, id_trs, id_rtk,
+                id_chi, id_fal).
+             (str_zxc$0 /<<: STRING => str_awg$0 > TRUE)|
+             str_xry$0'id_acu)),
+           id_epr: [],
+           id_oux: str_lyk$0)
+      WHEN
+        not
+          (str_ugm$0 :
+           {str_nrs$0,
+            MAXINT,
+            rec
+              (id_xfx: str_wnz$0,
+               id_qpx:
+               INTER(id_xle, id_noi, id_hoj, id_dpg, id_zra).
+               (!
+                  (id_pia, id_jqv, id_hvp, id_ddh, id_bun, id_lwb, id_xcv,
+                   id_kjx, id_dck).
+                (str_dzz /<: str_hjr$0)|
+                str_rnz),
+               id_crg: FIN1(INTEGER))})
+      THEN
+        skip
+      WHEN
+        !
+          (id_ljh, id_tvb, id_dza, id_hvl, id_nho, id_eon, id_tyw, id_anm,
+           id_ewv, id_ayu, id_ugx).
+        (#(id_dch).
+         (!
+            (id_qmp, id_pqs, id_liw, id_cey, id_hwp, id_nkz, id_oxw, id_jcc,
+             id_rqg).
+          (#(id_ftw, id_lbt, id_hci, id_zvg).
+           (#(id_cca, id_vqz, id_woa).([] <= NAT1'id_uek)))))
+      THEN
+        id_vea 
+          (
+            PI(id_zeo, id_fgs, id_itu, id_jjo, id_wju).
+            (str_hvu <: str_ypv or str_wem < "str_hgp"|
+             {bool
+                (not
+                   (!(id_ygr, id_yaj, id_dhw, id_nrb, id_jkw, id_sll).
+                    (str_svf /: 16)))})
+          )
+          (
+            {str_pzr,
+             rec
+               (id_jhn: MININT,
+                id_mxa:
+                PI
+                  (id_ygk, id_rky, id_mek, id_wvd, id_pxi, id_vvd, id_kjk,
+                   id_upp, id_vei, id_sne).
+                (str_oin = INTEGER| str_eqs$0),
+                id_sjl:
+                [NATURAL1, NAT1'id_uqp'id_xjc, str_jkw$0, str_vau, str_afr$0],
+                id_hwa: NAT1,
+                id_ncc: []),
+             bool(str_qtf$0 <: str_ttb$0)}
+          )
+          (
+            prefix
+              ({ id_eby, id_kmj, id_rjb, id_wls, id_cuo, id_jxc, id_ihg,
+                 id_etd, id_gye
+                 |
+                 !
+                   (id_xfc, id_npr, id_dbw, id_gfb, id_unu, id_kom, id_ixg,
+                    id_zwz, id_zag, id_ovf, id_lqo).
+                 (!(id_txa, id_eep, id_zhm).
+                  (str_fhj$0 <: str_pzc <=>
+                   !(id_div, id_gez, id_dxp, id_awq).
+                   (!(id_pnm, id_wbc, id_sxb).(213 = {})))) })
+          )
+          (
+            struct
+              (id_ssf: str_olv,
+               id_nmc: NATURAL1'id_vid,
+               id_jik: str_iig$0,
+               id_nfa: str_pln,
+               id_ron: str_upa$0) +->>
+            PI(id_hzq, id_qru, id_yrp).
+            (str_flz /<: str_quo$0| str_xqx$0'id_szz)
+              (const(str_nsn))
+          )
+          (
+            bool
+              (not
+                 (!(id_qdq, id_egn).
+                  (bool
+                     (#
+                        (id_qbi, id_rcp, id_dhz, id_hxn, id_vdk, id_wnn,
+                         id_pgc, id_gbx).
+                      (NAT1 >= str_tta$0)) <:
+                   struct
+                     (id_lkp: str_crd$0,
+                      id_nio: str_whk$0,
+                      id_xjh: str_ckt$0,
+                      id_azl: str_hfi$0,
+                      id_fhm: STRING))))
+          )
+          (
+            rec
+              (id_snf: str_itl,
+               id_daq: FALSE,
+               id_jnd: NATURAL1,
+               id_map:
+               struct(id_fwo: (bool(NATURAL /: str_wfn$0) - card(str_lqx$0))),
+               id_bvp: bool(str_pqy$0 /<: str_vxo$0),
+               id_vgs: closure(str_vfe$0),
+               id_nyy: str_jay)
+          )
+          (
+            [rec
+               (id_bca:
+                rec
+                  (id_bnb: str_sqc,
+                   id_lbb: TRUE,
+                   id_cti: str_kna,
+                   id_jxr: BOOL,
+                   id_mzy: str_vla,
+                   id_xzd: str_rns),
+                id_qzl: MININT,
+                id_pim: [str_oam$0, str_nlu$0, str_yek, str_arq$0],
+                id_puc: str_clj,
+                id_ban: 8),
+             POW1
+               ({str_syk, str_qnl, str_qid$0, str_soy, "str_sbl", str_gty$0} ->
+                str_wuj$0)]
+          )
+        
+        :=
+        [str_ppe$0,
+         str_ghu$0,
+         str_btw,
+         NAT,
+         (rec(id_who: str_gmw$0, id_ngw: str_aro, id_crz: str_wvl$0) <+
+          [str_qva$0,
+           str_bqp$0,
+           min
+             ({ id_qye, id_pvf, id_yqb, id_nfu, id_nyd, id_rii, id_nfd,
+                id_clq, id_gqu
+                |
+                not([] <<: str_ahh) }),
+           str_vlb,
+           str_syd$0]),
+         str_fqx$0,
+         str_yue]
+      END
+    END ||
+    WHILE
+      not
+        (rec
+           (id_wje: BOOL,
+            id_rzr: str_thz$0,
+            id_qnv: str_cbr,
+            id_sxj:
+            struct
+              (id_wyx: str_pig,
+               id_xow: str_rie,
+               id_kof: BOOL,
+               id_jab: str_adi$0,
+               id_fxu: 515,
+               id_aws: str_ute$0,
+               id_buz: INTEGER,
+               id_wuf: str_ehg$0),
+            id_zvx: str_dtl) =
+         rec
+           (id_dnm: FALSE,
+            id_ssr: bool(str_vqw <<: MAXINT),
+            id_chx: rec(id_ctl: str_gbk$0)))
+    DO
+      PRE
+        { id_oxl, id_yza, id_zst, id_uee, id_rsn, id_bly, id_zul, id_iuq,
+          id_gus, id_hlp
+          |
+          !
+            (id_wnv, id_afv, id_wer, id_aqw, id_wit, id_wzn, id_ero, id_gad,
+             id_kga, id_khd, id_aer).
+          (NATURAL : str_jra or 0 <: str_wzm) } /<:
+        struct
+          (id_kli: str_rhw$0,
+           id_sgl: str_hop,
+           id_vzu: str_jru$0,
+           id_wfi: FALSE,
+           id_vmu: str_cnx) /
+        [str_uyy, str_cys, str_iit$0, str_hsj, NATURAL1, BOOL, str_ymf]
+      THEN
+        LET
+          id_gdv, id_gkq, id_eak, id_ngn, id_cvu, id_zsl, id_efv, id_ubr,
+          id_hkw
+        BE
+          id_yvn
+          =
+          ran
+            (INTER
+               (id_qyd, id_kme, id_sgg, id_rzj, id_uee, id_mdd, id_bho,
+                id_pty, id_ccd, id_oip, id_gbu).
+             (str_qoh /<: str_xfd$0|
+              SIGMA(id_lpd, id_ufh, id_mdq, id_ejc, id_tby, id_aah, id_ykm).
+              (str_are$0 < FALSE| bool(str_lut < str_try))))
+            'id_fze&
+          id_axz
+          =
+          bool
+            (!(id_oef, id_uqk, id_reg).
+             (!(id_kmr, id_rdi, id_tud).
+              (!(id_pqn, id_ntl, id_spp, id_pmf, id_zas, id_ano).
+               (str_lyx$0 < NAT &
+                str_eqi <<: str_bwv &
+                #(id_xlk, id_qfa, id_tmh, id_aqo, id_ths, id_zsc, id_cnj).
+                (str_lsw > str_lvp)))))&
+          id_kdo
+          =
+          { id_xrt, id_bnq, id_dwt, id_rcm, id_ovq, id_hlj, id_jvi, id_buf,
+            id_xav, id_pch, id_zgp
+            |
+            not
+              ((str_jiw'id_eeo >= 1 <=>
+                #(id_gav, id_stj, id_att, id_pya, id_jyk, id_lqq).
+                (str_zhr$0 < str_hyx)) <=>
+               FALSE <= str_txg$0) }&
+          id_ywm
+          =
+          UNION(id_hxk, id_fqo, id_qow).
+          (str_mce <= str_sfl| struct(id_nqd: NATURAL))
+            'id_jgo \/
+          UNION
+            (id_ybm, id_dgi, id_ent, id_fss, id_zbr, id_tlf, id_vpo, id_eif,
+             id_jzn).
+          (#(id_iew).(str_gbl$0 >= str_gsb)|
+           {str_tkr, str_qxc, str_heg$0, "str_qoj", str_smj$0})
+        IN
+          id_amx, id_vhr, id_cku :(
+            not
+              ((str_jpm$0 /: str_ify$0 <=> not(FALSE <= str_jco)) &
+               #(id_wco).
+               (#(id_weg, id_gzl, id_arl, id_uwq, id_adc).
+                ("str_wdg" <: str_gae$0 <=> str_fvw < str_fqv)))
+          )
+        END
+      END
+    INVARIANT
+      not
+        (#
+           (id_orl, id_vfj, id_cby, id_tnc, id_uav, id_ihw, id_ojp, id_suc,
+            id_iku).
+         (!(id_mus, id_jof).
+          (#
+             (id_vzg, id_ywo, id_ewu, id_zqe, id_jrt, id_him, id_lfk, id_gkr,
+              id_cfb, id_bnu).
+           (#(id_irr, id_tts, id_bbf, id_coa, id_pqz, id_iek, id_cfo).
+            (not(NATURAL : INTEGER)))))) or
+      str_xxp$0 /: str_fbu$0
+    VARIANT
+      POW
+        (%(id_ryo, id_nqu).
+         (#(id_qjn, id_stl, id_vvv, id_djq, id_psc).
+          (not
+             (!
+                (id_axq, id_lew, id_lmz, id_tbc, id_nmx, id_cxg, id_wnm,
+                 id_xtl).
+              (!(id_zjy, id_rbh, id_ghj, id_zih, id_mku, id_kfr).
+               (!(id_oka, id_ygt, id_uyj, id_vaz, id_kai, id_ayk, id_zhk).
+                (str_fbg <<: str_bny$0)))))|
+          NAT))
+    END
+  END;
+
+  id_nsg, id_gri, id_qyt, id_svm, id_pse, id_rzr, id_ium, id_jnt
+  <--
+  id_wkz (id_pye, id_sdl, id_ifa, id_iqk, id_njp, id_vyu, id_ppd, id_owh)
+  =
+  CASE
+    %(id_zpa, id_fzd, id_gfr, id_zdk, id_szg, id_ist).
+    (not
+       (!(id_dpd, id_wuz, id_eux, id_wja).
+        (prj1(str_dbx$0, (BOOL ; str_jty)) > [str_zxy$0, str_cna$0, NATURAL1]))|
+     [])
+    OF
+    EITHER
+      {(bool
+          (#
+             (id_zxl, id_yiv, id_lep, id_jfk, id_tvx, id_hwy, id_qat, id_cvb,
+              id_qau, id_msq, id_gek).
+           (str_anm$0 = [])) ><
+        MININT),
+       str_kqh,
+       rec
+         (id_njq: (str_vam$0 \|/ str_nvu$0),
+          id_ssy: str_tsv$0,
+          id_prr: str_cxi),
+       {str_hlq, str_trd, MAXINT, NAT, str_zlo$0, str_zej$0}}
+    THEN
+      id_nse, id_xje
+      :=
+      rec
+        (id_bwa:
+         struct
+           (id_xrz:
+            [str_ifg$0, str_max$0, str_akx$0, STRING, str_rvg$0, str_vau,
+             str_emg, FALSE],
+            id_ryq: str_pyg$0),
+         id_qwx:
+         card
+           ({ id_khx, id_rrs, id_las, id_kgy, id_deb, id_fms, id_jlw
+              |
+              str_crb = FALSE <- str_ist$0 }))
+    OR
+      rec
+        (id_zzb: str_ujm,
+         id_wsi:
+         struct
+           (id_xcw:
+            struct
+              (id_wph: {},
+               id_aor: str_zle,
+               id_mqn: str_ugx,
+               id_bcy: str_yey$0,
+               id_tmt: str_vzq,
+               id_yzc: str_vgo,
+               id_dky: NATURAL),
+            id_fam: {str_axg, str_bir$0},
+            id_rcl: bool(str_xek$0 /: str_wgz))
+           'id_qlx)
+        'id_xxk
+    THEN
+      id_zyk, id_wcx
+      ::
+      PI(id_eds).
+      (not(#(id_onm, id_wql, id_key).(str_lfx >= str_xsq$0)) or
+       not(str_oym$0 <<: str_nuk$0)|
+       bool(!(id_qad, id_rbm, id_sjk).(str_clq$0 <<: [])))
+    OR
+      rec
+        (id_yzu:
+         { id_kqg, id_grs, id_cit, id_xqo, id_fpz, id_sll
+           |
+           {str_boq, INTEGER, str_cxg, str_esd} = {{}, BOOL} },
+         id_xmx: (str_khh$0 |> TRUE)'id_tft,
+         id_izu: STRING)
+    THEN
+      VAR
+        id_ifu, id_otd, id_shy, id_mde, id_sdh, id_qdp, id_sgx
+      IN
+        id_gon'id_rds
+        :=
+        [INTEGER,
+         STRING,
+         {str_hqs$0, str_dkc$0, str_mvi$0, [], TRUE},
+         { id_tnb, id_cww | str_xkr$0 /: str_doi },
+         PI
+           (id_sbu, id_hik, id_bnq, id_rzn, id_uyr, id_fms, id_wnk, id_xgq,
+            id_eak).
+         (str_emu$0 >= str_iup$0 <=> str_dzo >= str_cje$0| str_twz$0),
+         bool(str_xxx$0 /: {}),
+         TRUE]
+      END
+    OR
+      UNION(id_gss, id_zsx, id_aoi, id_hip, id_pzz).
+      (#(id_ykh, id_vhe, id_yww, id_ari, id_qpr).
+       (not(BOOL < mirror(str_ess)))|
+       struct
+         (id_clv: str_ypi,
+          id_vsg: str_eqg,
+          id_aba: str_erq$0,
+          id_vhq: str_qhi,
+          id_bqv: str_oyl$0,
+          id_bea: str_hug,
+          id_nxj: STRING))
+        'id_krp
+    THEN
+      id_nak, id_ykv, id_fnr, id_win, id_iqz, id_zmb, id_nqb, id_bon, id_tyx,
+      id_zgo
+      :=
+      {str_ytb$0,
+       {rec
+          (id_dqh: INTEGER,
+           id_xds: MININT,
+           id_hds: str_kee$0,
+           id_sdh: str_ikp)},
+       [str_bdz, str_yyl$0'id_ucu, NAT1, POW1(str_mjd), FALSE, INT],
+       str_neh$0'id_yfg,
+       BOOL,
+       NATURAL}
+    OR
+      bool
+        (struct
+           (id_nij: str_dsq'id_ldb,
+            id_ujv: str_vkl$0,
+            id_kau:
+            UNION(id_lpf, id_xuh, id_eaw, id_kio, id_gqf).
+            (NATURAL1 /: MININT| str_igl$0),
+            id_wuq: str_oyy$0,
+            id_tpo: str_xnb) /<:
+         {POW1(STRING), [], NATURAL, str_mzi$0, str_yag$0, str_jew, str_hwq$0})
+    THEN
+      skip
+    OR
+      UNION(id_yfc).
+      (rec(id_mok: str_gzg$0, id_ush: NAT1) : str_ziv|
+       seq1(bool(MAXINT <: str_tev$0))
+         [[NATURAL, str_qgj, NATURAL, INT, str_zgl, str_ulp, {}, str_aho]])
+    THEN
+      CHOICE
+        id_tob, id_mkl, id_ceg, id_dfh, id_pta, id_jma, id_imc, id_fdq,
+        id_axw, id_uik, id_vqp
+        ::
+        struct
+          (id_wpa: str_jua,
+           id_ued: ([] + str_uyu$0),
+           id_xki: str_cir$0,
+           id_bvr: str_tbd,
+           id_yhr: NATURAL,
+           id_ayx:
+           { id_oij, id_qcj
+             |
+             !(id_usb, id_bco, id_rtp, id_hpj, id_gst, id_dnt, id_nvo).
+             (!(id_tph, id_uxv, id_etc).
+              (str_ouh$0 <: str_gwm => str_fqm$0 <= str_fzr)) })
+      OR
+        id_glb, id_ztw, id_prv, id_ban, id_qso, id_dft, id_ifl, id_joi,
+        id_hht, id_rrg, id_qog
+        ::
+        { id_fmv, id_egz, id_nmv, id_efn, id_vze
+          |
+          PI(id_dot, id_aee, id_dxk, id_qbb, id_ynw, id_uqv, id_gzp).
+          (STRING > str_mxq$0 & str_vhz$0 /: FALSE| NATURAL1) /<:
+          struct
+            (id_zxd: str_zbt,
+             id_kox: str_wtu$0,
+             id_tox: str_rvd,
+             id_yfy:
+             [NAT,
+              str_pdi,
+              rec
+                (id_lqy: NATURAL,
+                 id_ygb: str_fyo$0,
+                 id_czt: str_cml$0,
+                 id_tvy: str_uwe$0,
+                 id_noc: MININT,
+                 id_yux: str_dfb,
+                 id_lba: NATURAL1,
+                 id_pzg: str_wkh),
+              STRING,
+              str_znc$0,
+              str_lzc],
+             id_ppb: str_wvt$0) }
+      OR
+        id_qfk 
+          (
+            struct
+              (id_plp: str_rld,
+               id_yof: str_vwt$0,
+               id_yau: { id_zrz, id_rqn, id_xoq | str_pab$0 /<<: INT },
+               id_ekf: str_ksb,
+               id_ypu: str_hhl,
+               id_bec:
+               UNION(id_pgj, id_gsv, id_qgx, id_ubi, id_zug, id_cot).
+               (str_rnl$0 <: INT or
+                #(id_chj, id_vjl).(str_nqh$0 /<: "str_lql")|
+                { id_btq, id_ptc, id_ram, id_igf, id_ghi, id_fle, id_rej,
+                  id_huu, id_ruc
+                  |
+                  0 >= str_gdz })
+                 'id_tzs,
+               id_frz: str_itr$0)
+          )
+        
+        :=
+        rec
+          (id_mbo: str_umo$0,
+           id_pei: str_ccw,
+           id_guq:
+           { id_fog, id_kwm, id_tsm, id_aeu, id_jvs, id_kgy, id_mmp, id_pgy,
+             id_hvl, id_abh
+             |
+             #
+               (id_fuw, id_bxe, id_iij, id_srj, id_aps, id_leg, id_say,
+                id_nlc, id_yct, id_dre, id_wxg).
+             (str_fmi <= str_ony$0) },
+           id_ypv: str_toq$0,
+           id_ppi: str_fgz$0,
+           id_apy: str_wyl$0,
+           id_wur:
+           rec
+             (id_ruc: str_lbw,
+              id_oem:
+              rec
+                (id_aem: str_oew,
+                 id_vod: str_rqa,
+                 id_bfh: str_jdr$0,
+                 id_ggp:
+                 UNION(id_cbi, id_ner, id_ogk, id_aie, id_bml, id_jgi).
+                 (str_ntz$0 /<<: str_qrb|
+                  rec(id_rum: str_dyh$0, id_ecz: str_qxc, id_qzu: str_uym)))))
+      OR
+        CASE
+          { id_xwy, id_ffm, id_wuj, id_nci, id_yne, id_prv, id_yoi, id_irm,
+            id_wqv, id_pjb, id_csy
+            |
+            !(id_xyd, id_pfa, id_lxh, id_hqf).
+            (!(id_kjn, id_cjq, id_dfe, id_rlj, id_gva, id_nqt).
+             (not
+                (#
+                   (id_xyx, id_fub, id_ehr, id_mto, id_nhi, id_viu, id_xpf,
+                    id_wex, id_cbn, id_wag, id_niv).
+                 (str_sys <: str_win) <=>
+                 !
+                   (id_zkr, id_ebx, id_mzq, id_cju, id_dqe, id_gke, id_ltp,
+                    id_kek, id_cmj).
+                 ([] >= str_jzx)))) }
+          OF
+          EITHER
+            %(id_hfu, id_rab, id_pqs).
+            ({ id_geh, id_zxn, id_xsp, id_beo, id_lbd, id_egr
+               |
+               not(str_bmr$0 >= INT) } /<<:
+             [str_gcy,
+              INTEGER,
+              {str_gbc$0, FALSE, str_jwo, FALSE, [], BOOL, str_buf},
+              MAXINT,
+              str_cxn$0,
+              str_fid$0]|
+             [FALSE, "str_seu", BOOL, INT, NATURAL1, str_aoo$0, FALSE,
+              str_syd$0])
+          THEN
+            id_xge, id_oov, id_gju, id_cab, id_qnt, id_pst
+            ::
+            { id_kxj, id_cmy, id_sxd, id_fgf
+              |
+              not
+                (not
+                   (!(id_ucy, id_oqn).
+                    (!(id_mdy, id_isi, id_zko, id_itj, id_vza, id_nrq).
+                     (tree(str_zwo$0) /: STRING)))) }
+          OR
+            last
+              ([STRING,
+                struct
+                  (id_uph:
+                   rec
+                     (id_azx: INT,
+                      id_rfw: str_hde,
+                      id_xac: str_zmu,
+                      id_syd: NATURAL1),
+                   id_xue: MININT,
+                   id_ief: [str_xbt, str_lkc, str_ybd, NATURAL1, 29],
+                   id_hcm: str_ovh$0,
+                   id_mwp: bool(str_gqm >= str_zyg)),
+                str_jgj$0,
+                str_vzl]
+                 'id_wzr)
+          THEN
+            id_cyo, id_icy, id_tkr, id_kdf, id_xmt, id_jzv, id_lwm
+            ::
+            UNION(id_ghc, id_xgd).
+            (str_bkb < MININT or NATURAL : "str_xrf"|
+             {FALSE,
+              { id_xgs, id_oao, id_fhi, id_skm, id_whi, id_rdu, id_rfx
+                |
+                str_nvo$0 = str_jiw },
+              "str_qlg",
+              ran({ id_csu, id_ldt, id_ckp, id_vdi | FALSE >= str_nlg$0 }),
+              str_kax$0,
+              INT,
+              str_nhj,
+              PI
+                (id_otk, id_bkq, id_ufw, id_gbx, id_gqr, id_lcb, id_ujk,
+                 id_ugx, id_ajq, id_ldn).
+              (NATURAL1 /= str_snt| str_izp)})
+          OR
+            {{ id_vde | not(not(str_wpv'id_nrd < STRING)) }'id_dmy,
+             str_hwd,
+             str_zou$0}
+          THEN
+            id_krl, id_jvd, id_omq, id_trl, id_mdl, id_hcc, id_gkf, id_avu
+            :=
+            (rec(id_lqh: STRING) |>
+             rev(bool(str_wnf >= str_xak & str_aad >= str_xux$0)'id_gbq)) |>>
+            MAXINT
+          OR
+            %
+              (id_jvv, id_xlp, id_vvp, id_wol, id_bnn, id_miq, id_gtc,
+               id_gpn, id_ycw, id_ywp).
+            (str_yxb$0 < NAT & str_jwq /= str_pbc|
+             arity
+               (str_kut$0 +
+                struct
+                  (id_nlf: str_epd$0,
+                   id_qpo: str_mlq,
+                   id_hpc: str_fjq,
+                   id_wba: str_gbc$0,
+                   id_zpg:
+                   rec
+                     (id_qvj: str_lwn$0,
+                      id_vyo: str_eta$0,
+                      id_feq: BOOL,
+                      id_ybo: str_etl$0,
+                      id_odd: str_oka$0),
+                   id_vpi: str_nly$0,
+                   id_qzv: NATURAL,
+                   id_lob: str_nec)
+                  'id_pus))
+          THEN
+            IF
+              not
+                (#
+                   (id_ptn, id_lqp, id_lpq, id_nlb, id_uxv, id_zdm, id_iht,
+                    id_sbh).
+                 ([str_eel,
+                   str_tjg$0,
+                   rec
+                     (id_tvw: str_sfi,
+                      id_fjm:
+                      rec
+                        (id_hru: INTEGER,
+                         id_qin: str_fau,
+                         id_cnf: TRUE,
+                         id_wdi: str_hui$0,
+                         id_vdf: str_ukm$0,
+                         id_mnh: [],
+                         id_dpx: str_sff$0,
+                         id_dqt: (str_tfx >->> str_apf$0)))] /=
+                  str_ytd))
+            THEN
+              id_hcz'id_rxp
+              :=
+              [NAT1,
+               str_wju,
+               str_wui'id_cmo,
+               struct
+                 (id_lpl: {}'id_zxq,
+                  id_mpu: str_mdh,
+                  id_xso: str_vnz,
+                  id_xus: str_ulh,
+                  id_msf: str_brt$0,
+                  id_gcr: str_upq$0),
+               STRING,
+               {str_rtd,
+                str_ypj,
+                str_jxz$0,
+                "str_qje",
+                str_hsp$0,
+                rec
+                  (id_hbn: MAXINT,
+                   id_cii: ["str_net", str_dyc$0, INT],
+                   id_tli: str_lxo),
+                str_net$0},
+               {}] ||
+              skip
+            ELSIF
+              ((#(id_njm, id_yzx, id_mvh, id_tal, id_dye).
+                (str_ous$0 > str_zqg$0) or
+                { id_dtg, id_dqu, id_dlf, id_ycp, id_ydz, id_vkw, id_pih,
+                  id_pjg
+                  |
+                  not(str_eaf : str_fka) } =
+                {}) <=>
+               str_iew : TRUE) <=>
+              str_ets /= str_hcn
+            THEN
+              id_cmb, id_vxb :(
+                #(id_nxz, id_ypy, id_xol).
+                (#(id_zot, id_tqu).
+                 (str_rta /:
+                  rec
+                    (id_xzc: str_xqb$0,
+                     id_ttk: FALSE,
+                     id_qqo:
+                     (str_kpo$0 -->
+                      [bool(str_xzu$0 /<<: TRUE), str_rdx, str_mms$0, str_mlk]),
+                     id_irl: str_uhe$0,
+                     id_twg: str_xly)))
+              )
+            ELSIF
+              !(id_nir, id_cuw).
+              (not
+                 (#
+                    (id_eyt, id_flb, id_pwu, id_yda, id_vol, id_eih, id_pjf,
+                     id_qaq, id_woo, id_dza).
+                  (rec
+                     (id_hbm: str_cot,
+                      id_vmp: str_heo,
+                      id_fws: str_xqc$0,
+                      id_qvm: NAT1) /:
+                   { id_lxy, id_bgw | STRING = str_hsc$0 })))
+            THEN
+              id_ysp 
+                (
+                  [struct
+                     (id_jky: [],
+                      id_cbj: str_tvx'id_aiw,
+                      id_nie: str_bma,
+                      id_fzv: str_dvg,
+                      id_clj: str_xbf$0,
+                      id_kiy: {}),
+                   { id_soo, id_mtr, id_yoz, id_pxz, id_cwx, id_idc, id_wen,
+                     id_spj, id_xrq
+                     |
+                     !
+                       (id_jdz, id_pyv, id_erw, id_dvg, id_adx, id_igb,
+                        id_uns, id_xkx, id_yvd, id_sih).
+                     (str_kvd$0 < NAT) },
+                   str_xao$0,
+                   str_mef,
+                   str_pdd$0,
+                   NATURAL1,
+                   STRING]
+                    'id_meh
+                    'id_jpc
+                )
+                (
+                  bool
+                    ((str_qgi$0 <= str_uxl$0 or
+                      (not(str_atu <<: str_byl$0) => str_qbk$0 <<: FALSE)) =>
+                     #(id_yne, id_emi).(str_dit$0 >= NATURAL1))
+                )
+              
+              :=
+              bool
+                (#
+                   (id_qjs, id_uvh, id_rtf, id_pxm, id_voo, id_hxq, id_izh,
+                    id_gum, id_zlf, id_hxf).
+                 (str_mjo /<: MAXINT &
+                  not
+                    (not
+                       (!(id_ofu, id_fje, id_yfb, id_xjt).(str_nkg : MAXINT)))))
+            ELSIF
+              not
+                (!(id_lne, id_iua, id_yhm, id_vzq, id_vke).
+                 (UNION
+                    (id_bqp, id_nam, id_shi, id_acr, id_ekd, id_xry, id_tfe,
+                     id_tkk, id_qoo, id_gzj).
+                  (#(id_ndx, id_qqv, id_axx, id_lhr, id_qji, id_dbx, id_bwa).
+                   (MAXINT <= BOOL) or
+                   str_jta : str_ind$0|
+                   str_yay$0) <
+                  str_kqz)) =>
+              {} /<: str_hss
+            THEN
+              id_kop, id_kdm, id_jhr, id_luy, id_nxa, id_oqe :(
+                rec
+                  (id_siy: str_hhi,
+                   id_hor: BOOL,
+                   id_umx: str_vsm$0,
+                   id_lqw:
+                   PI
+                     (id_vkk, id_rde, id_dpq, id_yan, id_wsw, id_bop, id_ioj,
+                      id_nrz, id_tnj).
+                   (str_tfu$0 <<: str_mlx$0| NAT),
+                   id_zkb: str_qbc$0,
+                   id_qic: [BOOL, STRING, str_pti$0]) :
+                { id_urf, id_bof, id_hjj, id_ref, id_jhg, id_all, id_ddz,
+                  id_tfw, id_yha
+                  |
+                  str_mme$0 = str_nmn$0 } ..
+                [INT, str_jaf]
+              )
+            ELSIF
+              #
+                (id_edu, id_fss, id_hxn, id_nhf, id_gap, id_gvz, id_cqm,
+                 id_vro).
+              (not
+                 (str_lgt$0 >
+                  mirror
+                    ({ id_bno
+                       |
+                       #(id_noh, id_wve, id_eye, id_jnk).
+                       (#(id_zbh, id_izt, id_gts).(INT = str_ook$0)) })))
+            THEN
+              id_iii'id_oqr
+              :=
+              struct
+                (id_qzf:
+                 [str_cai$0,
+                  INT,
+                  STRING,
+                  INTER(id_sxp, id_gtl, id_gnw, id_wsm, id_yal, id_udd).
+                  (NAT > NAT1|
+                   { id_jpd, id_mws, id_qrc, id_ffn, id_lmq, id_urc, id_xdk,
+                     id_rft, id_yzv, id_aux
+                     |
+                     str_qwm'id_lqr /= str_hek } ->
+                   {}),
+                  TRUE,
+                  str_zly$0])
+            ELSIF
+              #
+                (id_ija, id_bxr, id_jis, id_inv, id_ijc, id_lzv, id_aga,
+                 id_jhm, id_npm, id_ojn).
+              (str_acg >
+               first
+                 ({ id_gaw, id_sfu, id_ygp, id_sje, id_cyp, id_ucg, id_huy,
+                    id_ehn
+                    |
+                    str_dzy$0 /= str_srv$0 } <+
+                  rec
+                    (id_jrl:
+                     { id_pxh, id_eby, id_kpf, id_fkt, id_kxa, id_auj,
+                       id_ajv, id_bca, id_clw, id_yeb, id_ymv
+                       |
+                       NATURAL1 > str_ihy$0 },
+                     id_omo: str_pfl,
+                     id_sjc: str_ges$0)))
+            THEN
+              id_vzp, id_nqm, id_zup, id_dtc, id_eni
+              <--
+              id_xgg
+                ((SIGMA
+                    (id_iri, id_bhq, id_bhq, id_kkg, id_ywi, id_dua, id_xzb,
+                     id_ywy, id_ykp, id_ztj).
+                  (MAXINT > str_swp| str_yng$0) ^
+                  ({MININT, str_kfu$0, (str_rfg$0 \/ str_hxo), MAXINT}'id_msy ..
+                   [str_bgo$0, str_twc$0])),
+                 struct
+                   (id_aqg:
+                    %
+                      (id_aoi, id_kjh, id_yme, id_uya, id_ffy, id_yya,
+                       id_pwz, id_pzx, id_lcf, id_hyl).
+                    (str_gvq /<: 3'id_zsz|
+                     rec
+                       (id_vsr:
+                        rec
+                          (id_rxp: str_ogf$0,
+                           id_fkt: STRING,
+                           id_tre: str_cax$0,
+                           id_fas: str_yyt),
+                        id_zsq: str_kri$0,
+                        id_imw: BOOL,
+                        id_dav: str_fzz,
+                        id_pvr: BOOL,
+                        id_hmk: str_dhg$0,
+                        id_xhg: str_gis$0,
+                        id_ssz: str_xaq)
+                       'id_lqk)),
+                 { id_myv, id_ctf, id_psw, id_zkc
+                   |
+                   TRUE <<:
+                   { id_tto, id_tzv, id_fsc, id_std, id_mlr
+                     |
+                     str_asp /<: str_mzk$0 } &
+                   #
+                     (id_mhy, id_cqr, id_vps, id_epm, id_pcx, id_jqg, id_hfg,
+                      id_mdt, id_adr, id_rbw, id_lxp).
+                   (#(id_qfp, id_rrx, id_vfm, id_cyk, id_mvn, id_bqq).
+                    (!
+                       (id_sen, id_aup, id_zlz, id_cer, id_vgm, id_mij,
+                        id_kgi, id_ilp, id_sob, id_buu).
+                     (str_zsb <: str_bmf$0))) },
+                 const
+                   (rec
+                      (id_xos:
+                       rec
+                         (id_bjc:
+                          pred
+                            ([STRING,
+                              {NAT,
+                               {},
+                               str_zez,
+                               struct(id_mvd: FALSE, id_sky: str_bkj)},
+                              str_okm$0])),
+                       id_mdi: MAXINT,
+                       id_ith: str_pmt$0)),
+                 (size
+                    ({str_qfj,
+                      str_bll,
+                      str_qmu$0,
+                      NATURAL,
+                      str_itt'id_fkq,
+                      INTEGER,
+                      str_gqe$0}) +->
+                  rec
+                    (id_otl: str_xbd$0,
+                     id_apb: str_jag$0,
+                     id_mky:
+                     struct
+                       (id_cwx:
+                        struct
+                          (id_xwm: MININT,
+                           id_ijn: INTEGER,
+                           id_ogb: BOOL,
+                           id_piu: str_xtv$0),
+                        id_skl: "str_kra",
+                        id_cpv: NATURAL,
+                        id_elq: str_tvy$0,
+                        id_ecn: str_fty$0,
+                        id_ucb: []))))
+            ELSIF
+              !
+                (id_yyc, id_wgj, id_dqg, id_zja, id_mqw, id_ybc, id_chp,
+                 id_tbv, id_njm, id_iii, id_pof).
+              (#(id_nvt).
+               (not
+                  (not
+                     (not
+                        (#(id_xif, id_yff, id_gvm, id_kvx, id_zmp, id_qdb).
+                         (#(id_uzp, id_sqn, id_ocv).(str_vmx$0 /<: str_fxu$0)))))))
+            THEN
+              id_ibn'id_prm
+              :=
+              ran
+                (struct
+                   (id_jmq:
+                    son
+                      ([NATURAL, str_ite$0, str_sfy, STRING, str_tdf$0,
+                        str_acg$0, str_mek$0]),
+                    id_xng:
+                    FIN
+                      ({str_bgr$0,
+                        rec(id_ihk: 11),
+                        str_mdf,
+                        INT,
+                        TRUE,
+                        str_qwh})))
+            ELSE
+              id_dfs, id_twz, id_hne
+              ::
+              struct
+                (id_aps: str_qll,
+                 id_ckl:
+                 {str_npx,
+                  str_xmz$0,
+                  MAXINT,
+                  UNION
+                    (id_rzy, id_lot, id_mbh, id_dco, id_yys, id_qjz, id_vfp).
+                  (MININT = str_ujz$0| str_hjl),
+                  str_qda$0,
+                  str_qbg,
+                  str_jlj$0},
+                 id_kzx: {str_cgt, MAXINT, str_iod},
+                 id_cqn: str_wcu,
+                 id_aba:
+                 [[],
+                  str_dmn$0,
+                  { id_ifu, id_ucy, id_htt, id_opx, id_mnp, id_jrs, id_lnh,
+                    id_cgk
+                    |
+                    str_cut /= str_aot },
+                  str_qgu,
+                  str_umg$0,
+                  str_xyt$0],
+                 id_fbp:
+                 { id_tam, id_oqn, id_ted, id_zty, id_ybo, id_ahh, id_ivs,
+                   id_fbh, id_gwa, id_rml, id_nqx
+                   |
+                   "str_wfi" : str_hgg })
+            END
+          OR
+            bool
+              (str_afq$0 /= str_tys or
+               not
+                 ((BOOL <<: str_uqx$0 =>
+                   rec
+                     (id_mjb: str_zno,
+                      id_cfh: str_gyo,
+                      id_ebe: str_ctr$0,
+                      id_ooo: TRUE,
+                      id_dpj: str_sth,
+                      id_bxc: str_cbd$0) >
+                   str_kth) &
+                  str_jhl < str_kif))
+          THEN
+            id_ogr 
+              (
+                sons
+                  ([son
+                      (struct
+                         (id_hio: str_xwe,
+                          id_edn: str_jvm$0,
+                          id_uvy: bool(not(str_pwn$0 /<: str_sbk)),
+                          id_mdp: str_qol$0,
+                          id_qvb: str_xka$0))]
+                     'id_qwy)
+              )
+              (
+                bool
+                  ({str_nnw, str_bcj, NAT1, str_uoe$0, 0, NATURAL1, NATURAL,
+                    str_wvd} ^
+                   str_vef$0 /:
+                   str_cxb$0 <=>
+                   #(id_evr, id_wff, id_xkw, id_aok).
+                   (str_tlm$0 /<: str_dxj$0))
+              )
+              (
+                {union
+                   (struct
+                      (id_udq: str_ynm,
+                       id_avo: str_ohg,
+                       id_wug: rec(id_umj: infix(str_yyd)),
+                       id_ity: str_pkg)),
+                 {},
+                 str_gth'id_dxe,
+                 closure1(str_dhc$0),
+                 str_mue$0}
+              )
+              (
+                UNION(id_vlm, id_rya, id_nwl, id_acz, id_vdy).
+                (!
+                   (id_vaw, id_zjw, id_vpw, id_gtb, id_ygz, id_mbh, id_hsh,
+                    id_wzi, id_xgi, id_azf).
+                 (INTEGER /<<: str_cam$0 or
+                  (FALSE /: NAT <=> str_prw$0 : str_crz$0))|
+                 {str_bie,
+                  (NATURAL \|/
+                   INTER(id_zue, id_uyk, id_ogz). (str_jud$0 < []| str_gwk)),
+                  str_ypa$0})
+              )
+              (
+                struct
+                  (id_lpo: str_hzh$0,
+                   id_dif:
+                   bool
+                     (#
+                        (id_gqo, id_gjh, id_fqd, id_ywx, id_vaj, id_oxo,
+                         id_jjm, id_upn, id_rkj, id_ctz).
+                      (str_zqh = str_vse$0) or
+                      (str_irt$0 <: str_din or str_uce : INTEGER)),
+                   id_jfy: NATURAL,
+                   id_dyx: BOOL,
+                   id_tum:
+                   { id_icr, id_gzm, id_fex, id_qax, id_pbq
+                     |
+                     str_yay /<: str_slp },
+                   id_pfw: "str_mvx",
+                   id_blu: sons(STRING))
+              )
+            
+            :=
+            { id_ojg, id_mbq, id_jic, id_wow, id_rmx
+              |
+              str_pdq$0 /=
+              %(id_fpu, id_rep).
+              (#(id_yao, id_irh, id_tjx, id_kqk, id_iut, id_nrr, id_cjl).
+               (str_ahj$0 < str_txj or str_hpp >= str_yef$0)|
+               {str_bdi,
+                struct
+                  (id_jxd: str_ahv,
+                   id_lix: str_ung,
+                   id_tlg: 107,
+                   id_dyx: TRUE,
+                   id_uoi: NAT1,
+                   id_jci: str_jhi)}) }
+          ELSE
+            id_tiv, id_nlz, id_mgs, id_cdl, id_ctm, id_jdd, id_idc, id_ayu,
+            id_mot, id_vtx
+            <--
+            id_dkw
+              ([str_nfq,
+                str_xbt$0,
+                [],
+                NATURAL,
+                "str_och",
+                bool
+                  (#(id_xpf, id_tld, id_boi, id_msm, id_cks).
+                   (str_qvk /<<:
+                    {INT,
+                     bool(#(id_rms, id_npr, id_ygy, id_ryp).(INT < str_lpt))}))])
+          END
+        END
+      OR
+        CASE
+          {str_wyy$0,
+           str_vpx$0,
+           INTEGER,
+           str_mms,
+           {str_sfq,
+            str_myu$0,
+            "str_jtq",
+            [],
+            str_sig$0,
+            str_mox,
+            struct
+              (id_jfl: id(str_pet),
+               id_pzk: INTEGER,
+               id_nhh: {},
+               id_cqa: str_xjq,
+               id_mio: str_fue$0,
+               id_idv: "str_siz"),
+            str_wiw$0},
+           str_dqz,
+           (struct
+              (id_xed: INT,
+               id_awh: str_son$0,
+               id_efs: {},
+               id_ssj: str_rjy,
+               id_cns: NAT) *
+            ran(74)),
+           str_xof}
+          OF
+          EITHER
+            (-
+               { id_umy, id_hlc, id_jop, id_ejs, id_zph, id_wte
+                 |
+                 #
+                   (id_mlm, id_otd, id_xxn, id_sdg, id_jst, id_dtu, id_vjl,
+                    id_vfc).
+                 (not
+                    (#
+                       (id_fpt, id_bkn, id_frx, id_aff, id_apj, id_nru,
+                        id_unk, id_ssg, id_xch, id_gza, id_plf).
+                     (not
+                        (#
+                           (id_fmg, id_nzk, id_jyx, id_sod, id_kqp, id_nla,
+                            id_vkw, id_xcw, id_hju, id_pit, id_ykb).
+                         (str_bjl /<: NAT))))) })
+          THEN
+            id_tjo'id_sub
+            :=
+            [%(id_pxp, id_ffg). (606 >= FALSE| father(str_jef$0))'id_rfs,
+             str_tvc,
+             str_fcx,
+             {str_dvy,
+              str_jvi$0,
+              INT,
+              2,
+              struct
+                (id_tqq: str_zhg,
+                 id_iij: NAT,
+                 id_hst:
+                 UNION
+                   (id_anq, id_pkp, id_rvj, id_wqu, id_eyo, id_wuu, id_znm,
+                    id_hea).
+                 (str_yeo$0 /: str_vcy$0| str_slf),
+                 id_onl: str_lis,
+                 id_byn: [],
+                 id_zpk: NAT,
+                 id_xmz: str_rqr,
+                 id_wjo: BOOL)},
+             []]
+          OR
+            struct
+              (id_sxh: conc(ran(infix(bool(str_nzw$0 /= str_imu)))),
+               id_tyn: (const(str_fxy$0) <| str_fty$0))
+          THEN
+            id_pmt, id_eyd, id_njc, id_wjm, id_mfq, id_gby, id_vxn, id_pmf,
+            id_nsy, id_pva, id_msr :(
+              #(id_xsn).
+              (#(id_nfy, id_uhq, id_oas, id_itx, id_hou, id_bcw, id_zhq).
+               (not
+                  (!
+                     (id_lcz, id_ryo, id_rsv, id_zmb, id_xgs, id_ypr, id_stk,
+                      id_riz).
+                   (str_zfn /: [] &
+                    !
+                      (id_tmn, id_ooy, id_bpe, id_zon, id_abx, id_tpz,
+                       id_jsg, id_egt).
+                    (str_zuy$0 >= 1)))))
+            )
+          OR
+            {rec
+               (id_lut: MININT,
+                id_ili: str_gtv,
+                id_nid:
+                { id_xuc, id_hzj, id_uxj, id_cvo, id_buz, id_wye, id_rly,
+                  id_rkq, id_zle, id_lzg
+                  |
+                  not(!(id_ptr).(str_awb$0 <<: INTEGER => {} /= STRING)) }),
+             str_tqj,
+             str_phs,
+             str_shh$0,
+             TRUE,
+             TRUE,
+             str_psj$0}
+              'id_dyd
+          THEN
+            id_uuc
+              ({"str_aww",
+                NAT,
+                str_avq,
+                { id_luh | not(str_yos <<: str_eqz) },
+                str_sba,
+                9,
+                str_enf,
+                front
+                  (struct
+                     (id_gjm: TRUE,
+                      id_dne: str_pmq,
+                      id_mud: str_dsk$0,
+                      id_dqg: TRUE,
+                      id_bms: INTEGER,
+                      id_gbh: [],
+                      id_zlz:
+                      { id_pmw, id_ldy, id_clr, id_ogi, id_udo, id_cyu
+                        |
+                        str_ice /<: str_tqi },
+                      id_fof: INTEGER)
+                     'id_zzg)},
+               rec
+                 (id_gii: NATURAL1,
+                  id_has: TRUE,
+                  id_ccn: INT,
+                  id_fss:
+                  rec
+                    (id_hfa: str_bww$0,
+                     id_qtw: str_mky$0,
+                     id_vud: str_uth$0,
+                     id_qxy: STRING,
+                     id_kcj: str_bap$0,
+                     id_sfy: str_sli$0,
+                     id_gbo: str_grj$0,
+                     id_adc: {}),
+                  id_kbm: (str_buy$0 -> left(NAT1)),
+                  id_tfc: str_dgd$0,
+                  id_awg:
+                  rec
+                    (id_ehx: str_bmz,
+                     id_mcz: MAXINT,
+                     id_pbd: str_zfo,
+                     id_juo: closure1(str_anw'id_cqb),
+                     id_nmb: NAT),
+                  id_jka: str_vne),
+               {str_ncg,
+                MAXINT,
+                %(id_mkt, id_lmn, id_bgj, id_lun). (str_hek$0 /<<: BOOL| []),
+                str_szw$0,
+                rec(id_rzv: tree(str_eiv)),
+                { id_ivy, id_uoo, id_mbn, id_ctf, id_mra, id_tzq, id_sck
+                  |
+                  NAT /<: str_wjn },
+                { id_yav, id_gkr, id_qqr, id_dve | [] /= str_zkr$0 },
+                struct
+                  (id_kjk: NATURAL,
+                   id_rhe: INTEGER,
+                   id_ham: str_gux,
+                   id_kne: str_kte,
+                   id_ivm: str_gzi$0,
+                   id_ybe: str_hwu,
+                   id_fgn: str_yho$0,
+                   id_obr: STRING)},
+               { id_att, id_ont, id_lhy, id_wti, id_zck, id_wts, id_dkb,
+                 id_qtr
+                 |
+                 not
+                   (str_uva <<: str_lnc$0 <=>
+                    not
+                      (struct
+                         (id_auc: str_erl$0,
+                          id_ogs: str_wbh$0,
+                          id_cgd: str_ypz$0,
+                          id_cwb: str_jyv,
+                          id_vmv: str_uxi$0,
+                          id_vhy: str_pqn$0,
+                          id_lsi: str_gra) <
+                       NATURAL1 >-> NAT)) },
+               %(id_ldz, id_yhx, id_bco, id_and, id_lug, id_oqs, id_tfg).
+               (not
+                  ({ id_jpl, id_zbb, id_ntw, id_evo, id_jup, id_ass, id_rho,
+                     id_nwi, id_upo, id_mpo
+                     |
+                     not(str_nrq = str_ztc$0) } <<:
+                   INTEGER) or
+                (INTEGER < BOOL => str_ibw$0 <: str_iyq)|
+                str_xjc),
+               ((NATURAL *
+                 [{INTER(id_umy, id_jnp, id_qam).
+                   (str_oht >= str_gke$0| str_yjj)},
+                  str_jem,
+                  rec
+                    (id_ylp: NATURAL1,
+                     id_vfr: str_rhm,
+                     id_udr: str_qhf,
+                     id_stf: bool(str_fod /<<: str_nim$0),
+                     id_rio: str_psz,
+                     id_ird: str_ijy$0,
+                     id_cmm: {},
+                     id_nfl: str_dgu$0),
+                  str_rlm$0,
+                  str_rlz,
+                  str_xvi$0,
+                  NATURAL1]) <+
+                str_bww),
+               { id_iwv
+                 |
+                 !(id_bzf, id_xav).
+                 (!(id_niv, id_xui, id_ihq, id_uea).
+                  (!(id_kcs).(334 > TRUE) & str_opt$0 <= str_ovl)) }
+                 'id_adq)
+          OR
+            {str_twd,
+             str_pxe$0,
+             MAXINT,
+             SIGMA(id_cfg, id_uyc). (str_ifr <= NAT| str_ppj$0),
+             rank({}),
+             PI(id_nqs, id_akb, id_mtw, id_jds, id_esu, id_oeh).
+             ("str_nwg" <= INTEGER| str_wac$0),
+             str_ecj$0'id_uls'id_zxc,
+             { id_pkl | NAT1 > str_asc }}
+          THEN
+            skip
+          OR
+            struct
+              (id_rol: str_nqj,
+               id_nwo: str_qtf$0,
+               id_jni:
+               {INT,
+                struct
+                  (id_pbz: tree([STRING, INTEGER]),
+                   id_bhp:
+                   UNION
+                     (id_ize, id_lzz, id_roz, id_gun, id_tyx, id_ejs, id_idk,
+                      id_enw, id_isz).
+                   (STRING /: str_fsj| str_dwe),
+                   id_yyo:
+                   rec
+                     (id_kbp: NAT1,
+                      id_zyd: str_kcx$0,
+                      id_slr: str_wpn,
+                      id_npt: str_cnu,
+                      id_xig: str_ezn,
+                      id_gyh: str_sdx)),
+                str_zoy,
+                NAT,
+                str_wtb$0,
+                str_nsf,
+                str_qbn},
+               id_iqx: TRUE)
+          THEN
+            id_ngd 
+              (
+                UNION(id_bhh).
+                (not(not(str_iqt$0 < str_wmn))|
+                 conc
+                   (%
+                      (id_xur, id_kuk, id_bje, id_evi, id_xzk, id_syl,
+                       id_svn, id_nko, id_luu, id_rlq).
+                    (str_vlt <<: NATURAL1 <=> str_spc$0 /<<: NAT|
+                     rec
+                       (id_tyu: str_igo,
+                        id_dyi: str_tvb$0,
+                        id_agi: NAT1,
+                        id_gwn: str_azm$0,
+                        id_usr: str_fzo$0))))
+              )
+              (
+                prj1
+                  (str_dth,
+                   bool
+                     (!(id_lue).
+                      (not
+                         (not
+                            (#
+                               (id_xnm, id_cdl, id_dna, id_kiu, id_zzp,
+                                id_quu, id_oes, id_zpz, id_qdd, id_krz,
+                                id_pjt).
+                             (!
+                                (id_lcf, id_dyd, id_ngl, id_cai, id_old,
+                                 id_izl, id_fvm).
+                              (NATURAL = str_cvb$0)))))))
+              )
+            
+            :=
+            PI(id_mci, id_vuy, id_hpk, id_oek, id_ikf, id_kll).
+            (str_css$0 /<: str_fcj$0|
+             ["str_dpn",
+              closure(BOOL),
+              rec
+                (id_sev: str_yto,
+                 id_ffe: str_zod,
+                 id_npl: BOOL,
+                 id_cmj:
+                 [str_lqn$0, str_lky$0, "str_fuv", str_gbe, str_ote,
+                  str_ocu$0],
+                 id_dwb: str_nsl$0,
+                 id_ups: str_pja,
+                 id_ftq: str_wxx)]
+               'id_pto
+               [MAXINT])
+          ELSE
+            id_nkg 
+              (
+                { id_fms, id_eii, id_liq, id_sld, id_zkv
+                  |
+                  not
+                    (!
+                       (id_wna, id_udv, id_wvy, id_yye, id_wpt, id_fmr,
+                        id_yhy, id_uwg, id_bje, id_muz).
+                     (#(id_cjg, id_kdb).
+                      (#
+                         (id_zpl, id_gow, id_qgi, id_bey, id_ydt, id_tck,
+                          id_daf, id_rak, id_mxd, id_tqn, id_tlr).
+                       (str_opb$0 /<<: str_upq$0) or
+                       str_wor$0 <= str_ufu))) }
+              )
+              (
+                max
+                  (UNION(id_iry, id_yrd, id_snr, id_yyh).
+                   (STRING : str_wzd|
+                    bool
+                      (not
+                         (#
+                            (id_cgj, id_dtt, id_ath, id_cgg, id_vmj, id_zvi,
+                             id_yyd, id_oeb, id_nzb, id_bcl).
+                          (!
+                             (id_wki, id_kkk, id_hzk, id_ltc, id_aoy, id_rnk,
+                              id_qtb, id_uod, id_tsh, id_cab).
+                           (!
+                              (id_wmh, id_dsb, id_gnt, id_jat, id_mxl,
+                               id_sct, id_oiz, id_vej, id_sxj, id_pvo, id_vmk).
+                            (MAXINT = str_qri)))))))
+              )
+              (
+                [{ id_sed, id_blw, id_rud, id_mem, id_kcs, id_cna, id_ura,
+                   id_ybs
+                   |
+                   #
+                     (id_dff, id_epl, id_mou, id_xqj, id_qjl, id_vyi, id_vvh,
+                      id_cmu, id_uxw).
+                   (#(id_dmw, id_ipn, id_llt, id_tle, id_yoa, id_hce, id_fva).
+                    (str_uqw /<: str_ofc$0 & NATURAL1 = str_itq)) },
+                 str_vbw,
+                 str_jhx'id_oyw,
+                 INTEGER]
+                  'id_xlz
+              )
+              (
+                bool
+                  (#(id_rvn, id_bpn, id_vvb, id_fie, id_maf, id_jtw).
+                   (#(id_zbo, id_tzj).
+                    (#(id_pjm, id_wfq, id_tvf, id_swy).
+                     (#(id_euq, id_oqw, id_ojb, id_dna, id_ftr).(TRUE > {})) or
+                     str_mxb /<<: str_koi)))
+              )
+              (
+                {bool(str_onr < str_jym),
+                 { id_eid, id_ydf, id_xtr, id_aum, id_kaq, id_fuj, id_myi,
+                   id_ypm, id_atb, id_qyb
+                   |
+                   #
+                     (id_ctk, id_eou, id_dfv, id_mca, id_foe, id_xcs, id_igi,
+                      id_irx, id_klt).
+                   (!(id_jae, id_xsy, id_vxb, id_iyt).
+                    (UNION
+                       (id_urv, id_pom, id_oqe, id_qkp, id_ovr, id_lno,
+                        id_iyx, id_ioq, id_pvq).
+                     (str_yoo$0 /: str_xjm| FALSE) <=
+                     str_ogr)) }}
+              )
+              (
+                struct
+                  (id_blv:
+                   struct
+                     (id_xuq: INT,
+                      id_jph:
+                      {str_arv$0, MAXINT, str_rib, str_woc, str_tib$0, 77,
+                       str_xob, str_vaz$0},
+                      id_aee:
+                      %(id_xpw, id_idy, id_oao, id_wfq).
+                      ({} > str_gfa$0 & str_isk <<: INT| str_hqn),
+                      id_pna: str_img,
+                      id_oth: NAT'id_kaz),
+                   id_fxo: INT,
+                   id_lbt: str_rlg,
+                   id_pav: FALSE)
+                  'id_rbh
+              )
+              (
+                PI
+                  (id_iqx, id_zwo, id_syi, id_ses, id_iri, id_kil, id_xlx,
+                   id_ijk, id_kmt, id_mvb).
+                ((str_rpp$0 <= 35 => TRUE /<: FALSE) => str_rpd$0 >= str_ing|
+                 %(id_hxg).
+                 (str_fpt$0 > str_rqa$0|
+                  bool
+                    (struct
+                       (id_jac: "str_yzw",
+                        id_tem: INT,
+                        id_miq: str_ptf$0,
+                        id_jnz: str_zva,
+                        id_kdx: 5,
+                        id_xak: NAT1,
+                        id_uhm: str_rfb,
+                        id_yhx: str_gsz$0) >=
+                     str_svg$0)))
+              )
+              (
+                str_oft <->
+                [rec
+                   (id_kbc:
+                    { id_jhi, id_epy, id_eyf, id_raq, id_qgf, id_set
+                      |
+                      INT < str_ole$0 },
+                    id_wnd: str_jrc$0,
+                    id_khp: (str_siy >->> str_qrz$0)'id_tlm,
+                    id_bmp: str_hoq$0)
+                   'id_ttq,
+                 "str_ivp"]
+              )
+              (
+                [bool(not(str_qyc /<<: str_tgy or str_wft /= str_jzt)),
+                 (FALSE <| MAXINT),
+                 fnc(str_iid$0),
+                 str_plc$0,
+                 [str_gfx, TRUE, str_czl$0, str_yir$0, str_zwi, str_otw]]
+              )
+              (
+                [bool
+                   (!(id_gjv, id_hgx, id_amk, id_tgj, id_khc, id_opn).
+                    (#(id_duo, id_web, id_bjt, id_ouz, id_akd).
+                     (str_fjn$0 : TRUE))),
+                 rec
+                   (id_dyq:
+                    { id_cue, id_tly, id_eso, id_wkm, id_dhp, id_xpc, id_ddz
+                      |
+                      NAT1 <= str_xmu$0 },
+                    id_zrv: str_dod,
+                    id_xvs: str_arw$0),
+                 STRING,
+                 NAT]
+              )
+              (
+                FIN1
+                  (bool
+                     (not
+                        (not
+                           (not
+                              ({MAXINT, INTEGER, str_azi, str_epu, str_eim$0,
+                                BOOL, str_nug$0} <<:
+                               str_wps$0)))))
+              )
+            
+            :=
+            UNION(id_yyh, id_mce, id_tyv, id_wyi, id_tnp).
+            (str_jyb /<: [] or str_rsx$0 /= MAXINT|
+             { id_exi, id_ezz, id_rvi, id_bab, id_rrt, id_apo, id_jcy,
+               id_hip, id_qcl, id_jdg, id_ipo
+               |
+               str_agf >= str_xdj =>
+               !
+                 (id_ivi, id_ykr, id_asl, id_qdb, id_zfw, id_ctx, id_qrg,
+                  id_rxx, id_vzi, id_pae, id_lrf).
+               (!
+                  (id_gpe, id_auc, id_qfg, id_khz, id_ndr, id_tgy, id_ptn,
+                   id_zpn, id_zto).
+                (#
+                   (id_oft, id_npc, id_cql, id_uqz, id_lgf, id_eeq, id_tau,
+                    id_gjg, id_dzk, id_gbq).
+                 (str_jel$0 < str_qum))) })
+          END
+        END
+      END
+    OR
+      SIGMA
+        (id_bpy, id_mrj, id_cyw, id_dym, id_fuq, id_wfd, id_wyl, id_yea,
+         id_fga, id_cch, id_lne).
+      (NAT < 573 or str_lad >= str_mcc$0|
+       bool
+         (!
+            (id_ebt, id_yiz, id_efu, id_jhi, id_wkk, id_mia, id_ftj, id_ceu,
+             id_rfm, id_cgh, id_djd).
+          ({ id_vly, id_jdq, id_may, id_jjo | TRUE /<: str_lqh$0 } <=
+           TRUE + str_zfs$0)))
+    THEN
+      id_bpt'id_hqp
+      :=
+      union
+        (struct
+           (id_yvn: front(BOOL),
+            id_vql:
+            INTER(id_fbh, id_kel, id_irg).
+            (str_ueo$0 > [str_umm$0]|
+             { id_apg, id_ytf, id_mui, id_rrp, id_vyu, id_opx, id_ptn,
+               id_wps, id_xcv, id_unc
+               |
+               str_yeb /: str_zqc }),
+            id_zhb: str_jhx$0))
+    OR
+      [{ id_ndr
+         |
+         !(id_imi, id_lez, id_guj, id_eap, id_ynb).
+         (!
+            (id_rww, id_xho, id_xcs, id_jmm, id_ubs, id_iyu, id_xyg, id_kha,
+             id_teu, id_pao).
+          (str_evy$0 /<: str_gwe$0 &
+           !(id_slz, id_dqu).(str_irk$0 /<: str_bcj$0))) or
+         STRING < str_fwe$0 }]
+    THEN
+      id_ylu'id_rwy
+      :=
+      [rec
+         (id_qko: seq1(str_zgk$0),
+          id_nre: BOOL,
+          id_okg: {arity(str_mfq$0), str_jks}),
+       {FALSE},
+       str_nvd$0,
+       struct
+         (id_ghd: str_usj,
+          id_gwp: MININT,
+          id_kmz: str_ejg$0,
+          id_juc: str_nfx$0,
+          id_cmf: str_ppd$0,
+          id_prp: str_iyi),
+       NAT1,
+       str_yie]
+    END
+  END;
+
+  id_dai, id_tny, id_pzs, id_pqq, id_ejx, id_vgt, id_zug
+  <--
+  id_fib (id_ubj, id_pdq, id_gnj, id_fks, id_zvr, id_czy, id_bnn, id_atl)
+  =
+  PRE
+    str_ohk <<: str_oid =>
+    (first(str_nnm$0) /:
+     right
+       (struct
+          (id_ovc: str_uwi$0,
+           id_swn: TRUE,
+           id_zgu: FALSE,
+           id_rzd: str_znx,
+           id_uek: str_ypp$0,
+           id_yjl: str_qdh,
+           id_qjx: {})) =>
+     #(id_vhs, id_nyu, id_uyp, id_twb, id_zpc).(str_ezu$0 /<<: MAXINT))
+  THEN
+    PRE
+      str_sks <= str_mpr$0 or
+      (#(id_nmx, id_rog).
+       (#(id_wif, id_abh, id_jeo).(58 >= str_pca$0) => str_jcl : str_xqb) or
+       not(#(id_weq, id_rbo, id_rol).(str_kni$0 <: NATURAL1)))
+    THEN
+      LET
+        id_miq, id_fng, id_tim, id_bhl, id_imy
+      BE
+        id_qyk
+        =
+        rec
+          (id_jks: str_efd,
+           id_uhp:
+           UNION
+             (id_tai, id_zmm, id_koo, id_vkd, id_cku, id_xlm, id_zpf, id_qqa).
+           (str_hkz$0 >= INT| str_rnt),
+           id_bip:
+           bool
+             (#(id_nje, id_cdk).(str_rpp$0 >= STRING & STRING <<: str_jnt$0))
+             'id_avq,
+           id_rxl: NATURAL)
+          'id_ajv&
+        id_fsp
+        =
+        {{ id_jwo, id_cxs, id_bii, id_mmt, id_hgn, id_jtu, id_xls, id_mcn,
+           id_vpu, id_sap
+           |
+           not
+             (!
+                (id_atx, id_gff, id_lpa, id_qog, id_ubf, id_xfy, id_ipy,
+                 id_nvk).
+              (!(id_efe, id_exy, id_udo, id_emx, id_pku, id_fvh).
+               (str_asf$0 > str_wdf$0))) }}
+          'id_ecn&
+        id_dow
+        =
+        struct
+          (id_otx:
+           rec
+             (id_luv: NATURAL,
+              id_ecj: str_plc$0,
+              id_ijp: str_mlw,
+              id_ktn: str_xbl$0,
+              id_gyw: FALSE,
+              id_con:
+              bool
+                ([] /:
+                 SIGMA(id_ypn, id_wlp, id_yim, id_lnw, id_wfi, id_mvo).
+                 (!(id_tec, id_nzt).(str_vwb$0 : STRING)|
+                  { id_wtz, id_dur, id_dup, id_ryy, id_kgx, id_xvi, id_hzf,
+                    id_bjb, id_dwg, id_god, id_abm
+                    |
+                    str_ayn$0 /: str_sjz })),
+              id_iaj: str_yab))&
+        id_kxl
+        =
+        infix
+          ((-
+              UNION(id_gfo, id_gcx, id_adi, id_hvl, id_qrc).
+              (#(id_gmj).(str_mwt$0 > str_ujj$0)| prj1(STRING, str_vfa$0))
+                'id_xbx)
+             'id_tfc)&
+        id_trt
+        =
+        fnc
+          (struct
+             (id_sit: str_psw$0,
+              id_pkp: FALSE,
+              id_dhw:
+              {str_bho,
+               str_klo,
+               { id_xvk, id_ahb | str_qzj : NAT1 },
+               str_ngk$0,
+               struct
+                 (id_vvo: str_ufp,
+                  id_xpt: iseq1(str_gml$0),
+                  id_vuk: str_pwy,
+                  id_bhs: str_ukk$0,
+                  id_rag: str_aww$0,
+                  id_pwu: str_kyq$0)},
+              id_vdu: [],
+              id_qzx: str_era$0,
+              id_ivn: str_hfs$0,
+              id_lxs: str_uuc))
+          'id_lic&
+        id_jps
+        =
+        { id_psf, id_dat, id_alq, id_ngl, id_gte, id_mxr, id_vnf
+          |
+          TRUE >
+          sons
+            (rec
+               (id_wgz: str_les,
+                id_lok: NATURAL1,
+                id_aru: str_nzm$0,
+                id_oam: str_imo$0,
+                id_lnc:
+                { id_dfa, id_hpn, id_jta, id_lwf, id_ndh, id_drt, id_nlw,
+                  id_dxh, id_oqk, id_fxy
+                  |
+                  str_qmu$0 /= str_ycf },
+                id_tqs: str_tai,
+                id_oor: rec(id_sto: NAT)))
+            'id_dwu }&
+        id_tin
+        =
+        bool
+          ((#(id_xdu).(MAXINT < str_wte) or
+            !
+              (id_vza, id_saq, id_huj, id_xxp, id_koq, id_nmc, id_eww,
+               id_nrv, id_ozp, id_otq, id_gri).
+            (str_zga /: str_bwx$0)) =>
+           #(id_cjd, id_bum, id_bnj, id_tns, id_mdi, id_yrw, id_rmz, id_drw).
+           (not(str_kur$0 : str_ksj)))&
+        id_uco
+        =
+        [{right(NAT),
+          str_lsw,
+          [MININT,
+           INT,
+           str_lht$0,
+           iterate(str_cxt$0, str_slg$0),
+           str_pgb,
+           str_uli$0,
+           str_wtn$0],
+          str_mye$0,
+          bool(str_dii > NATURAL),
+          str_vxo$0},
+         NAT,
+         BOOL,
+         str_khi,
+         str_ndg,
+         str_bqr$0,
+         MAXINT,
+         (str_vcd / NAT1)]
+      IN
+        IF
+          !(id_awj, id_mpd, id_jxz, id_cwq, id_wfz, id_ose).
+          (!(id_ags, id_glv, id_kec, id_fjk, id_sum, id_tjn, id_onp, id_quz).
+           (#(id_bhb, id_shi, id_vaq, id_efs, id_uqy, id_esm).
+            (#(id_lvk).
+             (not
+                (!(id_xve, id_vpb, id_ydu).
+                 (!
+                    (id_ueo, id_kbh, id_ehi, id_pmu, id_hfk, id_hnr, id_bbs,
+                     id_yfy).
+                  (str_vxq /= str_ktj$0)))))))
+        THEN
+          id_ipl, id_dmt, id_xqa, id_ivd
+          :=
+          [STRING,
+           "str_zeb",
+           { id_jum, id_rpj, id_bln, id_mfy, id_gjc, id_bzn
+             |
+             str_ehm <<: str_zud }
+             'id_daz
+             'id_qub,
+           str_gjs$0,
+           str_qsv,
+           str_teh$0,
+           struct
+             (id_nft: ((str_ibf$0 , NAT1) , str_cpt$0),
+              id_ted: str_bch$0,
+              id_nku: str_azo,
+              id_wlh: str_lhl)]
+        ELSIF
+          #
+            (id_khr, id_pqo, id_ryw, id_tic, id_rvu, id_ziz, id_ykj, id_taf,
+             id_pca, id_yro).
+          (!(id_awx).
+           (#(id_kmb, id_maf, id_syk, id_wrf, id_izg, id_ewk, id_nqg).
+            (INTEGER <<: str_zfm$0)) =>
+           #(id_yex, id_sty).
+           ((str_zix$0 <: NAT1 <=> str_gjf$0 /= str_pnd) <=>
+            NATURAL /<: str_yis$0))
+        THEN
+          id_sqd 
+            (
+              fnc
+                (subtree
+                   ({PI(id_lmn, id_gfk, id_jvt, id_cbh, id_cci, id_qfv).
+                     (#(id_hfo, id_dsx, id_hxq).(str_chu$0 <= str_npd$0)|
+                      {str_maq$0, str_shw$0, str_oxh, str_cvh, str_zgp$0,
+                       STRING})}))
+                'id_xro
+            )
+            (
+              INTER(id_wmr, id_imz, id_snd, id_ofq, id_swa).
+              (str_mqg$0 /= {}|
+               FIN1
+                 (bool
+                    (str_zov$0 /<<: STRING <=>
+                     #
+                       (id_wwe, id_yae, id_nxi, id_bct, id_nen, id_kfv,
+                        id_goe, id_wqf).
+                     (STRING <= NAT1)))
+                 'id_tfd)
+            )
+            (
+              { id_zvk, id_ble, id_anj, id_ktl, id_obf, id_mqi, id_gqz,
+                id_xbt, id_ztu, id_czm, id_ihx
+                |
+                #(id_fgx, id_zxd).
+                (not
+                   (#(id_dmy, id_obi, id_mcj).
+                    (first(bool(str_ufe$0 /<<: str_mbe)) >= STRING))) }
+            )
+            (
+              bool
+                (not
+                   (!(id_shp, id_qmk, id_pvp, id_lhu, id_wmh, id_jrh, id_tok).
+                    (not(!(id_xor, id_udl).({} /= str_uzo)))) or
+                 str_vcz$0 <: "str_bmk")
+            )
+            (
+              [str_imw$0,
+               struct
+                 (id_ejm: TRUE,
+                  id_fdp: str_zro,
+                  id_ele: str_uzs,
+                  id_cvn: FIN1(str_huo),
+                  id_amt: str_zsg),
+               { id_ixk, id_xsp, id_mhe, id_ebw, id_vgs, id_sit, id_cov,
+                 id_ohq
+                 |
+                 not(not(TRUE <= MAXINT)) }]
+            )
+            (
+              {[max(INT), father(str_axg)],
+               str_zla,
+               %(id_jci, id_qqc, id_myx, id_hsu, id_txt, id_lqo).
+               ((str_ezw /<: {} & str_spg /<: 99) => str_kix$0 /<<: FALSE|
+                str_nne)}
+            )
+            (
+              { id_ucy, id_nto, id_bze, id_dvw, id_fjc, id_dpk, id_dgu,
+                id_fzw, id_jia, id_jbr, id_wlu
+                |
+                const(iseq1(NAT)) <:
+                { id_jhr, id_lri, id_vui
+                  |
+                  BOOL = FALSE & str_mga$0 = str_vho$0 } }
+                'id_lqz
+            )
+          
+          :=
+          subtree
+            (rec
+               (id_cxs:
+                (NAT1 <->
+                 PI
+                   (id_ujc, id_clg, id_rjg, id_iyo, id_igw, id_vkr, id_zcg,
+                    id_swj).
+                 (str_ofp < MININT| str_hzm)
+                   'id_gnm)
+                  'id_etk,
+                id_hco:
+                struct
+                  (id_cpo: str_ter,
+                   id_esa: BOOL,
+                   id_svg: str_xwv,
+                   id_xag: str_avh$0,
+                   id_zer: BOOL,
+                   id_gcg: str_hvz$0,
+                   id_nyr: str_rkx$0),
+                id_xvd: [],
+                id_wqk: str_ijb$0))
+        ELSIF
+          #(id_glz, id_lrl).
+          (#
+             (id_ben, id_cxg, id_sky, id_yhg, id_xlu, id_qvj, id_ksz, id_ndd,
+              id_qkn, id_xzg).
+           (!
+              (id_orx, id_mml, id_yvi, id_ecm, id_upo, id_lwo, id_bnb,
+               id_kwm, id_gtf).
+            (85 /<: str_pwq))) =>
+          #(id_gnr, id_xih, id_vtx, id_yut, id_kju, id_zxi, id_rvg).
+          (#(id_jhu).(!(id_aom, id_eay).(str_ilr$0 <: str_wek)))
+        THEN
+          id_npq, id_naq, id_zmb, id_ect, id_fjq, id_rhj, id_xss, id_uil,
+          id_hgm
+          <--
+          id_lzh
+        ELSIF
+          last
+            ({str_kht,
+              (bool
+                 (#
+                    (id_ryy, id_osd, id_aht, id_wnx, id_bha, id_dmy, id_pzn,
+                     id_mgq, id_mif, id_fyv).
+                  (str_rpa < str_jpg)) |>>
+               {})}) >=
+          str_xnq <<| str_cam
+        THEN
+          BEGIN
+            id_njo, id_soj, id_pws, id_tpl, id_lct, id_bml, id_qxb, id_liw,
+            id_yxn, id_boe :(
+              struct
+                (id_pfe: str_izi$0,
+                 id_zqz: str_amv,
+                 id_ugm: str_aho,
+                 id_uds: str_dpd$0,
+                 id_bam: MININT) >=
+              bool
+                (not
+                   (!(id_kfq).(!(id_bta, id_cro, id_qnr).(str_rzw >= MININT))))
+            ) ||
+            PRE
+              not
+                ([INT, str_wgp$0, str_cfb'id_kza] /<<:
+                 bool
+                   (#(id_egl, id_foc, id_tac, id_ztl, id_kct).
+                    (str_bep /: str_kim$0)))
+            THEN
+              id_frq, id_ead, id_tfz, id_aet, id_aha, id_fxa, id_yhr, id_ggy,
+              id_bjm, id_khb, id_erv
+              :=
+              %
+                (id_haw, id_tgm, id_ljf, id_kfz, id_mtm, id_jon, id_fny,
+                 id_ssk, id_siq).
+              (str_yqz$0 /: str_qac|
+               { id_kld, id_kuj
+                 |
+                 !(id_rie, id_hzk).(str_arf$0 : str_rfb$0) &
+                 #(id_rua, id_tzm, id_vtp, id_yya).
+                 (str_ogz$0 <: str_ncm <=>
+                  #(id_gxq, id_ccs, id_nke, id_fch, id_xgn, id_vgr).
+                  (str_djs$0 <<: str_bxk$0)) })
+            END
+          END ;
+          id_jht :(
+            #(id_hpt, id_azr, id_cxn, id_lpv).
+            (rec
+               (id_esw: str_slm$0,
+                id_riy: STRING,
+                id_bxy: str_bdu$0,
+                id_bpf:
+                struct
+                  (id_zzx:
+                   rec(id_itu: str_krb, id_jgw: str_tkg$0, id_xxu: str_sia$0)
+                     'id_bix,
+                   id_fbi: str_iop),
+                id_hbr: str_pdb,
+                id_lmv: NAT,
+                id_dgu: str_nid) <:
+             %(id_gop, id_kie, id_pds, id_mtz, id_xct, id_wzy).
+             (str_ckj >= str_ppz$0| INT))
+          )
+        ELSIF
+          not
+            (not(!(id_efu, id_vgt, id_wdf).(FALSE <= str_tpa)) or
+             (!
+                (id_pvq, id_szg, id_miv, id_yvp, id_vgw, id_lyh, id_wdy,
+                 id_vnj).
+              (str_xjm$0 /: str_dbl) &
+              !(id_ldo, id_ykd).(str_juf$0 <<: NAT1)))
+        THEN
+          id_bbz, id_fke, id_ayk, id_xjn, id_eqs, id_asj, id_vob, id_bns,
+          id_gga, id_vqm :(
+            [str_tkc,
+             str_wwe,
+             NATURAL,
+             str_pgw$0,
+             struct
+               (id_ror: MININT,
+                id_yib: INT,
+                id_tda: str_rpu,
+                id_lgm: str_thl,
+                id_itc: STRING),
+             [str_dhi, str_mju$0, str_pbr, str_lay$0, MAXINT, NAT, NATURAL,
+              str_rsg],
+             rec(id_wye: str_cly, id_psx: str_ofw$0, id_qts: str_eab$0),
+             str_ehj] /<<:
+            {str_ipw$0, MAXINT, (str_yfw --> str_dzt)}
+          )
+        ELSIF
+          #
+            (id_sce, id_wiv, id_hvf, id_qli, id_qkl, id_usj, id_oil, id_bzr,
+             id_zhs).
+          (#
+             (id_zzy, id_tzc, id_lou, id_fxr, id_zpy, id_nft, id_dku, id_lwe,
+              id_llt, id_cro).
+           (not
+              (rec
+                 (id_epk: str_ikk,
+                  id_tvl: {str_ewm, str_qmv, MININT, NATURAL1, NATURAL1},
+                  id_igm: TRUE,
+                  id_mtl: {},
+                  id_gps: str_myd$0,
+                  id_vmj: [str_jvu$0, str_dni],
+                  id_ddx: str_qkz$0) /=
+               NAT)))
+        THEN
+          id_bph, id_xma, id_sub, id_bfu, id_itw, id_ole, id_vot, id_eni,
+          id_gog :(
+            not
+              (#
+                 (id_myx, id_gxw, id_tat, id_pyc, id_xvz, id_vzi, id_esn,
+                  id_dgp, id_rrx, id_sud, id_azz).
+               (NAT1 > INT => str_iyy$0 <= str_btl)) =>
+            not((str_zvr /: TRUE <=> [] /<<: {}) => str_hoq >= str_dkf$0)
+          )
+        ELSE
+          id_ncg, id_koh :(
+            not
+              (!(id_ynq, id_kcv, id_pbr, id_afw).
+               (!(id_ofd, id_fqj, id_vxs, id_hvc).
+                ({bool(str_glm$0 = str_cys$0),
+                  str_jbo$0,
+                  MININT,
+                  NAT,
+                  TRUE,
+                  str_lze$0,
+                  str_oet} >
+                 {str_brc$0})))
+          )
+        END
+      END
+    END
+  END;
+
+  id_has, id_ufv, id_nfl, id_guy, id_ujp, id_jyt, id_jmi, id_eiu, id_kkj,
+  id_gip
+  <--
+  id_zpj (id_meb)
+  =
+  BEGIN
+    ANY
+      id_ibd, id_tem, id_wij, id_jic, id_xwh, id_frp, id_gry, id_ugy, id_ora
+    WHERE
+      !(id_tyf, id_typ, id_uwd, id_avl, id_ptd, id_lym, id_pax, id_fah).
+      (not
+         (not
+            (UNION
+               (id_lvf, id_llt, id_ocs, id_mxf, id_scm, id_kas, id_jqq,
+                id_ftg, id_qor, id_kcn, id_hya).
+             (str_qfz$0 : NAT| NAT1) <<:
+             min(INTEGER'id_blq))))
+    THEN
+      CHOICE
+        id_ugj, id_eyi, id_gyu
+        ::
+        [str_zme,
+         str_vab$0,
+         [str_cmi, str_dbn$0, FALSE],
+         str_kef,
+         INTER(id_nba, id_omi, id_hax, id_aul, id_orn, id_sal, id_uwp).
+         (str_uzd = str_gxv|
+          closure(bool(str_ssf$0 > str_aqy & INTEGER >= str_rnu)))
+           'id_gsg,
+         INTEGER,
+         NAT1]
+      OR
+        IF
+          not
+            (not
+               (#(id_dzc, id_asi, id_uuv, id_ztv, id_nuy, id_tar, id_iyf).
+                (#(id_iqr, id_avc, id_wkf, id_irs).
+                 (!(id_bgt, id_amx, id_cxp, id_gqw).
+                  (#(id_bob, id_cri, id_ujp, id_qaf, id_jqj, id_hvg).
+                   (str_mia <: 5 or str_qrx >= {}))))))
+        THEN
+          id_itf, id_dgw, id_pyh, id_lgo, id_woj, id_jhs, id_nxa, id_mcn,
+          id_tmy, id_pdf
+          ::
+          SIGMA
+            (id_xhv, id_lqf, id_kdq, id_rot, id_zpy, id_bsr, id_iqi, id_qjk).
+          (str_vvg$0 /<<: "str_usx"|
+           { id_ejj, id_now, id_cdi
+             |
+             !
+               (id_hez, id_txv, id_jqe, id_plf, id_imd, id_arj, id_bob, id_iqw).
+             (!(id_yek, id_eda, id_phw).
+              (!
+                 (id_otb, id_nkv, id_kdp, id_ilj, id_mdh, id_nsy, id_orc,
+                  id_fnx, id_hho).
+               (!(id_ndx, id_fon, id_ean, id_dke, id_osc, id_azr, id_mot).
+                (TRUE < str_zwb$0)))) })
+        END
+      OR
+        id_txk, id_yie, id_sry, id_wqn, id_loo, id_ezb
+        :=
+        struct
+          (id_gby: prj1(BOOL, str_iqd),
+           id_mkl: INT,
+           id_tks: str_ulg$0,
+           id_wli: str_xjy$0,
+           id_sfx:
+           rec
+             (id_cnp: str_whd$0,
+              id_god:
+              bool
+                (!(id_pvu, id_bbs, id_pbg, id_cal, id_xpt).
+                 (str_hzs$0 <: str_gug$0 or NATURAL1 = str_tpd)),
+              id_ycq: FALSE,
+              id_jge: str_ymc),
+           id_eif:
+           rec
+             (id_pvf: str_koi,
+              id_fmk: str_ctl$0,
+              id_ywz: str_fgc$0,
+              id_jzu: NATURAL1,
+              id_isk: NAT,
+              id_dmj: str_iua$0,
+              id_tix: str_awx),
+           id_dgk: BOOL)
+      OR
+        id_ata, id_bbs, id_ycy, id_cdb, id_uqc, id_lxx, id_svl, id_brq,
+        id_nhp
+        ::
+        str_aaw'id_avl /\
+        (min
+           (PI(id_dds, id_wze, id_meg, id_enm, id_wyj, id_qbi, id_pyu).
+            (!(id_fwe, id_vyi, id_kae, id_udo, id_zqm, id_kjo, id_lih).
+             (str_ybp /<: str_emf)|
+             STRING'id_vph)) |>
+         19)
+      OR
+        VAR
+          id_fhf, id_ctk, id_ioi, id_ano, id_tsy, id_dwt
+        IN
+          ASSERT
+            #(id_uam, id_njo, id_htc).
+            (!(id_jef, id_mdi, id_zfg, id_qbd, id_afb).
+             (FALSE <|
+              {str_gku, str_hke$0, FALSE, "str_yts", str_egd, str_mew,
+               str_knp$0} /:
+              bool
+                (!(id_npv, id_kfc, id_bzk, id_fmp, id_vgv).
+                 (str_oxp > str_mlf$0))))
+          THEN
+            skip
+          END
+        END
+      OR
+        CHOICE
+          id_mnz, id_awm, id_zxo, id_cwu, id_dyp, id_uba, id_cwq, id_ase
+          <--
+          id_uid
+            (bool
+               (not
+                  (BOOL /= INTEGER &
+                   !(id_xtv, id_fvk, id_qbd, id_pnj, id_ucb, id_eho).
+                   (MAXINT = str_pzw)) or
+                !(id_hzu, id_lgu, id_tjm, id_sqv, id_mfq, id_yel, id_rys).
+                ([] <<: str_kje$0 <=> str_dks = str_upv$0)),
+             {bool
+                (!
+                   (id_xfz, id_zky, id_tke, id_gmb, id_cvu, id_ysm, id_ziz,
+                    id_ogk, id_klt).
+                 (not
+                    (!
+                       (id_sne, id_mto, id_rqu, id_phb, id_psu, id_zqp, id_bmb).
+                     (not(str_glt$0 < 2 => str_dws = str_lfo)))))},
+             { id_iie, id_uag, id_mkl, id_hzj, id_etd, id_wto, id_fcp, id_oow
+               |
+               #(id_gpl, id_ory, id_utr).
+               ((str_haj$0 /: str_tks <=>
+                 str_zxl$0 /<<:
+                 { id_xru, id_tov, id_lfq, id_abj, id_ykb, id_vos
+                   |
+                   str_qxr$0 : BOOL }) =>
+                str_cdh = str_gia$0) },
+             { id_knw, id_zyt, id_sgx, id_zlh
+               |
+               not
+                 (str_kdx =
+                  struct(id_wwa: str_cjo, id_zzd: bool(-FALSE /= str_pri$0))) },
+             rec
+               (id_gwv: TRUE,
+                id_iig: str_ntt,
+                id_omi: str_vbg$0,
+                id_wqo:
+                (struct
+                   (id_ixu: str_zpu$0,
+                    id_asf: str_xsu,
+                    id_cae: str_hhw,
+                    id_ooo: str_rso,
+                    id_cqz: str_pkg,
+                    id_tbe: NAT,
+                    id_trk: str_yuo) >->>
+                 %(id_dwq, id_cah, id_gzr, id_vsj, id_vvq, id_ftz).
+                 (not(NAT /<<: STRING)| str_miu$0)),
+                id_tkr: MININT,
+                id_xlm: str_cxt$0,
+                id_bxj: str_ucq,
+                id_kuw: (NATURAL ^ {NATURAL, str_xzf$0, str_xpe$0})),
+             rec
+               (id_htj:
+                infix
+                  (rec
+                     (id_nbz: INT,
+                      id_itb: 971,
+                      id_lok: str_zek$0,
+                      id_ldg: [MININT],
+                      id_vnr: 860,
+                      id_rzj: str_swb,
+                      id_hfm: str_gpp$0,
+                      id_nnt: BOOL)),
+                id_esq: bool(str_jig$0 >= NATURAL),
+                id_qmq: dom("str_iuz")),
+             bool
+               (not
+                  ((NAT1 <= str_qhc$0 => not(str_tdm : INT)) <=>
+                   (FALSE <: str_kzp$0 & str_tlv < NAT))))
+        OR
+          id_xqa, id_tkt, id_whx, id_kdq, id_rsq, id_rbx <-- id_lco
+        OR
+          id_lup :(
+            PI(id_euj, id_tko).
+            (not(NATURAL /<<: INT)|
+             struct
+               (id_zfe: str_waz$0,
+                id_ggg: INT,
+                id_bsx: MAXINT,
+                id_sxn: str_ayv$0,
+                id_ygg: str_ujo,
+                id_onu: str_zzy$0,
+                id_ilj: INT,
+                id_crf: {})) /<<:
+            { id_kbd, id_mhc, id_vue, id_xca, id_naz, id_lhw
+              |
+              not
+                (#(id_vpz, id_zuu, id_zpv, id_srb, id_inr, id_zbp, id_xsh).
+                 (NATURAL = str_hyy)) }
+          )
+        OR
+          id_qum, id_mmr, id_kqx, id_ytn, id_hsn, id_cxm, id_sar, id_sre,
+          id_yve, id_piw, id_vvb
+          :=
+          {struct
+             (id_ngh:
+              { id_eyu, id_nyi, id_nai, id_oea, id_ykz
+                |
+                !(id_kow, id_dqg, id_uuk, id_kxt, id_fnn, id_wnw, id_doj).
+                (MAXINT < str_vkp$0) },
+              id_ylx: str_znd$0,
+              id_nrz: str_pfw,
+              id_nbx: str_aja,
+              id_atd: arity([NATURAL, str_avi$0, str_yhl$0, INTEGER]),
+              id_yxw: str_wmv)}
+        END
+      END
+    END ||
+    skip
+  END
+
+OPERATIONS
+  id_kxh, id_lmi, id_nct <-- id_tcm =
+  VAR
+    id_bfo, id_cri, id_thf, id_jzc, id_mkd, id_ctq, id_sdl
+  IN
+    IF
+      (!(id_tkk, id_kwt, id_xjh, id_rsq).(str_lhr$0 >= str_kys) =>
+       NATURAL1 /= str_kvc$0) &
+      postfix
+        (struct
+           (id_iaw: str_jxv$0,
+            id_jnd: str_uye,
+            id_znv: str_yyn,
+            id_fyh: str_kcv,
+            id_qur: str_rad,
+            id_cew: str_kfl,
+            id_zka: INTEGER,
+            id_wla: str_qbw$0)) <=
+      str_wbu
+    THEN
+      id_qsw, id_qwz, id_hfm
+      :=
+      ((str_glt \/ INT) +-> {}) <|
+      struct
+        (id_eiq: {str_bpi$0, str_uag, [], str_wlm$0, 54},
+         id_jqz: rank(str_lza),
+         id_fdj: str_zwp$0,
+         id_zdq: str_cym)
+        'id_iav
+    ELSIF
+      #(id_jcy, id_ric, id_dmu).
+      (!(id_wcj, id_zdi, id_gyc, id_ugp, id_kvt, id_vwo, id_sfe).
+       ({} <
+        [1,
+         bool
+           (#
+              (id_pun, id_wtz, id_tmq, id_dro, id_hjn, id_jtd, id_ghc,
+               id_nkl, id_cxb, id_ytz).
+            (str_pvm$0 >= str_urs) &
+            str_iun$0 /: [])]))
+    THEN
+      IF
+        not
+          (str_iix /: str_diw$0 &
+           { id_cjz, id_wci, id_qnh, id_jdj, id_lff, id_das, id_khf
+             |
+             not(str_vpv$0 <: bool(str_sug$0 /<<: str_ymk)) } /=
+           str_sku)
+      THEN
+        ASSERT
+          not
+            (!(id_ihi, id_bpl).
+             (not
+                (not
+                   (not
+                      (#(id_ffx, id_azv, id_vfb, id_nys, id_yxh).
+                       (not(str_ewf$0 >= BOOL)))))))
+        THEN
+          ASSERT
+            not
+              (not
+                 (bool(#(id_aec).(str_vkq$0 : str_gbp$0)) /<<:
+                  [SIGMA(id_mnq, id_fjd, id_hrq, id_hhn, id_oan).
+                   (INTEGER /= MAXINT| str_eeq)]))
+          THEN
+            id_apt 
+              (
+                struct
+                  (id_iya:
+                   struct
+                     (id_sod:
+                      rank
+                        ([str_yly$0,
+                          str_rpa$0,
+                          str_lgc$0,
+                          NAT1,
+                          {str_mll, str_psn$0, str_itg$0, str_wic$0},
+                          str_plj,
+                          NAT1,
+                          str_ljz])),
+                   id_qln: str_azt,
+                   id_whf:
+                   {str_lip,
+                    str_gee$0,
+                    449,
+                    NAT1,
+                    struct(id_mjx: str_rdi$0),
+                    str_gze$0},
+                   id_szc: 34)
+              )
+              (
+                {str_fgr$0,
+                 %
+                   (id_yel, id_txn, id_adw, id_uks, id_evm, id_ane, id_ytt,
+                    id_vcy, id_muj, id_ufq).
+                 (str_jpq$0 > str_uxp$0| 2),
+                 rec
+                   (id_frm:
+                    bool(not(BOOL > str_qyv$0 or INTEGER = str_ghh$0)),
+                    id_tfc: str_gfx,
+                    id_zan:
+                    [INTEGER, "str_jfk", NAT1, str_vct$0, str_yzj, str_bcw])}
+              )
+              (
+                [{ id_igd
+                   |
+                   !
+                     (id_tik, id_zzq, id_tam, id_lmg, id_pnt, id_der, id_bge,
+                      id_xnc, id_aqz).
+                   (#
+                      (id_fjl, id_mrs, id_tsi, id_alg, id_pdy, id_sid,
+                       id_gme, id_yya, id_pdx).
+                    (#(id_vdy, id_uso, id_aco, id_man, id_tbg, id_oka).
+                     (#(id_uez, id_ade, id_lfq, id_zng).(3 /<<: str_efa$0)))) }
+                   'id_ylo]
+              )
+            
+            :=
+            struct
+              (id_wav:
+               rec
+                 (id_xbk:
+                  rec
+                    (id_pwo: INTEGER,
+                     id_yzo: str_dpt$0,
+                     id_oty: {str_olp$0},
+                     id_cep: str_vll),
+                  id_xhm: str_jia$0,
+                  id_vtl: str_tyq$0,
+                  id_yye: str_lue),
+               id_scs:
+               ({str_igb$0, str_aud$0, 30, str_qxm, str_owh, str_sry, str_mcq} >->
+                str_kda$0),
+               id_fpm: {str_adj$0, "str_sru", NATURAL1, str_bvr, str_bsv$0})
+          END
+        END
+      ELSIF
+        #(id_rtj).
+        (#(id_vxg).
+         (PI
+            (id_vyw, id_grm, id_kss, id_nrg, id_adw, id_gag, id_rna, id_jje,
+             id_jnw, id_kqi).
+          (str_uas <<: str_zor$0|
+           SIGMA(id_xmf, id_fes, id_ier).
+           (!(id_qxb, id_qxt, id_esz, id_qhp, id_xqm).(NAT1 <= str_xuo$0)|
+            str_cpm'id_xvo)) /<:
+          str_gix$0))
+      THEN
+        id_uso, id_rpg, id_klf, id_hti, id_gze, id_pen, id_djk, id_iak
+        ::
+        bool
+          (#(id_aad, id_hmn, id_tob, id_srl, id_hvk, id_epr, id_ocx).
+           (not
+              (!(id_fxu, id_gye, id_syl, id_qqo, id_zlj).
+               (!(id_rps).
+                (#(id_gcg, id_xao, id_zbk, id_pki, id_grm).
+                 (!(id_gmw, id_khs).(str_wiv$0 /<<: str_bpl$0))))))) ||
+        IF
+          str_ugb$0 /<<: NAT1 or
+          !
+            (id_bdh, id_ssv, id_zif, id_tlz, id_vjb, id_dgw, id_pvu, id_tyh,
+             id_mqz, id_jro, id_niw).
+          (#(id_hkz, id_ryz, id_hkn, id_bfp).
+           (str_ttk$0 =
+            { id_mxz, id_rjs, id_bym, id_dwu, id_twz, id_otw, id_ott, id_tij,
+              id_olr, id_for
+              |
+              !(id_xpj, id_mpi, id_bev, id_shw).(str_fxp$0 <= str_dlm$0) }))
+        THEN
+          id_olh, id_ivc, id_cuy, id_mrf, id_aie, id_tvs, id_gck, id_vlg
+          ::
+          %(id_zzr, id_wzl, id_brs, id_vxw, id_uuu, id_hck).
+          (not(str_tfv <<: 4 or str_dyz <: str_jdw$0) => str_spl <<: []|
+           [[INTEGER], str_pjk$0]'id_ijj)
+        ELSIF
+          #(id_idv, id_xhe, id_poj, id_mto, id_jka, id_nmd, id_oeh).
+          (not
+             (str_ivq$0 /= str_ghb =>
+              (not(!(id_chz).(INT /: str_vuj => str_woc$0 /= str_zmu)) &
+               str_nst$0 /: str_ifu)))
+        THEN
+          id_mph, id_cqv, id_hki, id_hae, id_ntr, id_vsl, id_qdw
+          :=
+          { id_khz, id_nzp, id_mel, id_tpn, id_ofo, id_igk, id_qbo, id_got,
+            id_uwh
+            |
+            #(id_avc, id_xor, id_dfh).
+            (!(id_zxl, id_ixb).
+             ({147,
+               str_exx,
+               MAXINT,
+               str_mbg,
+               FALSE,
+               PI(id_ssi, id_xle, id_wfz, id_rum, id_wwk, id_mpp, id_rou).
+               (INTEGER < str_hyg$0| str_qjh),
+               str_uol'id_pgq,
+               str_kss$0} <=
+              INT)) }
+        ELSIF
+          not
+            (!(id_uwz, id_dko, id_gtj, id_wkd, id_tal, id_ysv).
+             (!(id_yhd, id_jzi, id_ytl, id_kjr, id_thr, id_gll).
+              (str_cfi /= str_jqg <=>
+               #
+                 (id_pvv, id_njx, id_ruu, id_gpl, id_cut, id_jto, id_wug,
+                  id_hgs).
+               (not(not(str_tsx < str_fdh))))))
+        THEN
+          id_zum 
+            (
+              { id_qnd, id_nqn
+                |
+                #
+                  (id_qbb, id_xyn, id_ugu, id_dwn, id_ljm, id_fsl, id_uze,
+                   id_bct, id_jih, id_zki, id_hah).
+                (!
+                   (id_afa, id_wqo, id_gsd, id_edu, id_qsz, id_dak, id_qtq,
+                    id_yut).
+                 (not
+                    (str_bmo > "str_dfg" <=>
+                     !(id_sdc).(str_rwn /= str_orj or str_zjr$0 /: 689)))) }
+            )
+            (
+              bool
+                (not
+                   (not
+                      (!
+                         (id_ixf, id_utp, id_exw, id_bst, id_ypa, id_xyt,
+                          id_qlu, id_adh, id_wnx, id_nlg, id_xvu).
+                       (not
+                          (#
+                             (id_pul, id_hhw, id_mrg, id_vmu, id_mii, id_apz,
+                              id_pbc, id_wru, id_odo, id_vxt).
+                           (!
+                              (id_aay, id_xju, id_cmh, id_diw, id_xqx,
+                               id_ikx, id_yhg).
+                            (str_zmf$0 /<: str_hrw)))))))
+            )
+          
+          :=
+          { id_gfu
+            |
+            str_qsw /<:
+            {str_rth$0,
+             { id_yaa, id_vpw, id_ogg, id_iin
+               |
+               !(id_uua, id_tkx, id_der, id_xox, id_ref, id_fyh).
+               (str_mze$0 <= "str_hbo") },
+             [[], bool(MAXINT /<<: str_pva$0), str_xtw, str_php$0],
+             str_zcn$0,
+             str_skw$0} }
+        ELSIF
+          rec
+            (id_csy:
+             struct
+               (id_ixj:
+                rec
+                  (id_fwg: str_yla,
+                   id_hsq: str_dxu,
+                   id_clj: str_hbg,
+                   id_jnk: (NATURAL1 \/ 34),
+                   id_ggt: str_wiq,
+                   id_eth: str_uyv,
+                   id_lrd: NAT,
+                   id_tpa: str_ftf),
+                id_qaf: str_nhz,
+                id_fnu: INTEGER,
+                id_hgu: str_esh,
+                id_uvp: str_tmv$0,
+                id_mkp: INT,
+                id_ggh: str_mwt$0,
+                id_bxc: str_mnx),
+             id_iuj: str_jyr$0,
+             id_vub: 13,
+             id_ema:
+             left
+               (struct
+                  (id_ntv: str_xul$0,
+                   id_tok: NATURAL1,
+                   id_pod: str_pvn,
+                   id_dzr: str_tbc$0))) <
+          str_cmb$0
+        THEN
+          id_nol, id_xft, id_xdp, id_ocy, id_giy, id_izg, id_dzg, id_ikj :(
+            #(id_wnr, id_vmt, id_guz, id_vyr).
+            ({} <= str_tcn$0 & str_zbj$0 >= str_tvp$0) &
+            not(bool(FALSE < STRING) /: fnc(str_eic$0))
+          )
+        ELSIF
+          #(id_zaw, id_wpu, id_xtx, id_dhd, id_qhi).
+          (bool
+             (!(id_xwr, id_qeq, id_oci, id_oqf, id_hhn).(str_pqu /= INTEGER)) /<:
+           [str_zru$0,
+            { id_ols, id_tss | INT /<<: MAXINT },
+            str_tzt$0,
+            str_pgo$0,
+            str_oqz$0,
+            { id_gro, id_ton, id_jkn, id_vsx, id_swf | TRUE /= str_gvh$0 }])
+        THEN
+          id_qgv 
+            (
+              { id_snc, id_vfi, id_yrn, id_psf
+                |
+                #
+                  (id_jhf, id_qux, id_inl, id_sbp, id_dnf, id_abf, id_wlf,
+                   id_mck, id_gab, id_bef, id_uar).
+                (!
+                   (id_ahi, id_anv, id_bbu, id_vfr, id_bqh, id_uvj, id_wck,
+                    id_uzy).
+                 (not
+                    (#(id_eck, id_pek, id_gof, id_ttq, id_jii).
+                     (#(id_tfi, id_hux, id_eph, id_zum, id_tnh, id_rqi).
+                      (NATURAL1 <: str_qbd$0 <=> str_rgh > BOOL))))) }
+            )
+            (
+              bool
+                (NAT > str_emg$0 <=>
+                 ((INT >= MININT or str_lko$0 /= str_emi) &
+                  !
+                    (id_gqs, id_oux, id_shp, id_ytp, id_xdu, id_ryx, id_wwf,
+                     id_zfd, id_vst).
+                  (str_ogf$0 <= NATURAL1 or "str_xyu" = 1)))
+            )
+            (
+              sons
+                ([86,
+                  INT,
+                  [0,
+                   TRUE,
+                   {{ id_osc, id_lzo | str_bej /: str_yoz$0 },
+                    INTEGER,
+                    UNION
+                      (id_rhw, id_hrj, id_uzm, id_wgn, id_luy, id_vid,
+                       id_exd, id_uku).
+                    (TRUE = str_bpw|
+                     struct
+                       (id_rza: str_woj$0,
+                        id_tto: BOOL,
+                        id_rob: str_bfv,
+                        id_tol: str_txz$0,
+                        id_avv: str_tqw,
+                        id_bcd: STRING,
+                        id_yko: str_qce,
+                        id_pdw: str_crr$0))},
+                   str_ram$0],
+                  str_uez$0])
+            )
+            (
+              SIGMA(id_srt, id_hou, id_qbg, id_mrn, id_uhw).
+              (not
+                 (MININT /<:
+                  rec
+                    (id_qcf: str_mdf,
+                     id_kbo: str_cdi,
+                     id_tmz: str_lpr$0,
+                     id_bty: str_vwg,
+                     id_jky: NATURAL1,
+                     id_nyo: str_ypd$0))|
+               {str_mfp,
+                str_mhc$0,
+                str_cwp$0,
+                str_ehb,
+                str_nub$0,
+                str_cfy$0,
+                [str_fgw],
+                str_prs})
+                'id_zih
+            )
+            (
+              [[str_gzc,
+                str_udv,
+                FALSE,
+                (STRING .. str_dmo),
+                str_ihs$0,
+                str_rpa,
+                STRING],
+               rec
+                 (id_qms: bool(str_jjf <: str_yzg$0),
+                  id_rjo: str_isj,
+                  id_muk: MININT,
+                  id_mja: str_zti$0,
+                  id_jru: str_rmz,
+                  id_bdt: str_gpb$0),
+               NATURAL1,
+               bool({} <<: BOOL),
+               str_sms,
+               struct(id_vqj: str_rto, id_csl: str_txw$0),
+               20]
+            )
+            (
+              [rec
+                 (id_qpm: str_kbd$0,
+                  id_tot: NATURAL,
+                  id_vnb:
+                  [str_vzz, INTEGER, str_bvh, "str_vel", NATURAL, str_nrw,
+                   INTEGER],
+                  id_jex: str_zje$0,
+                  id_gtp: str_eds,
+                  id_qlw: str_btn),
+               "str_cfj",
+               str_ath$0,
+               {str_fdt$0,
+                str_ujn,
+                str_wqq$0,
+                (str_lfb ><
+                 { id_sob, id_wck, id_izm, id_bhd, id_dqo, id_vnx, id_piy,
+                   id_owr, id_kkl, id_kyz, id_xfa
+                   |
+                   !(id_jms, id_inc).(FALSE = MININT) }),
+                MININT,
+                str_uab$0}]
+            )
+          
+          :=
+          struct(id_qoe: INTEGER, id_okz: {str_fwn, str_qif$0}) +
+          struct(id_vqd: FIN([bool(str_ayw$0 <= MAXINT)]))
+        ELSIF
+          prj2
+            (NATURAL1,
+             bin
+               ({ id_qzs, id_ywe, id_ucm, id_bjl, id_jod, id_rxh, id_cha
+                  |
+                  INT /: str_fnw }))
+            'id_yzl =
+          prj2
+            (str_evy$0,
+             rec
+               (id_yjy: str_qzy,
+                id_jld: MININT,
+                id_nyn: MININT,
+                id_bgj: MININT))
+        THEN
+          id_vwm, id_fzn, id_bxl, id_yho, id_oep, id_svd, id_yfz
+          ::
+          rec
+            (id_czy: (str_duy$0 +->> str_ane$0),
+             id_krg: TRUE,
+             id_hmz:
+             {MININT,
+              str_wrl,
+              INT,
+              BOOL'id_ojt,
+              str_qzp,
+              str_oab$0,
+              {},
+              str_elv$0},
+             id_ipw: str_tkx$0,
+             id_kjn:
+             SIGMA(id_xvf, id_bni, id_zmj, id_xol).
+             (#(id_wjw).(FALSE /<<: str_hke$0)| str_hru)
+               'id_uit,
+             id_zku: str_rqu$0,
+             id_nln: {})
+        ELSIF
+          not(not(#(id_mzz).(str_pju$0 <= str_rzn & str_tlp /<: str_rqn$0))) &
+          !
+            (id_knf, id_igu, id_hdn, id_ubt, id_cnx, id_ttk, id_wkc, id_usi,
+             id_cew, id_psm, id_vqa).
+          (not(STRING >= str_fns$0))
+        THEN
+          skip
+        ELSE
+          skip
+        END
+      ELSIF
+        not
+          (#(id_vuf).
+           (str_nyd < str_dzl or str_ami$0 >= left(right(NAT) + NAT)))
+      THEN
+        id_zef, id_pgz, id_mta, id_cli, id_stj, id_ntz, id_cvd :(
+          #(id_hph, id_krv, id_dkw, id_uwk, id_das, id_kbm, id_kdt).
+          (not
+             (bool(not(MAXINT <: str_rwv)) <:
+              {STRING, BOOL, STRING, str_ifd$0, INTEGER, INTEGER}))
+        )
+      END
+    ELSIF
+      not
+        (#
+           (id_jon, id_eos, id_gtc, id_xoq, id_ppr, id_xsm, id_yxu, id_kju,
+            id_xku, id_wlt, id_pnq).
+         (bool([] : str_uhy$0) <<:
+          const
+            ({INT, {STRING, str_aoa, NATURAL, str_vlj}, str_zby$0, str_tps$0})))
+    THEN
+      skip
+    ELSIF
+      #
+        (id_fyg, id_jgm, id_zmk, id_rrr, id_qeo, id_chu, id_wpj, id_gbe,
+         id_vre, id_kap).
+      (bool(STRING > MAXINT) /:
+       rec
+         (id_zxq: str_wxw$0,
+          id_hpi: str_yub,
+          id_wpi: MAXINT,
+          id_zdk:
+          struct
+            (id_eit: str_nbk$0,
+             id_yqt: TRUE,
+             id_ahh: str_nee,
+             id_cmv: str_utv$0,
+             id_ziy: MININT,
+             id_cwh: str_vsi),
+          id_zqu: str_bpq,
+          id_mqn: str_kwm) <=>
+       !(id_ugs, id_azu, id_tkz).(str_cvn /= str_kti$0))
+    THEN
+      id_kkp
+        ({ id_dcn, id_lmv, id_feb, id_nvk, id_enj, id_kko, id_ypj
+           |
+           !(id_vmp, id_odc, id_jua, id_naz, id_znr, id_nxz, id_nmc, id_ekm).
+           (#(id_gpu, id_twg, id_kmk, id_ynp, id_fve, id_hzo, id_igs).
+            (!(id_glc, id_zub, id_tss).
+             ({{}, str_qco$0, str_baa$0, str_rpy$0, [NAT1, str_mky$0]} <<:
+              MAXINT))) },
+         { id_dac, id_jig, id_hfz, id_idj, id_huz, id_egw, id_bud, id_kzj,
+           id_uwu
+           |
+           {str_atb, 89, STRING, MAXINT, str_anq, str_bmr$0} >
+           {NATURAL1,
+            father(str_rzq),
+            struct(id_xjm: NATURAL, id_tft: str_fok),
+            front(str_kww$0)} },
+         (bool(not(str_cbm$0 >= str_atz) & str_yrg$0 <= str_vic$0) |->
+          bool(BOOL /<: str_aot => str_ogn <<: str_ayg))
+           'id_lgh,
+         rec
+           (id_nyr:
+            bool
+              (!(id_msq, id_wic).(str_kuh /<: str_mvb$0) or
+               not
+                 ((str_qvk >= str_oqc$0 & INT <= str_ofp$0) =>
+                  str_kqm /<<: str_vly))),
+         %(id_snl, id_szi, id_rwm, id_xiw, id_eah, id_jju).
+         (not(str_ffu$0 = str_lmk)|
+          {MAXINT,
+           str_tfx$0,
+           sons(UNION(id_hsw, id_lmn). (str_wuq <: TRUE| TRUE)),
+           infix
+             (INTER(id_hgg, id_zxu, id_tuk, id_yrs, id_gpa).
+              (FALSE /<: MAXINT| INTEGER)),
+           str_zeb}),
+         (bool
+            ({ id_edq, id_lhs, id_fuz, id_sus
+               |
+               !(id_bei, id_gjs, id_vhf, id_cvz).(INTEGER /= str_hav$0) } /<:
+             seq1(str_kpe$0)) >->
+          rec
+            (id_chd: str_mny,
+             id_jbx: NAT1,
+             id_gpt: str_fkv$0,
+             id_oae: str_xys$0,
+             id_yxf: str_etp$0)),
+         struct
+           (id_zce:
+            { id_knc, id_kol, id_gxp, id_pyk, id_utp
+              |
+              !(id_rax).
+              (!(id_vvb).
+               (!
+                  (id_mfe, id_mwd, id_odp, id_dlg, id_enp, id_fpj, id_eyd,
+                   id_rgq, id_zaw).
+                (INT <<: str_rwf))) },
+            id_eef: {str_rso$0, str_hok$0, str_uqz, str_nys},
+            id_njp: str_cca,
+            id_vuj: bool(NATURAL >= NATURAL1)),
+         struct
+           (id_gyk: INTER(id_api, id_pni). (str_jzo$0 = []| str_jco$0),
+            id_nwt:
+            id
+              (prj2
+                 (NATURAL1[str_pvw],
+                  {TRUE, str_yen, TRUE, str_wuj, str_xkv$0})),
+            id_ahp: str_chf,
+            id_roz:
+            INTER
+              (id_cqu, id_kgo, id_wxf, id_jli, id_iqb, id_pdg, id_rfs, id_gez).
+            (NAT /<: {}| str_ayw),
+            id_nxw: str_sxe$0))
+    ELSIF
+      [str_zhx$0] <<:
+      [str_put$0,
+       {str_bes$0,
+        { id_ejb, id_veo, id_bkf, id_nns, id_alq, id_wxb, id_gpx, id_nrs,
+          id_qub, id_obk
+          |
+          str_zqc$0 /=
+          { id_hci, id_kgk, id_ttj, id_wxd, id_jkm, id_arh, id_ask, id_oar,
+            id_flc, id_cch, id_fwz
+            |
+            str_vjx$0 <<: str_smp$0 } },
+        str_jov$0},
+       str_rpa$0,
+       str_uzr]
+    THEN
+      id_tnr, id_rcu, id_nvm
+      :=
+      ({ id_hxv, id_wtz | INTEGER <: BOOL } ** str_zhb$0) <->
+      (UNION
+         (id_psl, id_dho, id_sox, id_myi, id_hss, id_ihn, id_kzp, id_pmh,
+          id_epl, id_hfs, id_flc).
+       (str_cwj : str_omc$0| str_ccv$0) ;
+       { id_zjd, id_mgb, id_ilj, id_vvz | 20 = str_zpn => str_mbx$0 = str_bda })
+    ELSE
+      skip
+    END
+  END
+
+END 

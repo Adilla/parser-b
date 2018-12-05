@@ -22,7 +22,7 @@ let declare_with_type (ctx:t) (id:string) (ty:Btype.t) (kind:t_local_kind) : t =
 
 let set_type (ctx:t) (id:string) (ty:Btype.t) : unit =
   match M.find_opt id ctx with
-  | None -> assert false (*FIXME*)
+  | None -> ()
   | Some rc -> ( rc.typ <- Some ty )
 
 let get (ctx:t) (id:string) : (Btype.t option*t_local_kind) option =

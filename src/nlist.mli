@@ -40,3 +40,5 @@ val rev : 'a t -> 'a t
 (** reverse function for non-empty list*)
 
 val lb_map : f:('a -> 'b) -> 'a t -> 'b t
+
+val fold_map : ('acc -> 'a -> 'acc * 'b) -> 'acc -> 'a t -> 'acc * 'b t

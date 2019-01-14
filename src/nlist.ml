@@ -36,3 +36,8 @@ let map f (hd,tl) =
   (hd,tl)
 
 let rev (hd,tl) = from_list_exn (List.rev (hd::tl))
+
+let fold_map f acc l =
+  let (x,l) = Utils.fold_map f acc (to_list l) in
+  (x,from_list_exn l)
+

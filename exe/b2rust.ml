@@ -64,11 +64,13 @@ and f (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : machine_inter
 
 let ht:interface_table = Hashtbl.create 47
 
-let open_rs (pkg_name:Codegen.Rust_ident.t_pkg_id) =
-  open_out ("./"^Codegen.Rust_ident.pkg_to_string pkg_name^".rs") (*FIXME*)
+let out_dir = ref "."
 
-let rec get_pkg_name (cp:T.component) : Codegen.Rust_ident.t_pkg_id Error.t_result =
-  let aux (name:string) : Codegen.Rust_ident.t_pkg_id Error.t_result =
+let open_rs (pkg_name:string) =
+  open_out (!out_dir ^ "/"^ pkg_name ^".rs") (*FIXME*)
+
+let rec get_pkg_name (cp:T.component) : SyntaxCore.lident =
+  let aux (name:string) =
     match File.get_fullname_comp name with
     | None -> assert false
     | Some fn ->
@@ -78,12 +80,7 @@ let rec get_pkg_name (cp:T.component) : Codegen.Rust_ident.t_pkg_id Error.t_resu
       end
   in
   match cp.T.co_desc with
-  | T.Machine _ ->
-    begin match Codegen.Rust_ident.make_pkg_id cp.T.co_name.SyntaxCore.lid_str with
-    | Some x -> Ok x
-    | None -> Error { Error.err_loc=cp.T.co_name.SyntaxCore.lid_loc;
-                      err_txt=("'"^cp.T.co_name.SyntaxCore.lid_str^"' is not a valid rust identifier.") }
-    end
+  | T.Machine _ ->  cp.T.co_name
   | T.Refinement ref -> aux ref.T.ref_refines.SyntaxCore.lid_str
   | T.Implementation imp -> aux imp.T.imp_refines.SyntaxCore.lid_str
 
@@ -92,17 +89,14 @@ let run_on_file (filename:string) : unit = (*FIXME bind*)
   match type_component_from_filename ht filename with
   | Error err -> print_error err
   | Ok (cp,_) ->
-    begin match get_pkg_name cp with
+    let pkg_name = get_pkg_name cp in
+    begin match Codegen.to_package pkg_name cp with
       | Error err -> print_error err
-      | Ok pkg_name ->
-        begin match Codegen.Rust.to_package pkg_name cp with
+      | Ok pkg ->
+        let rs = open_rs pkg_name.lid_str in
+        begin match Rustprint.print_package rs pkg with
+          | Ok () -> ()
           | Error err -> print_error err
-          | Ok pkg ->
-            let rs = open_rs pkg_name in
-            begin match Rustprint.print_package rs pkg with
-              | Ok () -> ()
-              | Error err -> print_error err
-            end
         end
     end
 
@@ -122,6 +116,7 @@ let args = [
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
   ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
   ("-x", Arg.Unit set_alstm_opt, "(no documentation)" );
+  ("-o", Arg.Set_string out_dir, "Set output directory" );
 ]
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

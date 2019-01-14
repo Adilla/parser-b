@@ -185,11 +185,16 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,_,Btype.Open.t) T.substitution) : 
       Error.raise_exn s.T.sub_loc "The subsitution 'Becomes Element' is not allowed in implementations."
     else
       mk_subst s.T.sub_loc (T.BecomesElt (close_mut_var_nlist xlst,close_expr_exn e))
-  | T.BecomesSuch (xlst,p) ->
+  | T.BecomesSuch (_,_) ->
     if t = Imp && (not !allow_becomes_such_that_in_implementation) then
       Error.raise_exn s.T.sub_loc ("Substitution 'Becomes Such That' is not allowed in implementations.")
-    else
-      mk_subst s.T.sub_loc (T.BecomesSuch (close_mut_var_nlist xlst,close_pred_exn p))
+    else (
+      Error.print_error {
+        Error.err_loc=s.sub_loc;
+        err_txt="Substitution 'Becomes Such That' in an implementation. Ignoring." };
+      mk_subst s.T.sub_loc T.Skip
+    )
+(*       mk_subst s.T.sub_loc (T.BecomesSuch (close_mut_var_nlist xlst,close_pred_exn p)) *)
   | T.Var (xlst,s0) ->
     if t = Mch then
       Error.raise_exn s.T.sub_loc ("Substitution 'Var' is not allowed in abstract machines.")

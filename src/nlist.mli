@@ -42,3 +42,7 @@ val rev : 'a t -> 'a t
 val lb_map : f:('a -> 'b) -> 'a t -> 'b t
 
 val concat : 'a t -> 'a t -> 'a t
+
+val fold_map : ('acc -> 'a -> 'acc * 'b) -> 'acc -> 'a t -> 'acc * 'b t
+
+val exists : ('a -> bool) -> 'a t -> bool

@@ -1,7 +1,7 @@
 (library
   (name blib)
   (public_name blib)
-  (libraries menhirLib)
+  (libraries menhirLib str)
   (preprocess
     (pps ppx_deriving.std bisect_ppx -conditional)
   )

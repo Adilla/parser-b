@@ -38,3 +38,9 @@ let map f (hd,tl) =
 let rev (hd,tl) = from_list_exn (List.rev (hd::tl))
 
 let concat (hd1,tl1) (hd2,tl2) : 'a t = (hd1,List.append tl1 (hd2::tl2))
+
+let fold_map f acc l =
+  let (x,l) = Utils.fold_map f acc (to_list l) in
+  (x,from_list_exn l)
+
+let exists f (hd,tl) = (f hd) || List.exists f tl

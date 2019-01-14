@@ -1,18 +1,6 @@
 open Blib
-module T = TSyntax
+
 let continue_on_error = ref false
-
-type machine_interface = Global.t_interface
-type t_item = Done of T.component*machine_interface option | InProgress
-
-let open_in (fn:string) : in_channel option =
-  try Some (open_in fn) with Sys_error _ -> None
-
-type interface_table = (string,t_item) Hashtbl.t
-
-let safe_find ht s =
-  try Some (Hashtbl.find ht s)
-  with Not_found -> None
 
 let print_error err =
   Error.print_error err;
@@ -22,89 +10,160 @@ let print_error_no_loc msg =
   Printf.fprintf stderr "%s\n" msg;
   if not !continue_on_error then exit(1)
 
-let rec type_component_from_filename (ht:interface_table) (filename:string)
-  : (T.component*machine_interface option) Error.t_result =
-  match safe_find ht filename with
-  | Some (Done (cp,itf)) -> Ok (cp,itf)
+let rec get_project = function
+  | [] -> None
+  | hd::tl ->
+    if Xml.tag hd = "project" then Some hd
+    else get_project tl 
+
+let add_path x =
+  match File.add_path x with
+  | Ok _ -> ()
+  | Error err -> print_error_no_loc err
+
+let get_components (lst:string list) (xml:Xml.xml) : string list =
+  let tag = Xml.tag xml in
+  if tag = "component_file" then
+    let name = Xml.attrib xml "name" in
+    let path = Xml.attrib xml "path" in
+    let suffix = Xml.attrib xml "suffix" in
+    (path ^ "/" ^ name ^ "." ^ suffix)::lst
+  else if tag = "definition_dir" then
+    (add_path (Xml.attrib xml "path"); lst )
+  else
+    lst
+
+let get_files_from_db (filename:string) : string list Error.t_result =
+  let xml = Xml.parse_file filename in
+  if (not (String.equal (Xml.tag xml)  "db_xml")) then
+    Error { err_loc=Utils.dloc;
+            err_txt = "Ill-form db file: root element different from 'db_xml'." }
+  else
+    match get_project (Xml.children xml) with
+    | None ->
+      Error { err_loc=Utils.dloc;
+              err_txt = "Ill-form db file: no 'project' tag." }
+    | Some prj -> Ok (Xml.fold get_components [] prj)
+
+let parse_component (ast_table:(string,PSyntax.component) Hashtbl.t) (graph:Graph.t) (filename:string) : unit =
+  try
+    let input = open_in filename in
+    match Parser.parse_component_from_channel ~filename input with
+    | Ok c -> 
+      begin
+        close_in input;
+        Graph.add_component graph c;
+        Hashtbl.add ast_table c.co_name.lid_str c
+      end
+    | Error err ->
+      begin
+        close_in input;
+        print_error err
+      end
+  with
+  | Sys_error msg -> print_error_no_loc msg
+
+let create_cargo_file (project_name:string) : unit =
+  let out = open_out (project_name ^ "/Cargo.toml") in
+  Printf.fprintf out "\
+[package]
+name = \"%s\"
+version = \"0.1.0\"
+authors = [\"You <you@example.com>\"]
+[dependencies]
+lazy_static = \"1.1.0\"
+" project_name;
+  close_out out
+
+let create_lib_file (project_name:string) (machines:string list) : unit =
+  let out = open_out (project_name ^ "/src/lib.rs") in
+  Printf.fprintf out "\
+#[macro_use]
+extern crate lazy_static;
+pub mod state;";
+  List.iter (Printf.fprintf out "\npub mod %s;") machines;
+  close_out out
+
+type t_item = Done of (TSyntax.component*Global.t_interface option) | InProgress
+
+type interface_table = (string,t_item) Hashtbl.t
+
+let rec type_component ast_table (ht:interface_table) (cname:string) :
+  (TSyntax.component*Global.t_interface option) Error.t_result =
+  match Hashtbl.find_opt ht cname with
+  | Some (Done x) -> Ok x
   | Some InProgress ->
     Error { Error.err_loc=Utils.dloc;
             Error.err_txt="Error: dependency cycle detected." }
   | None ->
-    begin match open_in filename with
-      | None -> Error { Error.err_loc=Utils.dloc;
-                        Error.err_txt="Cannot find file '"^filename^"'." }
-      | Some input ->
-        let () = Log.write "Parsing file '%s'...\n%!" filename in
-        begin match Parser.parse_component_from_channel ~filename input with
-          | Ok c ->
-            let () = close_in input in
-            let () = Log.write "Typing file '%s'...\n%!" filename in
-            let () = Hashtbl.add ht filename InProgress in
-            begin match Typechecker.type_component (f ht) c with
-              | Ok (cp,itf) ->
-                let () = Hashtbl.add ht filename (Done (cp,itf)) in
-                Ok (cp,itf)
-              | Error _ as err -> err
-            end
+    begin match Hashtbl.find_opt ast_table cname with
+      | None ->
+        Error { Error.err_loc=Utils.dloc;
+            Error.err_txt="Error: missing machine '"^cname^"'." }
+      | Some ast ->
+        let () = Hashtbl.add ht cname InProgress in
+        begin match Typechecker.type_component (f ast_table ht) ast with
+          | Ok (c,itf) ->
+            let () = Hashtbl.add ht cname (Done (c,itf)) in
+            Ok (c,itf)
           | Error _ as err -> err
         end
     end
 
-and f (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : machine_interface option =
-  match File.get_fullname_comp mch_name with
-  | None ->
-    let err = { Error.err_loc=mch_loc; err_txt="Cannot find the machine '"^mch_name^"'." }
-    in ( Error.print_error err; None )
-  | Some fn ->
-   begin match type_component_from_filename ht fn with
-     | Ok (_,Some itf) -> Some itf
-     | Ok (_,None) -> assert false (*FIXME*)
-     | Error err -> ( Error.print_error err; None )
-   end
+and f ast_table (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : Global.t_interface option =
+  match type_component ast_table ht mch_name with
+  | Ok (_,Some ok) -> Some ok
+  | Ok (_,None) ->
+    let err = { Error.err_loc=mch_loc;
+                err_txt="The component '"^mch_name^"' is an implementation." } in
+    ( Error.print_error err; None )
+  | Error err -> ( print_error err; None )
 
-let ht:interface_table = Hashtbl.create 47
-
-let open_rs (pkg_name:Codegen.Rust_ident.t_pkg_id) =
-  open_out ("./"^Codegen.Rust_ident.pkg_to_string pkg_name^".rs") (*FIXME*)
-
-let rec get_pkg_name (cp:T.component) : Codegen.Rust_ident.t_pkg_id Error.t_result =
-  let aux (name:string) : Codegen.Rust_ident.t_pkg_id Error.t_result =
-    match File.get_fullname_comp name with
-    | None -> assert false
-    | Some fn ->
-      begin match Hashtbl.find_opt ht fn with
-      | Some (Done (c,_)) -> get_pkg_name c
-      | _ -> assert false
-      end
+let translate_component ast_table ht (graph:Graph.t) (machine:string) : (string*Codegen.t_package) option =
+  let cmp = match Graph.get_implementation_name graph machine with
+    | None -> machine
+    | Some implem -> implem
   in
-  match cp.T.co_desc with
-  | T.Machine _ ->
-    begin match Codegen.Rust_ident.make_pkg_id cp.T.co_name.SyntaxCore.lid_str with
-    | Some x -> Ok x
-    | None -> Error { Error.err_loc=cp.T.co_name.SyntaxCore.lid_loc;
-                      err_txt=("'"^cp.T.co_name.SyntaxCore.lid_str^"' is not a valid rust identifier.") }
+  match type_component ast_table ht cmp with
+  | Ok (c,_) ->
+    begin match Codegen.to_package c.co_name c with
+      | Ok pkg -> Some (machine,pkg)
+      | Error err -> (print_error err; None)
     end
-  | T.Refinement ref -> aux ref.T.ref_refines.SyntaxCore.lid_str
-  | T.Implementation imp -> aux imp.T.imp_refines.SyntaxCore.lid_str
+  | Error err -> (print_error err; None)
 
-let run_on_file (filename:string) : unit = (*FIXME bind*)
-  let () = Log.write "Processing file '%s'...\n%!" filename in
-  match type_component_from_filename ht filename with
+let print_package (project_name:string) (mch,pkg:string*Codegen.t_package) : unit =
+  let out = open_out
+      (project_name ^ "/src/" ^ mch ^ ".rs")
+  in
+  match Rustprint.print_package out mch pkg with
+  | Ok () -> close_out out
   | Error err -> print_error err
-  | Ok (cp,_) ->
-    begin match get_pkg_name cp with
-      | Error err -> print_error err
-      | Ok pkg_name ->
-        begin match Codegen.Rust.to_package pkg_name cp with
-          | Error err -> print_error err
-          | Ok pkg ->
-            let rs = open_rs pkg_name in
-            begin match Rustprint.print_package rs pkg with
-              | Ok () -> ()
-              | Error err -> print_error err
-            end
-        end
-    end
+
+let create_state_file (project_name:string) (pkgs:(string*Codegen.t_package) list) : unit =
+  let out = open_out (project_name ^ "/src/state.rs") in
+  Rustprint.print_state out pkgs;
+  close_out out
+
+let make_project project_name (files:string list) : unit =
+  Unix.mkdir project_name 0o770;
+  Unix.mkdir (project_name ^ "/src") 0o770;
+  create_cargo_file project_name;
+  let graph = Graph.create () in
+  let ast_table = Hashtbl.create 47 in
+  List.iter (parse_component ast_table graph) files;
+  let machines = Graph.get_sorted_machines graph in
+  create_lib_file project_name machines;
+  let ht = Hashtbl.create 47 in
+  let pkgs = Utils.filter_map (translate_component ast_table ht graph) machines in
+  List.iter (print_package project_name) pkgs;
+  create_state_file project_name pkgs
+
+let make_project_from_db (db_file:string) : unit =
+  let project_name = Filename.remove_extension (Filename.basename db_file) in
+  match get_files_from_db db_file with
+  | Ok cmps -> make_project project_name cmps
+  | Error err -> print_error err
 
 let add_path x =
   match File.add_path x with
@@ -113,10 +172,13 @@ let add_path x =
 
 let set_alstm_opt () = (*FIXME options*)
   Typechecker.allow_becomes_such_that_in_implementation := true;
-  Typechecker.allow_out_parameters_in_precondition := true
-(*   Global.set_extended_sees true *)
+  Typechecker.allow_out_parameters_in_precondition := true;
+  Visibility.extended_sees := true
+
+let file_mode = ref false
 
 let args = [
+  ("-f", Arg.Set file_mode,   "file mode" );
   ("-c", Arg.Set continue_on_error,   "Continue on error" );
   ("-I", Arg.String add_path, "Path for definitions files" );
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
@@ -124,4 +186,20 @@ let args = [
   ("-x", Arg.Unit set_alstm_opt, "(no documentation)" );
 ]
 
-let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")
+let files = ref []
+
+let run_on_file filename =
+  files := filename::!files
+
+let _ =
+  Arg.parse args run_on_file (
+    "Usage: "^ Sys.argv.(0) ^" [options] project.db\n" ^
+    "Usage: "^ Sys.argv.(0) ^" [options] -f component1 ... componentn"
+  );
+  try
+    if !file_mode then
+      make_project "anon" !files
+    else
+      List.iter make_project_from_db !files
+  with
+  | Error.Error err -> print_error err

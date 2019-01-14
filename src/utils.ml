@@ -32,4 +32,4 @@ let fold_map f acc l =
       let acc, y = f acc x in
       aux f acc (y :: map_acc) l'
   in
-aux f acc [] l
+  aux f acc [] l

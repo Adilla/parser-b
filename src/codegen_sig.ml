@@ -1,3 +1,4 @@
+(*
 module type S =
 sig
   type t_id
@@ -159,3 +160,4 @@ sig
 
   val to_package : t_pkg_id -> TSyntax.component -> t_package Error.t_result
 end
+   *)

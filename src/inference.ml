@@ -212,11 +212,11 @@ let is_int_or_power_exn l (arg1:('mr,'cl,Btype.Open.t) T.expression) (arg2:('mr,
       | T_UVar _ -> Error.raise_exn l "Cannot decide from this is an operation on integers or sets."
       | ty2 -> Error.raise_exn arg2.T.exp_loc
                ("This expression has type '"^ to_string ty2^
-                "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
+                "' but an expression of type INTEGER or POW(_) was expected.")
     end
   | ty1 -> Error.raise_exn arg1.T.exp_loc
            ("This expression has type '"^ to_string ty1^
-            "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
+            "' but an expression of type INTEGER or POW(_) was expected.")
 
 let type_ident (type mr cl) (env:mr Global.t) (ctx:Local.t) id_loc (id_str:string)
     (cl:(mr,cl) V.clause) : (mr,cl) T.t_ident * Btype.Open.t =

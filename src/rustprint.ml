@@ -194,65 +194,65 @@ let rec is_lvalue e =
   | B0_Array_Init _
   | B0_Record _ -> false
 
-let rec mk_expr (purity:bool ref) (paren:bool) (e0:t_b0_expr) : Easy_format.t =
-  let add_paren_if_true b e = if b then e else add_par e in
+let rec mk_expr (init:bool) (purity:bool ref) (paren:bool) (e0:t_b0_expr) : Easy_format.t =
+  let add_paren_if_true b e = if b then add_par e else e in
   match e0.exp0_desc with
   | B0_Global_Ident(_,IK_Variable (Some _)) -> assert false
   (*FIXME on peut vraiment acceder directement a des var externes?*)
   (* mk_atom (pkg_to_string pkg^"::_get_"^id_to_string id^"()") *)
   | B0_Global_Ident (id,IK_Variable None) ->
-    begin
-      purity := false;
-      mk_atom ("st.borrow()." ^ id_to_string id)
-    end
+    if init then mk_atom (id_to_string id)
+    else
+      ( purity := false;
+        mk_atom ("st.borrow()." ^ id_to_string id) )
   | B0_Global_Ident(id,IK_Enum (Some pkg)) ->
     mk_atom (pkg_to_string pkg ^ "::" ^ id_to_string id)
   | B0_Global_Ident(id,(IK_Constant (Some pkg))) ->
     if is_copy_type e0.exp0_type then
       mk_atom (pkg_to_string pkg ^ "::" ^ id_to_string id)
     else
-      mk_atom ("*(" ^ pkg_to_string pkg ^ "::" ^ id_to_string id ^ ")")
+     add_paren_if_true paren (mk_atom ("*(" ^ pkg_to_string pkg ^ "::" ^ id_to_string id ^ ")"))
   | B0_Global_Ident(id,IK_Enum None) -> mk_atom (id_to_string id)
   | B0_Local_Ident(id,Local.L_Param_In)
   | B0_Global_Ident(id,IK_Constant None) ->
     if is_copy_type e0.exp0_type then mk_atom (id_to_string id)
-    else mk_atom ("*" ^ id_to_string id)
+    else add_paren_if_true paren (mk_atom ("*" ^ id_to_string id))
   | B0_Local_Ident(id,(Local.L_Expr_Binder|Local.L_Subst_Binder|Local.L_Param_Out)) ->
     mk_atom (id_to_string id)
   | B0_Builtin_0 cst -> mk_const cst
   | B0_Builtin_1 (op,e) -> (*rmk: only boolean/integer operations*)
-    let e = mk_expr purity true e in
+    let e = mk_expr init purity true e in
     add_paren_if_true paren (mk_prefix_op op e)
   | B0_Builtin_2 (B0_Power,e1,e2) ->
-    let e1 = mk_expr purity false e1 in
-    let e2 = mk_expr purity false e2 in
+    let e1 = mk_expr init purity false e1 in
+    let e2 = mk_expr init purity false e2 in
     mk_list "i32::pow(" "," ")" Easy_format.list [e1;e2]
   | B0_Builtin_2 (op,e1,e2) -> (*rmk: only boolean/integer operations*)
-    let e1 = mk_expr purity true e1 in
-    let e2 = mk_expr purity true e2 in
+    let e1 = mk_expr init purity true e1 in
+    let e2 = mk_expr init purity true e2 in
     add_paren_if_true paren (mk_infix_op op e1 e2)
   | B0_Array lst ->
-    mk_array (List.map (mk_movable purity false) lst)
+    mk_array (List.map (mk_movable init purity false) lst)
   | B0_Array_Init (rg,def) ->
-    let def = mk_movable purity false def in
+    let def = mk_movable init purity false def in
     let aux = function
-      | R_Interval (_,y) -> mk_expr purity false y (*FIXME*)
+      | R_Interval (_,y) -> mk_expr init purity false y (*FIXME*)
       | R_Concrete_Set qid -> mk_atom (qident_to_string qid ^ "_size")
     in
     let rg = Nlist.map aux rg in
     mk_array_init rg def
   | B0_Array_Access (f,args) ->
     let aux arg =
-      let arg = mk_expr purity false arg in
+      let arg = mk_expr init purity false arg in
       mk_list "(" "" ") as usize" Easy_format.list [arg]
     in
-    let f = mk_expr purity true f in
+    let f = mk_expr init purity true f in
     let args = Nlist.map aux args in
     mk_array_access f args
   | B0_Record lst ->
     let cmp (x,_) (y,_) = String.compare (id_to_string x) (id_to_string y) in
     let lst = List.fast_sort cmp lst in
-    let aux (_,arg0) = mk_movable purity false arg0 in
+    let aux (_,arg0) = mk_movable init purity false arg0 in
     let lst = List.map aux lst in
     mk_list "(" "," ")" Easy_format.list lst
   | B0_Record_Access (e,fd) ->
@@ -272,32 +272,24 @@ let rec mk_expr (purity:bool ref) (paren:bool) (e0:t_b0_expr) : Easy_format.t =
         find_pos 0 lst
       | _ -> assert false
     in
-    let e = mk_expr purity true e in
+    let e = mk_expr init purity true e in
     mk_label 2 false `Auto e (mk_atom ("."^string_of_int pos))
 
-and mk_movable purity paren e =
+and mk_movable init purity paren e =
   if (not (is_copy_type e.exp0_type)) && is_lvalue e then
-    mk_list "" "" ".clone()" Easy_format.list [mk_expr purity true e]
+    mk_list "" "" ".clone()" Easy_format.list [mk_expr init purity true e]
   else
-    mk_expr purity paren e
+    mk_expr init purity paren e
 
-(*
-in
-let (b,e) = aux paren e0 in
-if b then
-  mk_list "state.with(|st|" "" ")" Easy_format.list [e]
-else e
-*)
-
-let mk_arg purity e =
-  if is_copy_type e.exp0_type then mk_expr purity false e
+let mk_arg init purity e =
+  if is_copy_type e.exp0_type then mk_expr init purity false e
   else
     match e.exp0_desc with
     | B0_Local_Ident (id,Local.L_Param_In)
     | B0_Global_Ident (id,IK_Constant None) -> mk_atom (id_to_string id)
     | B0_Global_Ident (id,IK_Constant (Some pkg)) ->
-      mk_atom (pkg_to_string pkg ^ "::" ^ id_to_string id)
-    | _ -> mk_list "&(" "" ")" Easy_format.list [mk_expr purity false e]
+      mk_atom ("&" ^ pkg_to_string pkg ^ "::" ^ id_to_string id)
+    | _ -> mk_list "&(" "" ")" Easy_format.list [mk_expr init purity false e]
 
 let mk_sequence_nl (lst:Easy_format.t list) : Easy_format.t =
   let st = { Easy_format.list with
@@ -361,62 +353,72 @@ let rec get_default_value (ty:t_b0_type) : Easy_format.t =
     let aux (_,ty) = get_default_value ty in
     mk_list "(" "," ")" Easy_format.list (List.map aux lst)
 
-let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
+let rec mk_subst (init:bool) (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
   match s0.sub0_desc with
   | B0_Null -> mk_atom "{};"
   | B0_Affectation (LHS_Variable (x,MIK_Variable),e) ->
-    begin
-      purity := false;
-      let v = "st.borrow_mut()."^id_to_string x in
+    if init then
       let st = Easy_format.list in
-      mk_list "" "=" ";" st [mk_atom v;mk_movable purity false e]
-    end
+      mk_list "" "=" ";" st [mk_atom (id_to_string x);mk_movable init purity false e]
+    else
+      begin
+        purity := false;
+        let v = "st.borrow_mut()."^id_to_string x in
+        let st = Easy_format.list in
+        mk_list "" "=" ";" st [mk_atom v;mk_movable init purity false e]
+      end
   | B0_Affectation (LHS_Variable (x,(MIK_Param|MIK_Local)),e) ->
     let st = Easy_format.list in
-    mk_list "" "=" ";" st [mk_atom (id_to_string x);mk_movable purity false e]
+    mk_list "" "=" ";" st [mk_atom (id_to_string x);mk_movable init purity false e]
   | B0_Affectation (LHS_Array(f,MIK_Variable,args),e) ->
-    begin
-      purity := false;
-      let st = Easy_format.list in
-      let args = mk_list "[(" ") as usize][(" ") as usize]" st
-          (List.map (mk_expr purity false) (Nlist.to_list args))
-      in
-      let a = mk_atom ("st.borrow_mut()." ^ id_to_string f) in
-      let arr = mk_label 2 false `Auto a args in
-      let e = mk_movable purity false e in
-      let st = Easy_format.list in
-      mk_list "" "=" ";" st [arr;e]
-    end
+    if init then
+      assert false (*FIXME*)
+    else
+      begin
+        purity := false;
+        let st = Easy_format.list in
+        let args = mk_list "[(" ") as usize][(" ") as usize]" st
+            (List.map (mk_expr init purity false) (Nlist.to_list args))
+        in
+        let a = mk_atom ("st.borrow_mut()." ^ id_to_string f) in
+        let arr = mk_label 2 false `Auto a args in
+        let e = mk_movable init purity false e in
+        let st = Easy_format.list in
+        mk_list "" "=" ";" st [arr;e]
+      end
   | B0_Affectation (LHS_Array(f,(MIK_Param|MIK_Local),args),e) ->
     let st = Easy_format.list in
     let args = mk_list "[(" ") as usize][(" ") as usize]" st
-        (List.map (mk_expr purity false) (Nlist.to_list args))
+        (List.map (mk_expr init purity false) (Nlist.to_list args))
     in
     let arr = mk_label 2 false `Auto (mk_atom (id_to_string f)) args in
-    let e = mk_movable purity false e in
+    let e = mk_movable init purity false e in
     let st = Easy_format.list in
     mk_list "" "=" ";" st [arr;e]
   | B0_Affectation (LHS_Record(rd,MIK_Variable,fd),e) ->
-    begin
-      purity := false;
-      let st = Easy_format.list in
-      let rc = mk_atom ("st.borrow_mut()." ^ id_to_string rd ^ "." ^ id_to_string fd) in
-      let def = mk_movable purity false e in
-      mk_list "" "=" ";" st [rc;def]
-    end
+    if init then
+      assert false (*FIXME*)
+    else
+      begin
+        purity := false;
+        let st = Easy_format.list in
+        let rc = mk_atom ("st.borrow_mut()." ^ id_to_string rd ^ "." ^ id_to_string fd) in
+        let def = mk_movable init purity false e in
+        mk_list "" "=" ";" st [rc;def]
+      end
   | B0_Affectation (LHS_Record(rd,(MIK_Param|MIK_Local),fd),e) ->
     let st = Easy_format.list in
     let arr = mk_atom (id_to_string rd ^ "." ^ id_to_string fd) in
-    let def = mk_movable purity false e in
+    let def = mk_movable init purity false e in
     mk_list "" "=" ";" st [arr;def]
   | B0_IfThenElse (cases,def) ->
     let (p,s) = Nlist.hd cases in
     let st = Easy_format.list in
-    let ifthen = mk_list "if" "" "{" st [mk_expr purity false p] in
-    let ifthen_s = mk_label 2 false `Always_rec ifthen (mk_subst purity s) in
+    let ifthen = mk_list "if" "" "{" st [mk_expr init purity false p] in
+    let ifthen_s = mk_label 2 false `Always_rec ifthen (mk_subst init purity s) in
     let aux (p,s) =
-      let elsifthen = mk_list "} else if" "" "{" st [mk_expr purity false p] in
-      mk_label 2 false `Always_rec elsifthen (mk_subst purity s)
+      let elsifthen = mk_list "} else if" "" "{" st [mk_expr init purity false p] in
+      mk_label 2 false `Always_rec elsifthen (mk_subst init purity s)
     in
     let clst = List.map aux (Nlist.tl cases) in
     let endif = mk_atom "};" in
@@ -425,14 +427,14 @@ let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
         | None -> ifthen_s::(clst@[endif])
         | Some s ->
           let els =
-            mk_label 2 true `Always_rec (mk_atom "} else {") (mk_subst purity s)
+            mk_label 2 true `Always_rec (mk_atom "} else {") (mk_subst init purity s)
           in
           ifthen_s::(clst@[els;endif])
       end
     in
     mk_sequence_nl lst
   | B0_Case (e,cases,def) ->
-    let mtch = mk_label 2 true `Auto (mk_atom "match") (mk_expr purity false e) in
+    let mtch = mk_label 2 true `Auto (mk_atom "match") (mk_expr init purity false e) in
     let aux (lst,s) =
       let lst = List.map ( function
           | CS_Int e -> mk_atom (Int32.to_string e)
@@ -442,14 +444,14 @@ let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
         ) (Nlist.to_list lst) in
       let st = Easy_format.list in
       let whn = mk_list "" "," "=>" st lst in
-      mk_label 4 true `Auto whn (mk_list "{" "" "}" Easy_format.list [mk_subst purity s])
+      mk_label 4 true `Auto whn (mk_list "{" "" "}" Easy_format.list [mk_subst init purity s])
     in
     let clst = List.map aux (Nlist.to_list cases) in
     let lst = match def with
       | None -> clst@[mk_atom "_ => {}"]
       | Some s ->
         let others =
-          mk_list "_ => {" "" "}" Easy_format.list [mk_subst purity s]
+          mk_list "_ => {" "" "}" Easy_format.list [mk_subst init purity s]
         in
         clst@[others]
     in
@@ -463,14 +465,14 @@ let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
     in
     let st = Easy_format.list in
     let vars = mk_list "" "" "" st (List.map aux (Nlist.to_list vars)) in
-    mk_sequence_nl [vars;mk_subst purity s]
+    mk_sequence_nl [vars;mk_subst init purity s]
   | B0_While (cond,s) ->
     let st = Easy_format.list in
     mk_sequence_nl
-      [ mk_label 2 true `Always_rec (mk_atom "while") (mk_expr purity false cond);
-        mk_list "{" "" "};" st [mk_subst purity s] ]
+      [ mk_label 2 true `Always_rec (mk_atom "while") (mk_expr init purity false cond);
+        mk_list "{" "" "};" st [mk_subst init purity s] ]
   | B0_CallUp ([],f,args) ->
-    let args = List.map (mk_arg purity) args in
+    let args = List.map (mk_arg init purity) args in
     let st = { Easy_format.list with
                Easy_format.space_after_opening = false;
                stick_to_label = false;
@@ -483,7 +485,7 @@ let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
                indent_body = 2 } in
     mk_label 2 false `Auto (mk_atom (qident_to_string f)) (mk_list "(" "," ");" st args)
   | B0_CallUp ([(is_var,r)],f,args) ->
-    let args = List.map (mk_arg purity) args in
+    let args = List.map (mk_arg init purity) args in
     let st = { Easy_format.list with
                Easy_format.space_after_opening = false;
                stick_to_label = false;
@@ -500,15 +502,18 @@ let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
     in
     let lhs = match is_var with
       | MIK_Variable ->
-        begin
-          purity := false;
-          mk_atom ("st.borrow_mut()." ^ (id_to_string r))
-        end
+        if init then
+          assert false (*FIXME*)
+        else
+          begin
+            purity := false;
+            mk_atom ("st.borrow_mut()." ^ (id_to_string r))
+          end
       | MIK_Local | MIK_Param -> mk_atom (id_to_string r)
     in
     mk_list "" "=" ";" Easy_format.list [lhs;call]
   | B0_CallUp (ret,f,args) ->
-    let args = (List.map (mk_arg purity) args) in
+    let args = (List.map (mk_arg init purity) args) in
     let st = { Easy_format.list with
                Easy_format.space_after_opening = false;
                stick_to_label = false;
@@ -526,10 +531,13 @@ let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
     let affs = List.mapi (fun i (is_var,x) ->
         match is_var with
         | MIK_Variable ->
-          begin
-            purity := false;
-            mk_atom ("st.borrow_mut()." ^ id_to_string x ^ " = _x." ^ string_of_int i ^ ";")
-          end
+          if init then
+            assert false (*FIXME*)
+          else
+            begin
+              purity := false;
+              mk_atom ("st.borrow_mut()." ^ id_to_string x ^ " = _x." ^ string_of_int i ^ ";")
+            end
         | MIK_Local | MIK_Param ->
           mk_atom (id_to_string x ^ " = _x." ^ string_of_int i ^ ";")
       ) ret in 
@@ -538,7 +546,7 @@ let rec mk_subst (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
     begin match get_seq_list s0 with
       | [] -> mk_atom "{};"
       | seqs ->
-        let seqs = List.map (fun s -> mk_subst purity s) seqs in
+        let seqs = List.map (fun s -> mk_subst init purity s) seqs in
         let st = Easy_format.list in
         mk_list "" "" "" st seqs
     end
@@ -557,13 +565,15 @@ let mk_type (ty:t_type) : Easy_format.t =
   | D_Int -> mk_atom ("pub type " ^ id2_to_string ty.ty_name ^ " = i32;")
   | D_Enum elts ->
     begin
-      let hd = mk_atom ("pub type " ^ id2_to_string ty.ty_name ^ " = i32;") in
+      let hd1 = mk_atom ("pub type " ^ id2_to_string ty.ty_name ^ " = i32;") in
+      let hd2 = mk_atom ("pub const " ^ id2_to_string ty.ty_name ^ "_size : i32 = "
+                        ^ string_of_int (List.length elts) ^";") in
       let tl = List.mapi (fun i e ->
           match ident_to_string e with
           | None -> assert false (*FIXME*)
-          | Some e -> mk_atom ("pub const " ^ e ^ ": i32 = " ^ string_of_int i ^ ";")
+          | Some e -> mk_atom ("pub const " ^ e ^ ": " ^ id2_to_string ty.ty_name ^ " = " ^ string_of_int i ^ ";")
         )  elts in
-      mk_list "" "" "" Easy_format.list (hd::tl)
+      mk_list "" "" "" Easy_format.list (hd1::hd2::tl)
     end
 
 (*
@@ -627,14 +637,14 @@ let mk_const (c:t_constant) : Easy_format.t =
                  ^ b0_type_to_string c.c_type ^ " =")
       in
       let purity = ref true in
-      mk_label 2 true `Auto ty (mk_list "" "" ";}" st [mk_movable purity false c_init])
+      mk_label 2 true `Auto ty (mk_list "" "" ";}" st [mk_movable false purity false c_init])
     else
       let ty =
         mk_atom ("pub const " ^ id2_to_string c.c_name ^ ": "
                  ^ b0_type_to_string c.c_type ^ " =")
       in
       let purity = ref true in
-      mk_label 2 true `Auto ty (mk_list "" "" ";" st [mk_expr purity false c_init])
+      mk_label 2 true `Auto ty (mk_list "" "" ";" st [mk_expr false purity false c_init])
 (*
 let mk_var (v:t_variable) : Easy_format.t option =
   match v.v_name with
@@ -724,10 +734,10 @@ let mk_proc_body (p:t_procedure) : Easy_format.t =
       | _::_ -> mk_list "return (" "," ")" Easy_format.list (List.map mk_ret_id p.p_args_out)
     in
     let purity = ref true in
-    let s = mk_subst purity s in
+    let s = mk_subst false purity s in
     let s =
       if !purity then s
-      else mk_list "state.with(|st| {" "" "} )" Easy_format.list [s]
+      else mk_list "state.with(|st| {" "" "} );" Easy_format.list [s]
     in
     let body = mk_list "{" "" "}" st (vars@[s;return]) in
     mk_sequence_nl [proc;body]
@@ -744,8 +754,12 @@ let mk_init (vars:(t_id*t_b0_type) list) (init:t_b0_subst option) : Easy_format.
       | None -> {sub0_loc=Utils.dloc;sub0_desc=B0_Null}
       | Some s -> s
     in
-    let s = mk_subst (ref false) s in
-    mk_sequence_nl (List.rev (s::decls))
+    let s = mk_subst true (ref false) s in
+    let ret =
+      mk_list "State{" "," "}" Easy_format.list
+        (List.map (fun (id,_) -> mk_atom (id_to_string id)) vars)
+    in
+    mk_sequence_nl (List.rev (ret::s::decls))
 
 let mk_var (id,ty:t_id*t_b0_type) : Easy_format.t =
   mk_label 2 true `Auto (mk_atom (id_to_string id ^ ":"))
@@ -758,10 +772,9 @@ let mk_state (vars:t_variable list) (init:t_b0_subst option) : Easy_format.t lis
   if vars = [] then []
   else
     [
-      mk_atom "use std::cell::RefCell";
       mk_list "struct State {" "," "}" Easy_format.list (List.map mk_var vars);
       mk_list "thread_local!{" "" "}" Easy_format.list
-        [mk_list "static state: RefCell<State> = RefCell::new(" "" ")"
+        [mk_list "static state: RefCell<State> = RefCell::new({" "" "})"
            Easy_format.list [(mk_init vars init)] ]
     ]
 
@@ -798,7 +811,7 @@ let package_to_format (pkg:t_package) : Easy_format.t =
     | [] -> deps
     | _::_ -> (mk_atom "use std::cell::RefCell;")::deps
   in
-  mk_list "" "" "" st ((mk_atom "#![allow(bad_style,dead_code,unused_mut,unused_imports)]\n")::(List.rev (body::(mk_atom "")::deps)))
+  mk_list "" "" "" st ((mk_atom "#![allow(bad_style,dead_code,unused_mut,unused_imports,unused_variables,unused_assignments)]\n")::(List.rev (body::(mk_atom "")::deps)))
 
 let print_package (out:out_channel) (pkg:t_package) : unit Error.t_result =
   try Ok (Easy_format.Pretty.to_channel out (package_to_format pkg))

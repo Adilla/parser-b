@@ -41,18 +41,38 @@ let b0_unary_op_to_string : t_b0_unary_op -> string = function
   | B0_Negation -> "!"
   | B0_Minus -> "-"
 
-let is_valid_ident (_:string) : bool = true (*FIXME*)
+let reserved_list = [
+    "as"; "break"; "const"; "continue"; "crate"; "else"; "enum"; "extern"; "false";
+    "fn"; "for"; "if"; "impl"; "in"; "let"; "loop"; "match"; "mod"; "move"; "mut";
+    "pub"; "ref"; "return"; "self"; "Self"; "static"; "struct"; "super"; "trait";
+    "true"; "type"; "unsafe"; "use"; "where"; "while"; "abstract"; "become"; "box";
+    "do"; "final"; "macro"; "override"; "priv"; "typeof"; "unsized"; "virtual";
+    "yield"; "union"; "dyn"]
+
+(*   let reserved = Hashtbl.create 47 *)
+module SSet = Set.Make(String)
+let reserved_set = List.fold_left (fun x y -> SSet.add y x) SSet.empty reserved_list
+
+let is_valid_ident (id:string) : bool =
+  let reg = Str.regexp {|\([a-zA-Z][a-zA-Z0-9_]*\)\|\(_[a-zA-Z0-9_]+\)$|} in
+  not (SSet.mem id reserved_set) &&
+  (Str.string_match reg id 0)
 
 let get_rust_ident (lc:Utils.loc) (s:string) : string =
   if is_valid_ident s then s
-  else Error.raise_exn lc "" (*FIXME*)
+  else Error.raise_exn lc ("The string '"^s^"' is not a valid rust identifier.")
 
 let pkg_to_string (x:t_pkg_id) : string =
   let lid = pkg_to_lident x in
   get_rust_ident lid.lid_loc lid.lid_str
 
-let ident_to_string (x:ident) : string option =
-  let s = ident_to_string x in 
+(*
+let ident_to_string lc (x:ident) : string =
+  get_rust_ident lc (ident_to_string x)
+*)
+
+let ident_to_string_opt (x:ident) : string option =
+  let s = Codegen.ident_to_string x in 
   if is_valid_ident s then Some s
   else None
 
@@ -64,16 +84,16 @@ let id2_to_string (x:t_id_2) : string =
   match x with
   | Intern id -> id_to_string id
   | Extern (mch,id) ->
-    begin match ident_to_string id with
+    begin match ident_to_string_opt id with
       | None -> assert false (*FIXME*)
       | Some id -> pkg_to_string mch ^ "::" ^ id
     end
 
 let type_id_to_string (t:t_type_id) : string option =
 match t.t_nspace with
-  | None -> ident_to_string t.t_id
+  | None -> ident_to_string_opt t.t_id
   | Some ns ->
-    begin match ident_to_string ns, ident_to_string t.t_id with
+    begin match ident_to_string_opt ns, ident_to_string_opt t.t_id with
       | Some ns, Some id -> Some (ns ^ "::" ^ id)
       | _, _ -> None
     end
@@ -100,21 +120,6 @@ let mk_infix_op (op:t_b0_binary_op) (e1:Easy_format.t) (e2:Easy_format.t) : Easy
              wrap_body = `Wrap_atoms;
              indent_body = 2 } in
   mk_list "" (b0_binary_op_to_string op) "" st [e1;e2]
-
-(*
-let mk_fun_app (f:Easy_format.t) (args:Easy_format.t Nlist.t) : Easy_format.t  =
-  let st = { Easy_format.list with
-             Easy_format.space_after_opening = false;
-             stick_to_label = false;
-             space_before_separator = false;
-             space_after_separator = true;
-             separators_stick_left = false;
-             space_before_closing = false;
-             align_closing = false;
-             wrap_body = `Wrap_atoms;
-             indent_body = 2 } in
-  mk_label 2 false `Auto f (mk_list "(" "," ")" st (Nlist.to_list args))
-*)
 
 let mk_array_access (f:Easy_format.t) (args:Easy_format.t Nlist.t) : Easy_format.t  =
   let st = { Easy_format.list with
@@ -557,7 +562,7 @@ let mk_dep (dep,_:t_pkg_id*_) =
 let mk_type (ty:t_type) : Easy_format.t =
   match ty.ty_def with
   | D_Alias (pkg,id) ->
-    begin match ident_to_string id with
+    begin match ident_to_string_opt id with
       | None -> assert false (*FIXME*)
       | Some id -> mk_atom ("pub type " ^ id2_to_string ty.ty_name ^ " = "
                             ^ pkg_to_string pkg ^ "::" ^ id ^ ";")
@@ -569,52 +574,13 @@ let mk_type (ty:t_type) : Easy_format.t =
       let hd2 = mk_atom ("pub const " ^ id2_to_string ty.ty_name ^ "_size : i32 = "
                         ^ string_of_int (List.length elts) ^";") in
       let tl = List.mapi (fun i e ->
-          match ident_to_string e with
+          match ident_to_string_opt e with
           | None -> assert false (*FIXME*)
           | Some e -> mk_atom ("pub const " ^ e ^ ": " ^ id2_to_string ty.ty_name ^ " = " ^ string_of_int i ^ ";")
         )  elts in
       mk_list "" "" "" Easy_format.list (hd1::hd2::tl)
     end
 
-(*
-
-let mk_fun (f:t_fun) : Easy_format.t =
-  let pr = mk_atom ("pub fn " ^ id_to_string f.f_name) in
-  let args_in = List.map (mk_arg_in) (Nlist.to_list f.f_args) in
-  let proc =
-    let st = { Easy_format.list with
-               Easy_format.space_after_opening = false;
-               stick_to_label = false;
-               space_before_separator = false;
-               space_after_separator = true;
-               separators_stick_left = true;
-               space_before_closing = false;
-               align_closing = false;
-               wrap_body = `Never_wrap;
-               indent_body = 3 }
-    in
-    let args = mk_list "(" "," ") -> " st (args_in) in
-    let ret_ty = mk_atom (b0_type_to_string f.f_ret.exp0_type) in
-    let args = mk_label 2 false `Auto args (mk_list "" "" "" st [ret_ty]) in
-    mk_label 2 false `Always_rec pr args
-  in
-  let st = { Easy_format.list with
-             Easy_format.space_after_opening = true;
-             stick_to_label = false;
-             space_before_separator = false;
-             space_after_separator = false;
-             separators_stick_left = false;
-             space_before_closing = true;
-             align_closing = true;
-             wrap_body = `Force_breaks;
-             indent_body = 3 }
-  in
-  let return =
-    mk_label 2 true `Auto (mk_atom "return") (mk_expr false f.f_ret)
-  in
-  let body = mk_list "{" "" "}" st ([return]) in
-  mk_sequence_nl [proc;body]
-*)
 let mk_const (c:t_constant) : Easy_format.t =
   match c with
   | { c_init=Promoted mch} ->
@@ -645,39 +611,7 @@ let mk_const (c:t_constant) : Easy_format.t =
       in
       let purity = ref true in
       mk_label 2 true `Auto ty (mk_list "" "" ";" st [mk_expr false purity false c_init])
-(*
-let mk_var (v:t_variable) : Easy_format.t option =
-  match v.v_name with
-  | Intern id ->
-    Some (mk_label 2 true `Auto
-            (mk_atom ("static " ^ id_to_string id ^ ": RefCell<" ^ b0_type_to_string v.v_type ^ "> = "))
-            (mk_list "RefCell::new(" "" ");" Easy_format.list [get_default_value v.v_type])
-         )
-  | Extern _ -> None
 
-let mk_var_setter (v:t_variable) : Easy_format.t option =
-  match v.v_name with
-  | Intern id ->
-    Some (mk_label 2 true `Auto
-            (mk_atom ("fn _set_" ^ id_to_string id ^ "(value:" ^ b0_type_to_string v.v_type ^ ") {"))
-            (mk_atom (id_to_string id ^ ".with(|global_var| *global_var.borrow_mut() = value) }")))
-  | Extern _ -> None
-
-let mk_var_getter (v:t_variable) : Easy_format.t =
-  match v.v_name with
-  | Intern id ->
-    mk_label 2 true `Auto
-      (mk_atom ("pub fn _get_" ^ id_to_string id ^ "() -> " ^ b0_type_to_string v.v_type ^ " {"))
-      (mk_atom (id_to_string id ^ ".with(|global_var| global_var.borrow().clone()) }"))
-  | Extern (pkg,id) ->
-    begin match ident_to_string id with
-      | None -> assert false (*FIXME*)
-      | Some id ->
-        mk_atom ("pub use " ^ pkg_to_string pkg ^ "::_get_" ^ id ^ ";")
-    end
-
-
-*)
 let mk_ret_id (a:t_arg) : Easy_format.t = mk_atom (id2_to_string a.arg_name)
 
 let mk_ret_decl (a:t_arg) : Easy_format.t =

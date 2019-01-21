@@ -241,11 +241,13 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
   ('mr,'cl,Btype.t) T.expression -> t_b0_expr = fun f e ->
   let add_lt exp0_desc =
     { exp0_loc = e.T.exp_loc;
-      exp0_type = (match to_b0_type e.T.exp_typ with
+      exp0_type = 
+        (match to_b0_type e.T.exp_typ with
         | Some ty -> ty
         | None  ->
           Error.raise_exn e.T.exp_loc
-            "This expression has type ... thus it is not implementable."); (*FIXME*)
+            ("This expression has type '" ^ Btype.to_string e.T.exp_typ 
+             ^"'. This is not a valid B0-expression."));
       exp0_desc }
   in
   match e.T.exp_desc with
@@ -253,8 +255,10 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
   | T.Ident T.K_Global (id,ki) ->
     begin match f ki with
       | IK_Other ki -> add_lt (B0_Global_Ident({lid_str=id;lid_loc=e.T.exp_loc},ki))
-      | IK_Concrete_Set _ | IK_Abstract_Set _ ->
-        Error.raise_exn e.T.exp_loc "This is not a valid B0 expression (Abstract or concrete set)."
+      | IK_Concrete_Set _ ->
+        Error.raise_exn e.T.exp_loc "A concrete set is not a valid B0-expression."
+      | IK_Abstract_Set _ ->
+        Error.raise_exn e.T.exp_loc "an abstract set is not a valid B0-expression."
     end
   | T.Builtin_0 bi ->
     begin match to_b0_constant bi with
@@ -305,8 +309,10 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
         begin match (to_b0_expr f e1).exp0_desc with
           | B0_Builtin_0 (B0_Integer j) ->
             if (Int32.of_int i) = j then (j,to_b0_expr f e2)
-            else Error.raise_exn e1.T.exp_loc "Ill-formed array."
-          | _ -> Error.raise_exn e1.T.exp_loc "Ill-formed array."
+            else Error.raise_exn e1.T.exp_loc
+                ("This is not a valid B0-array. The literal '"^string_of_int i^"' is expected here.")
+          | _ -> Error.raise_exn e1.T.exp_loc
+                   "This is not a valid B0-array. An integer literal is expected here."
         end
       | _ -> Error.raise_exn e.T.exp_loc "Ill-formed array."
     in
@@ -318,18 +324,18 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
     add_lt (B0_Record (List.map (fun (id,e) ->
         (id,to_b0_expr f e)) (Nlist.to_list lst) ))
   | T.Dollar _ ->
-    Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Dollar)."
+    Error.raise_exn e.T.exp_loc "The dollar expression s is not a valid B0-expression."
   | T.Sequence _ ->
-    Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Sequence)."
+    Error.raise_exn e.T.exp_loc "A sequence is not a valid B0-expression."
   | T.Comprehension _ ->
-    Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Comprehension)."
+    Error.raise_exn e.T.exp_loc "A set is not a valid B0-expression."
   | T.Binder _ ->
-    Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Binder)."
+    Error.raise_exn e.T.exp_loc "Such binder is not a valid B0-expression."
   | T.Record_Field_Access (e,fd) ->
     let e = to_b0_expr f e in
     add_lt (B0_Record_Access (e,fd))
   | T.Record_Type _ ->
-    Error.raise_exn e.T.exp_loc "This is not a valid B0-expression (Record type)."
+    Error.raise_exn e.T.exp_loc "A record type is not a valid B0-expression."
 
 and get_array_init : 'mr 'cl. Utils.loc -> (('mr,'cl) V.t_global_ident -> t_full_ident_kind) ->
   ('mr,'cl,Btype.t) T.expression ->
@@ -460,7 +466,9 @@ let rec to_b0_subst : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind)
     let aux v =
       match to_b0_type v.T.bv_typ with
       | Some ty -> (mk_lident v.T.bv_loc v.T.bv_id,ty)
-      | None -> assert false (*FIXME*)
+      | None -> Error.raise_exn v.T.bv_loc
+                  ("The variable '"^v.T.bv_id^"' has type '"^
+                   Btype.to_string v.T.bv_typ^"'. This is not a valid B0-type.")
     in
     let vars = Nlist.map aux vars in
     add_loc (B0_Var (vars,ss))
@@ -541,7 +549,7 @@ let get_imp_types (concrete_sets:((G.t_ref,G.t_concrete) T.symb*string list) lis
       { ty_name; ty_def=D_Int }::lst
   in
   let lst = List.fold_left add_concrete_set [] concrete_sets in
-  List.fold_left add_abstract_set lst abstract_sets (*FIXME List.rev*)
+  List.rev (List.fold_left add_abstract_set lst abstract_sets)
 
 let from_imp_val (x:(G.t_ref,V.t_imp_val) V.t_global_ident) : t_full_ident_kind =
   let get_pkg : (G.t_ref,G.t_concrete) G.t_decl -> _ = function
@@ -644,7 +652,10 @@ let get_imp_operations (op:(Global.t_ref,V.t_imp_op) T.operation) : t_procedure 
 let imp_to_package_exn (pkg_name:t_pkg_id) (imp:T.implementation) : t_package  =
   { pkg_name;
     pkg_dependencies =
-      get_dependencies imp.T.imp_sees imp.T.imp_imports imp.T.imp_extends; (*FIXME il peut en manquer*)
+      (* Some dependencies might be missing. For instance the type of some symbols
+       * declared in a seen machine may be declared in a machine that is neither
+       * senn imported nor extended. *)
+      get_dependencies imp.T.imp_sees imp.T.imp_imports imp.T.imp_extends;
     pkg_types = get_imp_types imp.T.imp_concrete_sets imp.T.imp_abstract_sets;
     pkg_constants = Utils.filter_map get_imp_constants imp.T.imp_values;
     pkg_variables = Utils.filter_map get_imp_variables imp.T.imp_concrete_variables;
@@ -662,7 +673,7 @@ let get_mch_types (concrete_sets:((G.t_mch,G.t_concrete) T.symb*string list) lis
       { ty_name=Extern(mch,s.T.sy_id); ty_def=D_Enum elts }::lst
     | G.D_Seen _ -> lst
   in
-  let add_abstract_set lst (s:(G.t_mch,G.t_concrete)T.symb) = (*FIXME regarder clause value*)
+  let add_abstract_set lst (s:(G.t_mch,G.t_concrete)T.symb) =
     match s.T.sy_src with
     | G.D_Machine loc ->
       { ty_name=Intern(mk_lident loc s.T.sy_id); ty_def=D_Int }::lst
@@ -671,7 +682,7 @@ let get_mch_types (concrete_sets:((G.t_mch,G.t_concrete) T.symb*string list) lis
     | G.D_Seen _ -> lst
   in
   let lst = List.fold_left add_concrete_set [] concrete_sets in
-  List.fold_left add_abstract_set lst abstract_sets (*FIXME List.rev*)
+  List.rev (List.fold_left add_abstract_set lst abstract_sets)
 
 let rec get_default_value (exp0_loc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
   let mk exp0_type exp0_desc = { exp0_loc; exp0_desc; exp0_type } in
@@ -680,25 +691,33 @@ let rec get_default_value (exp0_loc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
   | T_String -> mk ty (B0_Builtin_0 (B0_String ""))
   | T_Bool -> mk ty (B0_Builtin_0 B0_True)
   | T_Abstract _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
-  | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero)) (*FIXME*)
+  | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
   | T_Array _ -> mk ty (B0_Array [])
   | T_Record lst ->
     let aux (id,ty) = (mk_lident exp0_loc id,get_default_value exp0_loc ty) in
     mk ty (B0_Record (List.map aux lst))
 
 let get_mch_constant (c:(G.t_mch,G.t_concrete) T.symb) : t_constant option =
-(*   Printf.fprintf stderr "The type of symbol %s is %s.\n" c.T.sy_id (Btype.to_string c.T.sy_typ); (*FIXME*) *)
   let aux c_name =
     match to_b0_type c.T.sy_typ with
     | Some ty ->
-      Some { c_name; c_type = ty;
-             c_init = Init (get_default_value Utils.dloc (*FIXME*) ty) }
-    | None ->
-      let loc, name = match c_name with
-        | Intern lid -> lid.lid_loc, lid.lid_str
-        | Extern (pkg,id) -> pkg.lid_loc, id
+      let loc = match c_name with
+        | Intern lid -> lid.lid_loc
+        | Extern (pkg,_) -> pkg.lid_loc
       in
-      Error.raise_exn loc ("The type of the constant '"^name^"' is not a B0-type ("^Btype.to_string c.T.sy_typ^").")
+      Some { c_name; c_type = ty;
+             c_init = Init (get_default_value loc ty) }
+    | None ->
+      begin match c_name with
+        | Intern lid ->
+          Error.raise_exn lid.lid_loc
+            ("The type of the constant '"^lid.lid_str^"' is '"^
+             Btype.to_string c.T.sy_typ^"'. This is not a valid B0-type.")
+        | Extern (pkg,id) ->
+          Error.raise_exn pkg.lid_loc
+            ("The type of the constant '"^id^"' is '"^
+             Btype.to_string c.T.sy_typ^"'. This is not a valid B0-type.")
+      end
   in
   match c.T.sy_src with
   | G.D_Machine loc -> aux (Intern (mk_lident loc c.T.sy_id))
@@ -725,7 +744,11 @@ let get_mch_operation (op:(G.t_mch,V.t_mch_op) T.operation) : t_procedure =
       { arg_name=Intern(mk_lident v.T.arg_loc v.T.arg_id);
         arg_type=(match to_b0_type v.T.arg_typ with
             | Some ty -> ty
-            | None -> assert false (*FIXME*)) }
+            | None ->
+              Error.raise_exn v.T.arg_loc 
+                ("This is not a valid B0-expression. Its type is '"
+                 ^Btype.to_string v.T.arg_typ^"'.")
+          ) }
     in
     { p_name = op_name;
       p_is_local = false;
@@ -747,7 +770,7 @@ let get_mch_operation (op:(G.t_mch,V.t_mch_op) T.operation) : t_procedure =
 
 let mch_to_package_exn (pkg_name:t_pkg_id) (mch:T.machine) : t_package  =
   { pkg_name;
-    pkg_dependencies = get_dependencies mch.T.mch_sees [] [] (*FIXME*);
+    pkg_dependencies = get_dependencies mch.T.mch_sees [] [];
     pkg_types = get_mch_types mch.T.mch_concrete_sets mch.T.mch_abstract_sets;
     pkg_constants = Utils.filter_map get_mch_constant mch.T.mch_concrete_constants;
     pkg_variables = Utils.filter_map get_mch_variable mch.T.mch_concrete_variables;
@@ -760,7 +783,7 @@ let to_package (pkg_name:t_pkg_id) (comp:T.component) : t_package Error.t_result
     | T.Machine mch -> Ok (mch_to_package_exn pkg_name mch)
     | T.Refinement _ ->
       Error { Error.err_loc=comp.T.co_name.lid_loc;
-              err_txt="Machine or Implementation expected." }
+              err_txt="Machine or Implementation expected. Found a refinement." }
     | T.Implementation imp -> Ok (imp_to_package_exn pkg_name imp)
   with
   | Error.Error err -> Error err

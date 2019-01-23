@@ -1,12 +1,15 @@
 (library
- (name blib)
- (public_name blib)
- (flags (:standard -w -9))
- (libraries easy-format menhirLib qcheck str)
- (preprocess (pps ppx_deriving.std))
+  (name blib)
+  (public_name blib)
+  (flags (:standard -w -9))
+  (libraries easy-format menhirLib qcheck str)
+  (preprocess
+    (pps ppx_deriving.std bisect_ppx -conditional)
+  )
 )
 (menhir
   (flags --table --explain)
+  (infer false)
   (modules grammar))
 (ocamllex
   (modules lexer_base)) 

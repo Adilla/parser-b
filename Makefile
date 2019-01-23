@@ -26,8 +26,8 @@ btags:
 brandom:
 	dune build exe/brandom.exe
 
-test_random:
-	dune build exe/test_random_print_parse.exe && ./_build/default/exe/test_random_print_parse.exe
+test:
+	dune runtest --force
 
 doc:
 	dune build @doc

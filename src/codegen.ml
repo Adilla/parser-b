@@ -371,7 +371,7 @@ and get_array_range : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind)
     let rg1 = get_array_range f st in
     let rg2 = get_array_range f ed in
     begin match Nlist.to_list rg2 with
-      | [x] -> Nlist.from_list_exn ((Nlist.to_list rg1)@[x]) (*FIXME*)
+      | [x] -> Nlist.from_list_exn ((Nlist.to_list rg1)@[x])
       | _ -> Error.raise_exn e.T.exp_loc "Invalid array range."
     end
   |  _ -> Error.raise_exn e.T.exp_loc "Invalid array range."

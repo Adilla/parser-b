@@ -1,4 +1,3 @@
-open SyntaxCore
 open Codegen
 
 let mk_atom (s:string) : Easy_format.t =
@@ -52,13 +51,13 @@ let reserved_list = [
 module SSet = Set.Make(String)
 let reserved_set = List.fold_left (fun x y -> SSet.add y x) SSet.empty reserved_list
 
-let is_valid_ident (id:string) : bool =
+let is_valid (s:string) : bool =
   let reg = Str.regexp {|\([a-zA-Z][a-zA-Z0-9_]*\)\|\(_[a-zA-Z0-9_]+\)$|} in
-  not (SSet.mem id reserved_set) &&
-  (Str.string_match reg id 0)
+  Str.string_match reg s 0
 
 let get_rust_ident (lc:Utils.loc) (s:string) : string =
-  if is_valid_ident s then s
+  if SSet.mem s reserved_set then "_" ^ s 
+  else if is_valid s then s
   else Error.raise_exn lc ("The string '"^s^"' is not a valid rust identifier.")
 
 let pkg_to_rust_ident (x:t_pkg_id) : string =
@@ -66,9 +65,8 @@ let pkg_to_rust_ident (x:t_pkg_id) : string =
   get_rust_ident lid.lid_loc lid.lid_str
 
 let ident_to_rust_ident (x:ident) : string option =
-  let s = Codegen.ident_to_string x in 
-  if is_valid_ident s then Some s
-  else None
+  try Some (get_rust_ident Utils.dloc (ident_to_string x))
+  with Error.Error _ -> None
 
 let id_to_rust_ident (x:t_id) : string =
   let lid = id_to_lident x in
@@ -204,7 +202,9 @@ let rec is_lvalue e =
 let rec mk_expr (init:bool) (purity:bool ref) (paren:bool) (e0:t_b0_expr) : Easy_format.t =
   let add_paren_if_true b e = if b then add_par e else e in
   match e0.exp0_desc with
-  | B0_Global_Ident(_,IK_Variable (Some _)) -> assert false
+  | B0_Global_Ident(id,IK_Variable (Some pkg)) ->
+    Error.raise_exn e0.exp0_loc 
+      ("Access to the variable '"^(id_to_lident id).lid_str^"' from machine '"^(pkg_to_lident pkg).lid_str^"'.")
   (*FIXME on peut vraiment acceder directement a des var externes?*)
   (* mk_atom (pkg_to_string pkg^"::_get_"^id_to_string id^"()") *)
   | B0_Global_Ident (id,IK_Variable None) ->
@@ -456,7 +456,7 @@ let rec mk_subst (init:bool) (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
           | CS_Int e -> mk_atom (Int32.to_string e)
           | CS_Bool true -> mk_atom "true"
           | CS_Bool false -> mk_atom "false"
-          | CS_Enum qid -> mk_atom (qident_to_string qid)
+          | CS_Constant qid | CS_Enum qid -> mk_atom (qident_to_string qid)
         ) (Nlist.to_list lst) in
       let st = Easy_format.list in
       let whn = mk_list "" "," "=>" st lst in
@@ -520,7 +520,7 @@ let rec mk_subst (init:bool) (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
     let lhs = match is_var with
       | MIK_Variable ->
         if init then
-          assert false (*FIXME*)
+            mk_atom (id_to_rust_ident r)
         else
           begin
             purity := false;

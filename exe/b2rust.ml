@@ -107,8 +107,8 @@ let add_path x =
 
 let set_alstm_opt () = (*FIXME options*)
   Typechecker.allow_becomes_such_that_in_implementation := true;
-  Typechecker.allow_out_parameters_in_precondition := true
-(*   Global.set_extended_sees true *)
+  Typechecker.allow_out_parameters_in_precondition := true;
+  Visibility.extended_sees := true
 
 let args = [
   ("-c", Arg.Set continue_on_error,   "Continue on error" );

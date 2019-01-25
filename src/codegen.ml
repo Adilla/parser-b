@@ -121,6 +121,7 @@ type t_case =
   | CS_Int of Int32.t
   | CS_Bool of bool
   | CS_Enum of qident
+  | CS_Constant of qident
 
 type t_sub0_desc =
   | B0_Null
@@ -218,17 +219,22 @@ let to_b0_type (ty:Btype.t) : t_b0_type option =
   | Btype.T_Power ty0 ->
     begin match Btype.view ty0 with
       | Btype.T_Product (rg,tg) ->
-        let tg = aux tg in
-        let index = match Btype.view rg with
+        let get_range rg = match Btype.view rg with
           | Btype.T_Int -> I_Int
           | Btype.T_Bool -> I_Bool
+          | Btype.T_Abstract_Set (Btype.T_Current,t_id) (*FIXME*)
           | Btype.T_Concrete_Set (Btype.T_Current,t_id) ->
             I_Enum { t_nspace=None; t_id }
+          | Btype.T_Abstract_Set (Btype.T_Seen m,t_id) (*FIXME*)
           | Btype.T_Concrete_Set (Btype.T_Seen m,t_id) ->
             I_Enum { t_nspace=Some m; t_id }
           | _ -> raise Local_Exn
         in
-        T_Array (index,tg)
+        let rec mk_array rg tg = match Btype.view rg with
+          | Btype.T_Product (a,b) -> mk_array a (T_Array(get_range b,tg))
+          | _ -> T_Array(get_range rg,tg)
+        in
+        mk_array rg (aux tg)
       | _ -> raise Local_Exn
     end
   | Btype.T_Record lst -> T_Record (List.map (fun (id,ty) -> (id,aux ty)) lst)
@@ -237,6 +243,24 @@ let to_b0_type (ty:Btype.t) : t_b0_type option =
   try Some(aux ty)
   with Local_Exn -> None
 
+let rec get_default_value (exp0_loc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
+  let mk exp0_type exp0_desc = { exp0_loc; exp0_desc; exp0_type } in
+  match ty with
+  | T_Int -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
+  | T_String -> mk ty (B0_Builtin_0 (B0_String ""))
+  | T_Bool -> mk ty (B0_Builtin_0 B0_True)
+  | T_Abstract _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
+  | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
+  | T_Array _ -> mk ty (B0_Array [])
+  | T_Record lst ->
+    let aux (id,ty) = (mk_lident exp0_loc id,get_default_value exp0_loc ty) in
+    mk ty (B0_Record (List.map aux lst))
+
+let mk_int i =
+  { exp0_loc = Utils.dloc;
+    exp0_type = T_Int;
+    exp0_desc=B0_Builtin_0 (B0_Integer i) }
+    
 let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) ->
   ('mr,'cl,Btype.t) T.expression -> t_b0_expr = fun f e ->
   let add_lt exp0_desc =
@@ -291,15 +315,24 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
   | T.Builtin_2 (Power,arg1,arg2) ->
     add_lt (B0_Builtin_2 (B0_Power,to_b0_expr f arg1,to_b0_expr f arg2))
   | T.Builtin_2 (Application,ff,arg) ->
-    let ff = to_b0_expr f ff in
-    let rec get_args arg =
-      match arg.T.exp_desc with
-      | T.Builtin_2 (Couple _,a1,a2) -> Nlist.cons (to_b0_expr f a1) (get_args a2)
-      | _ -> Nlist.make1 (to_b0_expr f arg)
-    in
-    let args = get_args arg in
-    add_lt (B0_Array_Access(ff,args))
-
+    begin match (try Some (to_b0_expr f ff) with _ -> None) with
+      | Some ff ->
+        begin
+          let rec get_args arg =
+            match arg.T.exp_desc with
+            | T.Builtin_2 (Couple _,a1,a2) ->
+              Nlist.cons (to_b0_expr f a1) (get_args a2)
+            | _ -> Nlist.make1 (to_b0_expr f arg)
+          in
+          let args = get_args arg in
+          add_lt (B0_Array_Access(ff,args))
+        end
+      | None ->
+        begin match to_b0_type e.T.exp_typ with
+          | None -> assert false (*FIXME*)
+          | Some typ -> get_default_value e.T.exp_loc typ
+        end
+    end
   | T.Builtin_2 (_,_,_) ->
     Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
   | T.Pbool p -> pred_to_b0_expr f p
@@ -360,8 +393,10 @@ and get_array_range : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind)
     begin match f ki with
       | IK_Concrete_Set q_nspace ->
         Nlist.make1 (R_Concrete_Set { q_nspace; q_id=mk_lident e.T.exp_loc id })
-      | IK_Abstract_Set _ | IK_Other _ ->
-        Error.raise_exn e.T.exp_loc "Invalid array range."
+      | IK_Other IK_Constant _ | IK_Abstract_Set _  ->
+        Nlist.make1 (R_Interval(mk_int Int32.zero,mk_int (Int32.of_int 7))) (*FIXME*)
+      | IK_Other IK_Enum _ -> Error.raise_exn e.T.exp_loc "Invalid array range (enum)."
+      | IK_Other IK_Variable _ -> Error.raise_exn e.T.exp_loc "Invalid array range (variable)."
     end
   | T.Builtin_2 (Interval,int_start,int_end) ->
     let min = to_b0_expr f int_start in
@@ -417,6 +452,7 @@ let get_enum f (e:(_,_,Btype.t) T.expression) : t_case =
     let q_id = mk_lident e.T.exp_loc id in
     begin match f ki with
       | IK_Other IK_Enum q_nspace -> CS_Enum { q_nspace; q_id }
+      | IK_Other IK_Constant q_nspace -> CS_Constant { q_nspace; q_id }
       | _ -> Error.raise_exn e.T.exp_loc "Invalid case."
     end
   | _ -> Error.raise_exn e.T.exp_loc "Invalid case."
@@ -521,7 +557,7 @@ let get_dependencies sees imports extends : (t_pkg_id*t_dep_kind) list =
   let lst3 = List.map (fun x -> (x,DK_Extends)) extends in
   lst1@lst2@lst3
 
-let get_imp_types (concrete_sets:((G.t_ref,G.t_concrete) T.symb*string list) list)
+let get_imp_types (ref:t_id) (concrete_sets:((G.t_ref,G.t_concrete) T.symb*string list) list)
     (abstract_sets:(G.t_ref,G.t_concrete) T.symb list) : t_type list =
   let add_concrete_set lst (s,elts) : t_type list =
     match s.T.sy_src with
@@ -529,8 +565,7 @@ let get_imp_types (concrete_sets:((G.t_ref,G.t_concrete) T.symb*string list) lis
       { ty_name=Intern (mk_lident loc s.T.sy_id); ty_def=D_Enum elts }::lst
     | G.D_Included_Or_Imported _ | G.D_Seen _ -> lst
     | G.D_Redeclared G.Implicitely ->
-      let mch = assert false (*FIXME*) in
-      { ty_name=Extern(mch,s.T.sy_id); ty_def=D_Enum elts }::lst
+      { ty_name=Extern(ref,s.T.sy_id); ty_def=D_Enum elts }::lst
     | G.D_Redeclared G.By_Included_Or_Imported mch ->
       let ty_name = Extern(mch,s.T.sy_id) in
       { ty_name; ty_def=D_Alias (mch,s.T.sy_id) }::lst
@@ -588,13 +623,15 @@ let get_imp_constants (v,e:T.value*(G.t_ref,V.t_imp_val,Btype.t) T.expression) :
   match v.T.val_kind with
   | T.VK_Abstract_Set _ -> None
   | T.VK_Concrete_Constant _ ->
-    Some { c_name = Intern(mk_lident v.T.val_loc v.T.val_id);
-           c_type = (match to_b0_type e.T.exp_typ with
-               | Some ty -> ty
-               | None -> assert false (*FIXME*) );
-           c_init = Init (to_b0_expr from_imp_val e) }
+    begin match to_b0_type e.T.exp_typ with
+      | None -> None (*FIXME*)
+      | Some c_typ ->
+        Some { c_name = Intern(mk_lident v.T.val_loc v.T.val_id);
+               c_type = c_typ;
+               c_init = Init (to_b0_expr from_imp_val e) }
+    end
 
-let get_imp_variables (v:(G.t_ref,G.t_concrete) T.symb) : t_variable option =
+let get_imp_variables (ref:t_id) (v:(G.t_ref,G.t_concrete) T.symb) : t_variable option =
   let aux v_name =
     Some { v_name; v_type=(match to_b0_type v.T.sy_typ with
         | Some ty -> ty
@@ -607,8 +644,7 @@ let get_imp_variables (v:(G.t_ref,G.t_concrete) T.symb) : t_variable option =
   | G.D_Redeclared G.By_Included_Or_Imported mch ->
     aux (Extern(mch,v.T.sy_id))
   | G.D_Redeclared G.Implicitely ->
-    let mch = assert false (*FIXME*) in
-    aux (Extern(mch,v.T.sy_id))
+    aux (Extern(ref,v.T.sy_id))
 
 let get_imp_operations (op:(Global.t_ref,V.t_imp_op) T.operation) : t_procedure =
   match op with
@@ -656,9 +692,9 @@ let imp_to_package_exn (pkg_name:t_pkg_id) (imp:T.implementation) : t_package  =
        * declared in a seen machine may be declared in a machine that is neither
        * senn imported nor extended. *)
       get_dependencies imp.T.imp_sees imp.T.imp_imports imp.T.imp_extends;
-    pkg_types = get_imp_types imp.T.imp_concrete_sets imp.T.imp_abstract_sets;
+    pkg_types = get_imp_types imp.imp_refines imp.T.imp_concrete_sets imp.T.imp_abstract_sets;
     pkg_constants = Utils.filter_map get_imp_constants imp.T.imp_values;
-    pkg_variables = Utils.filter_map get_imp_variables imp.T.imp_concrete_variables;
+    pkg_variables = Utils.filter_map (get_imp_variables imp.imp_refines) imp.T.imp_concrete_variables;
     pkg_procedures = List.map get_imp_operations imp.T.imp_operations;
     pkg_init = Utils.map_opt (to_b0_subst from_imp_op from_imp_mut) imp.T.imp_initialisation
   }
@@ -684,18 +720,6 @@ let get_mch_types (concrete_sets:((G.t_mch,G.t_concrete) T.symb*string list) lis
   let lst = List.fold_left add_concrete_set [] concrete_sets in
   List.rev (List.fold_left add_abstract_set lst abstract_sets)
 
-let rec get_default_value (exp0_loc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
-  let mk exp0_type exp0_desc = { exp0_loc; exp0_desc; exp0_type } in
-  match ty with
-  | T_Int -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
-  | T_String -> mk ty (B0_Builtin_0 (B0_String ""))
-  | T_Bool -> mk ty (B0_Builtin_0 B0_True)
-  | T_Abstract _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
-  | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
-  | T_Array _ -> mk ty (B0_Array [])
-  | T_Record lst ->
-    let aux (id,ty) = (mk_lident exp0_loc id,get_default_value exp0_loc ty) in
-    mk ty (B0_Record (List.map aux lst))
 
 let get_mch_constant (c:(G.t_mch,G.t_concrete) T.symb) : t_constant option =
   let aux c_name =
@@ -707,7 +731,8 @@ let get_mch_constant (c:(G.t_mch,G.t_concrete) T.symb) : t_constant option =
       in
       Some { c_name; c_type = ty;
              c_init = Init (get_default_value loc ty) }
-    | None ->
+    | None -> None
+(* FIXME
       begin match c_name with
         | Intern lid ->
           Error.raise_exn lid.lid_loc
@@ -718,6 +743,7 @@ let get_mch_constant (c:(G.t_mch,G.t_concrete) T.symb) : t_constant option =
             ("The type of the constant '"^id^"' is '"^
              Btype.to_string c.T.sy_typ^"'. This is not a valid B0-type.")
       end
+*)
   in
   match c.T.sy_src with
   | G.D_Machine loc -> aux (Intern (mk_lident loc c.T.sy_id))
@@ -726,11 +752,9 @@ let get_mch_constant (c:(G.t_mch,G.t_concrete) T.symb) : t_constant option =
 
 let get_mch_variable (v:(G.t_mch,G.t_concrete) T.symb) : t_variable option =
   let aux v_name =
-    Some { v_name;
-           v_type=(match to_b0_type v.T.sy_typ with
-               | Some ty -> ty
-               | None -> assert false (*FIXME*))
-         }
+    match to_b0_type v.T.sy_typ with
+    | None -> None (*FIXME*)
+    | Some v_type -> Some { v_name; v_type }
   in
   match v.T.sy_src with
   | G.D_Machine loc -> aux (Intern (mk_lident loc v.T.sy_id))

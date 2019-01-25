@@ -110,6 +110,7 @@ type t_case =
   | CS_Int of Int32.t
   | CS_Bool of bool
   | CS_Enum of qident
+  | CS_Constant of qident
 
 type t_sub0_desc =
   | B0_Null

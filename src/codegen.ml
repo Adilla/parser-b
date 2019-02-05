@@ -298,7 +298,7 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
     add_lt (B0_Builtin_2(B0_Difference,to_b0_expr f arg,
                          add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
   | T.Builtin_1 (_,_) ->
-    Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
+    Error.raise_exn e.T.exp_loc "This is not a valid B0 unary operator."
   | T.Builtin_2 (Product,arg1,arg2) ->
     if is_int e.T.exp_typ then
       add_lt (B0_Builtin_2 (B0_Product,to_b0_expr f arg1,to_b0_expr f arg2))
@@ -321,10 +321,10 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
           let rec get_args arg =
             match arg.T.exp_desc with
             | T.Builtin_2 (Couple _,a1,a2) ->
-              Nlist.cons (to_b0_expr f a1) (get_args a2)
+              Nlist.cons (to_b0_expr f a2) (get_args a1) 
             | _ -> Nlist.make1 (to_b0_expr f arg)
           in
-          let args = get_args arg in
+          let args = Nlist.rev (get_args arg) in
           add_lt (B0_Array_Access(ff,args))
         end
       | None ->
@@ -333,8 +333,8 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
           | Some typ -> get_default_value e.T.exp_loc typ
         end
     end
-  | T.Builtin_2 (_,_,_) ->
-    Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
+  | T.Builtin_2 (op,_,_) ->
+    Error.raise_exn e.T.exp_loc ("This is not a valid B0 binary operator ("^SyntaxCore.builtin2_to_string op^").")
   | T.Pbool p -> pred_to_b0_expr f p
   | T.Extension nle ->
     let aux i e = match e.T.exp_desc with
@@ -535,9 +535,13 @@ let rec to_b0_subst : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind)
   | T.Affectation (T.Function(ff,args),e) ->
     let ki = g ff.T.mv_kind in
     let ff = mk_lident ff.T.mv_loc ff.T.mv_id in
-    let args = Nlist.map (to_b0_expr f) args in
+    let rec to_b0_expr_list e = match e.T.exp_desc with
+      | T.Builtin_2 (Couple _,e1,e2) -> (to_b0_expr_list e1)@[to_b0_expr f e2]
+      | _ -> [to_b0_expr f e]
+    in
+    let args = List.flatten (List.map to_b0_expr_list (Nlist.to_list args)) in
     let e = to_b0_expr f e in
-    add_loc (B0_Affectation (LHS_Array(ff,ki,args),e))
+    add_loc (B0_Affectation (LHS_Array(ff,ki,Nlist.from_list_exn args),e))
   | T.Affectation (T.Record (rd,fd),e) ->
     let rrd = mk_lident rd.T.mv_loc rd.T.mv_id in
     let e = to_b0_expr f e in
@@ -574,13 +578,15 @@ let get_imp_types (ref:t_id) (concrete_sets:((G.t_ref,G.t_concrete) T.symb*strin
     match s.T.sy_src with
     | G.D_Machine loc | G.D_Redeclared G.By_Machine loc ->
       { ty_name=Intern(mk_lident loc s.T.sy_id); ty_def=D_Int }::lst
-    | G.D_Included_Or_Imported _ | G.D_Seen _ -> lst
+    | G.D_Seen _ -> lst
+    | G.D_Included_Or_Imported mch ->
+      let ty_name = Extern(mch,s.T.sy_id) in
+      { ty_name; ty_def=D_Alias (mch,s.T.sy_id) }::lst
     | G.D_Redeclared G.By_Included_Or_Imported mch ->
       let ty_name = Extern(mch,s.T.sy_id) in
       { ty_name; ty_def=D_Alias (mch,s.T.sy_id) }::lst
     | G.D_Redeclared G.Implicitely ->
-      let mch = assert false (*FIXME*) in
-      let ty_name = Extern(mch,s.T.sy_id) in
+      let ty_name = Extern(ref,s.T.sy_id) in
       { ty_name; ty_def=D_Int }::lst
   in
   let lst = List.fold_left add_concrete_set [] concrete_sets in
@@ -684,7 +690,23 @@ let get_imp_operations (op:(Global.t_ref,V.t_imp_op) T.operation) : t_procedure 
       p_args_in = List.map to_arg op_in;
       p_args_out = List.map to_arg op_out;
       p_body = Body (to_b0_subst from_imp_op from_imp_mut op_body) }
- 
+
+let get_imported_constants (sy:(G.t_ref,G.t_concrete) T.symb) : t_constant option =
+  match sy.T.sy_src with
+  | G.D_Machine _ -> None
+  | G.D_Seen _ -> None
+  | G.D_Redeclared (G.By_Included_Or_Imported mch)
+  | G.D_Included_Or_Imported mch ->
+    begin match to_b0_type sy.T.sy_typ with
+      | None -> None (*FIXME*)
+      | Some c_typ ->
+        Some { c_name = Intern(mk_lident mch.lid_loc sy.T.sy_id);
+               c_type = c_typ;
+               c_init = Promoted mch }
+    end
+  | G.D_Redeclared _ -> None
+
+
 let imp_to_package_exn (pkg_name:t_pkg_id) (imp:T.implementation) : t_package  =
   { pkg_name;
     pkg_dependencies =
@@ -693,7 +715,7 @@ let imp_to_package_exn (pkg_name:t_pkg_id) (imp:T.implementation) : t_package  =
        * senn imported nor extended. *)
       get_dependencies imp.T.imp_sees imp.T.imp_imports imp.T.imp_extends;
     pkg_types = get_imp_types imp.imp_refines imp.T.imp_concrete_sets imp.T.imp_abstract_sets;
-    pkg_constants = Utils.filter_map get_imp_constants imp.T.imp_values;
+    pkg_constants = (Utils.filter_map get_imported_constants imp.T.imp_concrete_constants)@(Utils.filter_map get_imp_constants imp.T.imp_values);
     pkg_variables = Utils.filter_map (get_imp_variables imp.imp_refines) imp.T.imp_concrete_variables;
     pkg_procedures = List.map get_imp_operations imp.T.imp_operations;
     pkg_init = Utils.map_opt (to_b0_subst from_imp_op from_imp_mut) imp.T.imp_initialisation

@@ -46,7 +46,9 @@ let reserved_list = [
     "pub"; "ref"; "return"; "self"; "Self"; "static"; "struct"; "super"; "trait";
     "true"; "type"; "unsafe"; "use"; "where"; "while"; "abstract"; "become"; "box";
     "do"; "final"; "macro"; "override"; "priv"; "typeof"; "unsized"; "virtual";
-    "yield"; "union"; "dyn"]
+    "yield"; "union"; "dyn";
+    "state" (*not a rust keyword but used in the translation*)
+  ]
 
 module SSet = Set.Make(String)
 let reserved_set = List.fold_left (fun x y -> SSet.add y x) SSet.empty reserved_list
@@ -203,10 +205,7 @@ let rec mk_expr (init:bool) (purity:bool ref) (paren:bool) (e0:t_b0_expr) : Easy
   let add_paren_if_true b e = if b then add_par e else e in
   match e0.exp0_desc with
   | B0_Global_Ident(id,IK_Variable (Some pkg)) ->
-    Error.raise_exn e0.exp0_loc 
-      ("Access to the variable '"^(id_to_lident id).lid_str^"' from machine '"^(pkg_to_lident pkg).lid_str^"'.")
-  (*FIXME on peut vraiment acceder directement a des var externes?*)
-  (* mk_atom (pkg_to_string pkg^"::_get_"^id_to_string id^"()") *)
+    mk_atom (pkg_to_rust_ident pkg^"::state.with(|st| st.borrow()."^id_to_rust_ident id^".clone() )")
   | B0_Global_Ident (id,IK_Variable None) ->
     if init then mk_atom (id_to_rust_ident id)
     else
@@ -325,7 +324,7 @@ let rec b0_type_to_string_exn lc (ty:t_b0_type) : string =
   match ty with
   | T_Int -> "i32"
   | T_Bool -> "bool"
-  | T_String -> "String"
+  | T_String -> "&str"
   | T_Abstract ts ->
    begin match type_id_to_rust_ident ts with
      | Error s -> 
@@ -459,7 +458,7 @@ let rec mk_subst (init:bool) (purity:bool ref) (s0:t_b0_subst) : Easy_format.t =
           | CS_Constant qid | CS_Enum qid -> mk_atom (qident_to_string qid)
         ) (Nlist.to_list lst) in
       let st = Easy_format.list in
-      let whn = mk_list "" "," "=>" st lst in
+      let whn = mk_list "" "|" "=>" st lst in
       mk_label 4 true `Auto whn (mk_list "{" "" "}" Easy_format.list [mk_subst init purity s])
     in
     let clst = List.map aux (Nlist.to_list cases) in
@@ -700,12 +699,12 @@ let mk_proc_body (p:t_procedure) : Easy_format.t =
     mk_sequence_nl [proc;body]
   | Renames ts -> mk_atom ("pub use " ^qident_to_string ts^ ";")
 
-let mk_var_decl (id,ty:t_id*t_b0_type) : Easy_format.t =
+let mk_var_decl (v:t_variable) : Easy_format.t =
   mk_list 
-    ("let mut "^id_to_rust_ident id ^ ": " ^ b0_type_to_string_exn (id_to_lident id).lid_loc ty ^ " = ")
-    "" ";" Easy_format.list [get_default_value ty]
+    ("let mut "^id2_to_rust_ident v.v_name ^ ": " ^ b0_type_to_string_exn Utils.dloc v.v_type ^ " = ") (*FIXME*)
+    "" ";" Easy_format.list [get_default_value v.v_type]
 
-let mk_init (vars:(t_id*t_b0_type) list) (init:t_b0_subst option) : Easy_format.t =
+let mk_init (vars:t_variable list) (init:t_b0_subst option) : Easy_format.t =
     let decls = List.map mk_var_decl vars in
     let s = match init with
       | None -> {sub0_loc=Utils.dloc;sub0_desc=B0_Null}
@@ -714,24 +713,21 @@ let mk_init (vars:(t_id*t_b0_type) list) (init:t_b0_subst option) : Easy_format.
     let s = mk_subst true (ref false) s in
     let ret =
       mk_list "State{" "," "}" Easy_format.list
-        (List.map (fun (id,_) -> mk_atom (id_to_rust_ident id)) vars)
+        (List.map (fun v -> mk_atom (id2_to_rust_ident v.v_name)) vars)
     in
     mk_sequence_nl (List.rev (ret::s::decls))
 
-let mk_var (id,ty:t_id*t_b0_type) : Easy_format.t =
-  mk_label 2 true `Auto (mk_atom (id_to_rust_ident id ^ ":"))
-    (mk_atom (b0_type_to_string_exn (id_to_lident id).lid_loc ty))
+let mk_var (v:t_variable) : Easy_format.t =
+  mk_label 2 true `Auto (mk_atom ("pub " ^ id2_to_rust_ident v.v_name ^ ":"))
+    (mk_atom (b0_type_to_string_exn Utils.dloc v.v_type)) (*FIXME*)
 
 let mk_state (vars:t_variable list) (init:t_b0_subst option) : Easy_format.t list =
-  let vars = Utils.filter_map
-     (fun v -> match v.v_name with Intern id -> Some (id,v.v_type) | Extern _ -> None) vars
-  in
   if vars = [] then []
   else
     [
-      mk_list "struct State {" "," "}" Easy_format.list (List.map mk_var vars);
+      mk_list "pub struct State {" "," "}" Easy_format.list (List.map mk_var vars);
       mk_list "thread_local!{" "" "}" Easy_format.list
-        [mk_list "static state: RefCell<State> = RefCell::new({" "" "})"
+        [mk_list "pub static state: RefCell<State> = RefCell::new({" "" "})"
            Easy_format.list [(mk_init vars init)] ]
     ]
 

@@ -1,6 +1,6 @@
-.PHONY: clean bformat btags brandom btype b2sexp test_random test_bformat_with_coverage bdefs b2rust
+.PHONY: clean bformat btags brandom btype b2sexp test_random test_bformat_with_coverage bdefs b2rust bproject
 
-all: bformat btags brandom btypecheck b2sexp bdefs b2rust
+all: bformat btags brandom btypecheck b2sexp bdefs b2rust bproject
 
 bdefs:
 	dune build exe/bdefs.exe
@@ -22,6 +22,9 @@ btags:
 
 brandom:
 	dune build exe/brandom.exe
+
+bproject:
+	dune build exe/bproject.exe
 
 test_random:
 	dune build exe/test_random_print_parse.exe && ./_build/default/exe/test_random_print_parse.exe

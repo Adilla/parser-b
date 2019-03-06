@@ -174,6 +174,7 @@ let ident_to_token _ id =
 let space   = [' ' '\t']
 let ident   = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let int_lit = ['0'-'9']+
+let hexa_lit = '0' 'x' ['0'-'9' 'A'-'F']+
 let commented_line = "//" [^'\n']*
 (* let ren_ident = ident ( '.' ident )+ *)
 let def_file = '<' ['a'-'z' 'A'-'Z' '0'-'9' '_' '.']+ '>'
@@ -262,6 +263,12 @@ rule token = parse
   | ident as id { ident_to_token lexbuf.Lexing.lex_start_p id }
  
 (*   | ren_ident as id { REN_IDENT ( get_loc lexbuf , id ) } *)
+  | hexa_lit as s  {
+      match Int32.of_string_opt s with
+      | None -> err lexbuf "The literal is out of range."
+      | Some lit -> CONSTANT (SyntaxCore.Integer ( lit ))
+    }
+
   | int_lit as i  {
       match int_of_int_lit i with
       | None -> err lexbuf "The literal is out of range."

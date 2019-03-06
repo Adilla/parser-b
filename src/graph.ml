@@ -5,13 +5,10 @@ type t_stats = {
   refinements: int;
   implementations: int;
   toplevel_machines: int;
-  toplevel_base_machines: int;
-  included_machines: int;
-  imported_machines: int;
-  imported_base_machines: int;
+  imported_included_machines: int;
 }
 
-module Root = struct
+module Machine = struct
   type t = {
     (*out*)
     sees: t_vertex list;
@@ -19,28 +16,8 @@ module Root = struct
     (*in*)
     seen: t_vertex list;
     refined: t_vertex option;
-  }
-end
-
-module Imported = struct
-  type t = {
-    (*out*)
-    sees: t_vertex list;
-    includes: t_vertex list;
-    (*in*)
-    seen: t_vertex list;
-    refined: t_vertex option;
-    imported: t_vertex;
-  }
-end
-
-module Included = struct
-  type t = {
-    (*out*)
-    sees: t_vertex list;
-    includes: t_vertex list;
-    (*in*)
     included: t_vertex list;
+    imported: t_vertex option;
   }
 end
 
@@ -65,9 +42,7 @@ module Implementation = struct
 end
 
 type t_vertex_infos =
-  | RootMachine of Root.t
-  | ImportedMachine of Imported.t
-  | IncludedMachine of Included.t
+  | Machine of Machine.t
   | Refinement of Refinement.t
   | Implementation of Implementation.t
 
@@ -78,45 +53,36 @@ let create () = Hashtbl.create 47
 let set_seen_machine (graph:t) (sees:string) (seen:SyntaxCore.lident) : unit =
   match Hashtbl.find_opt graph seen.lid_str with
   | None -> assert false (*FIXME*)
-  | Some (RootMachine infos) ->
-    Hashtbl.replace graph seen.lid_str (RootMachine { infos with seen=sees::infos.seen })
-  | Some (ImportedMachine infos) ->
-    Hashtbl.replace graph seen.lid_str (ImportedMachine { infos with seen=sees::infos.seen })
-  | Some (IncludedMachine _) -> assert false
+  | Some (Machine infos) ->
+    Hashtbl.replace graph seen.lid_str (Machine { infos with seen=sees::infos.seen })
   | Some (Refinement _) -> assert false
   | Some (Implementation _) -> assert false
 
 let set_included_machine (graph:t) (included_by:string) (included:SyntaxCore.lident) : unit =
   match Hashtbl.find_opt graph included.lid_str with
   | None -> assert false (*FIXME*)
-  | Some (RootMachine {sees;includes;seen;refined}) ->
-    begin match seen, refined with
-      | _::_, _ -> assert false (*FIXME*)
-      | _, Some _ -> assert false (*FIXME*)
-      | [], None -> Hashtbl.replace graph included.lid_str
-                    (IncludedMachine {  sees; includes; included=[included_by] })
-    end
-  | Some (IncludedMachine infos) ->
+  | Some (Machine infos) ->
     Hashtbl.replace graph included.lid_str
-      (IncludedMachine { infos with included=included_by::infos.included })
-  | Some (ImportedMachine _) -> assert false
+      (Machine { infos with included=included_by::infos.included })
   | Some (Refinement _) -> assert false
   | Some (Implementation _) -> assert false
 
 let set_refined_machine (graph:t) (refined_by:string) (refined:SyntaxCore.lident) : unit =
   match Hashtbl.find_opt graph refined.lid_str with
   | None -> assert false (*FIXME*)
-  | Some (RootMachine infos) ->
+  | Some (Machine infos) ->
     begin match infos.refined with
-      | Some _ -> assert false (*FIXME*)
+      | Some refined_by_2 ->
+        begin
+          Error.print_error
+            { Error.err_loc=refined.lid_loc;
+              err_txt=("The machine '"^refined.lid_str^"' is refined twice; by '"
+                       ^refined_by_2^"' and by '"^refined_by^"'."); };
+          Hashtbl.replace graph refined.lid_str
+            (Machine { infos with refined=Some refined_by })
+        end
       | None -> Hashtbl.replace graph refined.lid_str
-                  (RootMachine { infos with refined=Some refined_by })
-    end
-  | Some (ImportedMachine infos) ->
-    begin match infos.refined with
-      | Some _ -> assert false (*FIXME*)
-      | None -> Hashtbl.replace graph refined.lid_str
-                  (ImportedMachine { infos with refined=Some refined_by })
+                  (Machine { infos with refined=Some refined_by })
     end
   | Some (Refinement infos) ->
     begin match infos.refined with
@@ -124,17 +90,17 @@ let set_refined_machine (graph:t) (refined_by:string) (refined:SyntaxCore.lident
       | None -> Hashtbl.replace graph refined.lid_str
                   (Refinement { infos with refined=Some refined_by })
     end
-  | Some (IncludedMachine _) -> assert false
   | Some (Implementation _) -> assert false
 
 let set_imported_machine (graph:t) (imported_by:string) (imported:SyntaxCore.lident) : unit =
   match Hashtbl.find_opt graph imported.lid_str with
   | None -> assert false (*FIXME*)
-  | Some (RootMachine {sees;includes;seen;refined}) ->
-    Hashtbl.replace graph imported.lid_str
-      (ImportedMachine {  sees; includes; seen; refined; imported=imported_by })
-  | Some (ImportedMachine _) -> assert false (*FIXME*)
-  | Some (IncludedMachine _) -> assert false (*FIXME*)
+  | Some (Machine infos) ->
+    begin match infos.imported with
+      | Some _ -> assert false (*FIXME*)
+      | None -> Hashtbl.replace graph imported.lid_str
+                  (Machine { infos with imported=Some imported_by })
+    end
   | Some (Refinement _) -> assert false
   | Some (Implementation _) -> assert false
 
@@ -145,13 +111,15 @@ let add_component (graph:t) (vertex:TSyntax.component) : unit =
       | Machine mch ->
         begin
           Hashtbl.add graph vertex.co_name.lid_str
-            (RootMachine {
+            (Machine {
                 sees =  List.map (fun lid -> lid.SyntaxCore.lid_str) mch.mch_sees;
                 includes =
                   (List.map (fun lid -> lid.SyntaxCore.lid_str) mch.mch_includes)@
                   (List.map (fun lid -> lid.SyntaxCore.lid_str) mch.mch_extends);
                 seen = [];
                 refined = None;
+                imported = None;
+                included = [];
               });
           List.iter (set_seen_machine graph vertex.co_name.lid_str) mch.mch_sees;
           List.iter (set_included_machine graph vertex.co_name.lid_str) mch.mch_includes;
@@ -191,57 +159,27 @@ let add_component (graph:t) (vertex:TSyntax.component) : unit =
     end
   | Some _ -> assert false (*FIXME*)
 
-let rec is_base_machine (graph:t) (v:t_vertex_infos) : bool =
-  match v with
-  | RootMachine { refined=None } | ImportedMachine { refined=None }
-  | Refinement { refined=None } | IncludedMachine _ -> true
-  | Implementation _ -> false
-  | RootMachine { refined=Some r }
-  | ImportedMachine { refined=Some r }
-  | Refinement { refined=Some r } ->
-    begin match Hashtbl.find_opt graph r with
-      | None -> assert false (*FIXME*)
-      | Some infos -> is_base_machine graph infos
-    end
-
 let rec get_refinements (graph:t) (mch_name:t_vertex) : t_vertex list =
   match Hashtbl.find_opt graph mch_name with
   | None -> assert false (*FIXME*)
-  | Some RootMachine { refined=None; _ } | Some ImportedMachine { refined=None; _ }
-  | Some Refinement { refined=None; _ } | Some IncludedMachine _
+  | Some Machine { refined=None; _ }
+  | Some Refinement { refined=None; _ }
   | Some Implementation _ -> []
-  | Some RootMachine { refined=Some r; _ }
-  | Some ImportedMachine { refined=Some r; _ }
+  | Some Machine { refined=Some r; _ }
   | Some Refinement { refined=Some r; _ } ->
     r::(get_refinements graph r)
 
 let get_statistics (graph:t) : t_stats =
   let aux _ v st =
     match v with
-    | RootMachine _ ->
-      let toplevel_base_machines =
-        if is_base_machine graph v then
-          st.toplevel_base_machines + 1
-        else st.toplevel_base_machines
-      in
+    | Machine { imported=None; included=[] } ->
       { st with components=st.components+1;
                 machines=st.machines+1;
-                toplevel_machines=st.toplevel_machines+1;
-                toplevel_base_machines }
-    | ImportedMachine _ ->
-      let imported_base_machines =
-        if is_base_machine graph v then
-          st.imported_base_machines + 1
-        else st.imported_base_machines
-      in
+                toplevel_machines=st.toplevel_machines+1 }
+    | Machine _ ->
       { st with components=st.components+1;
                 machines=st.machines+1;
-                imported_machines=st.imported_machines+1;
-                imported_base_machines }
-    | IncludedMachine _ ->
-      { st with components=st.components+1;
-                machines=st.machines+1;
-                included_machines=st.included_machines+1 }
+                imported_included_machines=st.imported_included_machines+1 }
     | Refinement _ ->
       { st with components=st.components+1;
                 refinements=st.refinements+1 }
@@ -251,8 +189,7 @@ let get_statistics (graph:t) : t_stats =
   in
   Hashtbl.fold aux graph 
     { components=0; machines=0; refinements=0; implementations=0;
-      toplevel_machines=0; toplevel_base_machines=0; included_machines=0;
-      imported_machines=0; imported_base_machines=0; }
+      toplevel_machines=0; imported_included_machines=0;  }
 
 let iter = Hashtbl.iter
 (* 

@@ -1,4 +1,4 @@
 (executables
- (names bformat btags btypecheck b2sexp b2rust brandom bdefs test_random_print_parse)
- (libraries blib)
+ (names bformat btags btypecheck b2sexp b2rust brandom bdefs bproject test_random_print_parse)
+ (libraries blib xml-light)
 )

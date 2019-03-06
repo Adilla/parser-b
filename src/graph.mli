@@ -8,10 +8,7 @@ type t_stats = {
   refinements: int;
   implementations: int;
   toplevel_machines: int;
-  toplevel_base_machines: int;
-  included_machines: int;
-  imported_machines: int;
-  imported_base_machines: int;
+  imported_included_machines: int;
 }
 
 val create : unit -> t
@@ -19,7 +16,7 @@ val add_component : t -> TSyntax.component -> unit
 val get_statistics : t -> t_stats
 val get_refinements : t -> t_vertex -> t_vertex list
 
-module Root : sig
+module Machine : sig
   type t = {
     (*out*)
     sees: t_vertex list;
@@ -27,28 +24,8 @@ module Root : sig
     (*in*)
     seen: t_vertex list;
     refined: t_vertex option;
-  }
-end
-
-module Imported : sig
-  type t = {
-    (*out*)
-    sees: t_vertex list;
-    includes: t_vertex list;
-    (*in*)
-    seen: t_vertex list;
-    refined: t_vertex option;
-    imported: t_vertex;
-  }
-end
-
-module Included : sig
-  type t = {
-    (*out*)
-    sees: t_vertex list;
-    includes: t_vertex list;
-    (*in*)
     included: t_vertex list;
+    imported: t_vertex option;
   }
 end
 
@@ -73,9 +50,7 @@ module Implementation : sig
 end
 
 type t_vertex_infos =
-  | RootMachine of Root.t
-  | ImportedMachine of Imported.t
-  | IncludedMachine of Included.t
+  | Machine of Machine.t
   | Refinement of Refinement.t
   | Implementation of Implementation.t
 

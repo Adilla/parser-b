@@ -100,14 +100,19 @@ type component_file = {
   suffix:string;
 }
 
-let get_components xml =
+let add_path x =
+  match File.add_path x with
+  | Ok _ -> ()
+  | Error err -> print_error_no_loc err
+
+let get_components lst xml =
   let tag = Xml.tag xml in
   if tag = "component_file" then
     { name=Xml.attrib xml "name";
       path=Xml.attrib xml "path";
-      suffix=Xml.attrib xml "suffix"; }
+      suffix=Xml.attrib xml "suffix"; }::lst
   else if tag = "definition_dir" then
-    assert false (*FIXME*)
+    (add_path (Xml.attrib xml "path"); lst )
   else
     assert false (*FIXME*)
 
@@ -115,8 +120,99 @@ let run_on_file (filename:string) : unit =
   let xml = Xml.parse_file filename in
   assert (Xml.tag xml = "db_xml");
   let prj = get_project (Xml.children xml) in
-  let cmps = Xml.map get_components prj in
+  let cmps = Xml.fold get_components [] prj in
   let ht:interface_table = { itf=Hashtbl.create 47; paths=Hashtbl.create 47; graph=Graph.create () } in
-  List.iter (fun cmp -> typecheck_file ht (cmp.path ^ "/" ^ cmp.name ^ "." ^ cmp.suffix)) cmps
+  let () = List.iter (fun cmp -> Hashtbl.add ht.paths cmp.name (cmp.path ^ "/" ^ cmp.name ^ "." ^ cmp.suffix)) cmps in
+  let () = List.iter (fun cmp -> typecheck_file ht (cmp.path ^ "/" ^ cmp.name ^ "." ^ cmp.suffix)) cmps in
+  let stats = Graph.get_statistics ht.graph in
+  (*FIXME project name*)
+  Printf.fprintf stdout "Number of components: %i\n" stats.components;
+  Printf.fprintf stdout "  * Machines: %i\n" stats.machines;
+  Printf.fprintf stdout "  * Refinements: %i\n" stats.refinements;
+  Printf.fprintf stdout "  * Implementations: %i\n" stats.implementations;
+  Printf.fprintf stdout "Number of toplevel machines: %i\n" stats.toplevel_machines;
+  Printf.fprintf stdout "  * Base Machines: %i\n" stats.toplevel_base_machines;
+  Printf.fprintf stdout "  * Implemented Machines: %i\n" (stats.toplevel_machines - stats.toplevel_base_machines);
+  Printf.fprintf stdout "Number of imported machines: %i\n" stats.imported_machines;
+  Printf.fprintf stdout "  * Base Machines: %i\n" stats.imported_base_machines;
+  Printf.fprintf stdout "  * Implemented Machines: %i\n" (stats.imported_machines-stats.imported_base_machines);
+  Printf.fprintf stdout "Number of included machines: %i\n" stats.included_machines;
+  Graph.iter (
+    fun mch_name infos ->
+      match infos with
+      | Graph.RootMachine infos ->
+        begin
+          Printf.fprintf stdout "Toplevel machine %s\n" mch_name;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Refined by %s\n" r)
+            (Graph.get_refinements ht.graph mch_name);
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Includes %s\n" r)
+            infos.includes;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Sees %s\n" r)
+            infos.sees;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Seen by %s\n" r)
+            infos.seen
+        end
+      | Graph.ImportedMachine infos ->
+        begin
+          Printf.fprintf stdout "Imported machine %s\n" mch_name;
+          Printf.fprintf stdout "  Imported by %s\n" infos.imported;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Refined by %s\n" r)
+            (Graph.get_refinements ht.graph mch_name);
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Includes %s\n" r)
+            infos.includes;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Sees %s\n" r)
+            infos.sees;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Seen by %s\n" r)
+            infos.seen
+        end
+      | Graph.IncludedMachine infos ->
+        begin
+          Printf.fprintf stdout "Included machine %s\n" mch_name;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Included by %s\n" r)
+            infos.included;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Includes %s\n" r)
+            infos.includes;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Sees %s\n" r)
+            infos.sees
+        end
+      | Graph.Refinement infos ->
+        begin
+          Printf.fprintf stdout "Refinement %s\n" mch_name;
+          Printf.fprintf stdout "  Refines %s\n" infos.refines;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Refined by %s\n" r)
+            (Graph.get_refinements ht.graph mch_name);
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Includes %s\n" r)
+            infos.includes;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Sees %s\n" r)
+            infos.sees
+        end
+      | Graph.Implementation infos ->
+        begin
+          Printf.fprintf stdout "Implementation %s\n" mch_name;
+          Printf.fprintf stdout "  Refines %s\n" infos.refines;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Imports %s\n" r)
+            infos.imports;
+          List.iter
+            (fun r -> Printf.fprintf stdout "  Sees %s\n" r)
+            infos.sees
+        end
+
+
+  ) ht.graph
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

@@ -1,4 +1,15 @@
 type t_vertex = string
+type t_stats = {
+  components: int;
+  machines: int;
+  refinements: int;
+  implementations: int;
+  toplevel_machines: int;
+  toplevel_base_machines: int;
+  included_machines: int;
+  imported_machines: int;
+  imported_base_machines: int;
+}
 
 module Root = struct
   type t = {
@@ -19,7 +30,7 @@ module Imported = struct
     (*in*)
     seen: t_vertex list;
     refined: t_vertex option;
-    imported: t_vertex option;
+    imported: t_vertex;
   }
 end
 
@@ -61,14 +72,6 @@ type t_vertex_infos =
   | Implementation of Implementation.t
 
 type t = (string,t_vertex_infos) Hashtbl.t
-
-(*
-type t_edge = {
-  edge_from: t_vertex;
-  edge_to: t_vertex;
-  edge_kind: t_edge_kind
-}
-*)
 
 let create () = Hashtbl.create 47
 
@@ -129,14 +132,8 @@ let set_imported_machine (graph:t) (imported_by:string) (imported:SyntaxCore.lid
   | None -> assert false (*FIXME*)
   | Some (RootMachine {sees;includes;seen;refined}) ->
     Hashtbl.replace graph imported.lid_str
-      (ImportedMachine {  sees; includes; seen; refined; imported=Some imported_by })
-  | Some (ImportedMachine infos) ->
-    begin match infos.imported with
-      | Some _ -> assert false (*FIXME*)
-      | None ->
-        Hashtbl.replace graph imported.lid_str
-          (ImportedMachine { infos with imported=Some imported_by })
-    end
+      (ImportedMachine {  sees; includes; seen; refined; imported=imported_by })
+  | Some (ImportedMachine _) -> assert false (*FIXME*)
   | Some (IncludedMachine _) -> assert false (*FIXME*)
   | Some (Refinement _) -> assert false
   | Some (Implementation _) -> assert false
@@ -194,6 +191,70 @@ let add_component (graph:t) (vertex:TSyntax.component) : unit =
     end
   | Some _ -> assert false (*FIXME*)
 
+let rec is_base_machine (graph:t) (v:t_vertex_infos) : bool =
+  match v with
+  | RootMachine { refined=None } | ImportedMachine { refined=None }
+  | Refinement { refined=None } | IncludedMachine _ -> true
+  | Implementation _ -> false
+  | RootMachine { refined=Some r }
+  | ImportedMachine { refined=Some r }
+  | Refinement { refined=Some r } ->
+    begin match Hashtbl.find_opt graph r with
+      | None -> assert false (*FIXME*)
+      | Some infos -> is_base_machine graph infos
+    end
+
+let rec get_refinements (graph:t) (mch_name:t_vertex) : t_vertex list =
+  match Hashtbl.find_opt graph mch_name with
+  | None -> assert false (*FIXME*)
+  | Some RootMachine { refined=None; _ } | Some ImportedMachine { refined=None; _ }
+  | Some Refinement { refined=None; _ } | Some IncludedMachine _
+  | Some Implementation _ -> []
+  | Some RootMachine { refined=Some r; _ }
+  | Some ImportedMachine { refined=Some r; _ }
+  | Some Refinement { refined=Some r; _ } ->
+    r::(get_refinements graph r)
+
+let get_statistics (graph:t) : t_stats =
+  let aux _ v st =
+    match v with
+    | RootMachine _ ->
+      let toplevel_base_machines =
+        if is_base_machine graph v then
+          st.toplevel_base_machines + 1
+        else st.toplevel_base_machines
+      in
+      { st with components=st.components+1;
+                machines=st.machines+1;
+                toplevel_machines=st.toplevel_machines+1;
+                toplevel_base_machines }
+    | ImportedMachine _ ->
+      let imported_base_machines =
+        if is_base_machine graph v then
+          st.imported_base_machines + 1
+        else st.imported_base_machines
+      in
+      { st with components=st.components+1;
+                machines=st.machines+1;
+                imported_machines=st.imported_machines+1;
+                imported_base_machines }
+    | IncludedMachine _ ->
+      { st with components=st.components+1;
+                machines=st.machines+1;
+                included_machines=st.included_machines+1 }
+    | Refinement _ ->
+      { st with components=st.components+1;
+                refinements=st.refinements+1 }
+    | Implementation _ ->
+      { st with components=st.components+1;
+                implementations=st.implementations+1 }
+  in
+  Hashtbl.fold aux graph 
+    { components=0; machines=0; refinements=0; implementations=0;
+      toplevel_machines=0; toplevel_base_machines=0; included_machines=0;
+      imported_machines=0; imported_base_machines=0; }
+
+let iter = Hashtbl.iter
 (* 
  * on veut connaitre les machines qui ne sont pas importées ou incluses
  * les machine incluses ne sont ni importées, ni raffinées, ni vu

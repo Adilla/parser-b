@@ -82,7 +82,7 @@ let add_local_operation (tags:tags) (op:P.operation) : tags =
 let add_clause (tags:tags) (cl:P.clause) : tags =
   match cl with
   | Constraints _ | Imports _ | Sees _ | Includes _ | Extends _ | Uses _ | Properties _
-  | Invariant _ | Assertions _ | Initialization _ | Values _ -> tags
+  | Invariant _ | Assertions _ | Initialization _ | Values _ | Refines _ -> tags
   | Promotes nle -> List.fold_left add_promotes tags (Nlist.to_list nle)
   | Sets nle -> List.fold_left add_sets tags (Nlist.to_list nle)
   | Constants nle -> List.fold_left add_constant tags (Nlist.to_list nle)

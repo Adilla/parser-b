@@ -25,7 +25,7 @@ let gen_lident : lident Gen.t = fun rd ->
   { lid_str="id_" ^ (Gen.string_size ~gen:(Gen.oneofl char_list) (Gen.return 3) rd);
     lid_loc=Utils.dloc }
 
-let small_nat = Gen.map Int32.of_int Gen.small_nat
+let small_nat = Gen.map Int64.of_int Gen.small_nat
 
 let gen_e_constant_bi : e_builtin_0 Gen.t =
   Gen.oneof [

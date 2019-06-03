@@ -4,7 +4,7 @@ sig
   type t_pkg_id
 
   type t_b0_constant =
-    | B0_Integer of Int32.t
+    | B0_Integer of Int64.t
     | B0_String of string
     | B0_MaxInt
     | B0_MinInt
@@ -59,7 +59,7 @@ sig
 
   and t_b0_range =
     | R_Interval of t_b0_expr*t_b0_expr
-    | R_Concrete_Set of int*qident
+    | R_Concrete_Set of Int64.t*qident
 
   and t_b0_expr =
     { exp0_loc: Utils.loc;
@@ -103,7 +103,7 @@ sig
     | MIK_Local
 
   type t_case =
-    | CS_Int of Int32.t
+    | CS_Int of Int64.t
     | CS_Bool of bool
     | CS_Enum of qident
 

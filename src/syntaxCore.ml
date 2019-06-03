@@ -25,11 +25,10 @@ type ftype =
 type e_builtin_0 =
   | Integer of Int32.t | String of string | MaxInt | MinInt | INTEGER | NATURAL
   | NATURAL1 | INT | NAT | NAT1 | STRINGS | BOOLEANS | Empty_Set | Empty_Seq
-  | TRUE | FALSE
+  | TRUE | FALSE | Successor | Predecessor
 [@@deriving eq]
 
 type e_builtin_1 =
-  | Successor | Predecessor
   | Cardinal | Power_Set of power_set | Identity_Relation | Inverse_Relation
   | Closure | Transitive_Closure | Domain | Range | Fnc | Rel
   | Sequence_Set of stype | Size | First | Last | Front | Tail | Reverse
@@ -99,10 +98,10 @@ let builtin0_to_string : e_builtin_0 -> string = function
   | BOOLEANS -> "BOOL"
   | Empty_Set -> "{}"
   | Empty_Seq -> "[]"
-
-let builtin1_to_string : e_builtin_1 -> string = function
   | Successor -> "succ"
   | Predecessor -> "pred"
+
+let builtin1_to_string : e_builtin_1 -> string = function
   | Cardinal -> "card"
   | Power_Set Full -> "POW"
   | Power_Set Non_Empty -> "POW1"

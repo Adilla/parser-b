@@ -17,7 +17,7 @@ struct
   type t_pkg_id = Ident.t_pkg_id
 
   type t_b0_constant =
-    | B0_Integer of Int32.t
+    | B0_Integer of Int64.t
     | B0_String of string
     | B0_MaxInt
     | B0_MinInt
@@ -82,7 +82,7 @@ struct
 
   and t_b0_range =
     | R_Interval of t_b0_expr*t_b0_expr
-    | R_Concrete_Set of int*qident
+    | R_Concrete_Set of Int64.t*qident
 
   and t_b0_expr =
     { exp0_loc: Utils.loc;
@@ -121,7 +121,7 @@ struct
       v_promoted_from:Ident.t_pkg_id option }
   
   type t_case =
-    | CS_Int of Int32.t
+    | CS_Int of Int64.t
     | CS_Bool of bool
     | CS_Enum of qident
 
@@ -338,14 +338,14 @@ struct
         | T.Builtin_2 (Couple _,e1,e2) ->
           begin match (to_b0_expr f e1).exp0_desc with
             | B0_Builtin_0 (B0_Integer j) ->
-              if (Int32.of_int i) = j then (j,to_b0_expr f e2)
+              if Int64.equal (Int64.of_int i) j then (j,to_b0_expr f e2)
               else Error.raise_exn e1.T.exp_loc "Ill-formed array."
             | _ -> Error.raise_exn e1.T.exp_loc "Ill-formed array."
           end
         | _ -> Error.raise_exn e.T.exp_loc "Ill-formed array."
       in
       let lst = List.mapi aux (Nlist.to_list nle) in
-      let lst = List.fast_sort (fun (a,_) (b,_) -> Int32.compare a b) lst in
+      let lst = List.fast_sort (fun (a,_) (b,_) -> Int64.compare a b) lst in
       let lst = List.map snd lst in
       add_lt (B0_Array lst)
     | T.Record lst ->
@@ -384,7 +384,7 @@ struct
       let q_id = mk_ident e.T.exp_loc id in
       begin match f ki with
         | IK_Concrete_Set q_nspace ->
-          Nlist.make1 (R_Concrete_Set (42,{ q_nspace; q_id })) (*FIXME*)
+          Nlist.make1 (R_Concrete_Set (Int64.of_int 42,{ q_nspace; q_id })) (*FIXME*)
         | IK_Abstract_Set _ | IK_Other _ ->
           Error.raise_exn e.T.exp_loc "Invalid array range."
       end
@@ -746,11 +746,11 @@ struct
   let rec get_default_value (lc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
     let mk exp0_type exp0_desc = { exp0_loc=lc; exp0_desc; exp0_type } in
     match ty with
-    | T_Int -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
+    | T_Int -> mk ty (B0_Builtin_0 (B0_Integer Int64.zero))
     | T_String -> mk ty (B0_Builtin_0 (B0_String ""))
     | T_Bool -> mk ty (B0_Builtin_0 B0_True)
-    | T_Abstract _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero))
-    | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int32.zero)) (*FIXME*)
+    | T_Abstract _ -> mk ty (B0_Builtin_0 (B0_Integer Int64.zero))
+    | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int64.zero)) (*FIXME*)
     | T_Array _ -> mk ty (B0_Array [])
     | T_Record lst ->
       let aux (id,ty) = (id,get_default_value lc ty) in

@@ -23,7 +23,7 @@ type ftype =
 [@@deriving eq]
 
 type e_builtin_0 =
-  | Integer of Int32.t | String of string | MaxInt | MinInt | INTEGER | NATURAL
+  | Integer of Int64.t | String of string | MaxInt | MinInt | INTEGER | NATURAL
   | NATURAL1 | INT | NAT | NAT1 | STRINGS | BOOLEANS | Empty_Set | Empty_Seq
   | TRUE | FALSE | Successor | Predecessor
 [@@deriving eq]
@@ -82,7 +82,7 @@ let prop_bop_to_string : prop_bop -> string = function
   | Equivalence -> "<=>"
 
 let builtin0_to_string : e_builtin_0 -> string = function
-  | Integer i -> Int32.to_string i
+  | Integer i -> Int64.to_string i
   | String s -> "\"" ^ s ^ "\""
   | TRUE -> "TRUE"
   | FALSE -> "FALSE"

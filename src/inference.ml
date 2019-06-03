@@ -39,11 +39,12 @@ let get_builtin0_type (e:e_builtin_0) : Btype.Open.t =
     | BOOLEANS  -> mk_Power t_bool
     | Empty_Set -> mk_Power (new_meta ())
     | Empty_Seq -> type_of_unary_fun t_int (new_meta ())
+    | Successor | Predecessor -> type_of_unary_fun t_int t_int
 
 let get_builtin1_type_exn lc (e:e_builtin_1) : Btype.Open.t*Btype.Open.t =
   let open Btype.Open in
   match e with
-    | Unary_Minus | Successor | Predecessor  -> (t_int,t_int)
+    | Unary_Minus -> (t_int,t_int)
     | Max | Min  -> (mk_Power t_int,t_int)
     | Identity_Relation  ->
       let mt = new_meta () in

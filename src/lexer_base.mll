@@ -111,8 +111,8 @@ let _ = List.iter (fun (name, keyword) ->
 
    "bool"      , CBOOL;
    "mod"       , E_INFIX_190 SyntaxCore.Modulo;
-   "succ"      , E_PREFIX_1 SyntaxCore.Successor;
-   "pred"      , E_PREFIX_1 SyntaxCore.Predecessor;
+   "succ"      , CONSTANT SyntaxCore.Successor;
+   "pred"      , CONSTANT SyntaxCore.Predecessor;
    "max"       , E_PREFIX_1 SyntaxCore.Max;
    "min"       , E_PREFIX_1 SyntaxCore.Min;
    "card"      , E_PREFIX_1 SyntaxCore.Cardinal;

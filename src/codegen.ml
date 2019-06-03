@@ -199,6 +199,7 @@ struct
     | String s -> Some (B0_String s)
     | INTEGER | NATURAL | NATURAL1 | INT | NAT
     | NAT1 | STRINGS | BOOLEANS | Empty_Set | Empty_Seq -> None
+    | Predecessor | Successor -> None
 
 (*
   let normalize_app e =
@@ -302,10 +303,6 @@ struct
       end
     | T.Builtin_1 (Unary_Minus,arg) ->
       add_lt (B0_Builtin_1 (B0_Minus,to_b0_expr f arg))
-    | T.Builtin_1 (Successor,arg) ->
-      add_lt (B0_Builtin_2(B0_Addition,to_b0_expr f arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
-    | T.Builtin_1 (Predecessor,arg) ->
-      add_lt (B0_Builtin_2(B0_Difference,to_b0_expr f arg,add_lt (B0_Builtin_0 (B0_Integer Int32.one))))
     | T.Builtin_1 (_,_) ->
       Error.raise_exn e.T.exp_loc "This is not a valid B0 operator."
     | T.Builtin_2 (Product,arg1,arg2) ->

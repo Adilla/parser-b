@@ -221,6 +221,7 @@ let parse_defs_exn (s:L.state) : t =
   hsh
 
 let make (fname:string) (lb:Lexing.lexbuf) : t Error.t_result =
+  lb.lex_curr_p <- { lb.lex_curr_p with pos_fname = fname };
   let rec read_until_def_clause state =
     match Lexer_base.token lb with
     | DEFINITIONS -> true

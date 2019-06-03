@@ -179,6 +179,7 @@ type clause =
   | Operations of operation Nlist.t
   | Local_Operations of operation Nlist.t
   | Values of (lident * expression) Nlist.t
+  | Refines of lident
 
 let add_opt lst f = function
     | None -> lst
@@ -189,7 +190,8 @@ let add_nle lst f = function
   | hd::tl -> (f (Nlist.make hd tl))::lst
 
 let clist_of_mch (mch:machine) : clause list =
-  let lst = add_nle []  (fun ops -> Operations ops) mch.mch_operations in
+  let lst = [] in
+  let lst = add_nle lst (fun ops -> Operations ops) mch.mch_operations in
   let lst = add_opt lst (fun x -> Initialization(x)) mch.mch_initialisation in
   let lst = add_nle lst (fun x -> Assertions(x)) mch.mch_assertions in
   let lst = add_opt lst (fun x -> Invariant(x)) mch.mch_invariant in
@@ -208,7 +210,8 @@ let clist_of_mch (mch:machine) : clause list =
   lst
 
 let clist_of_ref (ref:refinement) : clause list =
-  let lst = add_nle []  (fun x -> Operations(x)) ref.ref_operations in
+  let lst = [Refines ref.ref_refines] in
+  let lst = add_nle lst (fun x -> Operations(x)) ref.ref_operations in
   let lst = add_nle lst (fun x -> Local_Operations(x)) ref.ref_local_operations in
   let lst = add_opt lst (fun x -> Initialization(x)) ref.ref_initialisation in
   let lst = add_nle lst (fun x -> Assertions(x)) ref.ref_assertions in
@@ -226,7 +229,8 @@ let clist_of_ref (ref:refinement) : clause list =
   lst
 
 let clist_of_imp (imp:implementation) : clause list =
-  let lst = add_nle []  (fun x -> Operations(x)) imp.imp_operations in
+  let lst = [Refines imp.imp_refines] in
+  let lst = add_nle lst (fun x -> Operations(x)) imp.imp_operations in
   let lst = add_nle lst (fun x -> Local_Operations(x)) imp.imp_local_operations in
   let lst = add_opt lst (fun x -> Initialization(x)) imp.imp_initialisation in
   let lst = add_nle lst (fun x -> Assertions(x)) imp.imp_assertions in
@@ -273,6 +277,7 @@ let add_clause_mch_exn (co:machine) (loc,cl:Utils.loc*clause) : machine =
   | Includes lst -> ( check_empty_exn loc co.mch_includes; { co with mch_includes = Nlist.to_list lst } )
   | Extends lst -> ( check_empty_exn loc co.mch_extends; { co with mch_extends = Nlist.to_list lst } )
   | Uses lst -> ( check_empty_exn loc co.mch_uses; { co with mch_uses = Nlist.to_list lst } )
+  | Refines abs -> Error.raise_exn abs.lid_loc "The clause REFINES is not allowed in abstract machines."
 
 let mk_machine_exn (co_name:lident) (co_parameters:lident list) (clauses:(Utils.loc*clause) list) : component =
   let mch_desc =
@@ -317,10 +322,13 @@ let add_clause_ref_exn (co:refinement) (loc,cl:Utils.loc*clause) : refinement =
   | Includes lst -> ( check_empty_exn loc co.ref_includes; { co with ref_includes = Nlist.to_list lst } )
   | Extends lst -> ( check_empty_exn loc co.ref_extends; { co with ref_extends = Nlist.to_list lst } )
   | Uses _ -> Error.raise_exn loc "The clause USES is not allowed in refinements."
+  | Refines abs ->
+    ( if String.equal co.ref_refines.lid_str "" then { co with ref_refines=abs }
+      else Error.raise_exn abs.lid_loc "This clause is defined twice." )
 
-let mk_refinement_exn co_name co_parameters refines clauses =
+let mk_refinement_exn co_name co_parameters clauses =
   let ref_desc =
-    { ref_refines=refines;
+    { ref_refines={lid_loc=Utils.dloc;lid_str=""};
       ref_sees=[];
       ref_sets=[];
       ref_promotes=[];
@@ -361,10 +369,13 @@ let add_clause_imp_exn (co:implementation) (loc,cl:Utils.loc*clause) : implement
   | Includes _ -> Error.raise_exn loc "The clause INCLUDES is not allowed in implementations."
   | Extends lst -> ( check_empty_exn loc co.imp_extends; { co with imp_extends = Nlist.to_list lst } )
   | Uses _ -> Error.raise_exn loc "The clause USES is not allowed in implementations."
+  | Refines abs ->
+    ( if String.equal co.imp_refines.lid_str "" then { co with imp_refines=abs }
+      else Error.raise_exn abs.lid_loc "This clause is defined twice." )
 
-let mk_implementation_exn co_name co_parameters refines clauses =
+let mk_implementation_exn co_name co_parameters clauses =
   let imp_desc =
-    { imp_refines=refines;
+    { imp_refines={lid_loc=Utils.dloc;lid_str=""};
       imp_sees=[];
       imp_sets=[];
       imp_values=[];

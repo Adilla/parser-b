@@ -463,6 +463,7 @@ let ef_clause : clause -> Easy_format.t = fun c ->
   | Abstract_constants lst -> mk_clause "ABSTRACT_CONSTANTS" (mk_string_nelist_comma lst)
   | Concrete_variables lst -> mk_clause "CONCRETE_VARIABLES" (mk_string_nelist_comma lst)
   | Variables lst -> mk_clause "VARIABLES" (mk_string_nelist_comma lst)
+  | Refines abs -> mk_clause "REFINES" (mk_atom abs.lid_str)
 
 let ef_machine name params clauses =
   let machine = mk_clause "MACHINE" (mk_machine_name name params) in

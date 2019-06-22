@@ -5,10 +5,11 @@ This repository provides a set of command-line tools for parsing, checking and t
 
   * `bformat` reformats a B machine. **Remark:** comments are lost and definitions are expanded.
   * `brandom` generates a random and syntactically valid B machine.
-  * `btags` generates a \_tag file for a B machine using the [ctags](http://ctags.sourceforge.net/) format.
+  * `btags` generates a `\_tag` file for a B machine using the [ctags](http://ctags.sourceforge.net/) format.
   * `btypecheck` typechecks a B machine.
   * `b2sexp` prints the AST of a B machine as an s-expression (mostly useful for debugging the parser).
   * `bdefs` dumps the definition table (mostly useful for debugging the lexer).
+  * `b2rust` convert a B implementation into an rust program.
 
 ### Known limitations
 

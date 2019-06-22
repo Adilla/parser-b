@@ -25,7 +25,7 @@ let gen_lident : lident Gen.t = fun rd ->
   { lid_str="id_" ^ (Gen.string_size ~gen:(Gen.oneofl char_list) (Gen.return 3) rd);
     lid_loc=Utils.dloc }
 
-let small_nat = Gen.map Int32.of_int Gen.small_nat
+let small_nat = Gen.map Int64.of_int Gen.small_nat
 
 let gen_e_constant_bi : e_builtin_0 Gen.t =
   Gen.oneof [
@@ -45,11 +45,13 @@ let gen_e_constant_bi : e_builtin_0 Gen.t =
     Gen.return Empty_Seq;
     Gen.return TRUE;
     Gen.return FALSE;
+    Gen.return Successor;
+    Gen.return Predecessor; 
   ]
 
 let gen_builtin_1 : e_builtin_1 Gen.t =
   Gen.oneofl
-    [ Successor; Predecessor; Cardinal; Power_Set Full; Power_Set Non_Empty;
+    [ Cardinal; Power_Set Full; Power_Set Non_Empty;
       Power_Set Finite; Power_Set Finite_Non_Empty; Identity_Relation;
       Inverse_Relation; Closure; Transitive_Closure; Domain; Range; Fnc; Rel;
       Sequence_Set All_Seq; Sequence_Set Non_Empty_Seq; Sequence_Set Injective_Seq;

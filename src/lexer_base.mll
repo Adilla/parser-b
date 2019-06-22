@@ -8,24 +8,6 @@
 
   let flush () =
     chars_read := ""
-(*     string_loc := loc *)
-
-  let int_of_int_lit (s:string) : Int32.t option =
-    if String.get s 0 = '-' then
-      let l=String.length s in
-      let s = String.sub s 1 (l-1) in
-      match Int32.of_string_opt s with
-      | None -> None
-      | Some i ->
-        if i >= Int32.zero then Some (Int32.neg i)
-        else if i = Int32.min_int then Some i
-        else None
-    else
-      match Int32.of_string_opt s with
-      | None -> None
-      | Some i ->
-        if i >= Int32.zero then Some i
-        else None
 
 let err lexbuf err_txt =
   let open Error in
@@ -111,8 +93,8 @@ let _ = List.iter (fun (name, keyword) ->
 
    "bool"      , CBOOL;
    "mod"       , E_INFIX_190 SyntaxCore.Modulo;
-   "succ"      , E_PREFIX_1 SyntaxCore.Successor;
-   "pred"      , E_PREFIX_1 SyntaxCore.Predecessor;
+   "succ"      , CONSTANT SyntaxCore.Successor;
+   "pred"      , CONSTANT SyntaxCore.Predecessor;
    "max"       , E_PREFIX_1 SyntaxCore.Max;
    "min"       , E_PREFIX_1 SyntaxCore.Min;
    "card"      , E_PREFIX_1 SyntaxCore.Cardinal;
@@ -174,6 +156,7 @@ let ident_to_token _ id =
 let space   = [' ' '\t']
 let ident   = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let int_lit = ['0'-'9']+
+let hex_lit = "0x" ['0'-'9' 'A'-'F' 'a'-'f']+
 let commented_line = "//" [^'\n']*
 (* let ren_ident = ident ( '.' ident )+ *)
 let def_file = '<' ['a'-'z' 'A'-'Z' '0'-'9' '_' '.']+ '>'
@@ -262,9 +245,14 @@ rule token = parse
   | ident as id { ident_to_token lexbuf.Lexing.lex_start_p id }
  
 (*   | ren_ident as id { REN_IDENT ( get_loc lexbuf , id ) } *)
+  | hex_lit as i {
+      match Int64.of_string_opt i with
+      | None -> err lexbuf ("The literal '"^i^"' does not fit in a signed 64 bits integer.")
+      | Some lit -> CONSTANT (SyntaxCore.Integer ( lit ))
+    }
   | int_lit as i  {
-      match int_of_int_lit i with
-      | None -> err lexbuf "The literal is out of range."
+      match Int64.of_string_opt i with
+      | None -> err lexbuf ("The literal '"^i^"' does not fit in a signed 64 bits integer.")
       | Some lit -> CONSTANT (SyntaxCore.Integer ( lit ))
     }
   | _   as c    { err lexbuf ("Unexpected character '" ^ String.make 1 c ^ "'.") }

@@ -19,7 +19,7 @@ let t_symb_to_string (ts:qident) : string =
   | Some ns -> (Codegen.Rust_ident.pkg_to_string ns) ^ "::" ^ (Codegen.Rust_ident.to_string ts.q_id)
 
 let b0_constant_to_string : t_b0_constant -> string = function
-  | B0_Integer i -> Int32.to_string i
+  | B0_Integer i -> Int64.to_string i (*FIXME*)
   | B0_String s -> "\"" ^ s ^ "\""
   | B0_MaxInt -> "std::i32::MAX"
   | B0_MinInt -> "std::i32::MIN"
@@ -183,7 +183,7 @@ let rec mk_expr clone (e0:t_b0_expr) : Easy_format.t =
     let rg = Nlist.map (
         function
         | R_Interval (_,y) -> mk_expr false y (*FIXME*)
-        | R_Concrete_Set (i,_) -> mk_const (B0_Integer (Int32.of_int i))
+        | R_Concrete_Set (i,_) -> mk_const (B0_Integer i)
       ) rg
     in
     mk_array_init rg (mk_expr false def)
@@ -364,7 +364,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     let mtch = mk_label 2 true `Auto (mk_atom "match") (mk_expr false e) in
     let aux (lst,s) =
       let lst = List.map ( function
-          | CS_Int e -> mk_atom (Int32.to_string e)
+          | CS_Int e -> mk_atom (Int64.to_string e)
           | CS_Bool true -> mk_atom "true"
           | CS_Bool false -> mk_atom "false"
           | CS_Enum qid -> mk_ident qid

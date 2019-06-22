@@ -19,7 +19,7 @@ let t_symb_to_string (ts:qident) : string =
   | Some ns -> (Codegen.Ada_ident.pkg_to_string ns) ^ "." ^ (Codegen.Ada_ident.to_string ts.q_id)
 
 let b0_constant_to_string : t_b0_constant -> string = function
-  | B0_Integer i -> Int32.to_string i
+  | B0_Integer i -> Int64.to_string i
   | B0_String s -> "\"" ^ s ^ "\""
   | B0_MaxInt -> "Integer'Last"
   | B0_MinInt -> "Integer'First"
@@ -229,7 +229,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     let case = mk_list "case" "" "is" st [mk_expr e] in
     let aux (lst,s) =
       let lst = List.map (function
-          | CS_Int i -> mk_atom (Int32.to_string i)
+          | CS_Int i -> mk_atom (Int64.to_string i)
           | CS_Bool true -> mk_atom "true"
           | CS_Bool false -> mk_atom "false"
           | CS_Enum e -> mk_ident e

@@ -179,13 +179,14 @@ type clause =
   | Operations of operation Nlist.t
   | Local_Operations of operation Nlist.t
   | Values of (lident * expression) Nlist.t
+  | Refines of lident
 
 val clist_of_mch : machine -> clause list
 val clist_of_ref : refinement -> clause list
 val clist_of_imp : implementation -> clause list
 
 val mk_machine_exn : lident -> lident list -> (Utils.loc*clause) list -> component
-val mk_refinement_exn : lident -> lident list -> lident -> (Utils.loc*clause) list -> component
-val mk_implementation_exn : lident -> lident list -> lident -> (Utils.loc*clause) list -> component
+val mk_refinement_exn : lident -> lident list -> (Utils.loc*clause) list -> component
+val mk_implementation_exn : lident -> lident list -> (Utils.loc*clause) list -> component
 
 val get_clauses : component -> clause list

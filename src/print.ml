@@ -475,6 +475,7 @@ let pp_clause out : clause -> unit = function
   | Abstract_constants lst -> ( str out "ABSTRACT_CONSTANTS"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
   | Concrete_variables lst -> ( str out "CONCRETE_VARIABLES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
   | Variables lst -> ( str out "VARIABLES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Refines mch -> ( str out "REFINES"; break out 0 4; pp_lident out mch )
 
 let pp_machine out name params clauses : unit =
   vbox out;
@@ -488,29 +489,25 @@ let pp_machine out name params clauses : unit =
   Format.pp_print_flush out ();
   close out
 
-let pp_refinement out name refines params clauses =
+let pp_refinement out name params clauses =
   vbox out;
   str out "REFINEMENT"; break out 0 4;
   (match params with
    | [] -> str out name.lid_str
    | hd::tl -> pf out "@[%s(%a)@]" name.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) );
   break out 0 0; break out 0 0;
-  str out "REFINES"; break out 0 4;
-  str out refines.lid_str; break out 0 0;
   List.iter (fun cl -> break out 0 0; pp_clause out cl; break out 0 0) clauses;
   str out "END";
   Format.pp_print_flush out ();
   close out
 
-let pp_implementation out name refines params clauses =
+let pp_implementation out name params clauses =
   vbox out;
   str out "IMPLEMENTATION"; break out 0 4;
   (match params with
    | [] -> str out name.lid_str
    | hd::tl -> pf out "@[%s(%a)@]" name.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) );
   break out 0 0; break out 0 0;
-  str out "REFINES"; break out 0 4;
-  str out refines.lid_str; break out 0 0;
   List.iter (fun cl -> break out 0 0;pp_clause out cl; break out 0 0) clauses;
   str out "END";
   Format.pp_print_flush out ();
@@ -520,10 +517,10 @@ let pp_component out co : unit =
   match co.co_desc with
   | Machine _ ->
     pp_machine out co.co_name co.co_parameters (get_clauses co)
-  | Refinement x ->
-    pp_refinement out co.co_name x.ref_refines co.co_parameters (get_clauses co)
-  | Implementation x ->
-    pp_implementation out co.co_name x.imp_refines co.co_parameters (get_clauses co)
+  | Refinement _ ->
+    pp_refinement out co.co_name co.co_parameters (get_clauses co)
+  | Implementation _ ->
+    pp_implementation out co.co_name co.co_parameters (get_clauses co)
 
 let print_expression out = pp_expr (Format.formatter_of_out_channel out)
 let print_predicate out = pp_pred (Format.formatter_of_out_channel out)

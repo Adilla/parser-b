@@ -177,26 +177,25 @@ let sexp_of_clause : P.clause -> t = fun c ->
   | Abstract_constants nlst -> List ( (Atom "ABSTRACT_CONSTANTS")::(List.map sexp_of_lident (Nlist.to_list nlst)) )
   | Concrete_variables nlst -> List ( (Atom "CONCRETE_VARIABLES")::(List.map sexp_of_lident (Nlist.to_list nlst)) )
   | Variables nlst -> List ( (Atom "VARIABLES")::(List.map sexp_of_lident (Nlist.to_list nlst)) )
+  | Refines abs -> List [Atom "REFINES";Atom abs.lid_str]
 
 let sexp_of_mch name parameters clauses : t =
   List ( (Atom "MACHINE")::(Atom ("ident_" ^ name.lid_str))::
          (List (List.map sexp_of_lident parameters))::
          (List.map sexp_of_clause clauses) )
 
-let sexp_of_ref name refines parameters clauses : t =
+let sexp_of_ref name parameters clauses : t =
   List ( (Atom "REFINEMENT")::(Atom ("ident_" ^ name.lid_str))::
          (List (List.map sexp_of_lident parameters))::
-         (List [Atom "REFINES";sexp_of_lident refines])::
          (List.map sexp_of_clause clauses) )
 
-let sexp_of_imp name refines parameters clauses : t =
+let sexp_of_imp name parameters clauses : t =
   List ( (Atom "IMPLEMENTATION")::(Atom ("ident_"^name.lid_str))::
          (List (List.map sexp_of_lident parameters))::
-         (List [Atom "REFINES";sexp_of_lident refines])::
          (List.map sexp_of_clause clauses) )
 
 let sexp_of_component co =
   match co.P.co_desc with
   | Machine _ -> sexp_of_mch co.P.co_name co.P.co_parameters (P.get_clauses co)
-  | Refinement ref -> sexp_of_ref co.P.co_name ref.ref_refines co.P.co_parameters (P.get_clauses co)
-  | Implementation imp -> sexp_of_imp co.P.co_name imp.imp_refines co.P.co_parameters (P.get_clauses co)
+  | Refinement _ -> sexp_of_ref co.P.co_name co.P.co_parameters (P.get_clauses co)
+  | Implementation _ -> sexp_of_imp co.P.co_name co.P.co_parameters (P.get_clauses co)

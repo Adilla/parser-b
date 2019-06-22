@@ -346,10 +346,10 @@ component_eof: a=component EOF { a }
 
 %inline component:
 | MACHINE h=machine_header lst=clause* END { let (id,params) = h in mk_machine_exn id params lst }
-| REFINEMENT h=machine_header REFINES abs=IDENT lst=clause* END
-  { let (id,params) = h in mk_refinement_exn id params (mk_lident $startpos(abs) abs) lst }
-| IMPLEMENTATION h=machine_header REFINES abs=IDENT lst=clause* END
-  { let (id,params) = h in mk_implementation_exn id params (mk_lident $startpos(abs) abs) lst }
+| REFINEMENT h=machine_header lst=clause* END
+  { let (id,params) = h in mk_refinement_exn id params lst }
+| IMPLEMENTATION h=machine_header lst=clause* END
+  { let (id,params) = h in mk_implementation_exn id params lst }
 
 %inline machine_header:
   id=IDENT { (mk_lident $startpos(id) id,[]) }
@@ -402,6 +402,7 @@ semicolon_pred_lst:
 | LOCAL_OPERATIONS lst=separated_nonempty_list( SEMICOLON, operation ) { mk_clause $startpos (Local_Operations (Nlist.from_list_exn lst)) }
 | IMPORTS lst=separated_nonempty_list(COMMA,machine_instanciation) { mk_clause $startpos (Imports (Nlist.from_list_exn lst)) }
 | VALUES lst=separated_nonempty_list(SEMICOLON,valuation) { mk_clause $startpos (Values (Nlist.from_list_exn lst)) }
+| REFINES abs=IDENT { mk_clause $startpos (Refines (mk_lident $startpos(abs) abs)) }
 
 no_warning: DEFINITIONS EQUALEQUAL DEF_FILE { () }
 %%

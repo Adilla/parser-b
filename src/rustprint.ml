@@ -169,8 +169,8 @@ let qident_to_string (ts:qident) : string =
   | Some ns -> (pkg_to_rust_ident ns) ^ "::" ^ (id_to_rust_ident ts.q_id)
 
 let rec is_copy_type = function
-  | T_Int | T_Bool | T_Abstract _ | T_Enum _ -> true
-  | T_String | T_Array _ -> false
+  | T_Int | T_Bool | T_Abstract _ | T_Enum _ | T_Array _ -> true
+  | T_String -> false
   | T_Record lst -> List.for_all (fun (_,ty) -> is_copy_type ty) lst
 
 let rec is_lvalue e =
@@ -216,13 +216,12 @@ let rec mk_expr (paren:bool) (e0:t_b0_expr) : F.t =
     add_paren_if_true paren
       (F.list [mk_expr true e1;F.atm (b0_binary_op_to_string op); mk_expr true e2])
   | B0_Array lst ->
-    F.surround "vec![" "]"
-      (F.list ~sep:"," (List.map (mk_movable false) lst))
-  | B0_Array_Init (rg,def) ->
+    F.surround "[" "]" (F.list ~sep:"," (List.map (mk_movable false) lst)) (*FIXME element must be copiable*)
+  | B0_Array_Init (rg,def) -> (*FIXME idem*)
     let rec aux = function
       | [] -> mk_movable false def
       | hd::tl ->
-        F.surround "vec![" "]"
+        F.surround "[" "]"
           (F.list ~sep:";" [ aux tl; F.surround "(" ") as usize" (mk_range hd) ])
     in
     aux (Nlist.to_list rg)
@@ -260,8 +259,8 @@ and mk_movable (paren:bool) (e:t_b0_expr) : F.t =
     mk_expr paren e
 
 and mk_range : t_b0_range -> F.t = function
-  | R_Interval (_,y) -> mk_expr false y (*rmk:lower bound not taken into account*)
-  | R_Concrete_Set qid -> F.atm (Format.sprintf "%s_size" (qident_to_string qid))
+  | R_Interval_Set qid | R_Concrete_Set qid ->
+    F.atm (Format.sprintf "%s_size" (qident_to_string qid))
   
 let mk_arg (e:t_b0_expr) : F.t =
   if is_copy_type e.exp0_type then mk_expr false e
@@ -296,8 +295,9 @@ let rec b0_type_to_string_exn (lc:tts) (ty:t_b0_type) : string =
        end
      | Ok s -> s
    end
-  | T_Array (_,ty) ->
-    "Vec<" ^ b0_type_to_string_exn lc ty ^ ">"
+  | T_Array (I_Interval (_,sz),ty) ->
+    "[" ^ b0_type_to_string_exn lc ty ^ ";" ^ Int64.to_string sz ^ "]"
+  | T_Array (_,_) -> assert false (*FIXME*)
   | T_Record lst ->
     let aux2 (x,_) (y,_) =
       String.compare (Codegen.ident_to_string x) (Codegen.ident_to_string y)
@@ -312,7 +312,7 @@ let rec mk_default_value (ty:t_b0_type) : F.t =
   | T_String -> F.atm "\"\""
   | T_Bool -> F.atm "true"
   | T_Enum _ | T_Abstract _ -> F.atm "Default::default()"
-  | T_Array (_,_) -> F.atm "vec![]"
+  | T_Array (_,_) -> assert false (*FIXME*)
   | T_Record lst ->
     let aux (x,_) (y,_) =
       String.compare (Codegen.ident_to_string x) (Codegen.ident_to_string y)
@@ -332,14 +332,9 @@ let rec is_used_e (x:t_id) (e:t_b0_expr) : bool =
   | B0_Builtin_2 (_,e1,e2) -> (is_used_e x e1) || (is_used_e x e2)
   | B0_Array_Access (f,args) -> (is_used_e x f) || (Nlist.exists (is_used_e x) args)
   | B0_Array lst -> List.exists (is_used_e x) lst
-  | B0_Array_Init (nle,e) -> (Nlist.exists (is_used_rg x) nle) || (is_used_e x e)
+  | B0_Array_Init (_,e) -> is_used_e x e
   | B0_Record lst -> List.exists (fun (_,e) -> is_used_e x e) lst
   | B0_Record_Access (e,_) -> is_used_e x e
-
-and is_used_rg (x:t_id) (rg:t_b0_range) : bool =
-  match rg with
-  | R_Interval (e1,e2) -> (is_used_e x e1) || (is_used_e x e2)
-  | R_Concrete_Set _ -> false
 
 let is_used_lhs (x:t_id) (lhs:t_b0_lhs) : bool =
   match lhs with
@@ -536,6 +531,7 @@ let mk_type (ty:t_type) : F.t =
               F.atm (Format.sprintf "pub const %s : %s = %s;"
                        e (id2_to_rust_ident ty.ty_name) (string_of_int i))
           )  elts))
+  | D_Interval _ -> assert false (*FIXME*)
 
 let mk_const (c:t_constant) : F.t =
   match c with

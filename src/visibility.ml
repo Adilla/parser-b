@@ -117,6 +117,7 @@ let make_imp_assert (x:G.t_ref G.t_kind) : (G.t_ref,t_imp_op t_assert) t_global_
 let make_imp_val: G.t_ref G.t_kind -> (G.t_ref,t_imp_val) t_global_ident option = function
   | G.Pack(G.K_Concrete_Constant,_) as x -> Some x
   | G.Pack(G.K_Abstract_Set,_) as x -> Some x
+  | G.Pack(G.K_Interval_Set _,_) as x -> Some x
   | G.Pack(G.K_Concrete_Set _,_) as x -> Some x
   | G.Pack(G.K_Enumerate,_) as x -> Some x
   | _ -> None
@@ -125,12 +126,14 @@ type t_imp_op_view =
   | IOV_Concrete_Variable of (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Concrete_Constant of (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Abstract_Set of (G.t_ref,G.t_concrete) G.t_decl
+  | IOV_Interval_Set of (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Concrete_Set of string list * (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Enumerate of (G.t_ref,G.t_concrete) G.t_decl
 
 type t_imp_val_view =
   | IVV_Concrete_Constant of (G.t_ref,G.t_concrete) G.t_decl
   | IVV_Abstract_Set of (G.t_ref,G.t_concrete) G.t_decl
+  | IVV_Interval_Set of (G.t_ref,G.t_concrete) G.t_decl
   | IVV_Concrete_Set of string list * (G.t_ref,G.t_concrete) G.t_decl
   | IVV_Enumerate of (G.t_ref,G.t_concrete) G.t_decl
 
@@ -143,6 +146,7 @@ let view_imp_op: (G.t_ref,t_imp_val) t_global_ident -> t_imp_op_view = function
   | G.Pack(G.K_Concrete_Variable,d) -> IOV_Concrete_Variable d
   | G.Pack(G.K_Concrete_Constant,d) -> IOV_Concrete_Constant d
   | G.Pack(G.K_Abstract_Set,d) -> IOV_Abstract_Set d
+  | G.Pack(G.K_Interval_Set _,d) -> IOV_Interval_Set d
   | G.Pack(G.K_Concrete_Set elts,d) -> IOV_Concrete_Set (elts,d)
   | G.Pack(G.K_Enumerate,d) -> IOV_Enumerate d
   | _ -> assert false
@@ -150,6 +154,7 @@ let view_imp_op: (G.t_ref,t_imp_val) t_global_ident -> t_imp_op_view = function
 let view_imp_val: (G.t_ref,t_imp_val) t_global_ident -> t_imp_val_view = function
   | G.Pack(G.K_Concrete_Constant,d) -> IVV_Concrete_Constant d
   | G.Pack(G.K_Abstract_Set,d) -> IVV_Abstract_Set d
+  | G.Pack(G.K_Interval_Set _,d) -> IVV_Interval_Set d
   | G.Pack(G.K_Concrete_Set elts,d) -> IVV_Concrete_Set (elts,d)
   | G.Pack(G.K_Enumerate,d) -> IVV_Enumerate d
   | _ -> assert false

@@ -142,9 +142,11 @@ let add lst f = function
 *)
 
 let sexp_of_set : P.set -> t = function
-  | Abstract_Set v -> sexp_of_lident v
+  | Abstract_Set v -> List [Atom "Abstract"; sexp_of_lident v]
   | Concrete_Set (v,lst) ->
-    List[sexp_of_lident v;List (List.map sexp_of_lident lst)]
+    List [Atom "Concrete"; sexp_of_lident v;List (List.map sexp_of_lident lst)]
+  | Interval_Set (v,sz) ->
+    List [Atom "Interval"; sexp_of_lident v; Atom (Int64.to_string sz)]
 
 let sexp_of_minst (mi:P.machine_instanciation) : t =
   List [Atom mi.mi_mch.lid_str; List (List.map sexp_of_expr mi.mi_params)]

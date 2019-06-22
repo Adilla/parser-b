@@ -435,6 +435,7 @@ let pp_set out (x:set) : unit =
   | Concrete_Set (s,[]) -> pf out "@[%s =@ {}@]" s.lid_str
   | Concrete_Set (s,hd::tl) ->
     pf out "@[%s =@ {%a}@]" s.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl)
+  | Interval_Set (s,sz) -> pf out "@[%s =@ 0 .. %s@]" s.lid_str (Int64.to_string (Int64.sub sz Int64.one))
 
 let pp_value out (v,e) : unit =
   pf out "@[%s =@ %a@]" v.lid_str pp_expr e

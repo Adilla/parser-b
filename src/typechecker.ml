@@ -228,6 +228,9 @@ let declare_set_exn (env:'mr Global.t) (s:P.set) : unit =
   | P.Abstract_Set v ->
     let typ = Btype.mk_Power (Btype.mk_Abstract_Set Btype.T_Current v.lid_str) in
     declare_global_symbol_exn env v.lid_loc v.lid_str typ Global.K_Abstract_Set
+  | P.Interval_Set (v,sz) ->
+    let typ = Btype.mk_Power (Btype.mk_Interval_Set Btype.T_Current v.lid_str sz) in
+    declare_global_symbol_exn env v.lid_loc v.lid_str typ (Global.K_Interval_Set sz)
   | P.Concrete_Set (v,elts) ->
     let typ = Btype.mk_Concrete_Set Btype.T_Current v.lid_str in
     let elts2 = List.map (fun lid -> lid.lid_str) elts in
@@ -360,6 +363,7 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : (Gl
 
 type ('a_symb,'c_symb) t_symbols = {
   abstract_sets: 'c_symb list;
+  interval_sets: ('c_symb*Int64.t) list;
   concrete_sets: ('c_symb*string list) list;
   abstract_constants: 'a_symb list;
   concrete_constants: 'c_symb list;
@@ -375,6 +379,8 @@ let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstra
     match infos.Global.sy_kind with
     | Global.Pack (Global.K_Abstract_Set,src) ->
       add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
+    | Global.Pack (Global.K_Interval_Set sz,src) ->
+      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) -> { rc with interval_sets = ((x,sz)::rc.interval_sets) }) src
     | Global.Pack (Global.K_Concrete_Set elts,src) ->
       add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
     | Global.Pack (Global.K_Abstract_Constant,src) ->
@@ -388,7 +394,7 @@ let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstra
     | Global.Pack (Global.K_Enumerate,_) -> rc
   in
   Global.fold_symbols aux env
-    { abstract_sets=[]; concrete_sets=[]; abstract_constants=[];
+    { abstract_sets=[]; interval_sets=[]; concrete_sets=[]; abstract_constants=[];
       concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let promote_operation env op_name : unit =
@@ -437,6 +443,7 @@ let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
   { T.mch_sees=mch.P.mch_sees; mch_includes; mch_extends;
     mch_abstract_sets = symbs.abstract_sets;
     mch_concrete_sets = symbs.concrete_sets;
+    mch_interval_sets = symbs.interval_sets;
     mch_concrete_constants = symbs.concrete_constants;
     mch_abstract_constants = symbs.abstract_constants;
     mch_concrete_variables = symbs.concrete_variables;
@@ -494,6 +501,8 @@ let get_ref_symbols (env:Global.t_ref Global.t) :
     match infos.Global.sy_kind with
     | Global.Pack (Global.K_Abstract_Set,src) ->
       add_c_symb (fun x -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
+    | Global.Pack (Global.K_Interval_Set sz,src) ->
+      add_c_symb (fun x -> { rc with interval_sets = ((x,sz)::rc.interval_sets) }) src
     | Global.Pack (Global.K_Concrete_Set elts,src) ->
       add_c_symb (fun x -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
     | Global.Pack (Global.K_Abstract_Constant,src) ->
@@ -507,7 +516,7 @@ let get_ref_symbols (env:Global.t_ref Global.t) :
     | Global.Pack (Global.K_Enumerate,_) -> rc
   in
   Global.fold_symbols aux env
-    { abstract_sets=[]; concrete_sets=[]; abstract_constants=[];
+    { abstract_sets=[]; interval_sets=[]; concrete_sets=[]; abstract_constants=[];
       concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_ref_init_exn env s =
@@ -601,6 +610,7 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
   { T.ref_refines=ref.P.ref_refines; ref_sees=ref.P.ref_sees; ref_includes; ref_extends;
     ref_abstract_sets = symbs.abstract_sets;
     ref_concrete_sets = symbs.concrete_sets;
+    ref_interval_sets = symbs.interval_sets;
     ref_concrete_constants = symbs.concrete_constants;
     ref_abstract_constants = symbs.abstract_constants;
     ref_concrete_variables = symbs.concrete_variables;
@@ -701,6 +711,8 @@ let get_imp_symbols (env:Global.t_ref Global.t) :
     match infos.Global.sy_kind with
     | Global.Pack (Global.K_Abstract_Set,src) ->
       add_c_symb (fun x -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
+    | Global.Pack (Global.K_Interval_Set sz,src) ->
+      add_c_symb (fun x -> { rc with interval_sets = ((x,sz)::rc.interval_sets) }) src
     | Global.Pack (Global.K_Concrete_Set elts,src) ->
       add_c_symb (fun x -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
     | Global.Pack (Global.K_Abstract_Constant,src) ->
@@ -714,7 +726,7 @@ let get_imp_symbols (env:Global.t_ref Global.t) :
     | Global.Pack (Global.K_Enumerate,_) -> rc
   in
   Global.fold_symbols aux env
-    { abstract_sets=[]; concrete_sets=[]; abstract_constants=[];
+    { abstract_sets=[]; interval_sets=[]; concrete_sets=[]; abstract_constants=[];
       concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_imp_init_exn env s =
@@ -856,6 +868,7 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
     imp_extends;
     imp_abstract_sets=symbs.abstract_sets;
     imp_concrete_sets=symbs.concrete_sets;
+    imp_interval_sets=symbs.interval_sets;
     imp_abstract_constants=symbs.abstract_constants;
     imp_concrete_constants=symbs.concrete_constants;
     imp_abstract_variables=symbs.abstract_variables;

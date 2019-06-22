@@ -6,7 +6,17 @@ let mk_builtin_0 exp_loc bi : expression = { exp_loc; exp_desc=(Builtin_0 bi); e
 let mk_builtin_1 exp_loc bi e : expression = { exp_loc; exp_desc=(Builtin_1 (bi,e)); exp_par=false }
 let mk_builtin_2 exp_loc bi e1 e2 : expression = { exp_loc; exp_desc=(Builtin_2 (bi,e1,e2)); exp_par=false }
    *)
-
+let mk_Interval_Set lid min max =
+  let _ = match min with
+    | Integer i -> assert(i=Int64.zero)
+    | _ -> assert false (*FIXME*)
+  in
+  let max = match max with
+    | Integer i -> (assert (Int64.compare i Int64.zero >= 0); i)
+    | _ -> assert false (*FIXME*)
+  in
+  Interval_Set (lid,Int64.add max Int64.one)
+  
 let mk_minst mi_mch mi_params : machine_instanciation = { mi_mch; mi_params }
 let mk_expr exp_loc exp_desc : expression = { exp_loc; exp_desc; exp_par=false }
 let mk_pred prd_loc prd_desc : predicate = { prd_loc; prd_desc; prd_par=false }
@@ -362,6 +372,7 @@ component_eof: a=component EOF { a }
 %inline set :
 | id=IDENT { Abstract_Set (mk_lident $startpos(id) id) }
 | id=IDENT EQUAL LBRA elts=ident_list_comma RBRA { Concrete_Set (mk_lident $startpos(id) id,elts) }
+| id=IDENT EQUAL min=CONSTANT E_INFIX_170 max=CONSTANT { mk_Interval_Set (mk_lident $startpos(id) id) min max }
 
 %inline operation :
 | id=IDENT EQUAL s=level1_substitution

@@ -140,6 +140,7 @@ type machine = {
   mch_extends: mch_name list;
 
   mch_abstract_sets: (G.t_mch,G.t_concrete) symb list;
+  mch_interval_sets: ((G.t_mch,G.t_concrete) symb*Int64.t) list;
   mch_concrete_sets: ((G.t_mch,G.t_concrete) symb*string list) list;
   mch_concrete_constants: (G.t_mch,G.t_concrete) symb list;
   mch_abstract_constants: (G.t_mch,G.t_abstract) symb list;
@@ -161,6 +162,7 @@ type refinement = {
   ref_extends: mch_name list;
 
   ref_abstract_sets: (G.t_ref,G.t_concrete) symb list;
+  ref_interval_sets: ((G.t_ref,G.t_concrete) symb*Int64.t) list;
   ref_concrete_sets: ((G.t_ref,G.t_concrete) symb*string list) list;
   ref_concrete_constants: (G.t_ref,G.t_concrete) symb list;
   ref_abstract_constants: (G.t_ref,G.t_abstract) symb list;
@@ -207,6 +209,7 @@ type implementation = {
   imp_extends: mch_name list;
 
   imp_abstract_sets: (G.t_ref,G.t_concrete) symb list;
+  imp_interval_sets: ((G.t_ref,G.t_concrete) symb*Int64.t) list;
   imp_concrete_sets: ((G.t_ref,G.t_concrete) symb*string list) list;
   imp_abstract_constants: t_abs_imp_symb list;
   imp_concrete_constants: (G.t_ref,G.t_concrete) symb list;

@@ -85,6 +85,7 @@ type machine_instanciation = {
 type set =
   | Abstract_Set of lident
   | Concrete_Set of lident * lident list
+  | Interval_Set of lident * Int64.t
 [@@deriving eq]
 
 type machine = {

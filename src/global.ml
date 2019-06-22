@@ -27,6 +27,7 @@ type _ t_global_kind =
   | K_Concrete_Variable : t_concrete t_global_kind
   | K_Concrete_Constant : t_concrete t_global_kind
   | K_Abstract_Set : t_concrete t_global_kind
+  | K_Interval_Set : Int64.t -> t_concrete t_global_kind
   | K_Concrete_Set : string list  -> t_concrete t_global_kind
   | K_Enumerate : t_concrete t_global_kind
 
@@ -201,6 +202,7 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
           | K_Concrete_Constant -> Pack(ki,D_Redeclared Implicitely)
           | K_Abstract_Set -> Pack(ki,D_Redeclared Implicitely)
           | K_Concrete_Set _ -> Pack(ki,D_Redeclared Implicitely)
+          | K_Interval_Set _ -> Pack(ki,D_Redeclared Implicitely)
           | K_Enumerate -> Pack(ki,D_Redeclared Implicitely)
         end
     in

@@ -40,9 +40,8 @@ type t_b0_binary_op =
   | B0_Modulo
   | B0_Power
 
-
 type t_array_index =
-  | I_Int
+  | I_Interval of t_type_id*Int64.t
   | I_Bool
   | I_Enum of t_type_id
 
@@ -73,7 +72,7 @@ type t_exp0_desc =
   | B0_Record_Access of t_b0_expr*t_id
 
 and t_b0_range =
-  | R_Interval of t_b0_expr*t_b0_expr
+  | R_Interval_Set of qident
   | R_Concrete_Set of qident
 
 and t_b0_expr =
@@ -150,6 +149,7 @@ type t_type_def =
   | D_Int
   | D_Alias of t_pkg_id*ident
   | D_Enum of ident list
+  | D_Interval of Int64.t
 
 type t_type =
   { ty_name: t_id_2;

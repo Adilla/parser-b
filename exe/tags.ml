@@ -54,6 +54,7 @@ let add_promotes (tags:tags) (name:lident) : tags =
 
 let add_sets (tags:tags) (s:P.set) : tags =
   let lst = match s with
+    | Interval_Set (s,_,_)
     | Abstract_Set s -> [mk_tag 's' s.lid_loc s.lid_str None]
     | Concrete_Set (s,elts) ->
       (mk_tag 's' s.lid_loc s.lid_str None)::

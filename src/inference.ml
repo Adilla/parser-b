@@ -32,7 +32,7 @@ let get_builtin0_type (e:e_builtin_0) : Btype.Open.t =
   let open Btype.Open in
   match e with
     | TRUE | FALSE -> t_bool
-    | Integer _ | MaxInt | MinInt  -> t_int
+    | Integer _ | MaxInt | MinInt  -> new_num ()
     | String _ -> t_string
     | NATURAL | NATURAL1 | INT | NAT | NAT1 | INTEGER  -> mk_Power t_int
     | STRINGS  -> mk_Power t_string
@@ -105,7 +105,9 @@ let get_builtin2_type (e:e_builtin_2) : Btype.Open.t*Btype.Open.t*Btype.Open.t =
   match e with
     | Product  -> assert false
     | Difference -> assert false
-    | Addition | Division | Modulo | Power  -> (t_int,t_int,t_int)
+    | Addition -> let num = new_num () in (num,num,num)
+    | Division | Modulo | Power  ->
+      (t_int,t_int,t_int)
     | Interval  -> (t_int,t_int,mk_Power t_int)
     | Intersection | Union  ->
       let t_set = mk_Power (new_meta ()) in

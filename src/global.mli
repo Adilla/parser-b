@@ -28,6 +28,7 @@ type _ t_global_kind =
   | K_Concrete_Variable : t_concrete t_global_kind
   | K_Concrete_Constant : t_concrete t_global_kind
   | K_Abstract_Set : t_concrete t_global_kind
+  | K_Interval_Set : Int64.t -> t_concrete t_global_kind
   | K_Concrete_Set : string list  -> t_concrete t_global_kind
   | K_Enumerate : t_concrete t_global_kind
 

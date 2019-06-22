@@ -69,12 +69,14 @@ type t_imp_op_view =
   | IOV_Concrete_Variable of (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Concrete_Constant of (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Abstract_Set of (G.t_ref,G.t_concrete) G.t_decl
+  | IOV_Interval_Set of (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Concrete_Set of string list * (G.t_ref,G.t_concrete) G.t_decl
   | IOV_Enumerate of (G.t_ref,G.t_concrete) G.t_decl
 
 type t_imp_val_view =
   | IVV_Concrete_Constant of (G.t_ref,G.t_concrete) G.t_decl
   | IVV_Abstract_Set of (G.t_ref,G.t_concrete) G.t_decl
+  | IVV_Interval_Set of (G.t_ref,G.t_concrete) G.t_decl
   | IVV_Concrete_Set of string list * (G.t_ref,G.t_concrete) G.t_decl
   | IVV_Enumerate of (G.t_ref,G.t_concrete) G.t_decl
 

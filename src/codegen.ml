@@ -47,7 +47,7 @@ type qident = { q_nspace:t_pkg_id option; q_id:t_id }
 type t_type_id = { t_nspace:string option; t_id:string }
 
 type t_array_index =
-  | I_Int
+  | I_Interval of t_type_id*Int64.t
   | I_Bool
   | I_Enum of t_type_id
 
@@ -68,6 +68,7 @@ type t_ident_kind =
 type t_full_ident_kind =
   | IK_Concrete_Set of t_pkg_id option
   | IK_Abstract_Set of t_pkg_id option
+  | IK_Interval_Set of t_pkg_id option
   | IK_Other of t_ident_kind
 
 type t_mut_ident_kind =
@@ -88,7 +89,7 @@ type t_exp0_desc =
   | B0_Record_Access of t_b0_expr*t_id
 
 and t_b0_range =
-  | R_Interval of t_b0_expr*t_b0_expr
+  | R_Interval_Set of qident
   | R_Concrete_Set of qident
 
 and t_b0_expr =
@@ -160,6 +161,7 @@ type t_type_def =
   | D_Int
   | D_Alias of t_pkg_id*string
   | D_Enum of string list
+  | D_Interval of Int64.t
 
 type t_type =
   { ty_name: t_id_2;
@@ -219,19 +221,24 @@ let to_b0_type (ty:Btype.t) : t_b0_type option =
     T_Abstract { t_nspace=None; t_id }
   | Btype.T_Abstract_Set (Btype.T_Seen m,t_id) ->
     T_Abstract { t_nspace=Some m; t_id }
+  | Btype.T_Interval_Set _ -> T_Int
   | Btype.T_Power ty0 ->
     begin match Btype.view ty0 with
       | Btype.T_Product (rg,tg) ->
         let get_range rg = match Btype.view rg with
-          | Btype.T_Int -> I_Int
           | Btype.T_Bool -> I_Bool
           | Btype.T_Abstract_Set (Btype.T_Current,_) -> raise Local_Exn
           | Btype.T_Concrete_Set (Btype.T_Current,t_id) ->
             I_Enum { t_nspace=None; t_id }
+          | Btype.T_Interval_Set (Btype.T_Current,t_id,sz) ->
+            I_Interval ({ t_nspace=None; t_id },sz)
+          | Btype.T_Interval_Set (Btype.T_Seen m,t_id,sz) ->
+            I_Interval ({ t_nspace=Some m; t_id },sz)
           | Btype.T_Abstract_Set (Btype.T_Seen _,_) -> raise Local_Exn
           | Btype.T_Concrete_Set (Btype.T_Seen m,t_id) ->
             I_Enum { t_nspace=Some m; t_id }
-          | _ -> raise Local_Exn
+          | Btype.T_Power _ | Btype.T_Product _ | Btype.T_Record _
+          | Btype.T_String | Btype.T_Int -> raise Local_Exn
         in
         let rec mk_array rg tg = match Btype.view rg with
           | Btype.T_Product (a,b) -> mk_array a (T_Array(get_range b,tg))
@@ -254,7 +261,7 @@ let rec get_default_value (exp0_loc:Utils.loc) (ty:t_b0_type) : t_b0_expr =
   | T_Bool -> mk ty (B0_Builtin_0 B0_True)
   | T_Abstract _ -> mk ty (B0_Builtin_0 (B0_Integer Int64.zero))
   | T_Enum _ -> mk ty (B0_Builtin_0 (B0_Integer Int64.zero))
-  | T_Array _ -> mk ty (B0_Array [])
+  | T_Array _ -> mk ty (B0_Array []) (*FIXME*)
   | T_Record lst ->
     let aux (id,ty) = (mk_lident exp0_loc id,get_default_value exp0_loc ty) in
     mk ty (B0_Record (List.map aux lst))
@@ -265,19 +272,24 @@ let mk_int i =
     exp0_type = T_Int;
     exp0_desc=B0_Builtin_0 (B0_Integer i) }
 *)
+let get_size (ty:t_b0_type) : Int64.t =
+  match ty with
+  | T_Array (I_Interval (_,sz),_) -> sz
+  | _ -> assert false (*FIXME*)
     
 let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) ->
   ('mr,'cl,Btype.t) T.expression -> t_b0_expr = fun f e ->
+  let exp0_type = 
+    match to_b0_type e.T.exp_typ with
+    | Some ty -> ty
+    | None  ->
+      Error.raise_exn e.T.exp_loc
+        ("This expression has type '" ^ Btype.to_string e.T.exp_typ 
+         ^"'. This is not a valid B0-expression.")
+  in
   let add_lt exp0_desc =
     { exp0_loc = e.T.exp_loc;
-      exp0_type = 
-        (match to_b0_type e.T.exp_typ with
-        | Some ty -> ty
-        | None  ->
-          Error.raise_exn e.T.exp_loc
-            ("This expression has type '" ^ Btype.to_string e.T.exp_typ 
-             ^"'. This is not a valid B0-expression."));
-      exp0_desc }
+      exp0_type ; exp0_desc }
   in
   match e.T.exp_desc with
   | T.Ident T.K_Local (id,ki) -> add_lt (B0_Local_Ident({lid_str=id;lid_loc=e.T.exp_loc},ki))
@@ -288,6 +300,8 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
         Error.raise_exn e.T.exp_loc "A concrete set is not a valid B0-expression."
       | IK_Abstract_Set _ ->
         Error.raise_exn e.T.exp_loc "an abstract set is not a valid B0-expression."
+      | IK_Interval_Set _ ->
+        Error.raise_exn e.T.exp_loc "an interval set is not a valid B0-expression."
     end
   | T.Builtin_0 bi ->
     begin match to_b0_constant bi with
@@ -347,7 +361,7 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
     Error.raise_exn e.T.exp_loc
       ("This is not a valid B0 binary operator ("^SyntaxCore.builtin2_to_string op^").")
   | T.Pbool p -> pred_to_b0_expr f p
-  | T.Extension nle ->
+  | T.Extension nle -> (*FIXME enum/bool *)
     let aux i e = match e.T.exp_desc with
       | T.Builtin_2 (Couple _,e1,e2) ->
         begin match (to_b0_expr f e1).exp0_desc with
@@ -363,7 +377,12 @@ let rec to_b0_expr : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind) 
     let lst = List.mapi aux (Nlist.to_list nle) in
     let lst = List.fast_sort (fun (a,_) (b,_) -> Int64.compare a b) lst in
     let lst = List.map snd lst in
-    add_lt (B0_Array lst)
+    let exp_size = get_size exp0_type in
+    let inf_size = Int64.of_int (List.length lst) in
+    if exp_size == inf_size then add_lt (B0_Array lst)
+    else Error.raise_exn e.T.exp_loc
+        ("Incorrect array size. Exprected: "^ Int64.to_string exp_size
+         ^". Found: "^Int64.to_string inf_size^".")
   | T.Record lst ->
     add_lt (B0_Record (List.map (fun (id,e) ->
         (id,to_b0_expr f e)) (Nlist.to_list lst) ))
@@ -404,16 +423,19 @@ and get_array_range : 'mr 'cl. (('mr,'cl) V.t_global_ident -> t_full_ident_kind)
     begin match f ki with
       | IK_Concrete_Set q_nspace ->
         Nlist.make1 (R_Concrete_Set { q_nspace; q_id=mk_lident e.T.exp_loc id })
+      | IK_Interval_Set q_nspace ->
+        Nlist.make1 (R_Interval_Set { q_nspace; q_id=mk_lident e.T.exp_loc id })
       | IK_Other IK_Constant _ -> Error.raise_exn e.T.exp_loc "Invalid array range (constant)."
       | IK_Abstract_Set _  -> Error.raise_exn e.T.exp_loc "Invalid array range (abstract set)."
-(*         Nlist.make1 (R_Interval(mk_int Int32.zero,mk_int (Int32.of_int 7))) *)
       | IK_Other IK_Enum _ -> Error.raise_exn e.T.exp_loc "Invalid array range (enum)."
       | IK_Other IK_Variable _ -> Error.raise_exn e.T.exp_loc "Invalid array range (variable)."
     end
+(*
   | T.Builtin_2 (Interval,int_start,int_end) ->
     let min = to_b0_expr f int_start in
     let max = to_b0_expr f int_end in
     Nlist.make1 (R_Interval (min,max))
+*)
   | T.Builtin_2(Product,st,ed) ->
     let rg1 = get_array_range f st in
     let rg2 = get_array_range f ed in
@@ -573,8 +595,11 @@ let get_dependencies sees imports extends : (t_pkg_id*t_dep_kind) list =
   let lst3 = List.map (fun x -> (x,DK_Extends)) extends in
   lst1@lst2@lst3
 
-let get_imp_types (ref:t_id) (concrete_sets:((G.t_ref,G.t_concrete) T.symb*string list) list)
-    (abstract_sets:(G.t_ref,G.t_concrete) T.symb list) : t_type list =
+let get_imp_types (ref:t_id)
+    (concrete_sets:((G.t_ref,G.t_concrete) T.symb*string list) list)
+    (interval_sets:((G.t_ref,G.t_concrete) T.symb*Int64.t) list)
+    (abstract_sets:(G.t_ref,G.t_concrete) T.symb list)
+  : t_type list =
   let add_concrete_set lst (s,elts) : t_type list =
     match s.T.sy_src with
     | G.D_Machine loc | G.D_Redeclared G.By_Machine loc ->
@@ -604,7 +629,23 @@ let get_imp_types (ref:t_id) (concrete_sets:((G.t_ref,G.t_concrete) T.symb*strin
       let ty_name = Extern(ref,s.T.sy_id) in
       { ty_name; ty_def=D_Int }::lst
   in
+  let add_interval_set lst (s,sz) : t_type list =
+    match s.T.sy_src with
+    | G.D_Machine loc | G.D_Redeclared G.By_Machine loc ->
+      { ty_name=Intern(mk_lident loc s.T.sy_id); ty_def=D_Interval sz }::lst
+    | G.D_Seen _ -> lst
+    | G.D_Included_Or_Imported mch ->
+      let ty_name = Extern(mch,s.T.sy_id) in
+      { ty_name; ty_def=D_Alias (mch,s.T.sy_id) }::lst
+    | G.D_Redeclared G.By_Included_Or_Imported mch ->
+      let ty_name = Extern(mch,s.T.sy_id) in
+      { ty_name; ty_def=D_Alias (mch,s.T.sy_id) }::lst
+    | G.D_Redeclared G.Implicitely ->
+      let ty_name = Extern(ref,s.T.sy_id) in
+      { ty_name; ty_def=D_Interval sz}::lst
+  in
   let lst = List.fold_left add_concrete_set [] concrete_sets in
+  let lst = List.fold_left add_interval_set lst interval_sets in
   List.rev (List.fold_left add_abstract_set lst abstract_sets)
 
 let from_imp_val (x:(G.t_ref,V.t_imp_val) V.t_global_ident) : t_full_ident_kind =
@@ -616,6 +657,7 @@ let from_imp_val (x:(G.t_ref,V.t_imp_val) V.t_global_ident) : t_full_ident_kind 
   | V.IVV_Concrete_Constant d -> IK_Other (IK_Constant (get_pkg d))
   | V.IVV_Enumerate d -> IK_Other (IK_Enum (get_pkg d))
   | V.IVV_Abstract_Set d -> IK_Abstract_Set (get_pkg d)
+  | V.IVV_Interval_Set d -> IK_Interval_Set (get_pkg d)
   | V.IVV_Concrete_Set (_,d) -> IK_Concrete_Set (get_pkg d)
 
 let from_imp_op (x:(G.t_ref,V.t_imp_op) V.t_global_ident) : t_full_ident_kind =
@@ -629,6 +671,7 @@ let from_imp_op (x:(G.t_ref,V.t_imp_op) V.t_global_ident) : t_full_ident_kind =
   | V.IOV_Enumerate d -> IK_Other (IK_Enum (get_pkg d))
   | V.IOV_Concrete_Set (_,d) -> IK_Concrete_Set (get_pkg d)
   | V.IOV_Abstract_Set d -> IK_Abstract_Set (get_pkg d)
+  | V.IOV_Interval_Set d -> IK_Interval_Set (get_pkg d)
 
 let from_imp_mut (x:(G.t_ref,V.t_imp_op) T.t_mutable_ident) : t_mut_ident_kind =
   match x with
@@ -758,14 +801,14 @@ let imp_to_package_exn (pkg_name:t_pkg_id) (imp:T.implementation) : t_package  =
        * declared in a seen machine may be declared in a machine that is neither
        * senn imported nor extended. *)
       get_dependencies imp.T.imp_sees imp.T.imp_imports imp.T.imp_extends;
-    pkg_types = get_imp_types imp.imp_refines imp.T.imp_concrete_sets imp.T.imp_abstract_sets;
+    pkg_types = get_imp_types imp.imp_refines imp.T.imp_concrete_sets imp.T.imp_interval_sets imp.T.imp_abstract_sets;
     pkg_constants = (Utils.filter_map get_imported_constants imp.T.imp_concrete_constants)@(Utils.filter_map get_imp_constants imp.T.imp_values);
     pkg_variables = Utils.filter_map (get_imp_variables imp.imp_refines) imp.T.imp_concrete_variables;
     pkg_procedures = List.map get_imp_operations imp.T.imp_operations;
     pkg_init = Utils.map_opt (to_b0_subst from_imp_op from_imp_mut) imp.T.imp_initialisation
   }
 
-let get_mch_types (concrete_sets:((G.t_mch,G.t_concrete) T.symb*string list) list)
+let get_mch_types (concrete_sets:((G.t_mch,G.t_concrete) T.symb*string list) list) (*FIXME*)
     (abstract_sets:(G.t_mch,G.t_concrete) T.symb list) : t_type list =
   let add_concrete_set lst (s,elts:(G.t_mch,G.t_concrete)T.symb*_) =
     match s.T.sy_src with

@@ -14,11 +14,12 @@ sig
     | T_String
     | T_Abstract_Set of t_atomic_src*string
     | T_Concrete_Set of t_atomic_src*string
+    | T_Interval_Set of t_atomic_src*string*Int64.t
     | T_Power of t
     | T_Product of t * t
     | T_Record of (string*t) list
     | T_UVar of uv ref
-  and uv = Unbound of int | Bound of t
+  and uv = Any of int | Num of int | Bound of t
 
   val t_int : t
   val t_bool : t
@@ -26,10 +27,12 @@ sig
 
   val mk_Abstract_Set : t_atomic_src -> string -> t
   val mk_Concrete_Set : t_atomic_src -> string -> t
+  val mk_Interval_Set : t_atomic_src -> string -> Int64.t -> t
   val mk_Power : t -> t
   val mk_Product : t -> t -> t
   val mk_Record : (string*t) list -> t
   val new_meta : unit -> t
+  val new_num : unit -> t
 
   val type_of_unary_fun : t -> t -> t 
   val type_of_binary_fun : t -> t -> t -> t 
@@ -54,6 +57,7 @@ val close : Open.t -> t option
 
 val mk_Abstract_Set : t_atomic_src -> string -> t
 val mk_Concrete_Set : t_atomic_src -> string -> t
+val mk_Interval_Set : t_atomic_src -> string -> Int64.t -> t
 val mk_Power : t -> t
 val mk_Product : t -> t -> t
 val mk_Record : (string*t) list -> t
@@ -64,6 +68,7 @@ type t_view =
   | T_String
   | T_Abstract_Set of t_atomic_src*string
   | T_Concrete_Set of t_atomic_src*string
+  | T_Interval_Set of t_atomic_src*string*Int64.t
   | T_Power of t
   | T_Product of t * t
   | T_Record of (string*t) list

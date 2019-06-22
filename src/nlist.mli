@@ -40,3 +40,5 @@ val rev : 'a t -> 'a t
 (** reverse function for non-empty list*)
 
 val lb_map : f:('a -> 'b) -> 'a t -> 'b t
+
+val concat : 'a t -> 'a t -> 'a t

@@ -36,3 +36,5 @@ let map f (hd,tl) =
   (hd,tl)
 
 let rev (hd,tl) = from_list_exn (List.rev (hd::tl))
+
+let concat (hd1,tl1) (hd2,tl2) : 'a t = (hd1,List.append tl1 (hd2::tl2))

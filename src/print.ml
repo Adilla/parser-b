@@ -1,36 +1,5 @@
-open Easy_format
 open SyntaxCore
 open PSyntax
-
-let mk_atom (s:string) : Easy_format.t = Atom (s,atom)
-let mk_label (a:Easy_format.t) (b:Easy_format.t) : Easy_format.t =
-  Label ((a,{label with space_after_label=false}),b)
-
-let list_1 =
-  { list with space_after_opening=false;
-              space_before_closing=false;
-              align_closing=false }
-
-let rec get_and_list p =
-  match p.prd_desc with
-  | Binary_Prop (Conjonction,p1,p2) -> (get_and_list p1)@[p2]
-  | _ -> [p]
-
-let rec get_or_list p =
-  match p.prd_desc with
-  | Binary_Prop (Disjonction,p1,p2) -> (get_or_list p1)@[p2]
-  | _ -> [p]
-
-let mk_atom_from_lident (s:lident) : Easy_format.t = Atom (s.lid_str,atom)
-
-let mk_string_list_comma (lst:lident list) : Easy_format.t =
-  List (("",",","",list_1), List.map mk_atom_from_lident lst)
-
-let mk_string_nelist_comma (nlst:lident Nlist.t) : Easy_format.t =
-  mk_string_list_comma (Nlist.to_list nlst)
-
-let mk_string_nelist_comma_par (nlst:lident Nlist.t) : Easy_format.t =
-  List (("(",",",")",list_1), List.map mk_atom_from_lident (Nlist.to_list nlst))
 
 let is_infix = function
   | First_Projection | Second_Projection | Iteration -> false
@@ -41,464 +10,544 @@ let is_infix = function
   | Tail_Insertion | Head_Restriction | Tail_Restriction | Couple _ -> true
   | Application | Image -> assert false
 
+let pf = Format.fprintf
+let str = Format.pp_print_string
+let close out = Format.pp_close_box out ()
+let vbox out = Format.pp_open_vbox out 0
+let box out = Format.pp_open_box out 0
+let break = Format.pp_print_break 
 
-let rec ef_expr : expression -> Easy_format.t = fun e ->
+let pp_lident out (lid:lident) : unit = str out lid.lid_str
+
+type list = {
+  box : Format.formatter -> int -> unit;
+  opn : string;
+  clo : string;
+  sep : string;
+}
+
+let list = {
+  box = Format.pp_open_box;
+  opn = "";
+  clo = "";
+  sep = "";
+}
+
+let vlist = {
+  box = Format.pp_open_vbox;
+  opn = "";
+  clo = "";
+  sep = "";
+}
+
+let hvlist = {
+  box = Format.pp_open_hvbox;
+  opn = "";
+  clo = "";
+  sep = "";
+}
+
+let pp_list list (pp:Format.formatter -> 'a -> unit)
+    (out:Format.formatter) (nlst:'a Nlist.t) : unit =
+  let indent = String.length list.opn in
+  list.box out 0;
+  str out list.opn;
+  pp out (Nlist.hd nlst);
+  List.iter (fun x ->
+      str out list.sep;
+      Format.pp_print_break out 1 indent;
+      pp out x
+    ) (Nlist.tl nlst);
+  str out list.clo;
+  Format.pp_close_box out ()
+
+let rec get_or_nlist (p:predicate) : predicate Nlist.t =
+  match p.prd_desc with
+  | Binary_Prop (Disjonction,p1,p2) ->
+    Nlist.concat (get_or_nlist p1) (Nlist.make1 p2)
+  | _ -> Nlist.make1 p
+
+let rec get_and_nlist (p:predicate) : predicate Nlist.t =
+  match p.prd_desc with
+  | Binary_Prop (Conjonction,p1,p2) ->
+    Nlist.concat (get_and_nlist p1) (Nlist.make1 p2)
+  | _ -> Nlist.make1 p
+
+let rec get_seq_nlist (s:substitution) : substitution Nlist.t =
+  match s.sub_desc with
+  | Sequencement (s1,s2) -> Nlist.concat (get_seq_nlist s1) (Nlist.make1 s2)
+  | _ -> Nlist.make1 s
+
+let rec get_par_nlist (s:substitution) : substitution Nlist.t =
+  match s.sub_desc with
+  | Parallel (s1,s2) -> Nlist.concat (get_par_nlist s1) (Nlist.make1 s2)
+  | _ -> Nlist.make1 s
+
+let rec pp_expr out (e:expression) : unit =
   match e.exp_desc with
-  | Ident id -> mk_atom id
-  | Dollar id -> mk_atom ( id ^ "$0")
-  | Builtin_0 bi -> mk_atom (builtin0_to_string bi)
-  | Builtin_1 (Inverse_Relation,e) -> mk_label (ef_expr_wp e) (mk_atom "~")
-  | Builtin_1 (Unary_Minus,e) -> mk_label (mk_atom "-") (ef_expr_wp e)
+  | Ident id -> str out id
+  | Dollar id -> pf out "%s$0" id
+  | Builtin_0 bi -> str out (builtin0_to_string bi)
+  | Builtin_1 (Inverse_Relation,e) ->
+    pf out "%a~"  pp_expr_wp e
+  | Builtin_1 (Unary_Minus,e) ->
+    pf out "-%a" pp_expr_wp e
   | Builtin_1 (bi,e) ->
-    mk_label (mk_atom (builtin1_to_string bi)) (List (("(","",")",list_1),[ef_expr e]))
+    pp_list { list with opn=(builtin1_to_string bi^"("); clo=")"} pp_expr out (Nlist.make1 e)
   | Builtin_2 (Application,f,a) ->
-    mk_label (ef_expr_wp f) (List (("(","",")",list_1),[ef_expr a]))
+    pf out "@[%a@;<0 4>(%a)@]" pp_expr_wp f pp_expr a
   | Builtin_2 (Image,e1,e2) ->
-    mk_label (ef_expr_wp e1) (List (("[","","]",list_1),[ef_expr e2]))
+    pf out "@[%a@;<0 4>[%a]@]" pp_expr_wp e1 pp_expr e2
   | Builtin_2 (Couple Comma,e1,e2) ->
-    List(("(",",",")",{ list_1 with space_before_separator=true }),
-           [ef_expr_wp e1; ef_expr_wp e2])
+    pf out "@[(%a,@;<1 1>%a)@]" pp_expr_wp e1 pp_expr_wp e2
   | Builtin_2 (Composition,e1,e2) ->
-    List(("(",";",")",{ list_1 with space_before_separator=true }),
-           [ef_expr_wp e1; ef_expr_wp e2])
+    pf out "@[(%a;@;<0 4>%a)@]" pp_expr_wp e1 pp_expr_wp e2
   | Builtin_2 (Parallel_Product,e1,e2) ->
-    List(("(","||",")",{ list_1 with space_before_separator=true }),
-         [ef_expr_wp e1; ef_expr_wp e2])
+    pf out "@[(%a ||@;<1 1>%a)@]" pp_expr_wp e1 pp_expr_wp e2
   | Builtin_2 (bi,e1,e2) ->
     if is_infix bi then
-      List(("",builtin2_to_string bi,"",{ list_1 with space_before_separator=true }),
-           [ef_expr_wp e1; ef_expr_wp e2])
+      pf out "@[%a@;<1 0>%s@;<1 0>%a@]" pp_expr_wp e1 (builtin2_to_string bi) pp_expr_wp e2
     else
-      mk_label (mk_atom (builtin2_to_string bi)) (List (("(",",",")",list_1),[ef_expr e1;ef_expr e2]))
-  | Pbool p -> mk_label (mk_atom "bool") (List(("(","",")",list_1),[ef_pred p]))
+      pp_list { list with opn=(builtin2_to_string bi^"("); clo=")"; sep=","} pp_expr_wp out (Nlist.make e1 [e2])
+  | Pbool p ->
+    pp_list { list with opn="bool("; clo=")"} pp_pred out (Nlist.make1 p)
   | Comprehension (xlst,p) ->
-    List(("{","","}",{ list with align_closing=false}),
-         [mk_string_nelist_comma xlst;mk_atom "|";ef_pred p])
+    pf out "@[{ %a |@;<1 2>%a }@]" (pp_list { list with sep="," } pp_lident) xlst pp_pred p
   | Binder (bi,xlst,p,e) ->
-    let lst = mk_string_nelist_comma_par xlst in
-    let x = mk_label (mk_atom (binder_to_string bi)) lst in
-    let y = List(("(","|",")",list_1), [ef_pred p;ef_expr e]) in
-    List (("",".","",list_1),[x;y])
+    begin
+      let bi = binder_to_string bi in
+      box out;
+      pf out "%s(%a)."  bi (pp_list { list with sep="," } pp_lident) xlst;
+      break out 0 (String.length bi);
+      pf out "(%a |" pp_pred p;
+      break out 1 (String.length bi);
+      pf out "%a)" pp_expr e;
+      close out;
+    end
   | Sequence nlst ->
-    let lst = List.map (fun e -> ef_expr_wp e) (Nlist.to_list nlst) in
-    List (("[",",","]",list_1),lst)
+    pp_list { list with opn="["; clo="]"; sep="," } pp_expr_wp out nlst
   | Extension nlst ->
-    let lst = List.map (fun e -> ef_expr_wp e) (Nlist.to_list nlst) in
-    List (("{",",","}",list_1),lst)
+    pp_list { list with opn="{"; clo="}"; sep="," } pp_expr_wp out nlst
   | Record_Field_Access (e,fd) ->
-    mk_label (ef_expr_wp e) (mk_atom ("'" ^ fd.lid_str))
+    pf out "@[%a@;<0 4>'%s@]" pp_expr_wp e fd.lid_str
   | Record nlst ->
-    let flst = List.map ef_struct_field (Nlist.to_list nlst) in
-    let lst = List (("(",",",")",list_1),flst) in
-    mk_label (mk_atom "rec") lst
+    pf out "@[rec@;<0 4>%a@]" (pp_list { hvlist with opn="("; clo=")"; sep="," } pp_field) nlst
   | Record_Type nlst ->
-    let flst = List.map ef_struct_field (Nlist.to_list nlst) in
-    let lst = List (("(",",",")",list_1),flst) in
-    mk_label (mk_atom "struct") lst
+    pf out "@[struct@;<0 4>%a@]" (pp_list { hvlist with opn="("; clo=")"; sep="," } pp_field) nlst
 
-and ef_expr_wp e =
+and pp_expr_wp out (e:expression) : unit =
   match e.exp_desc with
   | Builtin_2 (Composition,_,_)
   | Builtin_2 (Couple Comma,_,_)
   | Builtin_2 (Parallel_Product,_,_)
   | Builtin_2 (Image,_,_)
-  | Builtin_2 (Application,_,_) -> ef_expr e
+  | Builtin_2 (Application,_,_) -> pp_expr out e
 
   | Builtin_1 (Unary_Minus,_)
-  | Builtin_1 (Inverse_Relation,_) -> List(("(","",")",list_1),[ef_expr e])
+  | Builtin_1 (Inverse_Relation,_) -> pf out "(%a)" pp_expr e
 
-  | Builtin_2 (bi,_,_) when is_infix bi -> List(("(","",")",list_1),[ef_expr e])
+  | Builtin_2 (bi,_,_) when is_infix bi -> pf out "(%a)" pp_expr e
 
   | Builtin_1 _ | Builtin_2 _ | Record_Field_Access _ | Ident _ | Dollar _
   | Pbool _ | Builtin_0 _ | Comprehension _ | Binder _ | Sequence _
-  | Extension _ | Record _ | Record_Type _ -> ef_expr e
+  | Extension _ | Record _ | Record_Type _ -> pp_expr out e
 
-and ef_struct_field (rf,e:lident*expression) : Easy_format.t =
-  List(("",":","",list_1), [mk_atom_from_lident rf;ef_expr_wp e])
+and pp_field out (fd,e:lident*expression) : unit =
+  pf out "@[%s:@;<1 4>%a@]" fd.lid_str pp_expr_wp e
 
-and ef_pred : predicate -> Easy_format.t = fun p ->
+and pp_pred out (p:predicate) : unit =
   match p.prd_desc with
-  | P_Builtin Btrue -> mk_atom "btrue"
-  | P_Builtin Bfalse -> mk_atom "bfalse"
+  | P_Builtin Btrue -> str out "btrue"
+  | P_Builtin Bfalse -> str out "bfalse"
   | Binary_Prop (Conjonction,_,_) ->
-    let pars = List.map (fun p -> ef_pred_wp p) (get_and_list p) in
-    List (("","&","",{ list_1 with space_before_separator=true}),pars)
+    let nlst = get_and_nlist p in
+    pp_list { vlist with sep=" &" } pp_pred_wp out nlst
   | Binary_Prop (Disjonction,_,_) ->
-    let pars = List.map (fun p -> ef_pred_wp p) (get_or_list p) in
-    List (("","or","",{ list_1 with space_before_separator=true}),pars)
+    let nlst = get_or_nlist p in
+    pp_list { vlist with sep=" or" } pp_pred_wp out nlst
   | Binary_Prop (bop,p1,p2) ->
-    List(("",prop_bop_to_string bop,"",{list_1 with space_before_separator=true}),
-         [ef_pred_wp p1; ef_pred_wp p2])
+    pf out "@[%a %s@;<1 4>%a@]" pp_pred_wp p1 (prop_bop_to_string bop) pp_pred_wp p2
   | Binary_Pred (bop,e1,e2) ->
-    List (("",pred_bop_to_string bop,"",{list_1 with space_before_separator=true}),
-          [ef_expr e1; ef_expr e2])
+    pf out "@[%a %s@;<1 4>%a@]" pp_expr_wp e1 (pred_bop_to_string bop) pp_expr_wp e2
   | Negation p ->
-    mk_label (mk_atom "not") (List(("(","",")",list_1),[ef_pred p]))
+    pp_list { list with opn="not("; clo=")" } pp_pred out (Nlist.make1 p)
   | Universal_Q (xlst,p) ->
-    let lst = mk_string_nelist_comma_par xlst in
-    let x = mk_label (mk_atom "!") lst in
-    let y = List(("(","",")",list_1), [ef_pred p]) in
-    List(("",".","",{list_1 with space_after_separator=false}),[x;y])
+    pf out "@[!(%a).@;<0 4>(%a)@]" (pp_list { list with sep="," } pp_lident) xlst pp_pred p
   | Existential_Q (xlst,p) ->
-    let lst = mk_string_nelist_comma_par xlst in
-    let x = mk_label (mk_atom "#") lst in
-    let y = List(("(","",")",list_1), [ef_pred p]) in
-    List(("",".","",{list_1 with space_after_separator=false}),[x;y])
+    pf out "@[#(%a).@;<0 4>(%a)@]" (pp_list { list with sep="," } pp_lident) xlst pp_pred p
 
-and ef_pred_wp p =
+and pp_pred_wp out (p:predicate) : unit =
   match p.prd_desc with
-  | P_Builtin _ | Negation _ | Universal_Q _ | Existential_Q _
-  | Binary_Pred _ -> ef_pred p
-  | Binary_Prop _ -> List(("(","",")",list_1),[ef_pred p])
+  | P_Builtin _ | Negation _ | Universal_Q _
+  | Existential_Q _ | Binary_Pred _-> pp_pred out p
+  | Binary_Prop _ -> pf out "(%a)" pp_pred p
 
-let mk_sequence lst =
-  List(("","","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),lst)
-
-let mk_sequence_nl lst =
-  List(("","","",{list with space_after_opening=false;
-                            space_before_closing=false;
-                            align_closing=false;
-                            wrap_body=`Force_breaks;
-                 }),lst)
-
-let rec get_seq_list (s:substitution) =
+let rec pp_subst out (s:substitution) : unit =
   match s.sub_desc with
-  | Sequencement (s1,s2) -> (get_seq_list s1)@[s2]
-  | _ -> [s]
-
-let rec get_par_list (s:substitution) =
-  match s.sub_desc with
-  | Parallel (s1,s2) -> (get_par_list s1)@[s2]
-  | _ -> [s]
-
-let mk_expr_nelist_comma (lst:expression Nlist.t) : Easy_format.t =
-  let lst = List.map ef_expr_wp (Nlist.to_list lst) in
-  List (("",",","",list_1), lst)
-
-let rec ef_subst : substitution -> Easy_format.t = fun s ->
-  match s.sub_desc with
-  | Skip -> mk_atom "skip"
+  | Skip -> str out "skip"
 
   | Affectation (Tuple xlst,e) ->
-    mk_sequence [mk_string_nelist_comma xlst;mk_atom ":=";ef_expr e]
+    pf out "@[%a :=@;<1 4>%a@]" (pp_list { list with sep="," } pp_lident) xlst pp_expr e
 
   | Affectation (Function(f,alst),e) ->
-    let aux e = List(("(","",")",list),[ef_expr e]) in
-    let lst_args = List(("","","",list),List.map aux (Nlist.to_list alst)) in
-    let lf = Label ((mk_atom_from_lident f,label), lst_args) in
-    mk_sequence [lf;mk_atom ":=";ef_expr e]
+    let aux out e = pf out "(%a)" pp_expr e in
+    pf out "@[%s@,%a :=@;<1 4>%a@]" f.lid_str (pp_list { list with sep="" } aux) alst pp_expr e
 
   | Affectation (Record(rf,fd),e) ->
-    let lf = mk_atom (rf.lid_str ^ "'" ^ fd.lid_str) in
-    mk_sequence [lf;mk_atom ":=";ef_expr e]
+    pf out "@[%s@,'%s :=@;<1 4>%a@]" rf.lid_str fd.lid_str pp_expr e
 
   | Pre (p,s) ->
-    let lb = {label with label_break=`Always} in
-    mk_sequence_nl [
-      Label((mk_atom "PRE",lb),ef_pred p);
-      Label((mk_atom "THEN",lb),ef_subst s);
-      mk_atom "END"]
-
-  | Assert (p,s) ->
-    let lb = {label with label_break=`Always} in
-    mk_sequence_nl [ Label((mk_atom "ASSERT",lb),ef_pred p);
-                     Label((mk_atom "THEN",lb),ef_subst s);
-                     mk_atom "END"]
-
-  | Choice slst ->
-    let lb = {label with label_break=`Always} in
-    mk_sequence_nl (
-      Label((mk_atom "CHOICE",lb),ef_subst (Nlist.hd slst))::
-      (List.map (fun s -> Label((mk_atom "OR",lb),ef_subst s)) (Nlist.tl slst))
-      @[mk_atom "END"])
-
-  | IfThenElse (pslst,opt) ->
-    let lb = {label with label_break=`Always_rec; space_after_label=false} in
-    let (p,s) = Nlist.hd pslst in
-    let clst =
-      [ [Label((mk_atom "IF",lb),ef_pred p);
-         Label((mk_atom "THEN",lb),ef_subst s)] ]
-      @
-      (List.map (fun (p,s) ->
-           [Label((mk_atom "ELSIF",lb),ef_pred p);
-            Label((mk_atom "THEN",lb),ef_subst s)]
-         ) (Nlist.tl pslst))
-      @ (match opt with
-          | None -> []
-          | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
-      @ [[mk_atom "END"]]
-    in
-    mk_sequence_nl (List.concat clst)
-
-  | Select (pslst,opt) ->
-    let lb = {label with label_break=`Always} in
-    let (p,s) = Nlist.hd pslst in
-    let clst =
-      [ [Label((mk_atom "SELECT",lb),ef_pred p);
-         Label((mk_atom "THEN",lb),ef_subst s)] ]
-      @
-      (List.map (fun (p,s) ->
-           [Label((mk_atom "WHEN",lb),ef_pred p);
-            Label((mk_atom "THEN",lb),ef_subst s)]
-         ) (Nlist.tl pslst))
-      @ (match opt with
-          | None -> []
-          | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
-      @ [[mk_atom "END"]]
-    in
-    mk_sequence_nl (List.concat clst)
-
-  | Case (c,eslst,opt) ->
-    let lb = {label with label_break=`Always} in
-    let (e,s) = Nlist.hd eslst in
-    let clst =
-      [ [ (mk_atom "OF");
-          Label((mk_atom "EITHER",lb),mk_expr_nelist_comma e);
-          Label((mk_atom "THEN",lb),ef_subst s)] ]
-      @
-      (List.map (fun (lst,s) ->
-           [Label((mk_atom "OR",lb),mk_expr_nelist_comma lst);
-            Label((mk_atom "THEN",lb),ef_subst s)]
-         ) (Nlist.tl eslst))
-      @ (match opt with
-          | None -> []
-          | Some s -> [[Label((mk_atom "ELSE",lb),ef_subst s)]] )
-      @ [[mk_atom "END"]]
-    in
-    let clst = List.concat clst in
-    let case_c = Label ((mk_atom "CASE",label),ef_expr c) in
-    mk_sequence_nl [ Label((case_c,lb),mk_sequence_nl clst);
-                     mk_atom "END" ]
-
-  | Any (xlst,p,s) ->
-    let lb = { label with label_break=`Always } in
-    mk_sequence_nl [ Label((mk_atom "ANY",lb),mk_string_nelist_comma xlst);
-                     Label((mk_atom "WHERE",lb),ef_pred p);
-                     Label((mk_atom "THEN",lb),ef_subst s);
-                     mk_atom "END"]
-
-  | Let (xlst,ielst,s) ->
-    let lb = { label with label_break=`Always } in
-    let lst = { list with space_after_opening=false; space_before_closing=false; align_closing=false; } in
-    let ef_eq (v,e) = mk_sequence [mk_atom_from_lident v;mk_atom "=";ef_expr e] in
-    let defs = List(("","&","",lst),List.map ef_eq (Nlist.to_list ielst)) in
-    mk_sequence_nl [ Label((mk_atom "LET",lb),mk_string_nelist_comma xlst);
-                     Label((mk_atom "BE",lb),defs);
-                     Label((mk_atom "IN",lb),ef_subst s);
-                     mk_atom "END"]
-
-  | BecomesElt (xlst,e) ->
-    mk_sequence [mk_string_nelist_comma xlst; mk_atom "::"; ef_expr e]
-
-  | BecomesSuch (xlst,p) ->
-    Label((mk_string_nelist_comma xlst,label),
-          List((":(","",")",list),[ef_pred p]))
-
-  | Var (xlst,s) ->
-    let lb = {label with label_break=`Always} in
-    mk_sequence_nl [ Label((mk_atom "VAR",lb), mk_string_nelist_comma xlst);
-                     Label((mk_atom "IN",lb), ef_subst s);
-                     mk_atom "END"]
-
-  | CallUp (xlst,f,args) ->
-    let lst = {list with align_closing=false;
-                         space_after_opening=false;
-                         space_before_closing=false}
-    in
-    let lb = {label with space_after_label=false} in
-    begin match xlst, args with
-      | [], [] -> mk_atom_from_lident f
-      | [], _::_ ->
-        let args = List(("(",",",")",lst), List.map (fun e -> ef_expr_wp e) args) in
-        Label((mk_atom_from_lident f,lb),args)
-
-      | _::_, [] ->
-        mk_sequence [mk_string_list_comma xlst;
-                     mk_atom "<--";
-                     mk_atom_from_lident f]
-
-      | _::_, _::_ ->
-        let args = List(("(",",",")",lst), List.map (fun e -> ef_expr_wp e) args) in
-        mk_sequence [mk_string_list_comma xlst;
-                     mk_atom "<--";
-                     Label((mk_atom_from_lident f,lb),args)]
+    begin
+      vbox out;
+      str out "PRE"; break out 0 4;
+      pp_pred out p; break out 0 0;
+      str out "THEN"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      str out "END";
+      close out;
     end
 
+  | Assert (p,s) ->
+    begin
+      vbox out;
+      str out "ASSERT"; break out 0 4;
+      pp_pred out p; break out 0 0;
+      str out "THEN"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      str out "END";
+      close out;
+    end
+
+  | Choice slst ->
+    begin
+      vbox out;
+      str out "CHOICE"; break out 0 4;
+      pp_subst out (Nlist.hd slst); break out 0 0;
+      List.iter (fun s ->
+          str out "OR"; break out 0 4;
+          pp_subst out s; break out 0 0;
+      ) (Nlist.tl slst);
+      str out "END";
+      close out;
+    end
+
+  | IfThenElse (pslst,opt) ->
+    begin
+      let (p,s) = Nlist.hd pslst in
+      vbox out;
+      str out "IF"; break out 0 4;
+      pp_pred out p; break out 0 0;
+      str out "THEN"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      List.iter (fun (p,s) ->
+          str out "ELSIF"; break out 0 4;
+          pp_pred out p; break out 0 0;
+          str out "THEN"; break out 0 4;
+          pp_subst out s; break out 0 0;
+      ) (Nlist.tl pslst);
+      (match opt with
+       | None -> ()
+       | Some s ->
+         (str out "ELSE"; break out 0 4;
+          pp_subst out s; break out 0 0)
+      );
+      str out "END";
+      close out;
+    end
+
+  | Select (pslst,opt) ->
+    begin
+      let (p,s) = Nlist.hd pslst in
+      vbox out;
+      str out "SELECT"; break out 0 4;
+      pp_pred out p; break out 0 0;
+      str out "THEN"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      List.iter (fun (p,s) ->
+          str out "WHEN"; break out 0 4;
+          pp_pred out p; break out 0 0;
+          str out "THEN"; break out 0 4;
+          pp_subst out s; break out 0 0;
+      ) (Nlist.tl pslst);
+      (match opt with
+       | None -> ()
+       | Some s ->
+         (str out "ELSE"; break out 0 4;
+          pp_subst out s; break out 0 0)
+      );
+      str out "END";
+      close out;
+    end
+    
+  | Case (c,eslst,opt) ->
+    begin
+      let (nlst,s) = Nlist.hd eslst in
+      vbox out;
+      str out "CASE"; break out 0 4;
+      pp_expr out c; break out 0 0;
+      str out "OF"; break out 0 4;
+      str out "EITHER";break out 0 8;
+      pp_list { list with sep="," } pp_expr_wp out nlst; break out 0 4;
+      str out "THEN";break out 0 8;
+      pp_subst out s; break out 0 4;
+      List.iter (fun (nlst,s) ->
+          str out "OR"; break out 0 8;
+          pp_list { list with sep="," } pp_expr_wp out nlst; break out 0 4;
+          str out "THEN"; break out 0 8;
+          pp_subst out s; break out 0 4;
+      ) (Nlist.tl eslst);
+      (match opt with
+       | None -> ()
+       | Some s ->
+         (str out "ELSE"; break out 0 8;
+          pp_subst out s; break out 0 4)
+      );
+      str out "END";
+      break out 0 0;
+      str out "END";
+      close out;
+    end
+
+  | Any (xlst,p,s) ->
+    begin
+      vbox out;
+      str out "ANY"; break out 0 4;
+      pp_list { list with sep="," } pp_lident out xlst; break out 0 0;
+      str out "WHERE"; break out 0 4;
+      pp_pred out p; break out 0 0;
+      str out "THEN"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      str out "END";
+      close out;
+    end
+
+  | Let (xlst,ielst,s) ->
+    begin
+      let aux (id,e) = pf out "@[%s =@;<1 4>%a@]" id.lid_str pp_expr e in
+      vbox out;
+      str out "LET"; break out 0 4;
+      pp_list { list with sep="," } pp_lident out xlst; break out 0 0;
+      str out "BE"; break out 0 4;
+      aux (Nlist.hd ielst);
+      List.iter (fun x ->
+          str out " &"; break out 0 4;
+          aux x;
+        ) (Nlist.tl ielst);
+      break out 0 0;
+      str out "IN"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      str out "END";
+      close out;
+    end
+
+  | BecomesElt (xlst,e) ->
+    pf out "@[%a@ ::@;<1 4>%a@]" (pp_list { list with sep="," } pp_lident) xlst pp_expr e
+
+  | BecomesSuch (xlst,p) ->
+    pf out "@[%a@ :(@;<1 4>%a )@]" (pp_list { list with sep="," } pp_lident) xlst pp_pred p
+
+  | Var (xlst,s) ->
+    begin
+      vbox out;
+      str out "VAR"; break out 0 4;
+      pp_list { list with sep="," } pp_lident out xlst; break out 0 0;
+      str out "IN"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      str out "END";
+      close out;
+    end
+
+  | CallUp ([],f,[]) -> str out f.lid_str
+  | CallUp ([],f,hd::tl) ->
+    pf out "@[%s@,(%a)@]" f.lid_str (pp_list { list with sep="," } pp_expr_wp) (Nlist.make hd tl)
+  | CallUp (hd::tl,f,[]) ->
+    pf out "@[%a@ <--@ %s@]" (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) f.lid_str 
+  | CallUp (ohd::otl,f,ihd::itl) ->
+    pf out "@[%a@ <--@ %s@,(%a)@]"
+      (pp_list { list with sep="," } pp_lident) (Nlist.make ohd otl)
+      f.lid_str 
+      (pp_list { list with sep="," } pp_expr_wp) (Nlist.make ihd itl)
+
   | While (p,s,q,e) ->
-    let lb = {label with label_break=`Always} in
-    mk_sequence_nl [ Label((mk_atom "WHILE",lb), ef_pred p);
-                     Label((mk_atom "DO",lb), ef_subst s);
-                     Label((mk_atom "INVARIANT",lb), ef_pred q);
-                     Label((mk_atom "VARIANT",lb), ef_expr e);
-                     mk_atom "END"]
+    begin
+      vbox out;
+      str out "WHILE"; break out 0 4;
+      pp_pred out p; break out 0 0;
+      str out "DO"; break out 0 4;
+      pp_subst out s; break out 0 0;
+      str out "INVARIANT"; break out 0 4;
+      pp_pred out q; break out 0 0;
+      str out "VARIANT"; break out 0 4;
+      pp_expr out e; break out 0 0;
+      str out "END";
+      close out;
+    end
 
   | Sequencement _ ->
-    let seqs = List.map (fun s -> ef_subst_wbe s) (get_seq_list s) in
-    let lst = { list with space_after_opening=false; align_closing=false;
-                          space_before_closing=false; indent_body=0;
-                          wrap_body=`Force_breaks; space_before_separator=true } in
-    List (("",";","",lst),seqs)
+    begin
+      let nlst = get_seq_nlist s in
+      vbox out;
+      pp_subst_wp out (Nlist.hd nlst);
+      List.iter (fun s ->
+          str out ";"; break out 0 0;
+          pp_subst_wp out s;
+        ) (Nlist.tl nlst);
+      close out;
+    end
 
   | Parallel _ ->
-    let pars = List.map (fun s -> ef_subst_wbe s) (get_par_list s) in
-    let lst = { list with space_after_opening=false; align_closing=false;
-                          space_before_closing=false; indent_body=0;
-                          wrap_body=`Force_breaks; space_before_separator=true } in
-    List (("","||","",lst),pars)
+    begin
+      let nlst = get_par_nlist s in
+      vbox out;
+      pp_subst_wp out (Nlist.hd nlst);
+      List.iter (fun s ->
+          str out " ||"; break out 0 0;
+          pp_subst_wp out s;
+        ) (Nlist.tl nlst);
+      close out;
+    end
 
-and ef_subst_wbe s =
+and pp_subst_wp out (s:substitution) : unit =
   match s.sub_desc with
-  | Skip |  Affectation _
-  | Pre _ | Assert _ | Choice _ | IfThenElse _ | Select _ | Case _ | Any _
-  | Let _ | BecomesElt _ | BecomesSuch _ | Var _ | CallUp _ | While _ -> ef_subst s
+  | Skip | Affectation _ | Pre _ | Assert _ | Choice _ | IfThenElse _ | Select _
+  | Case _ | Any _ | Let _ | BecomesElt _ | BecomesSuch _ | Var _ | CallUp _
+  | While _ -> pp_subst out s
   | Sequencement _ | Parallel _ ->
-    List (("BEGIN","","END",{list with stick_to_label=false;}),[ef_subst s])
-
-let mk_sequence lst =
-  List(("","","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),lst)
-
-let mk_clause (cname:string) (n:Easy_format.t) =
-  Label ((mk_atom cname,
-          {label with label_break=`Always;space_after_label=false}),n)
-
-let ef_minst (mi:machine_instanciation) : Easy_format.t =
+    begin
+      vbox out;
+      str out "BEGIN";
+      break out 0 4;
+      pp_subst out s;
+      break out 0 0;
+      str out "END";
+      close out
+    end
+  
+let pp_minst out (mi:machine_instanciation) : unit =
   match mi.mi_params with
-  | [] -> mk_atom_from_lident mi.mi_mch
-  | _::_ ->
-    Label ((mk_atom_from_lident mi.mi_mch,label),
-           List(("(",",",")",list),
-                List.map (fun e -> ef_expr_wp e) mi.mi_params))
+  | [] -> str out mi.mi_mch.lid_str
+  | hd::tl ->
+    pf out "@[%s(%a)@]" mi.mi_mch.lid_str (pp_list { list with sep="," } pp_expr_wp) (Nlist.make hd tl)
 
-let ef_set (x:set) : Easy_format.t =
+let pp_set out (x:set) : unit =
   match x with
-  | Abstract_Set s -> mk_atom_from_lident s
-  | Concrete_Set (s,lst) ->
-    let enums = List(("{",",","}",list),
-                     List.map mk_atom_from_lident lst) in
-    List(("","","",list),[mk_atom_from_lident s;mk_atom "=";enums])
+  | Abstract_Set s -> str out s.lid_str
+  | Concrete_Set (s,[]) -> pf out "@[%s =@ {}@]" s.lid_str
+  | Concrete_Set (s,hd::tl) ->
+    pf out "@[%s =@ {%a}@]" s.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl)
 
-let ef_operation (op:operation) : Easy_format.t =
-  let name_args =
-    match op.op_in with
-    | [] -> mk_atom_from_lident op.op_name
-    | _::_ ->
-      let lst = {list with align_closing=false;
-                           space_after_opening=false;
-                           space_before_closing=false}
-      in
-      let args = List(("(",",",")",lst),
-                      List.map mk_atom_from_lident op.op_in) in
-      Label((mk_atom_from_lident op.op_name,label),args)
-  in
-  let spec = match op.op_out with
-    | [] -> mk_sequence [name_args; mk_atom "="]
-    | _::_ -> mk_sequence [mk_string_list_comma op.op_out; mk_atom "<--"; name_args; mk_atom "="]
-  in
-  let lbl = {label with label_break=`Always;
-                        indent_after_label=0;
-                        space_after_label=false } in
-  Label((spec, lbl), ef_subst_wbe op.op_body)
+let pp_value out (v,e) : unit =
+  pf out "@[%s =@ %a@]" v.lid_str pp_expr e
 
-let ef_op_nelist nlst =
-  List(("",";\n","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_operation (Nlist.to_list nlst))
+let pp_op_header out (op:operation) : unit =
+  match op.op_out, op.op_in with
+  | [], [] -> str out op.op_name.lid_str
+  | [], hd::tl ->
+    pf out "@[%s@,(%a)@]" op.op_name.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl)
+  | hd::tl, [] ->
+    pf out "@[%a@ <--@ %s@]" (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) op.op_name.lid_str 
+  | ohd::otl, ihd::itl ->
+    pf out "@[%a@ <--@ %s@,(%a)@]"
+      (pp_list { list with sep="," } pp_lident) (Nlist.make ohd otl)
+      op.op_name.lid_str 
+      (pp_list { list with sep="," } pp_lident) (Nlist.make ihd itl)
 
-let ef_pred_nelist nlst =
-  List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_pred (Nlist.to_list nlst))
+let pp_op out (op:operation) : unit =
+  pf out "@[%a =@ %a@]" pp_op_header op pp_subst_wp op.op_body
+  
+let pp_clause out : clause -> unit = function
+  | Constraints p -> ( str out "CONSTRAINTS"; break out 0 4; pp_pred out p )
+  | Imports lst -> ( str out "IMPORTS"; break out 0 4; pp_list { vlist with sep="," } pp_minst out lst )
+  | Includes lst -> ( str out "INCLUDES"; break out 0 4; pp_list { vlist with sep="," } pp_minst out lst )
+  | Extends lst -> ( str out "EXTENDS"; break out 0 4; pp_list { vlist with sep="," } pp_minst out lst )
+  | Properties p -> ( str out "PROPERTIES"; break out 0 4; pp_pred out p )
+  | Invariant p -> ( str out "INVARIANT"; break out 0 4; pp_pred out p )
+  | Assertions lst -> ( str out "ASSERTIONS"; break out 0 4; pp_list { vlist with sep=";" } pp_pred out lst )
+  | Initialization s -> ( str out "INITIALISATION"; break out 0 4; pp_subst out s )
+  | Operations lst -> ( str out "OPERATIONS"; break out 0 4; pp_list { vlist with sep=";" } pp_op out lst )
+  | Local_Operations lst -> ( str out "LOCAL_OPERATIONS"; break out 0 4; pp_list { vlist with sep=";" } pp_op out lst )
+  | Values lst -> ( str out "VALUES"; break out 0 4; pp_list { vlist with sep=";" } pp_value out lst )
+  | Sees lst -> ( str out "SEES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Promotes lst -> ( str out "PROMOTES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Uses lst -> ( str out "USES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Sets lst -> ( str out "SETS"; break out 0 4; pp_list { vlist with sep=";" } pp_set out lst )
+  | Constants lst -> ( str out "CONSTANTS"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Abstract_constants lst -> ( str out "ABSTRACT_CONSTANTS"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Concrete_variables lst -> ( str out "CONCRETE_VARIABLES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Variables lst -> ( str out "VARIABLES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
 
-let ef_set_nelist nlst =
-  List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_set (Nlist.to_list nlst))
+let pp_machine out name params clauses : unit =
+  vbox out;
+  str out "MACHINE"; break out 0 4;
+  (match params with
+   | [] -> str out name.lid_str
+   | hd::tl -> pf out "@[%s(%a)@]" name.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) );
+  break out 0 0;
+  List.iter (fun cl -> break out 0 0; pp_clause out cl; break out 0 0) clauses;
+  str out "END";
+  Format.pp_print_flush out ();
+  close out
 
-let ef_minst_nelist nlst =
-  List(("",",","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-       List.map ef_minst (Nlist.to_list nlst))
+let pp_refinement out name refines params clauses =
+  vbox out;
+  str out "REFINEMENT"; break out 0 4;
+  (match params with
+   | [] -> str out name.lid_str
+   | hd::tl -> pf out "@[%s(%a)@]" name.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) );
+  break out 0 0; break out 0 0;
+  str out "REFINES"; break out 0 4;
+  str out refines.lid_str; break out 0 0;
+  List.iter (fun cl -> break out 0 0; pp_clause out cl; break out 0 0) clauses;
+  str out "END";
+  Format.pp_print_flush out ();
+  close out
 
-let ef_value_nelist nlst =
-  let ef (v,e) = mk_sequence [mk_atom_from_lident v;mk_atom "=";ef_expr e] in
-  (List(("",";","",{list with align_closing=false;space_after_opening=false;space_before_closing=false}),
-        List.map ef (Nlist.to_list nlst)))
+let pp_implementation out name refines params clauses =
+  vbox out;
+  str out "IMPLEMENTATION"; break out 0 4;
+  (match params with
+   | [] -> str out name.lid_str
+   | hd::tl -> pf out "@[%s(%a)@]" name.lid_str (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) );
+  break out 0 0; break out 0 0;
+  str out "REFINES"; break out 0 4;
+  str out refines.lid_str; break out 0 0;
+  List.iter (fun cl -> break out 0 0;pp_clause out cl; break out 0 0) clauses;
+  str out "END";
+  Format.pp_print_flush out ();
+  close out
 
-let mk_machine_name (name:lident) (params:lident list) : Easy_format.t =
-  match params with
-  | [] -> mk_atom_from_lident name
-  | _::_ -> Label((mk_atom_from_lident name,{label with space_after_label=false}),
-                  List(("(",",",")",list),List.map mk_atom_from_lident params))
-
-let mk_clause_list lst =
-  List (("","\n","",
-         {list with indent_body=0;
-                    space_after_opening=false;
-                    space_after_separator=false;
-                    align_closing=false}),
-        lst)
-
-let mk_mch_name_nelist_comma nlst : Easy_format.t =
-  let lst = List.map  mk_atom_from_lident (Nlist.to_list nlst) in
-  List (("",",","",list_1), lst)
-
-let mk_op_name_nelist_comma nlst : Easy_format.t =
-  let lst = List.map mk_atom_from_lident (Nlist.to_list nlst) in
-  List (("",",","",list_1), lst)
-
-let ef_clause : clause -> Easy_format.t = fun c ->
-  match c with
-  | Constraints p -> mk_clause "CONSTRAINTS" (ef_pred p)
-  | Imports lst -> mk_clause "IMPORTS" (ef_minst_nelist lst)
-  | Includes lst -> mk_clause "INCLUDES" (ef_minst_nelist lst)
-  | Extends lst -> mk_clause "EXTENDS" (ef_minst_nelist lst)
-  | Properties p -> mk_clause "PROPERTIES" (ef_pred p)
-  | Invariant p -> mk_clause "INVARIANT" (ef_pred p)
-  | Assertions lst -> mk_clause "ASSERTIONS" (ef_pred_nelist lst)
-  | Initialization s -> mk_clause "INITIALISATION" (ef_subst s)
-  | Operations lst -> mk_clause "OPERATIONS" (ef_op_nelist lst)
-  | Local_Operations lst -> mk_clause "LOCAL_OPERATIONS" (ef_op_nelist lst)
-  | Values lst -> mk_clause "VALUES" (ef_value_nelist lst)
-  | Sees lst -> mk_clause "SEES" (mk_mch_name_nelist_comma lst)
-  | Promotes lst -> mk_clause "PROMOTES" (mk_op_name_nelist_comma lst)
-  | Uses lst -> mk_clause "USES" (mk_mch_name_nelist_comma lst)
-  | Sets lst -> mk_clause "SETS" (ef_set_nelist lst)
-  | Constants lst -> mk_clause "CONSTANTS" (mk_string_nelist_comma lst)
-  | Abstract_constants lst -> mk_clause "ABSTRACT_CONSTANTS" (mk_string_nelist_comma lst)
-  | Concrete_variables lst -> mk_clause "CONCRETE_VARIABLES" (mk_string_nelist_comma lst)
-  | Variables lst -> mk_clause "VARIABLES" (mk_string_nelist_comma lst)
-
-let ef_machine name params clauses =
-  let machine = mk_clause "MACHINE" (mk_machine_name name params) in
-  let lst = List.map ef_clause clauses in
-  let ed = [mk_atom "END"] in
-  mk_clause_list (machine::(lst@ed))
-
-let ef_refinement name refines params clauses =
-  let refinement = mk_clause "REFINEMENT" (mk_machine_name name params) in
-  let refines = mk_clause "REFINES" (mk_atom_from_lident refines) in
-  let lst = List.map ef_clause clauses in
-  let ed = [mk_atom "END"] in
-  mk_clause_list (refinement::refines::(lst@ed))
-
-let ef_implementation name refines params clauses =
-  let implementation = mk_clause "IMPLEMENTATION" (mk_machine_name name params) in
-  let refines = mk_clause "REFINES" (mk_atom_from_lident refines) in
-  let lst = List.map ef_clause clauses in
-  let ed = [mk_atom "END"] in
-  mk_clause_list (implementation::refines::(lst@ed))
-
-let ef_component co =
+let pp_component out co : unit =
   match co.co_desc with
-  | Machine _ -> ef_machine co.co_name co.co_parameters (get_clauses co)
-  | Refinement x -> ef_refinement co.co_name x.ref_refines co.co_parameters (get_clauses co)
-  | Implementation x -> ef_implementation co.co_name x.imp_refines co.co_parameters (get_clauses co)
+  | Machine _ ->
+    pp_machine out co.co_name co.co_parameters (get_clauses co)
+  | Refinement x ->
+    pp_refinement out co.co_name x.ref_refines co.co_parameters (get_clauses co)
+  | Implementation x ->
+    pp_implementation out co.co_name x.imp_refines co.co_parameters (get_clauses co)
 
-let expression_to_format = ef_expr
-let predicate_to_format = ef_pred
-let substitution_to_format = ef_subst
-(* let machine_to_format = ef_machine *)
-(* let refinement_to_format = ef_refinement *)
-(* let implementation_to_format = ef_implementation *)
-let component_to_format = ef_component
+let print_expression out = pp_expr (Format.formatter_of_out_channel out)
+let print_predicate out = pp_pred (Format.formatter_of_out_channel out)
+let print_substitution out = pp_subst (Format.formatter_of_out_channel out)
+let print_component out = pp_component (Format.formatter_of_out_channel out)
 
-let print_expression out e = Easy_format.Pretty.to_channel out (ef_expr e)
-let print_predicate out p = Easy_format.Pretty.to_channel out (ef_pred p)
-let print_substitution out s = Easy_format.Pretty.to_channel out (ef_subst s)
-let print_component out c = Easy_format.Pretty.to_channel out (ef_component c)
+let expression_to_string e =
+  let bf = Buffer.create 447 in
+  pp_expr (Format.formatter_of_buffer bf) e;
+  Buffer.contents bf
+
+let predicate_to_string p =
+  let bf = Buffer.create 447 in
+  pp_pred (Format.formatter_of_buffer bf) p;
+  Buffer.contents bf
+
+let substitution_to_string s =
+  let bf = Buffer.create 447 in
+  pp_subst (Format.formatter_of_buffer bf) s;
+  Buffer.contents bf
+
+let component_to_string c =
+  let bf = Buffer.create 447 in
+  let out = Format.formatter_of_buffer bf in
+  pp_component out c;
+  Format.pp_print_flush out ();
+  Buffer.contents bf

@@ -11,11 +11,10 @@ let dump_component (i:int) (c:PSyntax.component) (j:int) : unit =
   let _ = Printf.fprintf out1 "%s" (Sexp.sexp_to_string sexp1) in
   close_out out1
 
-let print_and_parse (c:PSyntax.component) : (PSyntax.component*Easy_format.t,string) result =
-  let ef = Print.component_to_format c in
-  let str = Easy_format.Pretty.to_string ef in
+let print_and_parse (c:PSyntax.component) : (PSyntax.component*string,string) result =
+  let str = Print.component_to_string c in
   match Parser.parse_component_from_string str with
-  | Ok c -> Ok (c,ef)
+  | Ok c -> Ok (c,str)
   | Error err ->
     begin
       prerr_endline err.Error.err_txt;
@@ -36,7 +35,7 @@ let run () =
         begin
           dump_component i c 1;
           dump_component i c2 2;
-          Easy_format.Pretty.to_channel (open_out ("c_dump_"^string_of_int i)) ef;
+          Printf.fprintf (open_out ("c_dump_"^string_of_int i)) "%s" ef;
           print_endline "Failure"
         end
     | Error str ->

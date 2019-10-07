@@ -1,9 +1,12 @@
-.PHONY: clean bformat btags brandom btypecheck b2sexp test bdefs doc coverage
+.PHONY: clean bformat btags brandom b2sexp test bdefs b2ada doc coverage
 
-all: bformat btags brandom btypecheck b2sexp bdefs
+all: bformat btags brandom btypecheck b2sexp bdefs b2ada
 
 bdefs:
 	dune build bdefs/bdefs.exe
+
+b2ada:
+	dune build b2ada/b2ada.exe
 
 b2sexp:
 	dune build b2sexp/b2sexp.exe

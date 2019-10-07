@@ -11,6 +11,11 @@ let print_error err=
     err.err_loc.pos_fname err.err_loc.pos_lnum
     (err.err_loc.pos_cnum-err.err_loc.pos_bol+1) err.err_txt
 
+let warn lc msg =
+  let open Lexing in
+  Printf.fprintf stderr "[file: %s;line: %i;column: %i] %s\n"
+    lc.pos_fname lc.pos_lnum (lc.pos_cnum-lc.pos_bol+1) msg
+
 let bind_res res f =
   match res with
   | Ok x -> f x

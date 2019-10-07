@@ -1,4 +1,4 @@
 (executables
- (names bformat btags btypecheck b2ada b2sexp b2rust brandom bdefs)
+ (names bformat btags btypecheck b2sexp brandom bdefs)
  (libraries blib)
 )

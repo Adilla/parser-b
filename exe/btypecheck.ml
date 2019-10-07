@@ -57,7 +57,7 @@ and f (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : machine_inter
    begin match type_component_from_filename ht fn with
      | Ok (Some ok) -> Some ok
      | Ok None ->
-       let err = { Error.err_loc=mch_loc; err_txt="The component '"^mch_name^"' is an implementation." } in (*FIXME*)
+       let err = { Error.err_loc=mch_loc; err_txt="The component '"^mch_name^"' is an implementation." } in
        ( Error.print_error err; None )
      | Error err -> ( print_error err; None )
    end
@@ -75,18 +75,13 @@ let add_path x =
   | Ok _ -> ()
   | Error err -> print_error_no_loc err
 
-let set_alstm_opt () =
-  Typechecker.allow_becomes_such_that_in_implementation := true;
-  Typechecker.allow_out_parameters_in_precondition := true;
-  Visibility.extended_sees := true
-
 let args = [
   ("-c"    , Arg.Set continue_on_error,   "Continue on error" );
-  ("-I", Arg.String add_path, "Path for definitions files" );
+  ("-I"    , Arg.String add_path, "Path for definitions files and machines" );
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
   ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
-  ("-x", Arg.Unit set_alstm_opt, "(no documentation)" );
-(*   ("-f", Arg.Int Lexer.set_macro_fuel, "Max number of definition expansions for one file (default is 999)." ); *)
+  ("-x", Arg.Set Visibility.extended_sees, "Extended SEES" );
+  ("-a", Arg.Set Typechecker.allow_becomes_such_that_in_implementation, "Allow the substitution 'Becomes Such That' in implementations" );
 ]
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

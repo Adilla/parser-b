@@ -50,7 +50,7 @@ let add_path s =
 
 let args = [
   ("-c"    , Arg.Set continue_on_error,   "Continue on error" );
-  ("-I"    , Arg.String add_path, "Path for definitions files" );
+  ("-I", Arg.String add_path, "Search directory for definitions files" );
   ("-d"    , Arg.Set debug_mode, "Print debugging informations." );
   ("-e"    , Arg.Set check_ext, "Ignoring files with extension different from .mch, .ref or .imp" );
   ("-keep-macro-loc", Arg.Set Blib.MacroLexer.keep_macro_loc, "Keep macro locations");

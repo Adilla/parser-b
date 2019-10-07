@@ -1,4 +1,4 @@
-module G = Blib.Generators
+module G = Generators
 
 type kind_t = Expr | Pred | Subst | Mch | Ref | Imp | Comp
 

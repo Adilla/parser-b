@@ -39,6 +39,7 @@ sig
   val equal : t -> t -> bool
 
   val get_stype : t_alias -> t -> t -> t option
+  val weak_norm : t_alias -> t -> t
 end
 
 type t = private Open.t

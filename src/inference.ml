@@ -18,14 +18,14 @@ let ids_to_product (ctx:Local.t) (xlst:lident Nlist.t) : Btype.Open.t =
     match Local.get ctx v.lid_str with
     | None -> assert false
     | Some (None,_) ->
-      Error.raise_exn v.lid_loc ("The type of '"^v.lid_str^"' could not be inferred.")
+      (Error.warn v.lid_loc ("The type of '"^v.lid_str^"' could not be inferred. Assuming it is INTEGER."); Btype.Open.t_int)
     | Some (Some ty,_) -> Btype.Open.mk_Product pr (ty:>Btype.Open.t)
   in
   let v = Nlist.hd xlst in
   match Local.get ctx v.lid_str with
   | None -> assert false
   | Some (None,_) ->
-    Error.raise_exn v.lid_loc ("The type of '"^v.lid_str^"' could not be inferred.")
+    (Error.warn v.lid_loc ("The type of '"^v.lid_str^"' could not be inferred. Assuming it is INTEGER."); Btype.Open.t_int)
   | Some (Some ty,_) -> List.fold_left aux (ty:>Btype.Open.t) (Nlist.tl xlst)
 
 let get_builtin0_type (e:e_builtin_0) : Btype.Open.t =
@@ -196,27 +196,25 @@ let unexpected_type_exn (lc:Utils.loc) (inf:Btype.Open.t) (exp:Btype.Open.t) =
 
 type t_int_or_power = C_Int | C_Power
 
-let rec weak_norm : Btype.Open.t -> Btype.Open.t = function
-  | Btype.Open.T_UVar { contents=Btype.Open.Bound ty } -> weak_norm ty
-  | ty -> ty
-
-let is_int_or_power_exn l (arg1:('mr,'cl,Btype.Open.t) T.expression) (arg2:('mr,'cl,Btype.Open.t) T.expression) : t_int_or_power =
+let is_int_or_power_exn l alias (arg1:('mr,'cl,Btype.Open.t) T.expression) (arg2:('mr,'cl,Btype.Open.t) T.expression) : t_int_or_power =
   let open Btype.Open in
-  match weak_norm arg1.T.exp_typ with
+  match weak_norm alias arg1.T.exp_typ with
   | T_Int -> C_Int
   | T_Power _ -> C_Power
   | T_UVar _ ->
-    begin match weak_norm arg2.T.exp_typ with
+    begin match weak_norm alias arg2.T.exp_typ with
       | T_Int -> C_Int
       | T_Power _ -> C_Power
-      | T_UVar _ -> Error.raise_exn l "Cannot decide from this is an operation on integers or sets."
+      | T_UVar _ ->
+        ( Error.warn l "Cannot decide if this is an operation on integers or sets. Assuming it is on integers.";
+          C_Int)
       | ty2 -> Error.raise_exn arg2.T.exp_loc
                ("This expression has type '"^ to_string ty2^
-                "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
+                "' but an expression of type INTEGER or POW(_) was expected.")
     end
   | ty1 -> Error.raise_exn arg1.T.exp_loc
            ("This expression has type '"^ to_string ty1^
-            "' but an expression of type INTEGER*INTEGER or POW(_)*POW(_) was expected.")
+            "' but an expression of type INTEGER or POW(_) was expected.")
 
 let type_ident (type mr cl) (env:mr Global.t) (ctx:Local.t) id_loc (id_str:string)
     (cl:(mr,cl) V.clause) : (mr,cl) T.t_ident * Btype.Open.t =
@@ -277,7 +275,8 @@ let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
       match Local.get ctx lid.lid_str with
       | None -> assert false
       | Some (None,_) ->
-        Error.raise_exn lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred.")
+        (Error.warn lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred. Assuming it is INTEGER.");
+         { T.bv_loc=lid.lid_loc; bv_typ=Btype.t_int; bv_id=lid.lid_str })
       | Some (Some bv_typ,_) ->
          { T.bv_loc=lid.lid_loc; bv_typ; bv_id=lid.lid_str }
   ) ids
@@ -316,7 +315,7 @@ let rec type_expression_exn : 'mr 'cl.
     let te1 = type_expression_exn cl env ctx e1 in
     let te2 = type_expression_exn cl env ctx e2 in
     let (ty_arg1,ty_arg2,ty_res) =
-      match is_int_or_power_exn e.P.exp_loc te1 te2 with
+      match is_int_or_power_exn e.P.exp_loc (Global.get_alias env) te1 te2 with
       | C_Int -> (t_int,t_int,t_int)
       | C_Power ->
         let mt1 = new_meta () in
@@ -335,7 +334,7 @@ let rec type_expression_exn : 'mr 'cl.
     let te1 = type_expression_exn cl env ctx e1 in
     let te2 = type_expression_exn cl env ctx e2 in
     let (ty_arg1,ty_arg2,ty_res) =
-      match is_int_or_power_exn e.P.exp_loc te1 te2 with
+      match is_int_or_power_exn e.P.exp_loc (Global.get_alias env) te1 te2 with
       | C_Int -> (t_int,t_int,t_int)
       | C_Power ->
         let mt = new_meta () in
@@ -453,7 +452,7 @@ let rec type_expression_exn : 'mr 'cl.
 
   | P.Record_Field_Access (e0,fd) ->
     let te = type_expression_exn cl env ctx e0 in
-    begin match weak_norm te.T.exp_typ with
+    begin match weak_norm (Global.get_alias env) te.T.exp_typ with
       | T_Record lst as ty ->
         begin
           let aux (s,_) = String.equal s fd.lid_str in
@@ -528,7 +527,7 @@ and type_predicate_exn : 'mr 'cl.  ('mr,'cl) V.clause ->
           | T_Expr _ -> type_mem ()
           | tpl ->
             let te2 = type_expression_exn cl env ctx e2 in
-            begin match weak_norm te2.T.exp_typ with
+            begin match weak_norm (Global.get_alias env) te2.T.exp_typ with
               | T_Power ty ->
                 let te1 = check_tpl cl env ctx tpl ty in
                 mk_pred p.P.prd_loc (T.Binary_Pred (Membership,te1,te2))
@@ -539,7 +538,7 @@ and type_predicate_exn : 'mr 'cl.  ('mr,'cl) V.clause ->
         begin match is_untyped_id ctx e1 with
           | Some (id,ki) ->
             let te2 = type_expression_exn cl env ctx e2 in
-            begin match weak_norm te2.T.exp_typ with
+            begin match weak_norm (Global.get_alias env) te2.T.exp_typ with
             | (T_Power _) as ty ->
               let te1 = type_untyped_id ctx e1.P.exp_loc id ki ty in
               mk_pred p.P.prd_loc (T.Binary_Pred (Inclusion op,te1,te2))
@@ -590,7 +589,7 @@ and check_tpl : 'mr 'cl. ('mr,'cl) V.clause ->
           mk_expr lc ty_exp (T.Ident (T.K_Local (id,ki)))
       end
   | T_Couple (c,lc,t1,t2) ->
-    begin match weak_norm ty_exp with
+    begin match Btype.Open.weak_norm (Global.get_alias env) ty_exp with
       | Btype.Open.T_Product (ty1,ty2) ->
         let t1 = check_tpl cl env ctx t1 ty1 in
         let t2 = check_tpl cl env ctx t2 ty2 in
@@ -674,7 +673,7 @@ let check_writable_nlist : 'mr 'cl. ('mr,'cl) V.clause ->
       match Nlist.tl xlst with
       | [] -> Nlist.make1 (mk_mut (Nlist.hd xlst) ty)
       | hd::tl ->
-        begin match weak_norm ty with
+        begin match Btype.Open.weak_norm (Global.get_alias env) ty with
           | Btype.Open.T_Product (ty1,ty2) ->
             Nlist.cons (mk_mut (Nlist.hd xlst) ty2) (aux ty1 (Nlist.make hd tl))
           | _ -> raise Product_Exn

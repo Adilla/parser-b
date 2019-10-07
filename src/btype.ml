@@ -164,6 +164,14 @@ struct
     try unify_exn alias t1 t2; Some (normalize t1) with
     | Not_Unifiable -> None
 
+  let rec weak_norm alias : t -> t = function
+    | T_UVar { contents=Bound ty } -> weak_norm alias ty
+    | T_Abstract_Set (T_Current,s) as ty ->
+      begin match SMap.find_opt s alias with
+        | None -> ty
+        | Some ty2 -> weak_norm alias ty2
+      end
+    | ty -> ty
 end
 
 type t = Open.t
@@ -266,3 +274,4 @@ let change_current (src:t_atomic_src) (ty:Open.t) : Open.t =
   | Open.T_UVar _ -> assert false
   in
   aux ty
+

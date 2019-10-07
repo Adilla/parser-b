@@ -1,8 +1,7 @@
 (library
   (name blib)
   (public_name blib)
-  (flags (:standard -w -9))
-  (libraries easy-format menhirLib qcheck str)
+  (libraries easy-format menhirLib qcheck)
   (preprocess
     (pps ppx_deriving.std bisect_ppx -conditional)
   )

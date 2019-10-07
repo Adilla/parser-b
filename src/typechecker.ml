@@ -750,7 +750,7 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
   | Ok () ->
     begin match Global.get_operation env op.P.op_name.lid_str with
       | None -> assert false 
-      | Some { Global.op_src=Global.OD_Local_Spec_And_Implem (_,_) } ->
+      | Some { Global.op_src=Global.OD_Local_Spec_And_Implem (_,_); _ } ->
         begin match SMap.find_opt op.P.op_name.lid_str lops with
           | None -> assert false
           | Some op_spec ->

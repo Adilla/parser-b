@@ -1,6 +1,8 @@
-open SyntaxCore
-open PSyntax
+open Blib.SyntaxCore
+open Blib.PSyntax
 open QCheck
+module Nlist = Blib.Nlist
+module Utils = Blib.Utils
 
 let pred_op_list =
   [ Equality; Disequality; Membership; Non_Membership;
@@ -23,7 +25,7 @@ let gen_string : string Gen.t = fun rd ->
 
 let gen_lident : lident Gen.t = fun rd ->
   { lid_str="id_" ^ (Gen.string_size ~gen:(Gen.oneofl char_list) (Gen.return 3) rd);
-    lid_loc=Utils.dloc }
+    lid_loc=Blib.Utils.dloc }
 
 let small_nat = Gen.map Int64.of_int Gen.small_nat
 

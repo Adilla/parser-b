@@ -1,4 +1,4 @@
 (alias
  (name runtest)
  (deps (:mch (glob_files *.{mch,ref,imp})))
- (action (run ../exe/bformat.exe %{mch})))
+ (action (run ../bformat/bformat.exe %{mch})))

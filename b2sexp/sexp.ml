@@ -1,5 +1,6 @@
-open SyntaxCore
-module P = PSyntax
+open Blib.SyntaxCore
+module P = Blib.PSyntax
+module Nlist = Blib.Nlist
 
 type t =
   | Atom of string

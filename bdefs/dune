@@ -1,0 +1,4 @@
+(executable
+ (name bdefs)
+ (libraries blib)
+)

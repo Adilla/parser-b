@@ -1,4 +1,0 @@
-(executables
- (names bformat btags btypecheck b2sexp brandom bdefs)
- (libraries blib)
-)

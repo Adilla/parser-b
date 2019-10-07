@@ -3,22 +3,22 @@
 all: bformat btags brandom btypecheck b2sexp bdefs
 
 bdefs:
-	dune build exe/bdefs.exe
+	dune build bdefs/bdefs.exe
 
 b2sexp:
-	dune build exe/b2sexp.exe
+	dune build b2sexp/b2sexp.exe
 
 bformat:
-	dune build exe/bformat.exe
+	dune build bformat/bformat.exe
 
 btypecheck:
-	dune build exe/btypecheck.exe
+	dune build btypecheck/btypecheck.exe
 
 btags:
-	dune build exe/btags.exe
+	dune build btags/btags.exe
 
 brandom:
-	dune build exe/brandom.exe
+	dune build brandom/brandom.exe
 
 test:
 	dune runtest --force

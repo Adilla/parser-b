@@ -1,0 +1,4 @@
+(executable
+ (name brandom)
+ (libraries blib qcheck)
+)

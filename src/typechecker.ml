@@ -6,7 +6,7 @@ module T = TSyntax
 module V = Visibility
 
 let allow_becomes_such_that_in_implementation = ref false
-let allow_out_parameters_in_precondition = ref false
+let allow_out_parameters_in_precondition = ref true
 
 (* *****************************************************************************
  * Type Checking for Components
@@ -819,7 +819,7 @@ let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
   let cconst = List.fold_left aux cconst vlst in
   SMap.iter (fun id (is_valuated,loc) ->
       if not is_valuated then
-        Error.raise_exn loc ("The constant '"^id^"' is not valuated.")
+        Error.warn loc ("The constant '"^id^"' is not valuated.")
     ) cconst
 
 let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)

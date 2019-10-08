@@ -1,4 +1,7 @@
-(executable
- (name brandom)
+(executables
+ (names brandom test_random_print_parse)
  (libraries blib qcheck)
 )
+(alias
+ (name   runtest)
+ (action (run ./test_random_print_parse.exe)))

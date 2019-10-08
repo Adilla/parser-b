@@ -571,10 +571,6 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : (Gl
   | Error err -> raise (Error.Error err)
 
 let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) ref : T.refinement =
-  let () = match ref.P.ref_local_operations with
-    | [] -> ()
-    | hd::_ -> Error.raise_exn hd.P.op_name.lid_loc "Not implemented: clause LOCAL_OPERATIONS in refinments."
-  in
   let () = load_refines_exn f env ref.P.ref_refines in
   let () = List.iter (load_seen_mch_exn f env) ref.P.ref_sees in
   let ref_includes = List.map (load_included_or_imported_mch_exn f env) ref.P.ref_includes in

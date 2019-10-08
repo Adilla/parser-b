@@ -18,7 +18,6 @@ This repository provides a set of command-line tools for parsing, checking and t
 #### `btypechecks`:
   * Machines with parameters are not supported.
   * The following clauses are not supported: CONSTRAINTS, USES.
-  * The following clauses are only supported in implementations: LOCAL\_OPERATIONS.
 
 ### Experimental B to Ada and Rust translators
   * [Ada](https://github.com/rsaill/parser-b/tree/b2ada)

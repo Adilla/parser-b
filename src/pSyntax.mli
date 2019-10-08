@@ -123,7 +123,6 @@ type refinement = {
   ref_assertions: predicate list;
   ref_initialisation: substitution option;
   ref_operations: operation list;
-  ref_local_operations: operation  list;
 }
 [@@deriving eq]
 

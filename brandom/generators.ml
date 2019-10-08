@@ -317,7 +317,6 @@ let gen_refinement : refinement Gen.t = fun rd -> {
   ref_assertions = small_list gen_pred rd;
   ref_initialisation = Gen.opt gen_subst rd;
   ref_operations = small_list gen_op rd;
-  ref_local_operations = small_list gen_op rd;
 }
 
 let gen_implementation : implementation Gen.t = fun rd -> {

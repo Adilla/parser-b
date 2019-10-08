@@ -123,7 +123,6 @@ type refinement = {
   ref_assertions: predicate list;
   ref_initialisation: substitution option;
   ref_operations: operation list;
-  ref_local_operations: operation  list;
 }
 [@@deriving eq]
 
@@ -212,7 +211,6 @@ let clist_of_mch (mch:machine) : clause list =
 let clist_of_ref (ref:refinement) : clause list =
   let lst = [Refines ref.ref_refines] in
   let lst = add_nle lst (fun x -> Operations(x)) ref.ref_operations in
-  let lst = add_nle lst (fun x -> Local_Operations(x)) ref.ref_local_operations in
   let lst = add_opt lst (fun x -> Initialization(x)) ref.ref_initialisation in
   let lst = add_nle lst (fun x -> Assertions(x)) ref.ref_assertions in
   let lst = add_opt lst (fun x -> Invariant(x)) ref.ref_invariant in
@@ -313,7 +311,7 @@ let add_clause_ref_exn (co:refinement) (loc,cl:Utils.loc*clause) : refinement =
   | Initialization p -> ( check_none_exn loc co.ref_initialisation; { co with ref_initialisation = Some p } )
   | Operations lst -> ( check_empty_exn loc co.ref_operations; { co with ref_operations = Nlist.to_list lst } )
   | Values _ -> Error.raise_exn loc "The clause VALUES is not allowed in refinements."
-  | Local_Operations lst -> ( check_empty_exn loc co.ref_local_operations; { co with ref_local_operations = Nlist.to_list lst } )
+  | Local_Operations _ -> Error.raise_exn loc "The clause LOCAL_OPERATIONS is not allowed in refinements."
   | Promotes lst -> ( check_empty_exn loc co.ref_promotes; { co with ref_promotes = Nlist.to_list lst } )
   | Imports _ -> Error.raise_exn loc "The clause IMPORTS is not allowed in refinements."
   | Abstract_constants lst -> ( check_empty_exn loc co.ref_abstract_constants; { co with ref_abstract_constants = Nlist.to_list lst } )
@@ -342,7 +340,6 @@ let mk_refinement_exn co_name co_parameters clauses =
       ref_invariant=None;
       ref_assertions=[];
       ref_initialisation=None;
-      ref_local_operations=[];
       ref_operations=[]; }
   in
   { co_name; co_parameters;

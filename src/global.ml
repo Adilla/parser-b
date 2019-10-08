@@ -14,6 +14,7 @@ type 'ac t_redeclared =
 type ('mr,'ac) t_decl =
   | D_Machine : loc -> ('mr,'ac) t_decl
   | D_Seen : lident -> ('mr,'ac) t_decl
+  | D_Used : lident -> (t_mch,'ac) t_decl
   | D_Included_Or_Imported : lident -> ('mr,'ac) t_decl
   | D_Disappearing : (t_ref,t_abstract) t_decl
   | D_Redeclared : 'ac t_redeclared -> (t_ref,'ac) t_decl
@@ -104,6 +105,7 @@ let get_symbol (env:'a t) (id:string) : 'a t_symbol_infos option =
 type 'a t_source =
   | S_Current : loc -> 'a t_source
   | S_Seen : lident -> 'a t_source
+  | S_Used : lident -> t_mch t_source
   | S_Refined : lident -> t_ref t_source
   | S_Included_Or_Imported : lident -> 'a t_source
 
@@ -150,7 +152,6 @@ let add_alias (s:'a t) (alias:string) (ty:Btype.t) : bool =
   | None -> false
   | Some alias -> (s.alias <- alias; true)
 
-  
 let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.t)
     (ki:ac t_global_kind) (src:mr t_source) : unit Error.t_result =
   let () = match src, ki with
@@ -192,6 +193,7 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
     match src with
       | S_Current lc -> Pack (ki,D_Machine lc)
       | S_Seen mch -> Pack (ki,D_Seen mch)
+      | S_Used mch -> (Pack (ki,D_Used mch): t_mch t_kind)
       | S_Included_Or_Imported mch -> Pack (ki,D_Included_Or_Imported mch)
       | S_Refined _ ->
         begin match ki with
@@ -350,6 +352,13 @@ let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:lid
       fun (r:t_op) -> _add_operation env mch.SyntaxCore.lid_loc r.id (change_current r.args_in) (change_current r.args_out) r.readonly (SO_Seen mch)
     ) (get_operations itf)
 
+let load_interface_for_used_machine (env:'a t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
+  let open MachineInterface in
+  Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
+      _add_symbol env mch.SyntaxCore.lid_loc id
+        (Btype.change_current (Btype.T_Seen mch.SyntaxCore.lid_str) typ) (*FIXME T_Seen*)
+        kind (S_Used mch)) (get_symbols itf)
+
 let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res =
@@ -395,6 +404,7 @@ let is_exported_symbol (type mr ac) : (mr,ac) t_decl -> bool = function
   | D_Included_Or_Imported _ -> true
   | D_Redeclared _ -> true
   | D_Seen _ -> false
+  | D_Used _ -> false
   | D_Disappearing -> false
 
 let to_interface (type mr) (env:mr t) : MachineInterface.t =

@@ -21,6 +21,15 @@ let load_seen_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:'mr 
       | Error err -> raise (Error.Error err)
     end
 
+let load_used_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:'mr Global.t) (mch:lident) : unit =
+  match f mch.lid_loc mch.lid_str with
+  | None -> Error.raise_exn mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
+  | Some itf ->
+    begin match Global.load_interface_for_used_machine env itf mch with
+      | Ok () -> ()
+      | Error err -> raise (Error.Error err)
+    end
+
 let load_included_or_imported_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:'mr Global.t) (mi:P.machine_instanciation) : lident = 
   match mi.P.mi_params with
   | [] ->
@@ -409,10 +418,7 @@ let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
   | None -> ()
   | Some p -> Error.raise_exn p.P.prd_loc "Not implemented: CONSTRAINT clause."
   in
-  let () = match mch.P.mch_uses with
-    | [] -> ()
-    | hd::_ -> Error.raise_exn hd.lid_loc "Not implemented: USES clause."
-  in
+  let () = List.iter (load_used_mch_exn f env) mch.P.mch_uses in
   let () = List.iter (load_seen_mch_exn f env) mch.P.mch_sees in
   let mch_includes = List.map (load_included_or_imported_mch_exn f env) mch.P.mch_includes in
   let mch_extends = List.map (load_extended_mch_exn f env) mch.P.mch_extends in

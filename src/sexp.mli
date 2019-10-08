@@ -1,5 +1,5 @@
 (** S-expression generation*)
-open Blib.PSyntax
+open PSyntax
 
 type t
 

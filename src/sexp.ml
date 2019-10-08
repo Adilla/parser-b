@@ -1,27 +1,35 @@
-open Blib.SyntaxCore
-module P = Blib.PSyntax
-module Nlist = Blib.Nlist
+open SyntaxCore
+module P = PSyntax
 
 type t =
   | Atom of string
   | List of t list
 
-let rec to_easy_format : t -> Easy_format.t = function
-  | Atom s -> Easy_format.(Atom (s,atom))
-  | List lst ->
-    let list = Easy_format.({ list with space_after_opening=false;
-                                        space_before_closing=false;
-                                        align_closing=false; })
-    in
-    Easy_format.List ( ("(","",")",list), List.map to_easy_format lst)
+let pp_list (pp:Format.formatter -> 'a -> unit)
+    (out:Format.formatter) (nlst:'a Nlist.t) : unit =
+  Format.pp_open_box out 0;
+  Format.pp_print_string out "(";
+  pp out (Nlist.hd nlst);
+  List.iter (fun x ->
+      Format.pp_print_break out 1 1;
+      pp out x
+    ) (Nlist.tl nlst);
+  Format.pp_print_string out ")";
+  Format.pp_close_box out ()
 
-let sexp_to_string (x:t) : string =
-  Easy_format.Pretty.to_string (to_easy_format x)
+let rec pp_t out = function
+  | Atom s -> Format.pp_print_string out s
+  | List [] -> Format.pp_print_string out "()"
+  | List (hd::tl) -> pp_list pp_t out (Nlist.make hd tl)
 
 let sexp_to_channel (out:out_channel) (x:t) : unit =
-  Easy_format.Pretty.to_channel out (to_easy_format x)
+  pp_t (Format.formatter_of_out_channel out) x
 
-(* let sexp_of_string (v:string) : t = Atom ("ident_" ^ v) *)
+let sexp_to_string (x:t) : string =
+  let buf = Buffer.create 47 in
+  let () = pp_t (Format.formatter_of_buffer buf) x in
+  Buffer.contents buf
+
 let sexp_of_lident (v:lident) : t = Atom ("ident_" ^ v.lid_str)
 
 let rec sexp_of_expr : P.expression -> t = fun e ->

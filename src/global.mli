@@ -15,6 +15,7 @@ type 'ac t_redeclared =
 type ('mr,'ac) t_decl =
   | D_Machine : loc -> ('mr,'ac) t_decl
   | D_Seen : lident -> ('mr,'ac) t_decl
+  | D_Used : lident -> (t_mch,'ac) t_decl
   | D_Included_Or_Imported : lident -> ('mr,'ac) t_decl
   | D_Disappearing : (t_ref,t_abstract) t_decl
   | D_Redeclared : 'ac t_redeclared -> (t_ref,'ac) t_decl
@@ -76,6 +77,7 @@ type t_interface
 val to_interface : 'a t -> t_interface 
 
 val load_interface_for_seen_machine : 'a t -> t_interface -> lident -> unit Error.t_result
+val load_interface_for_used_machine : t_mch t -> t_interface -> lident -> unit Error.t_result
 val load_interface_for_refined_machine : t_ref t -> t_interface -> lident -> unit Error.t_result
 val load_interface_for_included_or_imported_machine : 'a t -> t_interface -> lident -> unit Error.t_result
 val load_interface_for_extended_machine : 'a t -> t_interface -> lident -> unit Error.t_result

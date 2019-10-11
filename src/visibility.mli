@@ -4,6 +4,7 @@ val extended_sees: bool ref
 type ('mr,_) t_global_ident = private 'mr G.t_kind
 type ('mr,_) t_mutable_ident = private 'mr G.t_kind
 
+type t_mch_constr = private M
 type t_mch_prop = private A
 type t_mch_inv = private B
 type t_mch_op = private C
@@ -20,6 +21,7 @@ type t_imp_val = private K
 type 'a t_assert = private L
 
 type ('mr,'cl) clause =
+  | C_Mch_Constr : (G.t_mch,t_mch_constr) clause
   | C_Mch_Prop : (G.t_mch,t_mch_prop) clause
   | C_Mch_Inv : (G.t_mch,t_mch_inv) clause
   | C_Mch_Op : (G.t_mch,t_mch_op) clause

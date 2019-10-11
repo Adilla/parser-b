@@ -205,6 +205,6 @@ let sexp_of_imp name parameters clauses : t =
 
 let sexp_of_component co =
   match co.P.co_desc with
-  | Machine _ -> sexp_of_mch co.P.co_name co.P.co_parameters (P.get_clauses co)
-  | Refinement _ -> sexp_of_ref co.P.co_name co.P.co_parameters (P.get_clauses co)
-  | Implementation _ -> sexp_of_imp co.P.co_name co.P.co_parameters (P.get_clauses co)
+  | Machine mch -> sexp_of_mch co.P.co_name mch.P.mch_parameters (P.get_clauses co)
+  | Refinement ref -> sexp_of_ref co.P.co_name ref.P.ref_parameters (P.get_clauses co)
+  | Implementation imp -> sexp_of_imp co.P.co_name imp.P.imp_parameters (P.get_clauses co)

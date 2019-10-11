@@ -515,12 +515,12 @@ let pp_implementation out name params clauses =
 
 let pp_component out co : unit =
   match co.co_desc with
-  | Machine _ ->
-    pp_machine out co.co_name co.co_parameters (get_clauses co)
-  | Refinement _ ->
-    pp_refinement out co.co_name co.co_parameters (get_clauses co)
-  | Implementation _ ->
-    pp_implementation out co.co_name co.co_parameters (get_clauses co)
+  | Machine mch ->
+    pp_machine out co.co_name mch.mch_parameters (get_clauses co)
+  | Refinement ref->
+    pp_refinement out co.co_name ref.ref_parameters (get_clauses co)
+  | Implementation imp ->
+    pp_implementation out co.co_name imp.imp_parameters (get_clauses co)
 
 let print_expression out = pp_expr (Format.formatter_of_out_channel out)
 let print_predicate out = pp_pred (Format.formatter_of_out_channel out)

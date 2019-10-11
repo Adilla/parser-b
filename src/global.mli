@@ -23,7 +23,10 @@ type ('mr,'ac) t_decl =
 type t_variable = private T_Var
 type t_constant = private T_Const
 
+type t_param = Set | Scalar
+
 type _ t_global_kind = 
+  | K_Parameter : t_param -> t_concrete t_global_kind
   | K_Abstract_Variable : t_abstract t_global_kind
   | K_Abstract_Constant : t_abstract t_global_kind
   | K_Concrete_Variable : t_concrete t_global_kind

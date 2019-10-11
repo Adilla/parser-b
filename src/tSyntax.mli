@@ -135,6 +135,9 @@ type ('mr,'ac) symb = {
 type 'ac t_mch_symb_src = (G.t_mch,'ac) G.t_decl
 
 type machine = {
+  mch_set_parameters: lident list;
+  mch_scalar_parameters: (G.t_mch,G.t_concrete) symb list;
+
   mch_sees: mch_name list;
   mch_includes: mch_name list;
   mch_extends: mch_name list;
@@ -146,6 +149,7 @@ type machine = {
   mch_concrete_variables: (G.t_mch,G.t_concrete) symb list;
   mch_abstract_variables: (G.t_mch,G.t_abstract) symb list;
 
+  mch_constraints: (G.t_mch,V.t_mch_constr,Btype.t) predicate option;
   mch_properties: (G.t_mch,V.t_mch_prop,Btype.t) predicate option;
   mch_invariant: (G.t_mch,V.t_mch_inv,Btype.t) predicate option;
   mch_assertions: (G.t_mch,V.t_mch_inv,Btype.t) predicate list;
@@ -155,6 +159,9 @@ type machine = {
 
 type refinement = {
   ref_refines: mch_name;
+
+  ref_set_parameters: lident list;
+  ref_scalar_parameters: (G.t_ref,G.t_concrete) symb list;
 
   ref_sees: mch_name list;
   ref_includes: mch_name list;
@@ -200,6 +207,9 @@ type t_abs_imp_symb = {
   asy_src:t_asy_src
 }
 type implementation = {
+  imp_set_parameters: lident list;
+  imp_scalar_parameters: (G.t_ref,G.t_concrete) symb list;
+
   imp_refines: mch_name;
 
   imp_sees: mch_name list;

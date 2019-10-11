@@ -94,17 +94,17 @@ let add_clause (tags:tags) (cl:P.clause) : tags =
 
 let add_tags (tags:tags) (co:P.component) =
   match co.P.co_desc with
-  | Machine _ ->
+  | Machine mch ->
     let tags = (mk_tag 'm' co.P.co_name.lid_loc co.P.co_name.lid_str None)::tags in
-    let tags = List.fold_left add_params tags co.P.co_parameters in
+    let tags = List.fold_left add_params tags mch.P.mch_parameters in
     List.fold_left add_clause tags (P.get_clauses co)
-  | Refinement _ ->
+  | Refinement ref ->
     let tags = (mk_tag 'r' co.P.co_name.lid_loc co.P.co_name.lid_str None)::tags in
-    let tags = List.fold_left add_params tags co.P.co_parameters in
+    let tags = List.fold_left add_params tags ref.P.ref_parameters in
     List.fold_left add_clause tags (P.get_clauses co)
-  | Implementation _ ->
+  | Implementation imp ->
     let tags = (mk_tag 'i' co.P.co_name.lid_loc co.P.co_name.lid_str None)::tags in
-    let tags = List.fold_left add_params tags co.P.co_parameters in
+    let tags = List.fold_left add_params tags imp.P.imp_parameters in
     List.fold_left add_clause tags (P.get_clauses co)
 
 let pp_scope out = function

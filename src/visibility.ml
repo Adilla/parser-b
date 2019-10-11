@@ -14,8 +14,10 @@ type t_imp_op = private I
 type t_imp_lop = private J
 type t_imp_val = private K
 type 'cl t_assert = private L
+type t_mch_constr = private M
 
 type ('mr,'cl) clause =
+  | C_Mch_Constr : (G.t_mch,t_mch_constr) clause
   | C_Mch_Prop : (G.t_mch,t_mch_prop) clause
   | C_Mch_Inv : (G.t_mch,t_mch_inv) clause
   | C_Mch_Op : (G.t_mch,t_mch_op) clause
@@ -41,9 +43,14 @@ let mk_assert_clause (type mr cl) (cl:(mr,cl) clause) : (mr,cl t_assert) clause 
 type ('mr,_) t_global_ident = 'mr Global.t_kind
 type ('mr,_) t_mutable_ident = 'mr Global.t_kind
 
+let make_mch_constr : G.t_mch G.t_kind -> (G.t_mch,t_mch_constr) t_global_ident option = function
+  | G.Pack(G.K_Parameter _,_) as x -> Some x
+  | _ -> None
+
 let make_mch_prop : G.t_mch G.t_kind -> (G.t_mch,t_mch_prop) t_global_ident option = function
   | G.Pack(G.K_Abstract_Variable,_) -> None
   | G.Pack(G.K_Concrete_Variable,_) -> None
+  | G.Pack(G.K_Parameter _,_) -> None
   | x -> Some x
 
 let make_mch_inv (x:G.t_mch G.t_kind) : (G.t_mch,t_mch_inv) t_global_ident option =
@@ -65,6 +72,7 @@ let make_mch_assert (x:G.t_mch G.t_kind) : (G.t_mch,t_mch_op t_assert) t_global_
 let make_ref_prop: G.t_ref G.t_kind -> (G.t_ref,t_ref_prop) t_global_ident option = function
   | G.Pack(G.K_Abstract_Variable,_) -> None
   | G.Pack(G.K_Concrete_Variable,_) -> None
+  | G.Pack(G.K_Parameter _,_) -> None
   | x -> Some x
 
 let make_ref_inv (x:G.t_ref G.t_kind) : (G.t_ref,t_ref_inv) t_global_ident option =
@@ -92,6 +100,7 @@ let make_ref_assert (x:G.t_ref G.t_kind) : (G.t_ref,t_ref_op t_assert) t_global_
 let make_imp_prop: G.t_ref G.t_kind -> (G.t_ref,t_imp_prop) t_global_ident option = function
   | G.Pack(G.K_Abstract_Variable,_) -> None
   | G.Pack(G.K_Concrete_Variable,_) -> None
+  | G.Pack(G.K_Parameter _,_) -> None
   | x -> Some x 
 
 let make_imp_inv (x:G.t_ref G.t_kind) : (G.t_ref,t_imp_inv) t_global_ident option =
@@ -179,6 +188,7 @@ let make_imp_lassert (x:G.t_ref G.t_kind) : (G.t_ref,t_imp_lop t_assert) t_globa
 
 let get_ident_in_clause (type mr cl) (cl:(mr,cl) clause) (ki:mr G.t_kind) : (mr,cl) t_global_ident option =
   match cl with
+  | C_Mch_Constr -> make_mch_constr ki
   | C_Mch_Prop -> make_mch_prop ki
   | C_Mch_Inv -> make_mch_inv ki
   | C_Mch_Op -> make_mch_op ki

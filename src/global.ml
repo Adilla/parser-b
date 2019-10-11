@@ -22,7 +22,10 @@ type ('mr,'ac) t_decl =
 type t_variable = private T_Var
 type t_constant = private T_Const
 
+type t_param = Set | Scalar
+
 type _ t_global_kind = 
+  | K_Parameter : t_param -> t_concrete t_global_kind
   | K_Abstract_Variable : t_abstract t_global_kind
   | K_Abstract_Constant : t_abstract t_global_kind
   | K_Concrete_Variable : t_concrete t_global_kind
@@ -145,6 +148,7 @@ let update_kind (type ac1 ac2)  (k1:ac1 t_global_kind) (k2:ac2 t_global_kind) : 
   | K_Enumerate, K_Enumerate -> Some k2
   | K_Abstract_Constant, K_Concrete_Constant -> Some k2
   | K_Abstract_Variable, K_Concrete_Variable -> Some k2
+  | K_Parameter _, K_Parameter _ -> Some k2
   | _, _ -> None
 
 let add_alias (s:'a t) (alias:string) (ty:Btype.t) : bool =
@@ -197,6 +201,7 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
       | S_Included_Or_Imported mch -> Pack (ki,D_Included_Or_Imported mch)
       | S_Refined _ ->
         begin match ki with
+          | K_Parameter _ -> Pack(ki,D_Redeclared Implicitely)
           | K_Abstract_Variable -> Pack(ki,D_Disappearing)
           | K_Abstract_Constant -> Pack(ki,D_Disappearing)
           | K_Concrete_Variable -> Pack(ki,D_Redeclared Implicitely)
@@ -336,13 +341,22 @@ let promote_operation (type a) (env:a t) (loc:loc) (id:string) =
                 err_txt="The operation '"^id^"' is not an operation of an imported or included machine." }
     end
 
+let is_parameter (type ac) (kind:ac t_global_kind) : bool =
+  match kind with
+  | K_Parameter _ -> true
+  | _ -> false
+
 let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res =
     Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
-        _add_symbol env mch.SyntaxCore.lid_loc id
-          (Btype.change_current (Btype.T_Seen mch.SyntaxCore.lid_str) typ)
-          kind (S_Seen mch)) (get_symbols itf)
+        if not (is_parameter kind) then
+          _add_symbol env mch.SyntaxCore.lid_loc id
+            (Btype.change_current (Btype.T_Seen mch.SyntaxCore.lid_str) typ)
+            kind (S_Seen mch)
+        else
+          Ok ()
+      ) (get_symbols itf)
   in
   match res with
   | Error _ as err -> err
@@ -355,15 +369,23 @@ let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:lid
 let load_interface_for_used_machine (env:'a t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
-      _add_symbol env mch.SyntaxCore.lid_loc id
-        (Btype.change_current (Btype.T_Seen mch.SyntaxCore.lid_str) typ) (*FIXME T_Seen*)
-        kind (S_Used mch)) (get_symbols itf)
+      if not (is_parameter kind) then
+        _add_symbol env mch.SyntaxCore.lid_loc id
+          (Btype.change_current (Btype.T_Seen mch.SyntaxCore.lid_str) typ) (*FIXME T_Seen*)
+          kind (S_Used mch)
+      else
+        Ok ()
+    ) (get_symbols itf)
 
 let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res =
     Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
-        _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Included_Or_Imported mch)) (get_symbols itf)
+        if not (is_parameter kind) then
+          _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Included_Or_Imported mch)
+        else
+          Ok ()
+      ) (get_symbols itf)
   in
   match res with
   | Error _ as err -> err
@@ -387,7 +409,11 @@ let load_interface_for_refined_machine (env:t_ref t) (itf:MachineInterface.t) (m
 let load_interface_for_extended_machine (env:'mr t) (itf:MachineInterface.t) (mch:lident) : unit Error.t_result =
   let open MachineInterface in
   let res = Error.list_iter (fun (S { id;typ;kind}:t_symb) ->
-      _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Included_Or_Imported mch)) (get_symbols itf)
+      if not (is_parameter kind) then
+        _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Included_Or_Imported mch)
+      else
+        Ok ()
+    ) (get_symbols itf)
   in
   match res with
   | Error _ as err -> err

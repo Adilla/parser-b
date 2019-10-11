@@ -283,6 +283,7 @@ let gen_op : operation Gen.t = fun rd ->
     op_body = gen_subst rd }
 
 let gen_machine : machine Gen.t = fun rd -> {
+    mch_parameters = (Gen.small_list gen_lident) rd;
     mch_constraints = Gen.opt gen_pred rd;
     mch_sees = small_list gen_lident rd;
     mch_includes = small_list gen_minst rd;
@@ -299,56 +300,58 @@ let gen_machine : machine Gen.t = fun rd -> {
     mch_assertions = small_list gen_pred rd;
     mch_initialisation = Gen.opt gen_subst rd;
     mch_operations = small_list gen_op rd;
-}
+  }
 
 let gen_refinement : refinement Gen.t = fun rd -> {
-  ref_refines = gen_lident rd;
-  ref_sees = small_list gen_lident rd;
-  ref_includes = small_list gen_minst rd;
-  ref_promotes = small_list gen_lident rd;
-  ref_extends = small_list gen_minst rd;
-  ref_sets = small_list gen_set rd;
-  ref_concrete_constants = small_list gen_lident rd;
-  ref_abstract_constants = small_list gen_lident rd;
-  ref_properties = Gen.opt gen_pred rd;
-  ref_concrete_variables = small_list gen_lident rd;
-  ref_abstract_variables = small_list gen_lident rd;
-  ref_invariant = Gen.opt gen_pred rd;
-  ref_assertions = small_list gen_pred rd;
-  ref_initialisation = Gen.opt gen_subst rd;
-  ref_operations = small_list gen_op rd;
-}
+    ref_parameters = (Gen.small_list gen_lident) rd;
+    ref_refines = gen_lident rd;
+    ref_sees = small_list gen_lident rd;
+    ref_includes = small_list gen_minst rd;
+    ref_promotes = small_list gen_lident rd;
+    ref_extends = small_list gen_minst rd;
+    ref_sets = small_list gen_set rd;
+    ref_concrete_constants = small_list gen_lident rd;
+    ref_abstract_constants = small_list gen_lident rd;
+    ref_properties = Gen.opt gen_pred rd;
+    ref_concrete_variables = small_list gen_lident rd;
+    ref_abstract_variables = small_list gen_lident rd;
+    ref_invariant = Gen.opt gen_pred rd;
+    ref_assertions = small_list gen_pred rd;
+    ref_initialisation = Gen.opt gen_subst rd;
+    ref_operations = small_list gen_op rd;
+  }
 
 let gen_implementation : implementation Gen.t = fun rd -> {
-  imp_refines = gen_lident rd;
-  imp_sees = small_list gen_lident rd;
-  imp_imports = small_list gen_minst rd;
-  imp_promotes = small_list gen_lident rd;
-  imp_extends = small_list gen_minst rd;
-  imp_sets = small_list gen_set rd;
-  imp_concrete_constants = small_list gen_lident rd;
-  imp_properties = Gen.opt gen_pred rd;
-  imp_values = small_list (Gen.pair gen_lident gen_expr) rd;
-  imp_concrete_variables = small_list gen_lident rd;
-  imp_invariant = Gen.opt gen_pred rd;
-  imp_assertions = small_list gen_pred rd;
-  imp_initialisation = Gen.opt gen_subst rd;
-  imp_operations = small_list gen_op rd;
-  imp_local_operations = small_list gen_op rd;
-}
+    imp_parameters = (Gen.small_list gen_lident) rd;
+    imp_refines = gen_lident rd;
+    imp_sees = small_list gen_lident rd;
+    imp_imports = small_list gen_minst rd;
+    imp_promotes = small_list gen_lident rd;
+    imp_extends = small_list gen_minst rd;
+    imp_sets = small_list gen_set rd;
+    imp_concrete_constants = small_list gen_lident rd;
+    imp_properties = Gen.opt gen_pred rd;
+    imp_values = small_list (Gen.pair gen_lident gen_expr) rd;
+    imp_concrete_variables = small_list gen_lident rd;
+    imp_invariant = Gen.opt gen_pred rd;
+    imp_assertions = small_list gen_pred rd;
+    imp_initialisation = Gen.opt gen_subst rd;
+    imp_operations = small_list gen_op rd;
+    imp_local_operations = small_list gen_op rd;
+  }
 
-let mk_mch (co_name,co_parameters,desc) = { co_name; co_parameters; co_desc=Machine desc }
-let mk_ref (co_name,co_parameters,desc) = { co_name; co_parameters; co_desc=Refinement desc }
-let mk_imp (co_name,co_parameters,desc) = { co_name; co_parameters; co_desc=Implementation desc }
+let mk_mch (co_name,desc) = { co_name; co_desc=Machine desc }
+let mk_ref (co_name,desc) = { co_name; co_desc=Refinement desc }
+let mk_imp (co_name,desc) = { co_name; co_desc=Implementation desc }
 
 let gen_machine : component Gen.t =
-  Gen.map mk_mch (Gen.triple gen_lident (Gen.small_list gen_lident) gen_machine)
+  Gen.map mk_mch (Gen.pair gen_lident gen_machine)
 
 let gen_refinement : component Gen.t =
-  Gen.map mk_ref (Gen.triple gen_lident (Gen.small_list gen_lident) gen_refinement)
+  Gen.map mk_ref (Gen.pair gen_lident gen_refinement)
 
 let gen_implementation : component Gen.t =
-  Gen.map mk_imp (Gen.triple gen_lident (Gen.small_list gen_lident) gen_implementation)
+  Gen.map mk_imp (Gen.pair gen_lident gen_implementation)
 
 let gen_component : component Gen.t =
   Gen.oneof [ gen_machine; gen_refinement; gen_implementation ]

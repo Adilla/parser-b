@@ -256,6 +256,14 @@ let promote_symbol_exn (type mr ac) (env:mr Global.t) (ctx:Local.t)
       | Error err -> raise (Error.Error err)
     end
 
+let declare_mch_scalar_parameters_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.t_mch,cl) V.clause)
+    (parameters:lident list) (constraints:P.predicate option)
+  : (Global.t_mch,cl,Btype.t) T.predicate option =
+  let ctx = List.fold_left declare_local_symbol Local.empty parameters in
+  let t_constr = Utils.map_opt (Inference.type_predicate_exn cl env ctx) constraints in
+  List.iter (promote_symbol_exn env ctx (Global.K_Parameter Global.Scalar)) parameters;
+  Utils.map_opt close_pred_exn t_constr
+
 let declare_mch_constants_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.t_mch,cl) V.clause)
     (cconst:lident list) (aconst:lident list) (prop:P.predicate option)
   : (Global.t_mch,cl,Btype.t) T.predicate option =
@@ -363,6 +371,8 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : (Gl
   | Error err -> raise (Error.Error err)
 
 type ('a_symb,'c_symb) t_symbols = {
+  set_parameters: lident list;
+  scalar_parameters: 'c_symb list;
   abstract_sets: 'c_symb list;
   concrete_sets: ('c_symb*string list) list;
   abstract_constants: 'a_symb list;
@@ -371,6 +381,18 @@ type ('a_symb,'c_symb) t_symbols = {
   concrete_variables: 'c_symb list;
 }
 
+let symb_to_lid (type a) (sy:(a,Global.t_concrete) T.symb) : lident =
+  { lid_str = sy.sy_id;
+    lid_loc = match sy.sy_src with
+      | Global.D_Machine l -> l
+      | Global.D_Seen lid -> lid.lid_loc
+      | Global.D_Used lid -> lid.lid_loc
+      | Global.D_Included_Or_Imported lid -> lid.lid_loc
+      | Global.D_Redeclared Global.Implicitely -> Utils.dloc
+      | Global.D_Redeclared (Global.By_Machine l) -> l
+      | Global.D_Redeclared (Global.By_Included_Or_Imported lid) -> lid.lid_loc
+  }
+
 let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstract) T.symb,(Global.t_mch,Global.t_concrete) T.symb) t_symbols =
   let aux (id:string) (infos:Global.t_mch Global.t_symbol_infos) rc =
     let add_symb (type ac) (f:(Global.t_mch,ac) T.symb -> _) (d:(Global.t_mch,ac) Global.t_decl) =
@@ -378,22 +400,35 @@ let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstra
     in
     match infos.Global.sy_kind with
     | Global.Pack (Global.K_Abstract_Set,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
+      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
+          { rc with abstract_sets = (x::rc.abstract_sets) }) src
     | Global.Pack (Global.K_Concrete_Set elts,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
+      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
+          { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
     | Global.Pack (Global.K_Abstract_Constant,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_abstract) T.symb) -> { rc with abstract_constants = (x::rc.abstract_constants) }) src
+      add_symb (fun (x:(Global.t_mch,Global.t_abstract) T.symb) ->
+          { rc with abstract_constants = (x::rc.abstract_constants) }) src
     | Global.Pack (Global.K_Concrete_Constant,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) -> { rc with concrete_constants = (x::rc.concrete_constants) }) src
+      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
+          { rc with concrete_constants = (x::rc.concrete_constants) }) src
     | Global.Pack (Global.K_Abstract_Variable,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_abstract) T.symb) -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
+      add_symb (fun (x:(Global.t_mch,Global.t_abstract) T.symb) ->
+          { rc with abstract_variables = (x::rc.abstract_variables) }) src
     | Global.Pack (Global.K_Concrete_Variable,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
+      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
+          { rc with concrete_variables = (x::rc.concrete_variables) }) src
+    | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
+      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
+          { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
+    | Global.Pack (Global.K_Parameter Global.Set,src) ->
+      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
+          { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
     | Global.Pack (Global.K_Enumerate,_) -> rc
   in
   Global.fold_symbols aux env
-    { abstract_sets=[]; concrete_sets=[]; abstract_constants=[];
-      concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
+    { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
+      abstract_constants=[]; concrete_constants=[]; abstract_variables=[];
+      concrete_variables=[]; }
 
 let promote_operation env op_name : unit =
   match Global.promote_operation env op_name.lid_loc op_name.lid_str with
@@ -413,10 +448,21 @@ let get_promoted_operations (type mr cl) (env:mr Global.t) : (mr,cl) T.operation
   in
   Global.fold_operations aux env []
 
+let is_set_param s = String.equal s.lid_str (String.capitalize_ascii s.lid_str)
+
 let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_mch Global.t) (mch:P.machine) : T.machine =
-  let () = match mch.P.mch_constraints with
-  | None -> ()
-  | Some p -> Error.raise_exn p.P.prd_loc "Not implemented: CONSTRAINT clause."
+  let mch_set_parameters = List.filter is_set_param mch.P.mch_parameters in
+  let () = List.iter (fun p ->
+      let ki = Global.K_Parameter Global.Set in
+      let ty = Btype.mk_Power (Btype.mk_Concrete_Set T_Current p.lid_str) in
+      match Global.add_symbol env p.lid_loc p.lid_str ty ki with
+      | Ok () -> ()
+      | Error err -> raise (Error.Error err)
+    ) mch_set_parameters
+  in
+  let scalar_params = List.filter (fun x -> not (is_set_param x)) mch.P.mch_parameters in
+  let mch_constraints =
+    declare_mch_scalar_parameters_exn env V.C_Mch_Constr scalar_params mch.P.mch_constraints
   in
   let () = List.iter (load_used_mch_exn f env) mch.P.mch_uses in
   let () = List.iter (load_seen_mch_exn f env) mch.P.mch_sees in
@@ -436,13 +482,15 @@ let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
   let specified_operations = List.map (declare_mch_operation_exn env) mch.P.mch_operations in
   let mch_operations = (get_promoted_operations env)@specified_operations in
   { T.mch_sees=mch.P.mch_sees; mch_includes; mch_extends;
+    mch_set_parameters;
+    mch_scalar_parameters = symbs.scalar_parameters;
     mch_abstract_sets = symbs.abstract_sets;
     mch_concrete_sets = symbs.concrete_sets;
     mch_concrete_constants = symbs.concrete_constants;
     mch_abstract_constants = symbs.abstract_constants;
     mch_concrete_variables = symbs.concrete_variables;
     mch_abstract_variables = symbs.abstract_variables;
-    mch_properties; mch_invariant;
+    mch_constraints; mch_properties; mch_invariant;
     mch_assertions; mch_initialisation; mch_operations
   }
 
@@ -483,7 +531,7 @@ let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
       | Error err -> raise (Error.Error err)
     end
 
-let get_ref_symbols (env:Global.t_ref Global.t) :
+let get_ref_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
   ((Global.t_ref,Global.t_abstract) T.symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
   let aux (id:string) (infos:Global.t_ref Global.t_symbol_infos) rc =
     let add_a_symb f (d:(Global.t_ref,Global.t_abstract) Global.t_decl) =
@@ -505,11 +553,27 @@ let get_ref_symbols (env:Global.t_ref Global.t) :
       add_a_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
     | Global.Pack (Global.K_Concrete_Variable,src) ->
       add_c_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
+    | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
+      begin match src with
+        | Global.D_Redeclared Global.Implicitely ->
+          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+        | Global.D_Redeclared (Global.By_Machine _) ->
+          add_c_symb (fun x -> { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
+        | _ -> assert false
+      end
+    | Global.Pack (Global.K_Parameter Global.Set,src) ->
+      begin match src with
+        | Global.D_Redeclared Global.Implicitely ->
+          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+        | Global.D_Redeclared (Global.By_Machine _) ->
+          add_c_symb (fun x -> { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
+        | _ -> assert false
+      end
     | Global.Pack (Global.K_Enumerate,_) -> rc
   in
   Global.fold_symbols aux env
-    { abstract_sets=[]; concrete_sets=[]; abstract_constants=[];
-      concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
+    { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
+      abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_ref_init_exn env s =
   close_subst_exn Ref (Inference.type_substitution_exn V.C_Ref_Op env Local.empty s)
@@ -576,8 +640,19 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : (Gl
   | Ok () -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
   | Error err -> raise (Error.Error err)
 
+let check_parameters (env:Global.t_ref Global.t) (param:lident) : unit =
+  match Global.get_symbol env param.lid_str with
+  | None -> Error.raise_exn param.lid_loc ("Unknown parameter '"^param.lid_str^"'.")
+  | Some d ->
+    let pk = if is_set_param param then Global.Set else Global.Scalar in
+    begin match Global.add_symbol env param.lid_loc param.lid_str d.sy_typ (Global.K_Parameter pk) with
+      | Ok () -> ()
+      | Error err -> raise (Error.Error err)
+    end
+
 let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) ref : T.refinement =
   let () = load_refines_exn f env ref.P.ref_refines in
+  let () = List.iter (check_parameters env) ref.P.ref_parameters in
   let () = List.iter (load_seen_mch_exn f env) ref.P.ref_sees in
   let ref_includes = List.map (load_included_or_imported_mch_exn f env) ref.P.ref_includes in
   let ref_extends = List.map (load_extended_mch_exn f env) ref.P.ref_extends in
@@ -588,7 +663,7 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
   let ref_invariant = declare_ref_variables_exn env V.C_Ref_Inv
       ref.P.ref_concrete_variables ref.P.ref_abstract_variables ref.P.ref_invariant
   in
-  let symbs = get_ref_symbols env
+  let symbs = get_ref_symbols ref.ref_refines.lid_loc env
   in
   let ref_assertions = List.map (type_assertion_exn V.C_Ref_Inv env) ref.P.ref_assertions in
   let () = List.iter (promote_operation env) ref.P.ref_promotes in
@@ -596,6 +671,8 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
   let specified_operations = List.map (declare_ref_operation_exn env) ref.P.ref_operations in
   let ref_operations = (get_promoted_operations env)@specified_operations in
   { T.ref_refines=ref.P.ref_refines; ref_sees=ref.P.ref_sees; ref_includes; ref_extends;
+    ref_set_parameters = symbs.set_parameters;
+    ref_scalar_parameters = symbs.scalar_parameters;
     ref_abstract_sets = symbs.abstract_sets;
     ref_concrete_sets = symbs.concrete_sets;
     ref_concrete_constants = symbs.concrete_constants;
@@ -678,7 +755,7 @@ let manage_set_concretisation_exn (env:Global.t_ref Global.t) (v,e:lident*P.expr
       in
       Error.raise_exn e.P.exp_loc str
 
-let get_imp_symbols (env:Global.t_ref Global.t) :
+let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
   (T.t_abs_imp_symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
   let aux (id:string) (infos:Global.t_ref Global.t_symbol_infos) rc =
     let add_a_symb f (d:(Global.t_ref,Global.t_abstract) Global.t_decl) =
@@ -708,11 +785,27 @@ let get_imp_symbols (env:Global.t_ref Global.t) :
       add_a_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
     | Global.Pack (Global.K_Concrete_Variable,src) ->
       add_c_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
+    | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
+      begin match src with
+        | Global.D_Redeclared Global.Implicitely ->
+          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+        | Global.D_Redeclared (Global.By_Machine _) ->
+          add_c_symb (fun x -> { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
+        | _ -> assert false
+      end
+    | Global.Pack (Global.K_Parameter Global.Set,src) ->
+      begin match src with
+        | Global.D_Redeclared Global.Implicitely ->
+          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+        | Global.D_Redeclared (Global.By_Machine _) ->
+          add_c_symb (fun x -> { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
+        | _ -> assert false
+      end
     | Global.Pack (Global.K_Enumerate,_) -> rc
   in
   Global.fold_symbols aux env
-    { abstract_sets=[]; concrete_sets=[]; abstract_constants=[];
-      concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
+    { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
+      abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_imp_init_exn env s =
   close_subst_exn Imp (Inference.type_substitution_exn V.C_Imp_Op env Local.empty s)
@@ -827,6 +920,7 @@ let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
 let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
     (env:Global.t_ref Global.t) (imp:P.implementation) : T.implementation =
   let () = load_refines_exn f env imp.P.imp_refines in
+  let () = List.iter (check_parameters env) imp.P.imp_parameters in
   let () = List.iter (load_seen_mch_exn f env) imp.P.imp_sees in
   let imp_imports = List.map (load_included_or_imported_mch_exn f env) imp.P.imp_imports in
   let imp_extends = List.map (load_extended_mch_exn f env) imp.P.imp_extends in
@@ -840,7 +934,7 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
   let imp_invariant = declare_ref_variables_exn env V.C_Imp_Inv
       imp.P.imp_concrete_variables [] imp.P.imp_invariant
   in
-  let symbs = get_imp_symbols env in
+  let symbs = get_imp_symbols imp.imp_refines.lid_loc env in
   let imp_assertions = List.map (type_assertion_exn V.C_Imp_Inv env) imp.P.imp_assertions in
   let () = List.iter (promote_operation env) imp.P.imp_promotes in
   let lops_map = List.fold_left (declare_local_operation_exn env) SMap.empty imp.P.imp_local_operations in
@@ -851,6 +945,8 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
     imp_sees=imp.P.imp_sees;
     imp_imports;
     imp_extends;
+    imp_set_parameters = symbs.set_parameters;
+    imp_scalar_parameters = symbs.scalar_parameters;
     imp_abstract_sets=symbs.abstract_sets;
     imp_concrete_sets=symbs.concrete_sets;
     imp_abstract_constants=symbs.abstract_constants;
@@ -866,10 +962,6 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
 
 let type_component (f:Utils.loc -> string -> Global.t_interface option) (co:P.component) : (T.component*Global.t_interface option) Error.t_result =
   try
-    let () = match co.P.co_parameters with
-      | [] -> ()
-      | x::_ -> Error.raise_exn x.lid_loc "Not implemented: machine with parameters."
-    in
     begin match co.P.co_desc with
       | P.Machine mch ->
         let env = Global.create_mch () in

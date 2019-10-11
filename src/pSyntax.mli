@@ -88,6 +88,7 @@ type set =
 [@@deriving eq]
 
 type machine = {
+  mch_parameters: lident list;
   mch_constraints: predicate option;
   mch_sees: lident list;
   mch_includes: machine_instanciation list;
@@ -108,6 +109,7 @@ type machine = {
 [@@deriving eq]
 
 type refinement = {
+  ref_parameters: lident list;
   ref_refines: lident;
   ref_sees: lident list;
   ref_includes: machine_instanciation list;
@@ -127,6 +129,7 @@ type refinement = {
 [@@deriving eq]
 
 type implementation = {
+  imp_parameters: lident list;
   imp_refines: lident;
   imp_sees: lident list;
   imp_imports: machine_instanciation list;
@@ -153,7 +156,6 @@ type component_desc =
 
 type component = {
   co_name: lident;
-  co_parameters: lident list;
   co_desc: component_desc
 }
 [@@deriving eq]

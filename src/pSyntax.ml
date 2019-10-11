@@ -88,6 +88,7 @@ type set =
 [@@deriving eq]
 
 type machine = {
+  mch_parameters: lident list;
   mch_constraints: predicate option;
   mch_sees: lident list;
   mch_includes: machine_instanciation list;
@@ -108,6 +109,7 @@ type machine = {
 [@@deriving eq]
 
 type refinement = {
+  ref_parameters: lident list;
   ref_refines: lident;
   ref_sees: lident list;
   ref_includes: machine_instanciation list;
@@ -127,6 +129,7 @@ type refinement = {
 [@@deriving eq]
 
 type implementation = {
+  imp_parameters: lident list;
   imp_refines: lident;
   imp_sees: lident list;
   imp_imports: machine_instanciation list;
@@ -153,7 +156,6 @@ type component_desc =
 
 type component = {
   co_name: lident;
-  co_parameters: lident list;
   co_desc: component_desc
 }
 [@@deriving eq]
@@ -277,9 +279,11 @@ let add_clause_mch_exn (co:machine) (loc,cl:Utils.loc*clause) : machine =
   | Uses lst -> ( check_empty_exn loc co.mch_uses; { co with mch_uses = Nlist.to_list lst } )
   | Refines abs -> Error.raise_exn abs.lid_loc "The clause REFINES is not allowed in abstract machines."
 
-let mk_machine_exn (co_name:lident) (co_parameters:lident list) (clauses:(Utils.loc*clause) list) : component =
+let mk_machine_exn (co_name:lident) (mch_parameters:lident list)
+    (clauses:(Utils.loc*clause) list) : component =
   let mch_desc =
-    { mch_sees=[];
+    { mch_parameters;
+      mch_sees=[];
       mch_sets=[];
       mch_uses=[];
       mch_promotes=[];
@@ -296,8 +300,7 @@ let mk_machine_exn (co_name:lident) (co_parameters:lident list) (clauses:(Utils.
       mch_initialisation=None;
       mch_operations=[]; }
   in
-  { co_name; co_parameters;
-    co_desc=Machine (List.fold_left add_clause_mch_exn mch_desc clauses) }
+  { co_name; co_desc=Machine (List.fold_left add_clause_mch_exn mch_desc clauses) }
 
 let add_clause_ref_exn (co:refinement) (loc,cl:Utils.loc*clause) : refinement =
   match cl with
@@ -324,9 +327,10 @@ let add_clause_ref_exn (co:refinement) (loc,cl:Utils.loc*clause) : refinement =
     ( if String.equal co.ref_refines.lid_str "" then { co with ref_refines=abs }
       else Error.raise_exn abs.lid_loc "This clause is defined twice." )
 
-let mk_refinement_exn co_name co_parameters clauses =
+let mk_refinement_exn co_name ref_parameters clauses =
   let ref_desc =
-    { ref_refines={lid_loc=Utils.dloc;lid_str=""};
+    { ref_parameters;
+      ref_refines={lid_loc=Utils.dloc;lid_str=""};
       ref_sees=[];
       ref_sets=[];
       ref_promotes=[];
@@ -342,8 +346,7 @@ let mk_refinement_exn co_name co_parameters clauses =
       ref_initialisation=None;
       ref_operations=[]; }
   in
-  { co_name; co_parameters;
-    co_desc=Refinement (List.fold_left add_clause_ref_exn ref_desc clauses) }
+  { co_name; co_desc=Refinement (List.fold_left add_clause_ref_exn ref_desc clauses) }
 
 let add_clause_imp_exn (co:implementation) (loc,cl:Utils.loc*clause) : implementation =
   match cl with
@@ -370,9 +373,10 @@ let add_clause_imp_exn (co:implementation) (loc,cl:Utils.loc*clause) : implement
     ( if String.equal co.imp_refines.lid_str "" then { co with imp_refines=abs }
       else Error.raise_exn abs.lid_loc "This clause is defined twice." )
 
-let mk_implementation_exn co_name co_parameters clauses =
+let mk_implementation_exn co_name imp_parameters clauses =
   let imp_desc =
-    { imp_refines={lid_loc=Utils.dloc;lid_str=""};
+    { imp_parameters;
+      imp_refines={lid_loc=Utils.dloc;lid_str=""};
       imp_sees=[];
       imp_sets=[];
       imp_values=[];
@@ -388,8 +392,7 @@ let mk_implementation_exn co_name co_parameters clauses =
       imp_local_operations=[];
       imp_operations=[]; }
   in
-    { co_name; co_parameters;
-      co_desc=Implementation (List.fold_left add_clause_imp_exn imp_desc clauses) }
+    { co_name; co_desc=Implementation (List.fold_left add_clause_imp_exn imp_desc clauses) }
 
 let get_clauses co =
   match co.co_desc with

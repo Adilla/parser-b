@@ -1,8 +1,8 @@
 open SyntaxCore
 
 type expression_desc =
-  | Ident of string
-  | Dollar of string
+  | Ident of string option*string
+  | Dollar of string option*string
   | Builtin_0 of e_builtin_0
   | Builtin_1 of e_builtin_1*expression
   | Builtin_2 of e_builtin_2*expression*expression
@@ -37,9 +37,9 @@ and predicate = {
 [@@deriving eq]
 
 type lhs =
-  | Tuple of lident Nlist.t
-  | Function of lident * expression Nlist.t
-  | Record of lident * lident
+  | Tuple of ren_ident Nlist.t
+  | Function of ren_ident * expression Nlist.t
+  | Record of ren_ident * lident
 [@@deriving eq]
 
 type substitution_desc =
@@ -53,10 +53,10 @@ type substitution_desc =
   | Case of expression * (expression Nlist.t * substitution) Nlist.t * substitution option
   | Any of lident Nlist.t * predicate * substitution
   | Let of lident Nlist.t * (lident * expression) Nlist.t * substitution
-  | BecomesElt of lident Nlist.t * expression
-  | BecomesSuch of  lident Nlist.t * predicate
+  | BecomesElt of ren_ident Nlist.t * expression
+  | BecomesSuch of  ren_ident Nlist.t * predicate
   | Var of lident Nlist.t * substitution
-  | CallUp of lident list * lident * expression list
+  | CallUp of ren_ident list * ren_ident * expression list
   | While of predicate * substitution * predicate * expression
   | Sequencement of substitution * substitution
   | Parallel of substitution * substitution
@@ -77,7 +77,7 @@ type operation = {
 [@@deriving eq]
 
 type machine_instanciation = {
-  mi_mch: lident;
+  mi_mch: ren_ident;
   mi_params: expression list
 }
 [@@deriving eq]
@@ -90,11 +90,11 @@ type set =
 type machine = {
   mch_parameters: lident list;
   mch_constraints: predicate option;
-  mch_sees: lident list;
+  mch_sees: ren_ident list;
   mch_includes: machine_instanciation list;
   mch_promotes: lident list;
   mch_extends: machine_instanciation list;
-  mch_uses: lident list;
+  mch_uses: ren_ident list;
   mch_sets: set list;
   mch_concrete_constants: lident list;
   mch_abstract_constants: lident list;
@@ -111,7 +111,7 @@ type machine = {
 type refinement = {
   ref_parameters: lident list;
   ref_refines: lident;
-  ref_sees: lident list;
+  ref_sees: ren_ident list;
   ref_includes: machine_instanciation list;
   ref_promotes: lident list;
   ref_extends: machine_instanciation list;
@@ -131,7 +131,7 @@ type refinement = {
 type implementation = {
   imp_parameters: lident list;
   imp_refines: lident;
-  imp_sees: lident list;
+  imp_sees: ren_ident list;
   imp_imports: machine_instanciation list;
   imp_promotes: lident list;
   imp_extends: machine_instanciation list;
@@ -163,11 +163,11 @@ type component = {
 type clause =
   | Constraints of predicate
   | Imports of machine_instanciation Nlist.t
-  | Sees of lident Nlist.t
+  | Sees of ren_ident Nlist.t
   | Includes of machine_instanciation Nlist.t
   | Extends of  machine_instanciation Nlist.t
   | Promotes of lident Nlist.t
-  | Uses of lident Nlist.t
+  | Uses of ren_ident Nlist.t
   | Sets of set Nlist.t
   | Constants of lident Nlist.t
   | Abstract_constants of lident Nlist.t

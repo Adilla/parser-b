@@ -100,6 +100,7 @@ let token_to_string tk =
     | LPAR            -> "("
     | DEF_FILE id -> Printf.sprintf "<%s>" id
     | IDENT id -> Printf.sprintf "identifier(%s)" id
+    | REN_IDENT (p,id) -> Printf.sprintf "ren_identifier(%s,%s)" p id
     | EOF -> "__EOF__"
     | STRING s -> Printf.sprintf "\"%s\"" s
 

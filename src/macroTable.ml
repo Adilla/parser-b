@@ -75,7 +75,7 @@ let print out (defs:t) : unit =
       | REC, _, _ | MAPLET, _, _ | LEFTARROW, _, _ | EQUIV, _, _
       | PARALLEL, _, _ | IMPLY, _, _ | AFFECTATION, _, _ | BECOMES_ELT, _, _
       | DOLLAR_ZERO, _, _ | DOT, _, _ | BAR, _, _ | LBRA, _, _
-      | RBRA, _, _ | LSQU, _, _ | RSQU, _, _ | AND, _, _
+      | RBRA, _, _ | LSQU, _, _ | RSQU, _, _ | AND, _, _ | REN_IDENT _, _, _
       | FORALL, _, _ | EXISTS, _, _ | EQUAL, _, _ | MEMBER_OF, _, _ | MINUS, _, _
       | COMMA, _, _ | RPAR, _, _ | LPAR, _, _ | IDENT _, _, _ | STRING _ , _, _ -> aux (next::accu)
     in
@@ -103,7 +103,7 @@ let print out (defs:t) : unit =
     | REC | MAPLET | LEFTARROW | EQUIV | PARALLEL | IMPLY | AFFECTATION | BECOMES_ELT
     | DOLLAR_ZERO | DOT | BAR | LBRA | RBRA | LSQU | RSQU | AND | FORALL | EXISTS
     | EQUAL | MEMBER_OF | MINUS | COMMA | RPAR | LPAR | IDENT _ | STRING _ | EQUALEQUAL
-    | DEF_FILE _ -> false
+    | DEF_FILE _ | REN_IDENT _ -> false
 
 let rec state_1_start_exn (s:L.state) (is_def_file:bool) (def_lst:macro list) : macro list =
   match L.get_token_exn s with

@@ -61,6 +61,14 @@ type c_or_m = Maplet | Comma | Infix
 type lident = { lid_loc:Utils.loc; lid_str:string }
 let equal_lident x y = String.equal x.lid_str y.lid_str
 
+type ren_ident = { r_loc:Utils.loc; r_prefix:string option; r_str:string }
+
+let equal_ren_ident x y =
+  match x.r_prefix, y.r_prefix with
+  | None, None -> String.equal x.r_str y.r_str
+  | Some px, Some py -> String.equal px py && String.equal x.r_str y.r_str
+  | _, _ -> false
+
 let pred_bop_to_string : pred_bop -> string = function
   | Equality -> "="
   | Disequality -> "/="

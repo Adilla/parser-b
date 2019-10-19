@@ -275,3 +275,18 @@ let change_current (src:t_atomic_src) (ty:Open.t) : Open.t =
   in
   aux ty
 
+let rec subst s = function
+  | Open.T_Abstract_Set (T_Current,id) as ty ->
+    begin match SMap.find_opt id s with
+      | None -> ty
+      | Some ty -> ty
+    end
+  | Open.T_Int
+  | Open.T_Bool
+  | Open.T_String
+  | Open.T_Abstract_Set (_,_)
+  | Open.T_Concrete_Set (_,_) as ty -> ty
+  | Open.T_Power ty -> Open.T_Power (subst s ty)
+  | Open.T_Product (ty1,ty2) -> Open.T_Product (subst s ty1,subst s ty2)
+  | Open.T_Record lst -> Open.T_Record (List.map (fun (id,ty) -> (id,subst s ty)) lst)
+  | Open.T_UVar _ -> assert false

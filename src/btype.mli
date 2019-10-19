@@ -74,3 +74,6 @@ val view : t -> t_view
 val is_equal_modulo_alias : t_alias -> t -> t -> bool
 val add_alias : t_alias -> string -> t -> t_alias option
 val change_current : t_atomic_src -> t -> t
+
+module SMap : Map.S with type key=string
+val subst : t SMap.t -> t -> t

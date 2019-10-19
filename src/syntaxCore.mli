@@ -80,3 +80,6 @@ type c_or_m = Maplet | Comma | Infix
 type lident = { lid_loc:Utils.loc; lid_str:string }
 
 val equal_lident : lident -> lident -> bool
+
+type ren_ident = { r_loc:Utils.loc; r_prefix:string option; r_str:string }
+val equal_ren_ident : ren_ident -> ren_ident -> bool

@@ -5,16 +5,23 @@ let extended_sees = ref false
 type t_mch_prop = private A
 type t_mch_inv = private B
 type t_mch_op = private C
+
 type t_ref_prop = private D
 type t_ref_inv = private E
 type t_ref_op = private F
+
 type t_imp_prop = private G
 type t_imp_inv = private H
 type t_imp_op = private I
 type t_imp_lop = private J
 type t_imp_val = private K
+
 type 'cl t_assert = private L
+
 type t_mch_constr = private M
+type t_mch_param = private N
+type t_ref_param = private O
+type t_imp_param = private P
 
 type ('mr,'cl) clause =
   | C_Mch_Constr : (G.t_mch,t_mch_constr) clause
@@ -22,16 +29,19 @@ type ('mr,'cl) clause =
   | C_Mch_Inv : (G.t_mch,t_mch_inv) clause
   | C_Mch_Op : (G.t_mch,t_mch_op) clause
   | C_Mch_Assert : (G.t_mch,t_mch_op t_assert) clause
+  | C_Mch_Param : (G.t_mch,t_mch_param) clause
   | C_Ref_Prop : (G.t_ref,t_ref_prop) clause
   | C_Ref_Inv : (G.t_ref,t_ref_inv) clause
   | C_Ref_Op : (G.t_ref,t_ref_op) clause
   | C_Ref_Assert : (G.t_ref,t_ref_op t_assert) clause
+  | C_Ref_Param : (G.t_ref,t_ref_param) clause
   | C_Imp_Prop : (G.t_ref,t_imp_prop) clause
   | C_Imp_Inv : (G.t_ref,t_imp_inv) clause
   | C_Imp_Op : (G.t_ref,t_imp_op) clause
   | C_Imp_Lop : (G.t_ref,t_imp_lop) clause
   | C_Imp_Val : (G.t_ref,t_imp_val) clause
   | C_Imp_Assert : (G.t_ref,t_imp_op t_assert) clause
+  | C_Imp_Param : (G.t_ref,t_imp_param) clause
 
 let mk_assert_clause (type mr cl) (cl:(mr,cl) clause) : (mr,cl t_assert) clause =
   match cl with
@@ -186,6 +196,30 @@ let make_imp_lmut: G.t_ref G.t_kind -> (G.t_ref,t_imp_lop) t_mutable_ident optio
 
 let make_imp_lassert (x:G.t_ref G.t_kind) : (G.t_ref,t_imp_lop t_assert) t_global_ident option = Some x
 
+let make_mch_param: G.t_mch G.t_kind -> (G.t_mch,t_mch_param) t_global_ident option = function (*FIXME*)
+  | G.Pack(G.K_Parameter _,_) as x -> Some x
+  | G.Pack(G.K_Concrete_Constant,_) as x -> Some x
+  | G.Pack(G.K_Abstract_Set,_) as x -> Some x
+  | G.Pack(G.K_Concrete_Set _,_) as x -> Some x
+  | G.Pack(G.K_Enumerate,_) as x -> Some x
+  | _ -> None
+
+let make_ref_param: G.t_ref G.t_kind -> (G.t_ref,t_ref_param) t_global_ident option = function (*FIXME*)
+  | G.Pack(G.K_Parameter _,_) as x -> Some x
+  | G.Pack(G.K_Concrete_Constant,_) as x -> Some x
+  | G.Pack(G.K_Abstract_Set,_) as x -> Some x
+  | G.Pack(G.K_Concrete_Set _,_) as x -> Some x
+  | G.Pack(G.K_Enumerate,_) as x -> Some x
+  | _ -> None
+
+let make_imp_param: G.t_ref G.t_kind -> (G.t_ref,t_imp_param) t_global_ident option = function (*FIXME*)
+  | G.Pack(G.K_Parameter _,_) as x -> Some x
+  | G.Pack(G.K_Concrete_Constant,_) as x -> Some x
+  | G.Pack(G.K_Abstract_Set,_) as x -> Some x
+  | G.Pack(G.K_Concrete_Set _,_) as x -> Some x
+  | G.Pack(G.K_Enumerate,_) as x -> Some x
+  | _ -> None
+
 let get_ident_in_clause (type mr cl) (cl:(mr,cl) clause) (ki:mr G.t_kind) : (mr,cl) t_global_ident option =
   match cl with
   | C_Mch_Constr -> make_mch_constr ki
@@ -203,6 +237,9 @@ let get_ident_in_clause (type mr cl) (cl:(mr,cl) clause) (ki:mr G.t_kind) : (mr,
   | C_Imp_Lop -> make_imp_lop ki
   | C_Imp_Val -> make_imp_val ki
   | C_Imp_Assert -> make_imp_assert ki
+  | C_Mch_Param -> make_mch_param ki
+  | C_Ref_Param -> make_ref_param ki
+  | C_Imp_Param -> make_imp_param ki
 
 let get_mutable_in_clause (type mr cl) (cl:(mr,cl) clause) (ki:mr G.t_kind) : (mr,cl) t_mutable_ident option =
   match cl with

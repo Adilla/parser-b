@@ -1,11 +1,6 @@
 %{
 open SyntaxCore
 open PSyntax
-(*
-let mk_builtin_0 exp_loc bi : expression = { exp_loc; exp_desc=(Builtin_0 bi); exp_par=false }
-let mk_builtin_1 exp_loc bi e : expression = { exp_loc; exp_desc=(Builtin_1 (bi,e)); exp_par=false }
-let mk_builtin_2 exp_loc bi e1 e2 : expression = { exp_loc; exp_desc=(Builtin_2 (bi,e1,e2)); exp_par=false }
-   *)
 
 let mk_minst mi_mch mi_params : machine_instanciation = { mi_mch; mi_params }
 let mk_expr exp_loc exp_desc : expression = { exp_loc; exp_desc; exp_par=false }
@@ -13,16 +8,8 @@ let mk_pred prd_loc prd_desc : predicate = { prd_loc; prd_desc; prd_par=false }
 let mk_subst sub_loc sub_desc : substitution = { sub_loc; sub_desc; sub_be=false }
 let mk_clause cl_loc cl_desc : Utils.loc*clause  = (cl_loc, cl_desc)
 let mk_lident lid_loc lid_str : lident = { lid_loc; lid_str }
+let mk_ren r_loc r_prefix r_str : ren_ident = { r_loc; r_prefix; r_str }
 let mk_operation op_out op_name op_in op_body : operation = { op_out; op_name; op_in; op_body } 
-(*
-let mk_infix lc lc_bi bi a1 a2 =
-  let f = mk_builtin lc_bi bi in
-  mk_expr lc (Application (f,mk_expr lc (Couple(Infix,a1,a2))))
-
-let mk_prefix exp_loc bi e =
-  let f = mk_builtin exp_loc bi in
-  { exp_loc; exp_desc=Application(f,e); exp_par=false }
-   *)
 
 let mk_binder exp_loc bi xlst p e =
   { exp_loc; exp_desc=Binder(bi,xlst,p,e); exp_par=false }
@@ -64,6 +51,7 @@ let mk_be (s:substitution) : substitution = { s with sub_be=true }
 %token <string> STRING
 %token AFFECTATION
 %token COMMA
+%token <string*string> REN_IDENT
 %token <string> IDENT
 %token DOLLAR_ZERO
 %token RPAR
@@ -192,13 +180,25 @@ let mk_be (s:substitution) : substitution = { s with sub_be=true }
  * ***** EXPRESSIONS
  * ************************************************************************** *)
 
+%inline ren_ident:
+| id=IDENT { mk_ren $startpos(id) None id }
+| ren=REN_IDENT { mk_ren $startpos(ren) (Some (fst ren)) (snd ren) }
+
 ident_list_comma:
         | id=IDENT { [mk_lident $startpos(id) id] }
         | id=IDENT COMMA lst=ident_list_comma { (mk_lident $startpos(id) id)::lst }
 
+ren_ident_list_comma:
+        | ren=ren_ident { [ren] }
+        | ren=ren_ident COMMA lst=ren_ident_list_comma { ren::lst }
+
 ident_nelist_comma:
 | id=IDENT { Nlist.make1 (mk_lident $startpos(id) id) }
 | id=IDENT COMMA lst=ident_list_comma { Nlist.make (mk_lident $startpos(id) id) lst }
+
+ren_ident_nelist_comma:
+| id=ren_ident { Nlist.make1 id }
+| id=ren_ident COMMA lst=ren_ident_nelist_comma { Nlist.cons id lst }
 
 fields:
 | id=IDENT MEMBER_OF e=expression { Nlist.make1 (mk_lident $startpos(id) id,e) }
@@ -218,8 +218,10 @@ fields:
 expression:
   c=CONSTANT { mk_expr $startpos (Builtin_0 c) }
 | s=STRING { mk_expr $startpos (Builtin_0 (String s)) }
-| id=IDENT { mk_expr $startpos (Ident id) }
-| id=IDENT DOLLAR_ZERO { mk_expr $startpos (Dollar id) }
+| id=IDENT { mk_expr $startpos (Ident (None,id)) }
+| ren=REN_IDENT { mk_expr $startpos (Ident (Some (fst ren),snd ren)) }
+| id=IDENT DOLLAR_ZERO { mk_expr $startpos (Dollar (None,id)) }
+| ren=REN_IDENT DOLLAR_ZERO { mk_expr $startpos (Dollar (Some (fst ren),snd ren)) }
 | LPAR e=expression RPAR { mk_par e }
 | CBOOL LPAR p=predicate RPAR { mk_expr $startpos (Pbool p) }
 | MINUS e=expression { mk_expr $startpos (Builtin_1(Unary_Minus,e)) } %prec unary_minus
@@ -284,27 +286,27 @@ substitution:
 %inline id_eq_expr: id=IDENT EQUAL e=expression { (mk_lident $startpos(id) id,e) }
 
 %inline callup_subst:
-| id=IDENT
- { mk_subst $startpos (CallUp ([],mk_lident $startpos(id) id,[])) }
-| id=IDENT LPAR e=expression RPAR
- { mk_subst $startpos (CallUp ([],mk_lident $startpos(id) id,expr_to_list e)) }
-| ids=ident_list_comma LEFTARROW id=IDENT
- { mk_subst $startpos (CallUp (ids,mk_lident $startpos(id) id,[])) }
-| ids=ident_list_comma LEFTARROW id=IDENT LPAR e=expression RPAR
- { mk_subst $startpos (CallUp (ids,mk_lident $startpos(id) id,expr_to_list e)) }
+| id=ren_ident
+ { mk_subst $startpos (CallUp ([],id,[])) }
+| id=ren_ident LPAR e=expression RPAR
+ { mk_subst $startpos (CallUp ([],id,expr_to_list e)) }
+| ids=ren_ident_list_comma LEFTARROW id=ren_ident
+ { mk_subst $startpos (CallUp (ids,id,[])) }
+| ids=ren_ident_list_comma LEFTARROW id=ren_ident LPAR e=expression RPAR
+ { mk_subst $startpos (CallUp (ids,id,expr_to_list e)) }
 
 level1_substitution:
   BEGIN s=substitution END { mk_be s }
 
 | SKIP { mk_subst $startpos Skip }
 
-| ids=ident_nelist_comma AFFECTATION e=expression { mk_subst $startpos (Affectation (Tuple ids,e)) }
+| ids=ren_ident_nelist_comma AFFECTATION e=expression { mk_subst $startpos (Affectation (Tuple ids,e)) }
 
-| id=IDENT LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
-     { mk_subst $startpos (Affectation (Function(mk_lident $startpos(id) id,Nlist.make e1 lst),e2)) }
+| id=ren_ident LPAR e1=expression RPAR lst=list(LPAR e=expression RPAR {e}) AFFECTATION e2=expression
+     { mk_subst $startpos (Affectation (Function(id,Nlist.make e1 lst),e2)) }
 
-| id=IDENT SQUOTE fi=IDENT AFFECTATION e=expression
-{ mk_subst $startpos (Affectation (Record (mk_lident $startpos(id) id,mk_lident $startpos(fi) fi),e)) }
+| id=ren_ident SQUOTE fi=IDENT AFFECTATION e=expression
+{ mk_subst $startpos (Affectation (Record (id,mk_lident $startpos(fi) fi),e)) }
 
 | PRE p=predicate THEN s=substitution END { mk_subst $startpos (Pre (p,s)) }
 
@@ -327,9 +329,9 @@ level1_substitution:
 | LET ids=ident_nelist_comma BE eqs=separated_nonempty_list(AND,id_eq_expr) IN s=substitution END
  { mk_subst $startpos (Let (ids,Nlist.from_list_exn eqs,s)) }
 
-| ids=ident_nelist_comma BECOMES_ELT e=expression { mk_subst $startpos (BecomesElt (ids,e)) }
+| ids=ren_ident_nelist_comma BECOMES_ELT e=expression { mk_subst $startpos (BecomesElt (ids,e)) }
 
-| ids=ident_nelist_comma MEMBER_OF LPAR p=predicate RPAR { mk_subst $startpos (BecomesSuch (ids,p)) }
+| ids=ren_ident_nelist_comma MEMBER_OF LPAR p=predicate RPAR { mk_subst $startpos (BecomesSuch (ids,p)) }
 
 | VAR ids=ident_nelist_comma IN s=substitution END { mk_subst $startpos (Var (ids,s)) }
 
@@ -356,8 +358,8 @@ component_eof: a=component EOF { a }
 | id=IDENT LPAR lst=ident_list_comma RPAR { (mk_lident $startpos(id) id,lst) }
 
 %inline machine_instanciation:
-| id=IDENT { mk_minst (mk_lident $startpos(id) id) [] }
-| id=IDENT LPAR e=expression RPAR { mk_minst (mk_lident $startpos(id) id) (expr_to_list e) }
+| id=ren_ident { mk_minst (id) [] }
+| id=ren_ident LPAR e=expression RPAR { mk_minst (id) (expr_to_list e) }
 
 %inline set :
 | id=IDENT { Abstract_Set (mk_lident $startpos(id) id) }
@@ -382,11 +384,11 @@ semicolon_pred_lst:
 
 %inline clause:
   CONSTRAINTS p=predicate { mk_clause $startpos (Constraints p) }
-| SEES lst=ident_nelist_comma { mk_clause $startpos (Sees lst) }
+| SEES lst=ren_ident_nelist_comma { mk_clause $startpos (Sees lst) }
 | INCLUDES lst=separated_nonempty_list ( COMMA, machine_instanciation ) { mk_clause $startpos (Includes (Nlist.from_list_exn lst)) }
 | EXTENDS lst=separated_nonempty_list ( COMMA, machine_instanciation ) { mk_clause $startpos (Extends (Nlist.from_list_exn lst)) }
 | PROMOTES lst=ident_nelist_comma { mk_clause $startpos (Promotes lst) }
-| USES lst=ident_nelist_comma { mk_clause $startpos (Uses lst) }
+| USES lst=ren_ident_nelist_comma { mk_clause $startpos (Uses lst) }
 | SETS lst=separated_nonempty_list( SEMICOLON, set ) { mk_clause $startpos (Sets (Nlist.from_list_exn lst)) }
 | CONCRETE_CONSTANTS lst=ident_nelist_comma { mk_clause $startpos (Constants lst) }
 | CONSTANTS lst=ident_nelist_comma { mk_clause $startpos (Constants lst) }

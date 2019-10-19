@@ -4,14 +4,15 @@ module G = Global
 
 type ('mr,'cl) t_ident =
   | K_Local of string * Local.t_local_kind
-  | K_Global of string * ('mr,'cl) V.t_global_ident
+  | K_Global of string option * string * ('mr,'cl) V.t_global_ident
 
 type t_op_source =
-  | SO_Included_Or_Imported of lident
-  | SO_Seen_Read_Only of lident
+  | SO_Included_Or_Imported of ren_ident
+  | SO_Seen_Read_Only of ren_ident
   | SO_Local of Utils.loc
 
 type called_op = {
+  op_prefix:string option;
   op_id:string;
   op_loc:Utils.loc;
   op_src:t_op_source;
@@ -72,6 +73,7 @@ type ('mr,'cl) t_mutable_ident =
 
 type ('mr,'cl,'typ) mut_var = {
   mv_loc:Utils.loc;
+  mv_prefix:string option;
   mv_id:string;
   mv_typ:'typ;
   mv_kind: ('mr,'cl) t_mutable_ident
@@ -117,7 +119,7 @@ type ('mr,'cl) operation =
   | O_Promoted : { op_out: (string*Btype.t) list;
                    op_name: lident;
                    op_in: (string*Btype.t) list;
-                   op_source:mch_name
+                   op_source:ren_ident
                  } -> ('mr,'cl) operation
   | O_Local : { op_out: arg list;
                 op_name: lident;
@@ -134,13 +136,19 @@ type ('mr,'ac) symb = {
 
 type 'ac t_mch_symb_src = (G.t_mch,'ac) G.t_decl
 
+type ('mr,'cl) machine_instanciation = {
+  mi_mch: ren_ident;
+  mi_params: ('mr,'cl,Btype.t) expression list
+}
+
 type machine = {
   mch_set_parameters: lident list;
   mch_scalar_parameters: (G.t_mch,G.t_concrete) symb list;
 
-  mch_sees: mch_name list;
-  mch_includes: mch_name list;
-  mch_extends: mch_name list;
+  mch_sees: ren_ident list;
+  mch_uses: ren_ident list;
+  mch_includes: (G.t_mch,V.t_mch_param) machine_instanciation list;
+  mch_extends: (G.t_mch,V.t_mch_param) machine_instanciation list;
 
   mch_abstract_sets: (G.t_mch,G.t_concrete) symb list;
   mch_concrete_sets: ((G.t_mch,G.t_concrete) symb*string list) list;
@@ -163,9 +171,9 @@ type refinement = {
   ref_set_parameters: lident list;
   ref_scalar_parameters: (G.t_ref,G.t_concrete) symb list;
 
-  ref_sees: mch_name list;
-  ref_includes: mch_name list;
-  ref_extends: mch_name list;
+  ref_sees: ren_ident list;
+  ref_includes: (G.t_ref,V.t_ref_param) machine_instanciation list;
+  ref_extends: (G.t_ref,V.t_ref_param) machine_instanciation list;
 
   ref_abstract_sets: (G.t_ref,G.t_concrete) symb list;
   ref_concrete_sets: ((G.t_ref,G.t_concrete) symb*string list) list;
@@ -196,10 +204,10 @@ type value =
     val_kind:val_kind }
 
 type t_asy_src =
-  | I_Imported of lident
-  | I_Seen of lident
+  | I_Imported of ren_ident
+  | I_Seen of ren_ident
   | I_Disappearing
-  | I_Redeclared_By_Importation of lident
+  | I_Redeclared_By_Importation of ren_ident
 
 type t_abs_imp_symb = {
   asy_id:string;
@@ -212,9 +220,9 @@ type implementation = {
 
   imp_refines: mch_name;
 
-  imp_sees: mch_name list;
-  imp_imports: mch_name list;
-  imp_extends: mch_name list;
+  imp_sees: ren_ident list;
+  imp_imports: (G.t_ref,V.t_imp_param) machine_instanciation list;
+  imp_extends: (G.t_ref,V.t_imp_param) machine_instanciation list;
 
   imp_abstract_sets: (G.t_ref,G.t_concrete) symb list;
   imp_concrete_sets: ((G.t_ref,G.t_concrete) symb*string list) list;

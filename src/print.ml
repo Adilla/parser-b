@@ -18,6 +18,10 @@ let box out = Format.pp_open_box out 0
 let break = Format.pp_print_break 
 
 let pp_lident out (lid:lident) : unit = str out lid.lid_str
+let pp_ren_ident out (ren:ren_ident) : unit =
+  match ren.r_prefix with
+  | Some p -> pf out "%s.%s" p ren.r_str
+  | None -> str out ren.r_str
 
 type list = {
   box : Format.formatter -> int -> unit;
@@ -85,8 +89,10 @@ let rec get_par_nlist (s:substitution) : substitution Nlist.t =
 
 let rec pp_expr out (e:expression) : unit =
   match e.exp_desc with
-  | Ident id -> str out id
-  | Dollar id -> pf out "%s$0" id
+  | Ident (None,id) -> str out id
+  | Ident (Some p,id) -> pf out "%s.%s" p id
+  | Dollar (None,id) -> pf out "%s$0" id
+  | Dollar (Some p,id) -> pf out "%s.%s$0" p id
   | Builtin_0 bi -> str out (builtin0_to_string bi)
   | Builtin_1 (Inverse_Relation,e) ->
     pf out "%a~"  pp_expr_wp e
@@ -187,14 +193,14 @@ let rec pp_subst out (s:substitution) : unit =
   | Skip -> str out "skip"
 
   | Affectation (Tuple xlst,e) ->
-    pf out "@[%a :=@;<1 4>%a@]" (pp_list { list with sep="," } pp_lident) xlst pp_expr e
+    pf out "@[%a :=@;<1 4>%a@]" (pp_list { list with sep="," } pp_ren_ident) xlst pp_expr e
 
   | Affectation (Function(f,alst),e) ->
     let aux out e = pf out "(%a)" pp_expr e in
-    pf out "@[%s@,%a :=@;<1 4>%a@]" f.lid_str (pp_list { list with sep="" } aux) alst pp_expr e
+    pf out "@[%a@,%a :=@;<1 4>%a@]" pp_ren_ident f (pp_list { list with sep="" } aux) alst pp_expr e
 
   | Affectation (Record(rf,fd),e) ->
-    pf out "@[%s@,'%s :=@;<1 4>%a@]" rf.lid_str fd.lid_str pp_expr e
+    pf out "@[%a@,'%s :=@;<1 4>%a@]" pp_ren_ident rf fd.lid_str pp_expr e
 
   | Pre (p,s) ->
     begin
@@ -341,10 +347,10 @@ let rec pp_subst out (s:substitution) : unit =
     end
 
   | BecomesElt (xlst,e) ->
-    pf out "@[%a@ ::@;<1 4>%a@]" (pp_list { list with sep="," } pp_lident) xlst pp_expr e
+    pf out "@[%a@ ::@;<1 4>%a@]" (pp_list { list with sep="," } pp_ren_ident) xlst pp_expr e
 
   | BecomesSuch (xlst,p) ->
-    pf out "@[%a@ :(@;<1 4>%a )@]" (pp_list { list with sep="," } pp_lident) xlst pp_pred p
+    pf out "@[%a@ :(@;<1 4>%a )@]" (pp_list { list with sep="," } pp_ren_ident) xlst pp_pred p
 
   | Var (xlst,s) ->
     begin
@@ -357,15 +363,15 @@ let rec pp_subst out (s:substitution) : unit =
       close out;
     end
 
-  | CallUp ([],f,[]) -> str out f.lid_str
+  | CallUp ([],f,[]) -> pp_ren_ident out f
   | CallUp ([],f,hd::tl) ->
-    pf out "@[%s@,(%a)@]" f.lid_str (pp_list { list with sep="," } pp_expr_wp) (Nlist.make hd tl)
+    pf out "@[%a@,(%a)@]" pp_ren_ident f (pp_list { list with sep="," } pp_expr_wp) (Nlist.make hd tl)
   | CallUp (hd::tl,f,[]) ->
-    pf out "@[%a@ <--@ %s@]" (pp_list { list with sep="," } pp_lident) (Nlist.make hd tl) f.lid_str 
+    pf out "@[%a@ <--@ %a@]" (pp_list { list with sep="," } pp_ren_ident) (Nlist.make hd tl) pp_ren_ident f 
   | CallUp (ohd::otl,f,ihd::itl) ->
-    pf out "@[%a@ <--@ %s@,(%a)@]"
-      (pp_list { list with sep="," } pp_lident) (Nlist.make ohd otl)
-      f.lid_str 
+    pf out "@[%a@ <--@ %a@,(%a)@]"
+      (pp_list { list with sep="," } pp_ren_ident) (Nlist.make ohd otl)
+      pp_ren_ident f 
       (pp_list { list with sep="," } pp_expr_wp) (Nlist.make ihd itl)
 
   | While (p,s,q,e) ->
@@ -425,9 +431,9 @@ and pp_subst_wp out (s:substitution) : unit =
   
 let pp_minst out (mi:machine_instanciation) : unit =
   match mi.mi_params with
-  | [] -> str out mi.mi_mch.lid_str
+  | [] -> pp_ren_ident out mi.mi_mch
   | hd::tl ->
-    pf out "@[%s(%a)@]" mi.mi_mch.lid_str (pp_list { list with sep="," } pp_expr_wp) (Nlist.make hd tl)
+    pf out "@[%a(%a)@]" pp_ren_ident mi.mi_mch (pp_list { list with sep="," } pp_expr_wp) (Nlist.make hd tl)
 
 let pp_set out (x:set) : unit =
   match x with
@@ -467,9 +473,9 @@ let pp_clause out : clause -> unit = function
   | Operations lst -> ( str out "OPERATIONS"; break out 0 4; pp_list { vlist with sep=";" } pp_op out lst )
   | Local_Operations lst -> ( str out "LOCAL_OPERATIONS"; break out 0 4; pp_list { vlist with sep=";" } pp_op out lst )
   | Values lst -> ( str out "VALUES"; break out 0 4; pp_list { vlist with sep=";" } pp_value out lst )
-  | Sees lst -> ( str out "SEES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Sees lst -> ( str out "SEES"; break out 0 4; pp_list { vlist with sep="," } pp_ren_ident out lst )
   | Promotes lst -> ( str out "PROMOTES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
-  | Uses lst -> ( str out "USES"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
+  | Uses lst -> ( str out "USES"; break out 0 4; pp_list { vlist with sep="," } pp_ren_ident out lst )
   | Sets lst -> ( str out "SETS"; break out 0 4; pp_list { vlist with sep=";" } pp_set out lst )
   | Constants lst -> ( str out "CONSTANTS"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )
   | Abstract_constants lst -> ( str out "ABSTRACT_CONSTANTS"; break out 0 4; pp_list { vlist with sep="," } pp_lident out lst )

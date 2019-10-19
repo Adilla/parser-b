@@ -158,7 +158,6 @@ let ident   = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let int_lit = ['0'-'9']+
 let hex_lit = "0x" ['0'-'9' 'A'-'F' 'a'-'f']+
 let commented_line = "//" [^'\n']*
-(* let ren_ident = ident ( '.' ident )+ *)
 let def_file = '<' ['a'-'z' 'A'-'Z' '0'-'9' '_' '.']+ '>'
 
 rule token = parse
@@ -243,8 +242,9 @@ rule token = parse
   | def_file as id {
       DEF_FILE ( String.sub id 1 ((String.length id)-2) ) }
   | ident as id { ident_to_token lexbuf.Lexing.lex_start_p id }
+
+  | (ident as p) '.' (ident as id) { REN_IDENT (p,id) }
  
-(*   | ren_ident as id { REN_IDENT ( get_loc lexbuf , id ) } *)
   | hex_lit as i {
       match Int64.of_string_opt i with
       | None -> err lexbuf ("The literal '"^i^"' does not fit in a signed 64 bits integer.")

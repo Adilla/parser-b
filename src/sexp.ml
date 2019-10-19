@@ -31,11 +31,17 @@ let sexp_to_string (x:t) : string =
   Buffer.contents buf
 
 let sexp_of_lident (v:lident) : t = Atom ("ident_" ^ v.lid_str)
+let sexp_of_ren_ident (r:ren_ident) : t =
+  match r.r_prefix with
+  | Some p -> List [Atom "ren_ident";Atom p;Atom r.r_str]
+  | None -> Atom ("ident_" ^ r.r_str)
 
 let rec sexp_of_expr : P.expression -> t = fun e ->
   match e.P.exp_desc with
-  | Ident id ->  Atom ("ident_" ^ id)
-  | Dollar id -> Atom ("ident_" ^ id ^ "$0")
+  | Ident (None,id) ->  Atom ("ident_" ^ id)
+  | Ident (Some p,id) ->  List [Atom "ren_ident";Atom p;Atom id]
+  | Dollar (None,id) -> List [Atom "$0";Atom ("ident_" ^ id)]
+  | Dollar (Some p,id) ->List [Atom "$0"; List [Atom "ren_ident";Atom p;Atom id]]
   | Builtin_0 bi -> Atom (builtin0_to_string bi)
   | Builtin_1 (bi,e) -> List [Atom (builtin1_to_string bi);sexp_of_expr e]
   | Builtin_2 (bi,e1,e2) ->
@@ -80,14 +86,14 @@ let rec sexp_of_subst : P.substitution -> t = fun s ->
   match s.P.sub_desc with
   | Skip -> Atom "SKIP"
   | Affectation (Tuple xlst,e) ->
-    let ids = List (List.map sexp_of_lident (Nlist.to_list xlst)) in
+    let ids = List (List.map sexp_of_ren_ident (Nlist.to_list xlst)) in
     let exprs = List [sexp_of_expr e] in
     List [Atom "AFF1";ids;exprs]
   | Affectation (Function(f,elst),a) ->
     let exprs = List (List.map sexp_of_expr (Nlist.to_list elst)) in
-    List [Atom "AFF2";sexp_of_lident f;exprs;sexp_of_expr a]
+    List [Atom "AFF2";sexp_of_ren_ident f;exprs;sexp_of_expr a]
   | Affectation (Record(id,fd),e) ->
-    List [Atom "AFF3";sexp_of_lident id;sexp_of_lident fd;sexp_of_expr e]
+    List [Atom "AFF3";sexp_of_ren_ident id;sexp_of_lident fd;sexp_of_expr e]
   | Pre (p,s) -> List [Atom "PRE"; sexp_of_pred p; sexp_of_subst s]
   | Assert (p,s) -> List [Atom "ASSERT"; sexp_of_pred p; sexp_of_subst s]
   | Choice slst ->
@@ -124,17 +130,17 @@ let rec sexp_of_subst : P.substitution -> t = fun s ->
     let exprs = List (List.map aux (Nlist.to_list ylst)) in
     List [Atom "LET";ids;exprs;sexp_of_subst s]
   | BecomesElt (xlst,e) ->
-    let ids = List (List.map sexp_of_lident (Nlist.to_list xlst)) in
+    let ids = List (List.map sexp_of_ren_ident (Nlist.to_list xlst)) in
     List [Atom "BECOMESELT";ids;sexp_of_expr e]
   | BecomesSuch (xlst,p) ->
-    let ids = List (List.map sexp_of_lident (Nlist.to_list xlst)) in
+    let ids = List (List.map sexp_of_ren_ident (Nlist.to_list xlst)) in
     List [Atom "BECOMESSUCH";ids;sexp_of_pred p]
   | Var (xlst,s) ->
     let ids = List (List.map sexp_of_lident (Nlist.to_list xlst)) in
     List [Atom "VAR";ids;sexp_of_subst s]
   | CallUp (outs,f,args) ->
-    List ( ((Atom "CALL")::(List.map sexp_of_lident outs))@
-          ((sexp_of_lident f)::(List.map sexp_of_expr args)) )
+    List ( ((Atom "CALL")::(List.map sexp_of_ren_ident outs))@
+          ((sexp_of_ren_ident f)::(List.map sexp_of_expr args)) )
   | While (p,s,q,e) ->
     List [Atom "WHILE";sexp_of_pred p;sexp_of_subst s;
           sexp_of_pred q;sexp_of_expr e]
@@ -156,7 +162,7 @@ let sexp_of_set : P.set -> t = function
     List[sexp_of_lident v;List (List.map sexp_of_lident lst)]
 
 let sexp_of_minst (mi:P.machine_instanciation) : t =
-  List [Atom mi.mi_mch.lid_str; List (List.map sexp_of_expr mi.mi_params)]
+  List [sexp_of_ren_ident mi.mi_mch; List (List.map sexp_of_expr mi.mi_params)]
 
 let sexp_of_op (op:P.operation) : t =
   List [ List (List.map sexp_of_lident op.P.op_in);
@@ -178,9 +184,9 @@ let sexp_of_clause : P.clause -> t = fun c ->
   | Local_Operations nlst -> List ( (Atom "LOCAL_OPERATIONS")::(List.map sexp_of_op (Nlist.to_list nlst)) )
   | Values nlst -> let aux (id,e) = List [sexp_of_lident id;sexp_of_expr e] in
     List ( (Atom "VALUES")::(List.map aux (Nlist.to_list nlst)) )
-  | Sees nlst -> List ( (Atom "SEES")::(List.map sexp_of_lident (Nlist.to_list nlst)) )
+  | Sees nlst -> List ( (Atom "SEES")::(List.map sexp_of_ren_ident (Nlist.to_list nlst)) )
   | Promotes nlst -> List ( (Atom "PROMOTES")::(List.map sexp_of_lident (Nlist.to_list nlst)) )
-  | Uses nlst -> List ( (Atom "USES")::(List.map sexp_of_lident (Nlist.to_list nlst)) )
+  | Uses nlst -> List ( (Atom "USES")::(List.map sexp_of_ren_ident (Nlist.to_list nlst)) )
   | Sets nlst -> List ( (Atom "SETS")::(List.map sexp_of_set (Nlist.to_list nlst)) )
   | Constants nlst -> List ( (Atom "CONSTANTS")::(List.map sexp_of_lident (Nlist.to_list nlst)) )
   | Abstract_constants nlst -> List ( (Atom "ABSTRACT_CONSTANTS")::(List.map sexp_of_lident (Nlist.to_list nlst)) )

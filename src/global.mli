@@ -12,6 +12,7 @@ type 'ac t_redeclared =
   | Implicitely : t_concrete t_redeclared
   | By_Machine : loc -> 'ac t_redeclared
   | By_Included_Or_Imported : ren_ident -> 'ac t_redeclared
+  | By_Seen : ren_ident -> 'ac t_redeclared
 
 type ('mr,'ac) t_decl =
   | D_Machine : loc -> ('mr,'ac) t_decl

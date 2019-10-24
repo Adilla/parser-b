@@ -208,6 +208,7 @@ type t_asy_src =
   | I_Seen of ren_ident
   | I_Disappearing
   | I_Redeclared_By_Importation of ren_ident
+  | I_Redeclared_By_Seen of ren_ident
 
 type t_abs_imp_symb = {
   asy_id:string;

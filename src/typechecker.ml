@@ -383,6 +383,7 @@ let symb_to_lid (type a) (sy:(a,Global.t_concrete) T.symb) : lident =
       | Global.D_Redeclared Global.Implicitely -> Utils.dloc
       | Global.D_Redeclared (Global.By_Machine l) -> l
       | Global.D_Redeclared (Global.By_Included_Or_Imported lid) -> lid.r_loc
+      | Global.D_Redeclared (Global.By_Seen lid) -> lid.r_loc
   }
 
 let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstract) T.symb,(Global.t_mch,Global.t_concrete) T.symb) t_symbols =
@@ -741,6 +742,7 @@ let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
       | Global.D_Seen mch -> T.I_Seen mch
       | Global.D_Disappearing -> T.I_Disappearing
       | Global.D_Redeclared (Global.By_Included_Or_Imported mch) -> T.I_Redeclared_By_Importation mch
+      | Global.D_Redeclared (Global.By_Seen mch) -> T.I_Redeclared_By_Seen mch
       | Global.D_Included_Or_Imported mch -> T.I_Imported mch
       in
       f { T.asy_id = id; asy_typ = infos.Global.sy_typ; asy_src }

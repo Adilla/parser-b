@@ -11,6 +11,7 @@ type 'ac t_redeclared =
   | Implicitely : t_concrete t_redeclared
   | By_Machine : loc -> 'ac t_redeclared
   | By_Included_Or_Imported : ren_ident -> 'ac t_redeclared
+  | By_Seen : ren_ident -> 'ac t_redeclared
 
 type ('mr,'ac) t_decl =
   | D_Machine : loc -> ('mr,'ac) t_decl
@@ -130,6 +131,7 @@ type 'a t_op_source =
   | SO_Included_Or_Imported : ren_ident -> 'a t_op_source
   | SO_Local : loc -> t_ref t_op_source
 
+(*
 let update_decl (type mr ac1 ac2) (ki:ac2 t_global_kind)
     (decl:(mr,ac1) t_decl) (src:mr t_source) : mr t_kind option =
   match decl, src with
@@ -142,25 +144,66 @@ let update_decl (type mr ac1 ac2) (ki:ac2 t_global_kind)
   | D_Redeclared Implicitely, S_Included_Or_Imported inc ->
     Some (Pack(ki,D_Redeclared (By_Included_Or_Imported inc)))
   | _, _ -> None
+*)
 
-let update_kind (type ac1 ac2)  (k1:ac1 t_global_kind) (k2:ac2 t_global_kind) : ac2 t_global_kind option =
+exception IncompatibleKind
+exception IncompatibleSource
+
+let update_kind (type ac1 ac2)  (k1:ac1 t_global_kind) (k2:ac2 t_global_kind) : ac2 t_global_kind =
   match k1, k2 with
-  | K_Abstract_Variable, K_Abstract_Variable -> Some k2
-  | K_Abstract_Constant, K_Abstract_Constant -> Some k2
-  | K_Concrete_Variable,K_Concrete_Variable -> Some k2
-  | K_Concrete_Constant, K_Concrete_Constant -> Some k2
-  | K_Abstract_Set, K_Abstract_Set -> Some k2
+  | K_Abstract_Variable, K_Abstract_Variable -> k2
+  | K_Abstract_Constant, K_Abstract_Constant -> k2
+  | K_Concrete_Variable,K_Concrete_Variable -> k2
+  | K_Concrete_Constant, K_Concrete_Constant -> k2
+  | K_Abstract_Set, K_Abstract_Set -> k2
   | K_Concrete_Set lst1, K_Concrete_Set lst2 ->
     begin try
-        if List.for_all2 String.equal lst1 lst2 then Some k2
-        else None
-      with Invalid_argument _ -> None
+        if List.for_all2 String.equal lst1 lst2 then k2
+        else raise IncompatibleKind
+      with Invalid_argument _ -> raise IncompatibleKind
     end
-  | K_Enumerate, K_Enumerate -> Some k2
-  | K_Abstract_Constant, K_Concrete_Constant -> Some k2
-  | K_Abstract_Variable, K_Concrete_Variable -> Some k2
-  | K_Parameter _, K_Parameter _ -> Some k2
-  | _, _ -> None
+  | K_Enumerate, K_Enumerate -> k2
+  | K_Abstract_Constant, K_Concrete_Constant -> k2
+  | K_Abstract_Variable, K_Concrete_Variable -> k2
+  | K_Parameter _, K_Parameter _ -> k2
+  | _, _ -> raise IncompatibleKind
+
+let update_infos (type mr ac) (infos:mr t_kind) (ki:ac t_global_kind)
+    (src:mr t_source) : mr t_kind
+  =
+  match infos with
+  | Pack (old_kind,old_decl) ->
+    begin match old_decl, src with
+      | D_Machine l, S_Refined _ ->
+        Pack(update_kind old_kind ki,D_Redeclared (By_Machine l))
+      | D_Disappearing, S_Current l ->
+        Pack(update_kind old_kind ki,D_Redeclared (By_Machine l))
+      | D_Included_Or_Imported inc, S_Refined _ ->
+        Pack(update_kind old_kind ki,D_Redeclared (By_Included_Or_Imported inc))
+      | D_Disappearing, S_Included_Or_Imported inc ->
+        Pack(update_kind old_kind ki,D_Redeclared (By_Included_Or_Imported inc))
+      | D_Redeclared Implicitely, S_Included_Or_Imported inc ->
+        Pack(update_kind old_kind ki,D_Redeclared (By_Included_Or_Imported inc))
+      | D_Seen seen, S_Refined _ ->
+        begin match ki with
+          | K_Abstract_Variable -> raise IncompatibleSource
+          | K_Concrete_Variable -> raise IncompatibleSource
+          | _ -> Pack(update_kind old_kind ki,D_Redeclared (By_Seen seen))
+        end
+      | D_Disappearing, S_Seen seen ->
+        begin match ki with
+          | K_Abstract_Variable -> raise IncompatibleSource
+          | K_Concrete_Variable -> raise IncompatibleSource
+          | _ -> Pack(update_kind old_kind ki,D_Redeclared (By_Seen seen))
+        end
+      | D_Redeclared Implicitely, S_Seen seen ->
+        begin match ki with
+          | K_Abstract_Variable -> raise IncompatibleSource
+          | K_Concrete_Variable -> raise IncompatibleSource
+          | _ -> Pack(update_kind old_kind ki,D_Redeclared (By_Seen seen))
+        end
+      | _, _ -> raise IncompatibleSource
+    end
 
 let add_alias (s:'a t) (alias:string) (ty:Btype.t) : bool =
   match Btype.add_alias s.alias alias ty with
@@ -180,27 +223,22 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
    | _, _ -> () );
   match Hashtbl.find_opt env.symb id with
   | Some infos ->
-    begin match infos.sy_kind with
-      | Pack (old_kind,old_decl) ->
-        if not (Btype.is_equal_modulo_alias env.alias infos.sy_typ sy_typ) then
-          Error.error  err_loc
-            ("The identifier '" ^ id ^ "' has type " 
-             ^ Btype.to_string sy_typ
-             ^ " but was previously declared with type "
-             ^ Btype.to_string infos.sy_typ ^ ".")
-        else
-          begin match update_kind old_kind ki with
-            | None ->
-              Error.error err_loc
-                ("The kind of the identifier '" ^ id ^ "' is different from previous declaration.") 
-            | Some kind ->
-              begin match update_decl kind old_decl src with
-                | None ->
-                  Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
-                | Some sy_kind -> Hashtbl.replace env.symb id { sy_typ; sy_kind }
-              end
-          end
-    end
+    let sy_kind =
+     try update_infos infos.sy_kind ki src
+     with
+     | IncompatibleKind ->
+       Error.error err_loc ("The kind of the identifier '" ^ id ^ "' is different from previous declaration.") 
+     | IncompatibleSource ->
+       Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
+    in
+    if not (Btype.is_equal_modulo_alias env.alias infos.sy_typ sy_typ) then
+      Error.error  err_loc
+        ("The identifier '" ^ id ^ "' has type " 
+         ^ Btype.to_string sy_typ
+         ^ " but was previously declared with type "
+         ^ Btype.to_string infos.sy_typ ^ ".")
+    else
+      Hashtbl.replace env.symb id { sy_typ; sy_kind }
   | None ->
     let sy_kind:mr t_kind =
     match src with

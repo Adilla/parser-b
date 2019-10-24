@@ -8,21 +8,18 @@ let rec loop_exn (state:Lexer.state) (chkp:P.component I.checkpoint) : P.compone
   | I.AboutToReduce _ -> loop_exn state (I.resume chkp)
   | I.HandlingError _ ->
     let tk, st, _ = Lexer.get_last_token state in
-    Error.raise_exn st
+    Error.error st
       ("Syntax error: unexpected token '" ^ Lexing_Utils.token_to_string tk ^ "'.")
   | I.Accepted v -> v
   | I.Rejected -> assert false (*unreachable*)
 
-let loop (st:Lexer.state) : P.component Error.t_result =
-  try Ok (loop_exn st (Grammar.Incremental.component_eof (Lexing.dummy_pos)))
-  with Error.Error err -> Error err
+let loop (st:Lexer.state) : P.component =
+  loop_exn st (Grammar.Incremental.component_eof (Lexing.dummy_pos))
 
-let parse_component_from_channel ~filename:(filename:string) (input:in_channel) : P.component Error.t_result =
-  match Lexer.mk_state_from_channel filename input with
-  | Ok state -> loop state
-  | Error err -> Error err
+let parse_component_from_channel ~filename:(filename:string) (input:in_channel) : P.component =
+  let state = Lexer.mk_state_from_channel filename input in
+  loop state
 
-let parse_component_from_string (input:string) : P.component Error.t_result =
-  match Lexer.mk_state_from_string input with
-  | Ok state -> loop state
-  | Error err -> Error err
+let parse_component_from_string (input:string) : P.component =
+  let state = Lexer.mk_state_from_string input in
+  loop state

@@ -1,10 +1,10 @@
 let paths = ref []
 
-let add_path (p:string) : (unit,string) result =
+let add_path (p:string) :unit =
   try
-    if Sys.is_directory p then ( paths := p :: !paths; Ok () )
-    else Error ("'"^p^"' is not a directory.")
-  with Sys_error msg -> Error msg
+    if Sys.is_directory p then paths := p :: !paths
+    else Error.error Utils.dloc ("'"^p^"' is not a directory.")
+  with Sys_error msg -> Error.error Utils.dloc msg
 
 let get_fullname (fn:string) : string option =
   let rec aux = function

@@ -5,27 +5,21 @@ let out = ref stdout
 let set_out s =
   out := open_out s
 
-let print_error err =
-  Error.print_error err;
-  if not !continue_on_error then exit(1)
-
-let print_error_no_loc msg =
-  Printf.fprintf stderr "%s\n" msg;
-  if not !continue_on_error then exit(1)
-
 let run_on_file filename =
   try
     let input = open_in filename in
-    match Parser.parse_component_from_channel ~filename input with
-    | Ok c -> Sexp.sexp_to_channel !out (Sexp.sexp_of_component c)
-    | Error err -> print_error err
+    let c = Parser.parse_component_from_channel ~filename input in
+    Sexp.sexp_to_channel !out (Sexp.sexp_of_component c)
   with
-  | Sys_error msg -> print_error_no_loc msg
+  | Sys_error msg ->
+    ( Printf.fprintf stderr "%s\n" msg;
+      if not !continue_on_error then exit(1) )
+  | Error.Fatal ->
+    if not !continue_on_error then exit(1)
 
 let add_path s =
-  match File.add_path s with
-  | Ok _ -> ()
-  | Error err -> print_error_no_loc err
+  try File.add_path s
+  with Error.Fatal -> ()
 
 let args = [
   ("-c", Arg.Set continue_on_error, "Continue on error" );

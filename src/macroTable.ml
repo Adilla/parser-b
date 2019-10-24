@@ -12,21 +12,21 @@ let load_def_file_exn (lc:loc) (fn:string) : in_channel*string =
   | Some fn ->
     begin
       ( if List.mem fn !opened_def_files then
-          Error.raise_exn lc ("Error: trying to load '" ^ fn ^ "' twice.")
+          Error.error lc ("Error: trying to load '" ^ fn ^ "' twice.")
         else opened_def_files := fn :: !opened_def_files );
       try (open_in fn,fn)
-      with Sys_error _ -> Error.raise_exn lc ("Error: cannot open file '"^fn^"'.")
+      with Sys_error _ -> Error.error lc ("Error: cannot open file '"^fn^"'.")
     end
-  | None -> Error.raise_exn lc ("Error: cannot find file '"^fn^"'.")
+  | None -> Error.error lc ("Error: cannot find file '"^fn^"'.")
 
 let load_quoted_def_file_exn (lc:loc) (fn:string) : in_channel*string =
   let dir = Filename.dirname lc.Lexing.pos_fname in
   let fn = dir ^ "/" ^ fn in
   ( if List.mem fn !opened_def_files then
-      Error.raise_exn lc ("Error: trying to load '" ^ fn ^ "' twice.")
+      Error.error lc ("Error: trying to load '" ^ fn ^ "' twice.")
     else opened_def_files := fn :: !opened_def_files );
   try (open_in fn,fn)
-  with Sys_error _ -> Error.raise_exn lc ("Error: cannot open file '"^fn^"'.")
+  with Sys_error _ -> Error.error lc ("Error: cannot open file '"^fn^"'.")
 
 (* ***** *)
 
@@ -35,7 +35,7 @@ type macro_def = loc * string list * t_token list
 type t = (string,macro_def) Hashtbl.t
 
 let raise_err (loc:loc) (tk:Grammar.token) =
-  Error.raise_exn loc ("Error in clause DEFINITIONS: unexpected token '" ^ token_to_string tk ^ "'.")
+  Error.error loc ("Error in clause DEFINITIONS: unexpected token '" ^ token_to_string tk ^ "'.")
 
 let print out (defs:t) : unit =
   let aux name (_,params,tokens) =
@@ -220,7 +220,7 @@ let parse_defs_exn (s:L.state) : t =
     ) defs;
   hsh
 
-let make (fname:string) (lb:Lexing.lexbuf) : t Error.t_result =
+let make (fname:string) (lb:Lexing.lexbuf) : t =
   lb.lex_curr_p <- { lb.lex_curr_p with pos_fname = fname };
   let rec read_until_def_clause state =
     match Lexer_base.token lb with
@@ -231,9 +231,9 @@ let make (fname:string) (lb:Lexing.lexbuf) : t Error.t_result =
   let () = reset_opened_def_files () in
   if read_until_def_clause lb then
     let s = L.mk_state (Base_Lexer.mk_state ~filename:fname lb) in
-    try Ok (parse_defs_exn s)
-    with Error.Error err -> Error err
-  else Ok (Hashtbl.create 1)
+    parse_defs_exn s
+  else
+    Hashtbl.create 1
 
 let get_macro (table:t) (id:string) : (Utils.loc*string list*t_token list) option =
   Hashtbl.find_opt table id

@@ -14,19 +14,9 @@ let check_extension filename =
   || (Filename.check_suffix filename ".imp")
   || (Filename.check_suffix filename ".ref")
 
-(* let continue_on_error = ref false *)
-
 let debug fmt =
   if !debug_mode then Printf.kfprintf (fun _ -> prerr_newline ()) stderr fmt
   else Printf.ifprintf stderr fmt
-
-let print_error err =
-  Blib.Error.print_error err;
-  if not !continue_on_error then exit(1)
-
-let print_error_no_loc msg =
-  Printf.fprintf stderr "%s\n" msg;
-  if not !continue_on_error then exit(1)
 
 let run_on_file filename =
   if not (check_extension filename) then
@@ -36,17 +26,19 @@ let run_on_file filename =
       try
         debug "Generating tags for file '%s'." filename;
         let input = open_in filename in
-        match Blib.Parser.parse_component_from_channel ~filename input with
-        | Ok c -> tags := Tags.add_tags !tags c
-        | Error err -> print_error err
+        let c = Blib.Parser.parse_component_from_channel ~filename input in
+        tags := Tags.add_tags !tags c
       with
-      | Sys_error err_txt -> print_error { Blib.Error.err_loc=Blib.Utils.dloc; err_txt } 
+      | Blib.Error.Fatal ->
+        if not !continue_on_error then exit(1)
+      | Sys_error msg ->
+        ( Printf.fprintf stderr "%s\n" msg;
+          if not !continue_on_error then exit(1) )
     end
 
 let add_path s =
-  match Blib.File.add_path s with
-  | Ok _ -> ()
-  | Error err -> print_error_no_loc err
+  try Blib.File.add_path s
+  with Blib.Error.Fatal -> if not !continue_on_error then exit(1)
 
 let args = [
   ("-c"    , Arg.Set continue_on_error,   "Continue on error" );

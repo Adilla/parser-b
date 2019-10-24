@@ -9,9 +9,7 @@
   let flush () =
     chars_read := ""
 
-let err lexbuf err_txt =
-  let open Error in
-  raise (Error { err_loc=lexbuf.lex_start_p; err_txt })
+let err lexbuf err_txt = Error.error lexbuf.lex_start_p err_txt
 
 let keywords = Hashtbl.create 137
 

@@ -1,3 +1,4 @@
+(*
 type 'lc t = { err_loc:'lc; err_txt:string }
 type 'a t_result = ('a,Utils.loc t) result
 
@@ -10,11 +11,22 @@ let print_error err=
   Printf.fprintf stderr "[file: %s;line: %i;column: %i] %s\n"
     err.err_loc.pos_fname err.err_loc.pos_lnum
     (err.err_loc.pos_cnum-err.err_loc.pos_bol+1) err.err_txt
+   *)
 
 let warn lc msg =
   let open Lexing in
   Printf.fprintf stderr "[file: %s;line: %i;column: %i] %s\n"
     lc.pos_fname lc.pos_lnum (lc.pos_cnum-lc.pos_bol+1) msg
+
+exception Fatal
+
+let error lc msg =
+  let open Lexing in
+  Printf.fprintf stderr "[file: %s;line: %i;column: %i] %s\n"
+    lc.pos_fname lc.pos_lnum (lc.pos_cnum-lc.pos_bol+1) msg;
+  raise Fatal
+
+    (*
 
 let bind_res res f =
   match res with
@@ -37,3 +49,4 @@ let rec list_iter f = function
       | Ok _ -> list_iter f tl
       | Error _ as e -> e
     end
+*)

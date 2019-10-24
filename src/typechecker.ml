@@ -14,26 +14,18 @@ let allow_out_parameters_in_precondition = ref true
 
 let load_seen_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:'mr Global.t) (mch:ren_ident) : ren_ident =
   match f mch.r_loc mch.r_str with
-  | None -> Error.raise_exn mch.r_loc ("The machine '"^mch.r_str^"' does not typecheck.")
-  | Some itf ->
-    begin match Global.load_interface_for_seen_machine env itf mch with
-      | Ok () -> mch
-      | Error err -> raise (Error.Error err)
-    end
+  | None -> Error.error mch.r_loc ("The machine '"^mch.r_str^"' does not typecheck.")
+  | Some itf -> ( Global.load_interface_for_seen_machine env itf mch; mch )
 
 let load_used_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:'mr Global.t) (mch:ren_ident) : ren_ident =
   match f mch.r_loc mch.r_str with
-  | None -> Error.raise_exn mch.r_loc ("The machine '"^mch.r_str^"' does not typecheck.")
-  | Some itf ->
-    begin match Global.load_interface_for_used_machine env itf mch with
-      | Ok () -> mch
-      | Error err -> raise (Error.Error err)
-    end
+  | None -> Error.error mch.r_loc ("The machine '"^mch.r_str^"' does not typecheck.")
+  | Some itf -> ( Global.load_interface_for_used_machine env itf mch; mch )
 
 let close_exn (lc:loc) (ty:Btype.Open.t) : Btype.t =
   match Btype.close ty with
   | None ->
-    Error.raise_exn lc
+    Error.error lc
       ("The type of this expression could not be fully inferred. The type infered so far is '"^
        Btype.Open.to_string ty^"'.")
   | Some ty -> ty
@@ -88,16 +80,14 @@ let load_included_or_imported_mch_exn (type mr cl)
     (env:mr Global.t) (mi:P.machine_instanciation) : (mr,cl) T.machine_instanciation
   = 
   match f mi.P.mi_mch.r_loc mi.P.mi_mch.r_str with
-  | None -> Error.raise_exn mi.P.mi_mch.r_loc ("The machine '"^mi.P.mi_mch.r_str^"' does not typecheck.")
+  | None -> Error.error mi.P.mi_mch.r_loc ("The machine '"^mi.P.mi_mch.r_str^"' does not typecheck.")
   | Some itf ->
     let mi_params = List.map (fun x ->
         close_expr_exn (Inference.type_expression_exn clause env Local.empty x)
       ) mi.P.mi_params in
     let params = List.map (fun x -> (x.T.exp_loc,x.T.exp_typ)) mi_params in
-    begin match Global.load_interface_for_included_or_imported_machine env itf mi.P.mi_mch params with
-      | Ok () -> { mi_mch=mi.P.mi_mch; mi_params }
-      | Error err -> raise (Error.Error err)
-    end
+    ( Global.load_interface_for_included_or_imported_machine env itf mi.P.mi_mch params;
+      { mi_mch=mi.P.mi_mch; mi_params } )
 
 let load_extended_mch_exn (type mr cl)
     (clause:(mr,cl)V.clause)
@@ -105,23 +95,21 @@ let load_extended_mch_exn (type mr cl)
     (env:mr Global.t) (mi:P.machine_instanciation) : (mr,cl) T.machine_instanciation
   = 
   match f mi.P.mi_mch.r_loc mi.P.mi_mch.r_str with
-  | None -> Error.raise_exn mi.P.mi_mch.r_loc ("The machine '"^mi.P.mi_mch.r_str^"' does not typecheck.")
+  | None -> Error.error mi.P.mi_mch.r_loc ("The machine '"^mi.P.mi_mch.r_str^"' does not typecheck.")
   | Some itf ->
     let mi_params = List.map (fun x ->
         close_expr_exn (Inference.type_expression_exn clause env Local.empty x)
       ) mi.P.mi_params in
     let params = List.map (fun x -> (x.T.exp_loc,x.T.exp_typ)) mi_params in
-    begin match Global.load_interface_for_extended_machine env itf mi.P.mi_mch params with
-      | Ok () -> { mi_mch=mi.P.mi_mch; mi_params }
-      | Error err -> raise (Error.Error err)
-    end
+    ( Global.load_interface_for_extended_machine env itf mi.P.mi_mch params;
+      { mi_mch=mi.P.mi_mch; mi_params } )
 
 type t_comp_type = Mch | Ref | Imp
 let mk_subst sub_loc sub_desc = { T.sub_loc; sub_desc; }
 
 let close_mut_var (v:(_,_,Btype.Open.t) T.mut_var) : (_,_,Btype.t) T.mut_var =
   match Btype.close v.T.mv_typ with
-  | None -> Error.raise_exn v.T.mv_loc 
+  | None -> Error.error v.T.mv_loc 
       ("The type of symbol '"^v.T.mv_id^
        "' could not be fully infered. The type infered so far is '"^
        Btype.Open.to_string v.T.mv_typ^"'.")
@@ -141,13 +129,13 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,_,Btype.Open.t) T.substitution) : 
     mk_subst s.T.sub_loc (T.Affectation (T.Record(close_mut_var v,id),close_expr_exn e))
   | T.Pre (p,s0) ->
     if t = Imp then
-      Error.raise_exn s.T.sub_loc "The subsitution 'Precondition' is not allowed in implementations."
+      Error.error s.T.sub_loc "The subsitution 'Precondition' is not allowed in implementations."
     else
       mk_subst s.T.sub_loc (T.Pre(close_pred_exn p,close_subst_exn t s0))
   | T.Assert (p,s0) -> mk_subst s.T.sub_loc (T.Assert(close_pred_exn p,close_subst_exn t s0))
   | T.Choice nlst ->
     if t = Imp then
-      Error.raise_exn s.T.sub_loc "The subsitution 'Choice' is not allowed in implementations."
+      Error.error s.T.sub_loc "The subsitution 'Choice' is not allowed in implementations."
     else
       mk_subst s.T.sub_loc (T.Choice(Nlist.map (close_subst_exn t) nlst))
   | T.IfThenElse (nlst,opt) ->
@@ -159,7 +147,7 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,_,Btype.Open.t) T.substitution) : 
     mk_subst s.T.sub_loc (T.IfThenElse (Nlist.map aux nlst,topt))
   | T.Select (nlst,opt) ->
     if t = Imp then
-      Error.raise_exn s.T.sub_loc "The subsitution 'Select' is not allowed in implementations."
+      Error.error s.T.sub_loc "The subsitution 'Select' is not allowed in implementations."
     else
       let aux (p,s) = (close_pred_exn p,close_subst_exn t s) in
       let topt = match opt with
@@ -176,52 +164,50 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,_,Btype.Open.t) T.substitution) : 
     mk_subst s.T.sub_loc (T.Case (close_expr_exn e,Nlist.map aux nlst,topt))
   | T.Any (xlst,p,s0) ->
     if t = Imp then
-      Error.raise_exn s.T.sub_loc "The subsitution 'Any' is not allowed in implementations."
+      Error.error s.T.sub_loc "The subsitution 'Any' is not allowed in implementations."
     else
       mk_subst s.T.sub_loc (T.Any (xlst,close_pred_exn p,close_subst_exn t s0))
   | T.Let (xlst,nlst,s0) ->
     if t = Imp then
-      Error.raise_exn s.T.sub_loc "The subsitution 'Let' is not allowed in implementations."
+      Error.error s.T.sub_loc "The subsitution 'Let' is not allowed in implementations."
     else
       let aux (v,e) = (v,close_expr_exn e) in
       mk_subst s.T.sub_loc (T.Let (xlst,Nlist.map aux nlst,close_subst_exn t s0))
   | T.BecomesElt (xlst,e) ->
     if t = Imp then
-      Error.raise_exn s.T.sub_loc "The subsitution 'Becomes Element' is not allowed in implementations."
+      Error.error s.T.sub_loc "The subsitution 'Becomes Element' is not allowed in implementations."
     else
       mk_subst s.T.sub_loc (T.BecomesElt (close_mut_var_nlist xlst,close_expr_exn e))
   | T.BecomesSuch (xlst,p) ->
     if t = Imp && (not !allow_becomes_such_that_in_implementation) then
-      Error.raise_exn s.T.sub_loc ("Substitution 'Becomes Such That' is not allowed in implementations.")
+      Error.error s.T.sub_loc ("Substitution 'Becomes Such That' is not allowed in implementations.")
     else
       mk_subst s.T.sub_loc (T.BecomesSuch (close_mut_var_nlist xlst,close_pred_exn p))
   | T.Var (xlst,s0) ->
     if t = Mch then
-      Error.raise_exn s.T.sub_loc ("Substitution 'Var' is not allowed in abstract machines.")
+      Error.error s.T.sub_loc ("Substitution 'Var' is not allowed in abstract machines.")
     else
       mk_subst s.T.sub_loc (T.Var (xlst,close_subst_exn t s0))
   | T.CallUp (args_out,id,args_in) ->
     mk_subst s.T.sub_loc (T.CallUp (List.map close_mut_var args_out,id,List.map close_expr_exn args_in))
   | T.While (p1,s0,p2,e) ->
     if t != Imp then
-      Error.raise_exn s.T.sub_loc ("Substitution 'While' is only allowed in implementations.")
+      Error.error s.T.sub_loc ("Substitution 'While' is only allowed in implementations.")
     else
       mk_subst s.T.sub_loc (T.While (close_pred_exn p1,close_subst_exn t s0,close_pred_exn p2,close_expr_exn e))
   | T.Sequencement (s1,s2) ->
     if t = Mch then
-      Error.raise_exn s.T.sub_loc ("Substitution 'Sequence' is not allowed in abstract machines.")
+      Error.error s.T.sub_loc ("Substitution 'Sequence' is not allowed in abstract machines.")
     else
       mk_subst s.T.sub_loc (T.Sequencement (close_subst_exn t s1,close_subst_exn t s2))
   | T.Parallel (s1,s2) ->
     if t = Imp then
-      Error.raise_exn s.T.sub_loc ("Substitution '||' is only allowed in implementations.")
+      Error.error s.T.sub_loc ("Substitution '||' is only allowed in implementations.")
     else
       mk_subst s.T.sub_loc (T.Parallel (close_subst_exn t s1,close_subst_exn t s2))
 
 let declare_global_symbol_exn env loc id typ kind : unit =
-  match Global.add_symbol env loc id typ kind with
-  | Ok () -> ()
-  | Error err -> raise (Error.Error err)
+  Global.add_symbol env loc id typ kind
 
 let declare_set_exn (env:'mr Global.t) (s:P.set) : unit =
   match s with
@@ -245,12 +231,8 @@ let promote_symbol_exn (type mr ac) (env:mr Global.t) (ctx:Local.t)
     (ki:ac Global.t_global_kind) (lid:lident) : unit =
   match Local.get ctx lid.lid_str with
   | None -> assert false
-  | Some (None,_) -> Error.raise_exn lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred.")
-  | Some (Some ty,_) ->
-    begin match Global.add_symbol env lid.lid_loc lid.lid_str ty ki with
-      | Ok () -> ()
-      | Error err -> raise (Error.Error err)
-    end
+  | Some (None,_) -> Error.error lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred.")
+  | Some (Some ty,_) -> Global.add_symbol env lid.lid_loc lid.lid_str ty ki
 
 let declare_mch_scalar_parameters_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.t_mch,cl) V.clause)
     (parameters:lident list) (constraints:P.predicate option)
@@ -322,7 +304,7 @@ let rec is_read_only (gl:'mr Global.t) (ctx:string list) (s:P.substitution) : bo
     in
     List.for_all aux args_out &&
     (match Global.get_operation gl op_name with
-     | None -> Error.raise_exn s.P.sub_loc ("Unknown operation '"^op_name^"'.")
+     | None -> Error.error s.P.sub_loc ("Unknown operation '"^op_name^"'.")
      | Some infos -> infos.Global.op_readonly)
   | P.Pre (_,s0) -> is_read_only gl ctx s0
   | P.Assert (_,s0) -> is_read_only gl ctx s0
@@ -367,7 +349,7 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : (Gl
     match Local.get ctx lid.lid_str with
     | None ->assert false
     | Some (None,_) ->
-      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+      Error.error lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
     | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
@@ -377,9 +359,8 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : (Gl
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
   let is_readonly = is_read_only env (Local.get_vars ctx) op.P.op_body in
-  match Global.add_mch_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_readonly with
-  | Ok () -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
-  | Error err -> raise (Error.Error err)
+  Global.add_mch_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_readonly;
+  T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
 
 type ('a_symb,'c_symb) t_symbols = {
   set_parameters: lident list;
@@ -442,9 +423,7 @@ let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstra
       concrete_variables=[]; }
 
 let promote_operation env op_name : unit =
-  match Global.promote_operation env op_name.lid_loc op_name.lid_str with
-  | Error err -> raise (Error.Error err)
-  | Ok () -> ()
+  Global.promote_operation env op_name.lid_loc op_name.lid_str
 
 let get_promoted_operations (type mr cl) (env:mr Global.t) : (mr,cl) T.operation list =
   let aux (lid_str:string) (infos:mr Global.t_operation_infos) lst =
@@ -463,14 +442,11 @@ let is_set_param s = String.equal s.lid_str (String.capitalize_ascii s.lid_str)
 
 let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_mch Global.t) (mch:P.machine) : T.machine =
   let mch_set_parameters = List.filter is_set_param mch.P.mch_parameters in
-  let () = List.iter (fun p ->
+  List.iter (fun p ->
       let ki = Global.K_Parameter Global.Set in
       let ty = Btype.mk_Power (Btype.mk_Concrete_Set T_Current p.lid_str) in
-      match Global.add_symbol env p.lid_loc p.lid_str ty ki with
-      | Ok () -> ()
-      | Error err -> raise (Error.Error err)
-    ) mch_set_parameters
-  in
+      Global.add_symbol env p.lid_loc p.lid_str ty ki
+    ) mch_set_parameters;
   let scalar_params = List.filter (fun x -> not (is_set_param x)) mch.P.mch_parameters in
   let mch_constraints =
     declare_mch_scalar_parameters_exn env V.C_Mch_Constr scalar_params mch.P.mch_constraints
@@ -538,12 +514,8 @@ let declare_ref_variables_exn (type cl) (env:Global.t_ref Global.t) (cl:(Global.
 
 let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) (mch:lident) (parameters:lident list) : unit =
   match f mch.lid_loc mch.lid_str with
-  | None -> Error.raise_exn mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
-  | Some itf ->
-    begin match Global.load_interface_for_refined_machine env itf mch parameters with
-      | Ok () -> ()
-      | Error err -> raise (Error.Error err)
-    end
+  | None -> Error.error mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
+  | Some itf -> Global.load_interface_for_refined_machine env itf mch parameters
 
 let get_ref_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
   ((Global.t_ref,Global.t_abstract) T.symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
@@ -570,7 +542,7 @@ let get_ref_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
     | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
       begin match src with
         | Global.D_Redeclared Global.Implicitely ->
-          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+          Error.error loc_ref ("Parameter '"^id^"' is missing.")
         | Global.D_Redeclared (Global.By_Machine _) ->
           add_c_symb (fun x -> { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
         | _ -> assert false
@@ -578,7 +550,7 @@ let get_ref_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
     | Global.Pack (Global.K_Parameter Global.Set,src) ->
       begin match src with
         | Global.D_Redeclared Global.Implicitely ->
-          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+          Error.error loc_ref ("Parameter '"^id^"' is missing.")
         | Global.D_Redeclared (Global.By_Machine _) ->
           add_c_symb (fun x -> { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
         | _ -> assert false
@@ -598,10 +570,10 @@ let check_signature (op:P.operation) args_in args_out =
     | [], [] -> ()
     | v::lst1, (x,_)::lst2 ->
       if String.equal v.lid_str x then aux lst1 lst2
-      else Error.raise_exn v.lid_loc ("Expecting parameter '"^x^"' instead of '"^v.lid_str^"'.")
-    | v::_, [] -> Error.raise_exn v.lid_loc ("Unexpected parameter '"^v.lid_str^"'.")
+      else Error.error v.lid_loc ("Expecting parameter '"^x^"' instead of '"^v.lid_str^"'.")
+    | v::_, [] -> Error.error v.lid_loc ("Unexpected parameter '"^v.lid_str^"'.")
     | [], (x,_)::_ ->
-      Error.raise_exn op.P.op_name.lid_loc ("Missing parameter '"^x^"'.")
+      Error.error op.P.op_name.lid_loc ("Missing parameter '"^x^"'.")
   in
   aux op.P.op_in args_in;
   aux op.P.op_out args_out
@@ -641,7 +613,7 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : (Gl
     match Local.get ctx lid.lid_str with
     | None ->assert false
     | Some (None,_) ->
-      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+      Error.error lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
     | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
@@ -650,9 +622,8 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : (Gl
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false with
-  | Ok () -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
-  | Error err -> raise (Error.Error err)
+  Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false;
+  T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
 
 let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) ref : T.refinement =
   let () = load_refines_exn f env ref.P.ref_refines ref.P.ref_parameters in
@@ -689,7 +660,7 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
 let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) : (*FIXME verifier qu'on a bien tout*)
   (T.value*(Global.t_ref,V.t_imp_val,Btype.t)T.expression) =
   match Global.get_symbol env v.lid_str with
-  | None -> Error.raise_exn v.lid_loc ("Unknown identifier '"^v.lid_str^"'.")
+  | None -> Error.error v.lid_loc ("Unknown identifier '"^v.lid_str^"'.")
   | Some infos ->
     let var_typ = infos.Global.sy_typ in
     let te = close_expr_exn
@@ -710,17 +681,17 @@ let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) : (*FIX
         | Global.Pack(Global.K_Concrete_Constant,Global.D_Redeclared Global.By_Machine _) ->
           T.VK_Concrete_Constant T.VKS_Redeclared
         | Global.Pack(Global.K_Abstract_Set, Global.D_Seen _) ->
-          Error.raise_exn v.lid_loc "Cannot give a value to an abstract set from a seen machine."
+          Error.error v.lid_loc "Cannot give a value to an abstract set from a seen machine."
         | Global.Pack(Global.K_Abstract_Set, Global.D_Included_Or_Imported _) ->
-          Error.raise_exn v.lid_loc "Cannot give a value to an abstract set from an imported machine."
+          Error.error v.lid_loc "Cannot give a value to an abstract set from an imported machine."
         | Global.Pack(Global.K_Abstract_Set, Global.D_Redeclared Global.By_Included_Or_Imported _) ->
-          Error.raise_exn v.lid_loc "Cannot give a value to an abstract set from an imported machine."
+          Error.error v.lid_loc "Cannot give a value to an abstract set from an imported machine."
         | Global.Pack(Global.K_Concrete_Constant, Global.D_Seen _) ->
-          Error.raise_exn v.lid_loc "Cannot give a value to a concrete constant from a seen machine."
+          Error.error v.lid_loc "Cannot give a value to a concrete constant from a seen machine."
         | Global.Pack(Global.K_Concrete_Constant, Global.D_Included_Or_Imported _) ->
-          Error.raise_exn v.lid_loc "Cannot give a value to a concrete constant from an imported machine."
+          Error.error v.lid_loc "Cannot give a value to a concrete constant from an imported machine."
         | Global.Pack(Global.K_Concrete_Constant, Global.D_Redeclared Global.By_Included_Or_Imported _) ->
-          Error.raise_exn v.lid_loc "Cannot give a value to a concrete constant from an imported machine."
+          Error.error v.lid_loc "Cannot give a value to a concrete constant from an imported machine."
 (*
         | Global.Pack(Global.K_Concrete_Set _, _)
         | Global.Pack(Global.K_Concrete_Variable, _)
@@ -728,11 +699,11 @@ let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) : (*FIX
         | Global.Pack(Global.K_Abstract_Variable, _)
         | Global.Pack(Global.K_Enumerate, _) ->
 *)
-        | _ -> Error.raise_exn v.lid_loc "This symbol is neither an abstract set nor a concrete constant."
+        | _ -> Error.error v.lid_loc "This symbol is neither an abstract set nor a concrete constant."
       in
        ( {T.val_loc=v.lid_loc;val_id=v.lid_str;val_kind},te)
     else
-      Error.raise_exn e.P.exp_loc
+      Error.error e.P.exp_loc
         ("This expression has type '" ^ to_string te.T.exp_typ ^
          "' but an expression of type '" ^ to_string var_typ ^"' was expected.")
 
@@ -752,13 +723,13 @@ let manage_set_concretisation_exn (env:Global.t_ref Global.t) (v,e:lident*P.expr
     match Btype.view typ with
     | Btype.T_Power ty ->
       if not (Global.add_alias env v.lid_str ty) then
-        Error.raise_exn v.lid_loc "Incorrect abstract set definition."
+        Error.error v.lid_loc "Incorrect abstract set definition."
     | _ ->
       let str = Printf.sprintf
           "This expression has type '%s' but an expression of type '%s' was expected."
           (to_string typ) (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
       in
-      Error.raise_exn e.P.exp_loc str
+      Error.error e.P.exp_loc str
 
 let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
   (T.t_abs_imp_symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
@@ -793,7 +764,7 @@ let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
     | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
       begin match src with
         | Global.D_Redeclared Global.Implicitely ->
-          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+          Error.error loc_ref ("Parameter '"^id^"' is missing.")
         | Global.D_Redeclared (Global.By_Machine _) ->
           add_c_symb (fun x -> { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
         | _ -> assert false
@@ -801,7 +772,7 @@ let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
     | Global.Pack (Global.K_Parameter Global.Set,src) ->
       begin match src with
         | Global.D_Redeclared Global.Implicitely ->
-          Error.raise_exn loc_ref ("Parameter '"^id^"' is missing.")
+          Error.error loc_ref ("Parameter '"^id^"' is missing.")
         | Global.D_Redeclared (Global.By_Machine _) ->
           add_c_symb (fun x -> { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
         | _ -> assert false
@@ -837,7 +808,7 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
     match Local.get ctx lid.lid_str with
     | None -> assert false
     | Some (None,_) ->
-      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+      Error.error lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
     | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
@@ -846,19 +817,16 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false with
-  | Ok () ->
-    begin match Global.get_operation env op.P.op_name.lid_str with
-      | None -> assert false 
-      | Some { Global.op_src=Global.OD_Local_Spec_And_Implem (_,_); _ } ->
-        begin match SMap.find_opt op.P.op_name.lid_str lops with
-          | None -> assert false
-          | Some op_spec ->
-            T.O_Local { op_name=op.P.op_name; op_in; op_out; op_spec; op_body }
-        end
-      | Some _ -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
+  Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false;
+  match Global.get_operation env op.P.op_name.lid_str with
+  | None -> assert false 
+  | Some { Global.op_src=Global.OD_Local_Spec_And_Implem (_,_); _ } ->
+    begin match SMap.find_opt op.P.op_name.lid_str lops with
+      | None -> assert false
+      | Some op_spec ->
+        T.O_Local { op_name=op.P.op_name; op_in; op_out; op_spec; op_body }
     end
-  | Error err -> raise (Error.Error err)
+  | Some _ -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
 
 let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op:P.operation) : t_lops_map =
   let (ctx0,ctx) = get_ref_operation_context_exn env op in (*FIXME*)
@@ -879,7 +847,7 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
     match Local.get ctx lid.lid_str with
     | None ->assert false
     | Some (None,_) ->
-      Error.raise_exn lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
+      Error.error lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
     | Some (Some arg_typ,_) ->
       { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
   in
@@ -888,9 +856,8 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  match Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:true with
-  | Ok () -> SMap.add op.P.op_name.lid_str op_body map
-  | Error err -> raise (Error.Error err)
+  Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:true;
+  SMap.add op.P.op_name.lid_str op_body map
 
 let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
   let aux id infos map =
@@ -913,7 +880,7 @@ let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
   let aux map (v,_) =
     match SMap.find_opt v.T.val_id map with
     | None -> assert false
-    | Some (true,_) -> Error.raise_exn v.T.val_loc ("The constant '"^v.T.val_id^"' is valuated twice.")
+    | Some (true,_) -> Error.error v.T.val_loc ("The constant '"^v.T.val_id^"' is valuated twice.")
     | Some (false,l) -> SMap.add v.T.val_id (true,l) map
   in
   let cconst = List.fold_left aux cconst vlst in
@@ -964,27 +931,19 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
     imp_initialisation;
     imp_operations }
 
-let type_component (f:Utils.loc -> string -> Global.t_interface option) (co:P.component) : (T.component*Global.t_interface option) Error.t_result =
-  try
-    begin match co.P.co_desc with
-      | P.Machine mch ->
-        let env = Global.create_mch mch.P.mch_parameters in
-        let cp = { T.co_name = co.P.co_name; co_desc   = T.Machine (type_machine_exn f env mch) } in
-        Ok (cp,Some (Global.to_interface env))
-      | P.Refinement ref ->
-        let env = Global.create_ref ref.P.ref_parameters in
-        let cp = { T.co_name = co.P.co_name; co_desc = T.Refinement (type_refinement_exn f env ref) } in
-        begin match Global.check_operation_coherence_ref env co.P.co_name.lid_loc with
-          | Ok () -> Ok (cp,Some (Global.to_interface env))
-          | Error err -> Error err
-        end
-      | P.Implementation imp ->
-        let env = Global.create_ref imp.P.imp_parameters in
-        let cp = { T.co_name = co.P.co_name; co_desc   = T.Implementation (type_implementation_exn f env imp) } in
-        begin match Global.check_operation_coherence_imp env co.P.co_name.lid_loc with
-          | Ok () -> Ok (cp,None)
-          | Error err -> Error err
-        end
-    end
-  with
-  | Error.Error err -> Error err
+let type_component (f:Utils.loc -> string -> Global.t_interface option) (co:P.component) : (T.component*Global.t_interface option) =
+  match co.P.co_desc with
+  | P.Machine mch ->
+    let env = Global.create_mch mch.P.mch_parameters in
+    let cp = { T.co_name = co.P.co_name; co_desc   = T.Machine (type_machine_exn f env mch) } in
+    (cp,Some (Global.to_interface env))
+  | P.Refinement ref ->
+    let env = Global.create_ref ref.P.ref_parameters in
+    let cp = { T.co_name = co.P.co_name; co_desc = T.Refinement (type_refinement_exn f env ref) } in
+    Global.check_operation_coherence_ref env co.P.co_name.lid_loc;
+    (cp,Some (Global.to_interface env))
+  | P.Implementation imp ->
+    let env = Global.create_ref imp.P.imp_parameters in
+    let cp = { T.co_name = co.P.co_name; co_desc   = T.Implementation (type_implementation_exn f env imp) } in
+    Global.check_operation_coherence_imp env co.P.co_name.lid_loc;
+    (cp,None)

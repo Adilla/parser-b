@@ -4,27 +4,20 @@ let out = ref stdout
 let set_out s =
   out := open_out s
 
-let print_error err =
-  Blib.Error.print_error err;
-  if not !continue_on_error then exit(1)
-
-let print_error_no_loc msg =
-  Printf.fprintf stderr "%s\n" msg;
-  if not !continue_on_error then exit(1)
-
 let run_on_file filename =
   try
     let input = open_in filename in
-    match Blib.Parser.parse_component_from_channel ~filename input with
-    | Ok c -> Blib.Print.print_component !out c
-    | Error err -> print_error err
+    let c = Blib.Parser.parse_component_from_channel ~filename input in
+    Blib.Print.print_component !out c
   with
-  | Sys_error msg -> print_error_no_loc msg
+  | Sys_error msg ->
+    ( Printf.fprintf stderr "%s\n" msg;
+      if not !continue_on_error then exit(1) )
+  | Blib.Error.Fatal -> if not !continue_on_error then exit(1)
 
 let add_path s =
-  match Blib.File.add_path s with
-  | Ok _ -> ()
-  | Error err -> print_error_no_loc err
+  try Blib.File.add_path s
+  with Blib.Error.Fatal -> if not !continue_on_error then exit(1) 
 
 let args = [
   ("-c", Arg.Set continue_on_error, "Continue on error" );

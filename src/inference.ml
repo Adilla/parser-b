@@ -98,7 +98,7 @@ let get_builtin1_type_exn lc (e:e_builtin_1) : Btype.Open.t*Btype.Open.t =
 
     | Tree | Btree | Const | Top | Sons | Prefix | Postfix | SizeT | Mirror
     | Rank | Father | Son | Subtree | Arity | Bin | Left | Right | Infix ->
-      Error.raise_exn lc "Not implemented (tree operators)."
+      Error.error lc "Not implemented (tree operators)."
 
 let get_builtin2_type (e:e_builtin_2) : Btype.Open.t*Btype.Open.t*Btype.Open.t =
   let open Btype.Open in
@@ -192,7 +192,7 @@ let unexpected_type_exn (lc:Utils.loc) (inf:Btype.Open.t) (exp:Btype.Open.t) =
       "This expression has type '%s' but an expression of type '%s' was expected."
       (Btype.Open.to_string inf) (Btype.Open.to_string exp)
   in
-  Error.raise_exn lc str
+  Error.error lc str
 
 type t_int_or_power = C_Int | C_Power
 
@@ -208,11 +208,11 @@ let is_int_or_power_exn l alias (arg1:('mr,'cl,Btype.Open.t) T.expression) (arg2
       | T_UVar _ ->
         ( Error.warn l "Cannot decide if this is an operation on integers or sets. Assuming it is on integers.";
           C_Int)
-      | ty2 -> Error.raise_exn arg2.T.exp_loc
+      | ty2 -> Error.error arg2.T.exp_loc
                ("This expression has type '"^ to_string ty2^
                 "' but an expression of type INTEGER or POW(_) was expected.")
     end
-  | ty1 -> Error.raise_exn arg1.T.exp_loc
+  | ty1 -> Error.error arg1.T.exp_loc
            ("This expression has type '"^ to_string ty1^
             "' but an expression of type INTEGER or POW(_) was expected.")
 
@@ -222,15 +222,15 @@ let type_ident (type mr cl) (env:mr Global.t) (ctx:Local.t) id_loc (id_prefix:st
   | None ->
     begin match Local.get ctx id_str with
       | Some(Some ty,ki) -> (T.K_Local (id_str,ki),(ty:>Btype.Open.t))
-      | Some(None,_) -> Error.raise_exn id_loc ("The identifier '"^id_str^"' must be typed before use.")
+      | Some(None,_) -> Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
       | None ->
         begin match Global.get_symbol env id_str with
           | Some infos ->
             begin match V.get_ident_in_clause cl infos.Global.sy_kind with
               | Some ki -> (T.K_Global (id_prefix,id_str,ki), (infos.Global.sy_typ :> Btype.Open.t) )
-              | None -> Error.raise_exn id_loc ("The identifier '"^id_str^"' is not visible in this clause.")
+              | None -> Error.error id_loc ("The identifier '"^id_str^"' is not visible in this clause.")
             end
-          | None -> Error.raise_exn id_loc ("Unknown identifier '"^id_str^"'.")
+          | None -> Error.error id_loc ("Unknown identifier '"^id_str^"'.")
         end
     end
   | Some p ->
@@ -238,9 +238,9 @@ let type_ident (type mr cl) (env:mr Global.t) (ctx:Local.t) id_loc (id_prefix:st
       | Some infos ->
         begin match V.get_ident_in_clause cl infos.Global.sy_kind with
           | Some ki -> (T.K_Global (id_prefix,id_str,ki), (infos.Global.sy_typ :> Btype.Open.t) )
-          | None -> Error.raise_exn id_loc ("The identifier '"^id_str^"' is not visible in this clause.")
+          | None -> Error.error id_loc ("The identifier '"^id_str^"' is not visible in this clause.")
         end
-      | None -> Error.raise_exn id_loc ("Unknown identifier '"^id_str^"'.")
+      | None -> Error.error id_loc ("Unknown identifier '"^id_str^"'.")
     end
 
 type utuple =
@@ -274,7 +274,7 @@ let rec is_untyped_tuple (ctx:Local.t) (e:P.expression) : utuple =
 let type_untyped_id ctx lc id ki ty =
   match Btype.close ty with
   | None ->
-    Error.raise_exn lc
+    Error.error lc
       ("The type of this expression could not be fully inferred. The type infered so far is '"^
        Btype.Open.to_string ty^"'.")
   | Some cty ->
@@ -470,11 +470,11 @@ let rec type_expression_exn : 'mr 'cl.
           let aux (s,_) = String.equal s fd.lid_str in
           try mk_expr e.P.exp_loc (snd (List.find aux lst)) (T.Record_Field_Access (te,fd))
           with Not_found ->
-            Error.raise_exn fd.lid_loc
+            Error.error fd.lid_loc
               ("The field '"^fd.lid_str ^"' does not belong to record type '"
                ^to_string ty^"'.")
         end
-      | ty -> Error.raise_exn e.P.exp_loc
+      | ty -> Error.error e.P.exp_loc
                 ("This expression has type '" ^to_string ty
                  ^"' but is expected to be a record.")
     end
@@ -593,7 +593,7 @@ and check_tpl : 'mr 'cl. ('mr,'cl) V.clause ->
     | T_Ident (lc,id,ki) ->
       begin match Btype.close ty_exp with
         | None ->
-          Error.raise_exn lc
+          Error.error lc
             ("The type of this expression could not be fully inferred. The type infered so far is '"^
              Btype.Open.to_string ty_exp^"'.")
         | Some cty ->
@@ -625,16 +625,16 @@ let type_writable_var_exn (type mr cl) (cl:(mr,cl) V.clause) (env:mr Global.t) (
       begin match Local.get ctx x.r_str with
         | Some(Some ty,Local.L_Param_Out) -> (T.MI_Out_Param,(ty:>Btype.Open.t))
         | Some(Some ty,Local.L_Subst_Binder) -> (T.MI_Subst_Binder,(ty:>Btype.Open.t))
-        | Some(None,_) -> Error.raise_exn x.r_loc ("The identifier '"^x.r_str^"' must be typed before use.")
-        | Some _ -> Error.raise_exn x.r_loc ("The variable '"^x.r_str^"' is read-only.")
+        | Some(None,_) -> Error.error x.r_loc ("The identifier '"^x.r_str^"' must be typed before use.")
+        | Some _ -> Error.error x.r_loc ("The variable '"^x.r_str^"' is read-only.")
         | None ->
           begin match Global.get_symbol env x.r_str with
             | Some infos ->
               begin match V.get_mutable_in_clause cl infos.Global.sy_kind with
                 | Some ki -> (T.MI_Global ki, (infos.Global.sy_typ :> Btype.Open.t) )
-                | None -> Error.raise_exn x.r_loc ("The variable '"^x.r_str^"' cannot be modified.")
+                | None -> Error.error x.r_loc ("The variable '"^x.r_str^"' cannot be modified.")
               end
-            | None -> Error.raise_exn x.r_loc ("Unknown identifier '"^x.r_str^"'.")
+            | None -> Error.error x.r_loc ("Unknown identifier '"^x.r_str^"'.")
           end
       end
     | Some p ->
@@ -643,9 +643,9 @@ let type_writable_var_exn (type mr cl) (cl:(mr,cl) V.clause) (env:mr Global.t) (
         | Some infos ->
           begin match V.get_mutable_in_clause cl infos.Global.sy_kind with
             | Some ki -> (T.MI_Global ki, (infos.Global.sy_typ :> Btype.Open.t) )
-            | None -> Error.raise_exn x.r_loc ("The variable '"^str^"' cannot be modified.")
+            | None -> Error.error x.r_loc ("The variable '"^str^"' cannot be modified.")
           end
-        | None -> Error.raise_exn x.r_loc ("Unknown identifier '"^str^"'.")
+        | None -> Error.error x.r_loc ("Unknown identifier '"^str^"'.")
       end
   in
   { T.mv_loc=x.r_loc; mv_prefix=x.r_prefix; mv_id=x.r_str; mv_typ; mv_kind }
@@ -678,11 +678,11 @@ let check_writable_nlist : 'mr 'cl. ('mr,'cl) V.clause ->
                 | Local.L_Param_Out -> T.MI_Out_Param
                 | Local.L_Subst_Binder -> T.MI_Subst_Binder
                 | _ ->
-                  Error.raise_exn lid.r_loc ("The variable '"^lid.r_str^"' is read-only.")
+                  Error.error lid.r_loc ("The variable '"^lid.r_str^"' is read-only.")
               in
               match Btype.close mv_typ with
               | None ->
-                Error.raise_exn lid.r_loc
+                Error.error lid.r_loc
                   ("The type of this expression could not be fully inferred. The type infered so far is '"^
                    Btype.Open.to_string mv_typ^"'.")
               | Some cty ->
@@ -740,7 +740,7 @@ let type_out_parameter : 'mr 'cl.
           | Local.L_Subst_Binder ->
             { T.mv_loc=id.r_loc; mv_prefix=None; mv_id=id.r_str; mv_typ=ty_exp; mv_kind=T.MI_Subst_Binder }
           | _ ->
-            Error.raise_exn id.r_loc ("The variable '"^id.r_str^"' is read-only.")
+            Error.error id.r_loc ("The variable '"^id.r_str^"' is read-only.")
         end
       | _ ->
         let tid = type_writable_var_exn cl env ctx id in
@@ -888,14 +888,14 @@ let rec type_substitution_exn : 'mr 'cl.
       let te = type_expression_exn cl env ctx e in
       let () =
         if not (List.exists (fun id -> String.equal id.lid_str v.lid_str) (Nlist.to_list ids)) then
-          Error.raise_exn v.lid_loc ("Unexpected variable '"^v.lid_str^"'.")
+          Error.error v.lid_loc ("Unexpected variable '"^v.lid_str^"'.")
       in
       match Local.get ctx v.lid_str with
       | None -> assert false
       | Some (None,_) ->
         begin match Btype.close te.T.exp_typ with
           | None ->
-            Error.raise_exn te.T.exp_loc
+            Error.error te.T.exp_loc
               ("The type of this expression could not be fully inferred. The type infered so far is '"^
                Btype.Open.to_string te.T.exp_typ^"'.")
           | Some bv_typ ->
@@ -941,10 +941,10 @@ let rec type_substitution_exn : 'mr 'cl.
       | Some p -> p ^ "." ^ op.r_str
     in
     begin match Global.get_operation env op_name with
-      | None -> Error.raise_exn op.r_loc ("Unknown operation '"^op_name^"'.")
+      | None -> Error.error op.r_loc ("Unknown operation '"^op_name^"'.")
       | Some infos ->
         begin match to_op_source infos.Global.op_readonly infos.Global.op_src with
-          | None -> Error.raise_exn op.r_loc ("The operation '"^op_name^"' is not visible.")
+          | None -> Error.error op.r_loc ("The operation '"^op_name^"' is not visible.")
           | Some op_src ->
             begin try
                 let op = { T.op_prefix=op.r_prefix; op_id = op.r_str; op_loc = op.r_loc; op_src } in
@@ -952,7 +952,7 @@ let rec type_substitution_exn : 'mr 'cl.
                 let tparams = List.map2 (type_in_parameter cl env ctx) params infos.Global.op_args_in in
                 mk_subst s0.P.sub_loc (T.CallUp (tids,op,tparams))
               with Invalid_argument _ ->
-                Error.raise_exn op.r_loc ("Incorrect number of in/out parameters.")
+                Error.error op.r_loc ("Incorrect number of in/out parameters.")
             end
         end
     end

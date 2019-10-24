@@ -46,7 +46,7 @@ end = struct
     if LList.length s.stack < 15 then
       s.stack <- LList.cons tree s.stack
     else
-      Error.raise_exn lc "Max definition depth reached (15)."
+      Error.error lc "Max definition depth reached (15)."
 
   let rec preview_token_exn (s:state): t_token =
     match LList.break s.stack with
@@ -117,7 +117,7 @@ let rec get_token_exn (s:state) : t_token =
              | None ->
                let n1 = List.length lst in
                let n2 = List.length args in
-               Error.raise_exn st
+               Error.error st
                  ("Instanciation of macro '"^id^"' with "^string_of_int n1^
                   " paramter(s). Expecting "^string_of_int n2^" parameter(s).")
             end
@@ -135,8 +135,8 @@ let rec get_token_exn (s:state) : t_token =
 and get_params (s:state) : t_token list list =
     match get_token_exn s with
     | LPAR, _, _ -> List.rev (read_params_exn s 0 0 [] [])
-    | EOF, st, _ -> Error.raise_exn st "Unexpected end of file."
-    | _, st, _ -> Error.raise_exn st "Missing definition parameters."
+    | EOF, st, _ -> Error.error st "Unexpected end of file."
+    | _, st, _ -> Error.error st "Missing definition parameters."
 
 and read_params_exn (s:state) (nb_lpar:int) (nb_lbra:int) (rev_defs:t_token list list) (tks:t_token list) : t_token list list =
     match get_token_exn s with
@@ -155,5 +155,5 @@ and read_params_exn (s:state) (nb_lpar:int) (nb_lbra:int) (rev_defs:t_token list
       read_params_exn s nb_lpar (nb_lbra+1) rev_defs (next::tks)
     | RBRA, _, _ as next ->
       read_params_exn s nb_lpar (max (nb_lbra-1) 0) rev_defs (next::tks)
-    | EOF, st, _ -> Error.raise_exn st "Unexpected end of file."
+    | EOF, st, _ -> Error.error st "Unexpected end of file."
     | next -> read_params_exn s nb_lpar nb_lbra rev_defs (next::tks)

@@ -249,12 +249,12 @@ let clist_of_imp (imp:implementation) : clause list =
 let check_none_exn lc opt : unit =
     match opt with
     | None -> ()
-    | Some _ -> Error.raise_exn lc "This clause is defined twice."
+    | Some _ -> Error.error lc "This clause is defined twice."
 
   let check_empty_exn lc lst : unit =
     match lst with
     | [] -> ()
-    | _ -> Error.raise_exn lc "This clause is defined twice."
+    | _ -> Error.error lc "This clause is defined twice."
 
 let add_clause_mch_exn (co:machine) (loc,cl:Utils.loc*clause) : machine =
   match cl with
@@ -269,15 +269,15 @@ let add_clause_mch_exn (co:machine) (loc,cl:Utils.loc*clause) : machine =
   | Assertions lst -> ( check_empty_exn loc co.mch_assertions; { co with mch_assertions = Nlist.to_list lst } )
   | Initialization p -> ( check_none_exn loc co.mch_initialisation; { co with mch_initialisation = Some p } )
   | Operations lst -> ( check_empty_exn loc co.mch_operations; { co with mch_operations = Nlist.to_list lst } )
-  | Values _ -> Error.raise_exn loc "The clause VALUES is not allowed in abstract machines."
-  | Local_Operations _ -> Error.raise_exn loc "The clause LOCAL_OPERATIONS is not allowed in abstract machines."
+  | Values _ -> Error.error loc "The clause VALUES is not allowed in abstract machines."
+  | Local_Operations _ -> Error.error loc "The clause LOCAL_OPERATIONS is not allowed in abstract machines."
   | Promotes lst -> ( check_empty_exn loc co.mch_promotes; { co with mch_promotes = Nlist.to_list lst } )
-  | Imports _ -> Error.raise_exn loc "The clause IMPORTS is not allowed in abstract machines."
+  | Imports _ -> Error.error loc "The clause IMPORTS is not allowed in abstract machines."
   | Constraints p -> ( check_none_exn loc co.mch_constraints; { co with mch_constraints = Some p } )
   | Includes lst -> ( check_empty_exn loc co.mch_includes; { co with mch_includes = Nlist.to_list lst } )
   | Extends lst -> ( check_empty_exn loc co.mch_extends; { co with mch_extends = Nlist.to_list lst } )
   | Uses lst -> ( check_empty_exn loc co.mch_uses; { co with mch_uses = Nlist.to_list lst } )
-  | Refines abs -> Error.raise_exn abs.lid_loc "The clause REFINES is not allowed in abstract machines."
+  | Refines abs -> Error.error abs.lid_loc "The clause REFINES is not allowed in abstract machines."
 
 let mk_machine_exn (co_name:lident) (mch_parameters:lident list)
     (clauses:(Utils.loc*clause) list) : component =
@@ -313,19 +313,19 @@ let add_clause_ref_exn (co:refinement) (loc,cl:Utils.loc*clause) : refinement =
   | Assertions lst -> ( check_empty_exn loc co.ref_assertions; { co with ref_assertions = Nlist.to_list lst } )
   | Initialization p -> ( check_none_exn loc co.ref_initialisation; { co with ref_initialisation = Some p } )
   | Operations lst -> ( check_empty_exn loc co.ref_operations; { co with ref_operations = Nlist.to_list lst } )
-  | Values _ -> Error.raise_exn loc "The clause VALUES is not allowed in refinements."
-  | Local_Operations _ -> Error.raise_exn loc "The clause LOCAL_OPERATIONS is not allowed in refinements."
+  | Values _ -> Error.error loc "The clause VALUES is not allowed in refinements."
+  | Local_Operations _ -> Error.error loc "The clause LOCAL_OPERATIONS is not allowed in refinements."
   | Promotes lst -> ( check_empty_exn loc co.ref_promotes; { co with ref_promotes = Nlist.to_list lst } )
-  | Imports _ -> Error.raise_exn loc "The clause IMPORTS is not allowed in refinements."
+  | Imports _ -> Error.error loc "The clause IMPORTS is not allowed in refinements."
   | Abstract_constants lst -> ( check_empty_exn loc co.ref_abstract_constants; { co with ref_abstract_constants = Nlist.to_list lst } )
   | Variables lst -> ( check_empty_exn loc co.ref_abstract_variables; { co with ref_abstract_variables = Nlist.to_list lst } )
-  | Constraints _ -> Error.raise_exn loc "The clause CONSTRAINTS is not allowed in refinements."
+  | Constraints _ -> Error.error loc "The clause CONSTRAINTS is not allowed in refinements."
   | Includes lst -> ( check_empty_exn loc co.ref_includes; { co with ref_includes = Nlist.to_list lst } )
   | Extends lst -> ( check_empty_exn loc co.ref_extends; { co with ref_extends = Nlist.to_list lst } )
-  | Uses _ -> Error.raise_exn loc "The clause USES is not allowed in refinements."
+  | Uses _ -> Error.error loc "The clause USES is not allowed in refinements."
   | Refines abs ->
     ( if String.equal co.ref_refines.lid_str "" then { co with ref_refines=abs }
-      else Error.raise_exn abs.lid_loc "This clause is defined twice." )
+      else Error.error abs.lid_loc "This clause is defined twice." )
 
 let mk_refinement_exn co_name ref_parameters clauses =
   let ref_desc =
@@ -363,15 +363,15 @@ let add_clause_imp_exn (co:implementation) (loc,cl:Utils.loc*clause) : implement
   | Local_Operations lst -> ( check_empty_exn loc co.imp_local_operations; { co with imp_local_operations = Nlist.to_list lst } )
   | Promotes lst -> ( check_empty_exn loc co.imp_promotes; { co with imp_promotes = Nlist.to_list lst } )
   | Imports lst -> ( check_empty_exn loc co.imp_imports; { co with imp_imports = Nlist.to_list lst } )
-  | Abstract_constants _ -> Error.raise_exn loc "The clause ABSTRACT_CONSTANTS is not allowed in implementations."
-  | Variables _ -> Error.raise_exn loc "The clause VARIABLES is not allowed in implementations."
-  | Constraints _ -> Error.raise_exn loc "The clause CONSTRAINTS is not allowed in implementation."
-  | Includes _ -> Error.raise_exn loc "The clause INCLUDES is not allowed in implementations."
+  | Abstract_constants _ -> Error.error loc "The clause ABSTRACT_CONSTANTS is not allowed in implementations."
+  | Variables _ -> Error.error loc "The clause VARIABLES is not allowed in implementations."
+  | Constraints _ -> Error.error loc "The clause CONSTRAINTS is not allowed in implementation."
+  | Includes _ -> Error.error loc "The clause INCLUDES is not allowed in implementations."
   | Extends lst -> ( check_empty_exn loc co.imp_extends; { co with imp_extends = Nlist.to_list lst } )
-  | Uses _ -> Error.raise_exn loc "The clause USES is not allowed in implementations."
+  | Uses _ -> Error.error loc "The clause USES is not allowed in implementations."
   | Refines abs ->
     ( if String.equal co.imp_refines.lid_str "" then { co with imp_refines=abs }
-      else Error.raise_exn abs.lid_loc "This clause is defined twice." )
+      else Error.error abs.lid_loc "This clause is defined twice." )
 
 let mk_implementation_exn co_name imp_parameters clauses =
   let imp_desc =

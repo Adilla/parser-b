@@ -13,6 +13,7 @@ let safe_find ht s =
   try Some (Hashtbl.find ht s)
   with Not_found -> None
 
+(*
 let print_error err =
   Error.print_error err;
   if not !continue_on_error then exit(1)
@@ -20,60 +21,49 @@ let print_error err =
 let print_error_no_loc msg =
   Printf.fprintf stderr "%s\n" msg;
   if not !continue_on_error then exit(1)
+*)
 
-let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface option Error.t_result =
+let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface option =
   match safe_find ht filename with
-  | Some (Done itf) -> Ok itf
+  | Some (Done itf) -> itf
   | Some InProgress ->
-    Error { Error.err_loc=Utils.dloc;
-            Error.err_txt="Error: dependency cycle detected." }
+    Error.error Utils.dloc "Error: dependency cycle detected."
   | None ->
     begin match open_in filename with
-      | None -> Error { Error.err_loc=Utils.dloc; 
-                        Error.err_txt="Cannot open file '"^filename^"'." }
+      | None -> Error.error Utils.dloc ("Cannot open file '"^filename^"'.")
       | Some input ->
-        let () = Log.write "Parsing file '%s'...\n%!" filename in
-        begin match Parser.parse_component_from_channel ~filename input with
-          | Ok c ->
-            let () = close_in input in
-            let () = Log.write "Typing file '%s'...\n%!" filename in
-            let () = Hashtbl.add ht filename InProgress in
-            begin match Typechecker.type_component (f ht) c with
-              | Ok (_,itf) ->
-                let () = Hashtbl.add ht filename (Done itf) in
-                Ok itf
-              | Error _ as err -> err
-            end
-          | Error _ as err -> err
-        end
+        Log.write "Parsing file '%s'...\n%!" filename;
+        let c = Parser.parse_component_from_channel ~filename input in
+        close_in input;
+        Log.write "Typing file '%s'...\n%!" filename;
+        Hashtbl.add ht filename InProgress;
+        let (_,itf) = Typechecker.type_component (f ht) c in
+        Hashtbl.add ht filename (Done itf);
+        itf
     end
 
 and f (ht:interface_table) (mch_loc:Utils.loc) (mch_name:string) : machine_interface option =
   match File.get_fullname_comp mch_name with
-  | None ->
-    let err = { Error.err_loc=mch_loc; err_txt="Cannot find machine '"^mch_name^"'." } in
-    ( Error.print_error err; None )
+  | None -> Error.error mch_loc ("Cannot find machine '"^mch_name^"'.")
   | Some fn ->
    begin match type_component_from_filename ht fn with
-     | Ok (Some ok) -> Some ok
-     | Ok None ->
-       let err = { Error.err_loc=mch_loc; err_txt="The component '"^mch_name^"' is an implementation." } in
-       ( Error.print_error err; None )
-     | Error err -> ( print_error err; None )
+     | Some ok -> Some ok
+     | None -> Error.error mch_loc ("The component '"^mch_name^"' is an implementation.")
    end
 
 let ht:interface_table = Hashtbl.create 47
 
 let run_on_file (filename:string) : unit =
-  let () = Log.write "Processing file '%s'...\n%!" filename in
-  match type_component_from_filename ht filename with
-  | Error err -> print_error err
-  | Ok _ -> ()
+  try
+    Log.write "Processing file '%s'...\n%!" filename;
+    ignore(type_component_from_filename ht filename)
+  with
+  | Error.Fatal ->
+    if not !continue_on_error then exit(1)
 
 let add_path x =
-  match File.add_path x with
-  | Ok _ -> ()
-  | Error err -> print_error_no_loc err
+  try File.add_path x
+  with Error.Fatal -> ()
 
 let args = [
   ("-c"    , Arg.Set continue_on_error,   "Continue on error" );

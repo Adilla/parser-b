@@ -67,12 +67,12 @@ val create_mch : lident list -> t_mch t
 val create_ref : lident list -> t_ref t
 
 val get_symbol : 'a t -> string -> 'a t_symbol_infos option
-val add_symbol : 'mr t -> loc -> string -> Btype.t -> 'ac t_global_kind -> unit Error.t_result
+val add_symbol : 'mr t -> loc -> string -> Btype.t -> 'ac t_global_kind -> unit
 
 val get_operation : 'a t -> string -> 'a t_operation_infos option
-val add_mch_operation : t_mch t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit Error.t_result
-val add_ref_operation : t_ref t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_local:bool -> unit Error.t_result
-val promote_operation : 'a t -> loc -> string -> unit Error.t_result
+val add_mch_operation : t_mch t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
+val add_ref_operation : t_ref t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_local:bool -> unit
+val promote_operation : 'a t -> loc -> string -> unit
 
 val get_alias : 'a t -> Btype.t_alias 
 val add_alias : 'a t -> string -> Btype.t -> bool
@@ -80,14 +80,14 @@ val add_alias : 'a t -> string -> Btype.t -> bool
 type t_interface
 val to_interface : 'a t -> t_interface 
 
-val load_interface_for_seen_machine : 'a t -> t_interface -> ren_ident -> unit Error.t_result
-val load_interface_for_used_machine : t_mch t -> t_interface -> ren_ident -> unit Error.t_result
-val load_interface_for_refined_machine : t_ref t -> t_interface -> lident -> lident list -> unit Error.t_result
-val load_interface_for_included_or_imported_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit Error.t_result
-val load_interface_for_extended_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit Error.t_result
+val load_interface_for_seen_machine : 'a t -> t_interface -> ren_ident -> unit
+val load_interface_for_used_machine : t_mch t -> t_interface -> ren_ident -> unit
+val load_interface_for_refined_machine : t_ref t -> t_interface -> lident -> lident list -> unit
+val load_interface_for_included_or_imported_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+val load_interface_for_extended_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
 
-val check_operation_coherence_ref : t_ref t  -> loc -> unit Error.t_result
-val check_operation_coherence_imp : t_ref t  -> loc -> unit Error.t_result
+val check_operation_coherence_ref : t_ref t  -> loc -> unit
+val check_operation_coherence_imp : t_ref t  -> loc -> unit
 
 val fold_symbols: (string -> 'x t_symbol_infos -> 'a -> 'a) -> 'x t -> 'a -> 'a
 val fold_operations: (string -> 'x t_operation_infos -> 'a -> 'a) -> 'x t -> 'a -> 'a

@@ -649,3 +649,12 @@ let fold_symbols (f:string -> 'mr t_symbol_infos -> 'a -> 'a) (env:'mr t) : 'a -
 
 let fold_operations (f:string -> 'mr t_operation_infos -> 'a -> 'a) (env:'mr t) : 'a -> 'a =
   Hashtbl.fold f env.ops
+
+let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string) list)
+    (itf:t_interface) : (Btype.t_atomic_src*string) list =
+  let open MachineInterface in
+  let aux accu = function
+    | S { id; kind=K_Abstract_Set; _ } -> (src,id)::accu
+    | _ -> accu
+  in
+  List.fold_left aux accu (get_symbols itf)

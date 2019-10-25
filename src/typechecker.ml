@@ -709,7 +709,7 @@ let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) : (*FIX
          "' but an expression of type '" ^ to_string var_typ ^"' was expected.")
 
 let is_abstract_set env v =
-  match Global.get_symbol env v.lid_str with
+  match Global.get_symbol env v with
   | None -> false
   | Some infos ->
    begin match infos.Global.sy_kind with
@@ -717,8 +717,26 @@ let is_abstract_set env v =
      | _ -> false
    end
 
-let manage_set_concretisation_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) : unit =
-  if is_abstract_set env v then
+let manage_set_concretisation_exn (lst:(Btype.t_atomic_src*string) list) (env:Global.t_ref Global.t) (v,e:lident*P.expression) : unit =
+  if is_abstract_set env v.lid_str then
+    let alias = match e.exp_desc with
+    | P.Ident (None,id) ->
+      begin match List.find_opt (fun (_,x) -> String.equal id x) lst with
+        | Some (x,y) -> Btype.mk_Abstract_Set x y
+        | None ->
+          if is_abstract_set env id then
+            Btype.mk_Abstract_Set Btype.T_Current id
+          else
+            ( Error.warn v.lid_loc "Incorrect set valuation (rhs is not an abstract set). Assuming its an integer interval.";
+              Btype.t_int )
+      end
+    | P.Builtin_2 (Interval,_,_) -> Btype.t_int
+    | _ ->
+      Error.error v.lid_loc "Incorrect set valuation (rhs is neither an identifier nor an interval)."
+    in
+    if not (Global.add_alias env v.lid_str alias) then
+      Error.error v.lid_loc "Incorrect abstract set definition (cyclic alias)."
+(*
     let te = Inference.type_expression_exn V.C_Imp_Op env Local.empty e in
     let typ = close_exn te.T.exp_loc te.T.exp_typ in
     match Btype.view typ with
@@ -731,6 +749,7 @@ let manage_set_concretisation_exn (env:Global.t_ref Global.t) (v,e:lident*P.expr
           (to_string typ) (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
       in
       Error.error e.P.exp_loc str
+*)
 
 let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
   (T.t_abs_imp_symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
@@ -891,18 +910,36 @@ let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
         Error.warn loc ("The constant '"^id^"' is not valuated.")
     ) cconst
 
+let get_imported_or_seen_csets f sees imports : (Btype.t_atomic_src*string) list =
+  let aux1 res seen =
+    match f seen.r_loc seen.r_str with
+    | None -> Error.error seen.r_loc ("The machine '"^seen.r_str^"' does not typecheck.")
+    | Some itf -> Global.add_abstract_sets (Btype.T_Seen seen.r_str) res itf
+  in
+  let aux2 res imported =
+    let imported = imported.P.mi_mch in
+    match f imported.r_loc imported.r_str with
+    | None -> Error.error imported.r_loc ("The machine '"^imported.r_str^"' does not typecheck.")
+    | Some itf -> Global.add_abstract_sets Btype.T_Current res itf
+  in
+  let res = [] in
+  let res = List.fold_left aux1 res sees in
+  List.fold_left aux2 res imports
+
 let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
     (env:Global.t_ref Global.t) (imp:P.implementation) : T.implementation =
   let () = load_refines_exn f env imp.P.imp_refines imp.P.imp_parameters in
+  let () = List.iter (declare_set_exn env) imp.P.imp_sets in
+  let imported_or_seen_csets = get_imported_or_seen_csets f imp.P.imp_sees imp.P.imp_imports in
+  let () = List.iter (manage_set_concretisation_exn imported_or_seen_csets env) imp.P.imp_values in
   let imp_sees = List.map (load_seen_mch_exn f env) imp.P.imp_sees in
   let imp_imports = List.map (load_included_or_imported_mch_exn V.C_Imp_Param f env) imp.P.imp_imports in
   let imp_extends = List.map (load_extended_mch_exn V.C_Imp_Param f env) imp.P.imp_extends in
-  let () = List.iter (declare_set_exn env) imp.P.imp_sets in
-  let () = List.iter (manage_set_concretisation_exn env) imp.P.imp_values in
+(*   let () = List.iter (manage_set_concretisation_exn env) imp.P.imp_values in *)
   let imp_properties = declare_ref_constants_exn env V.C_Imp_Prop
       imp.P.imp_concrete_constants [] imp.P.imp_properties
   in
-  let imp_values = List.map (type_value_exn env) imp.P.imp_values in
+  let imp_values = List.map (type_value_exn env) imp.P.imp_values in (*FIXME*)
   let () = check_values imp.P.imp_refines.lid_loc env imp_values in
   let imp_invariant = declare_ref_variables_exn env V.C_Imp_Inv
       imp.P.imp_concrete_variables [] imp.P.imp_invariant

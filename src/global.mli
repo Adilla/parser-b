@@ -87,6 +87,8 @@ val load_interface_for_refined_machine : t_ref t -> t_interface -> lident -> lid
 val load_interface_for_included_or_imported_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
 val load_interface_for_extended_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
 
+val add_abstract_sets : Btype.t_atomic_src -> (Btype.t_atomic_src*string) list -> t_interface -> (Btype.t_atomic_src*string) list
+
 val check_operation_coherence_ref : t_ref t  -> loc -> unit
 val check_operation_coherence_imp : t_ref t  -> loc -> unit
 

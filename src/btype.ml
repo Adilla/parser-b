@@ -1,12 +1,8 @@
-module SMap = Map.Make(
-  struct
-    type t = string
-    let compare = compare
-  end )
-
+(*
 type t_atomic_src =
   | T_Current
   | T_Ext of string
+*)
 
 module Open =
 struct
@@ -14,15 +10,15 @@ struct
     | T_Int
     | T_Bool
     | T_String
-    | T_Abstract_Set of t_atomic_src*string
-    | T_Concrete_Set of t_atomic_src*string
+    | T_Abstract_Set of string
+    | T_Concrete_Set of string
     | T_Power of t
     | T_Product of t * t
     | T_Record of (string*t) list
     | T_UVar of uv ref
   and uv = Unbound of int | Bound of t
 
-  type t_alias = t SMap.t
+  type t_alias = t Utils.SMap.t
 
   let t_int = T_Int
   let t_bool = T_Bool
@@ -41,10 +37,10 @@ struct
     | T_Int -> "INTEGER"
     | T_Bool -> "BOOLEAN"
     | T_String -> "STRING"
-    | T_Abstract_Set (T_Current,s) -> s
-    | T_Abstract_Set (T_Ext mch,s) -> mch^"."^s
-    | T_Concrete_Set (T_Current,s) -> s
-    | T_Concrete_Set (T_Ext mch,s) -> mch^"."^s
+    | T_Abstract_Set (s) -> s
+(*     | T_Abstract_Set (T_Ext mch,s) -> mch^"."^s *)
+    | T_Concrete_Set (s) -> s
+(*     | T_Concrete_Set (T_Ext mch,s) -> mch^"."^s *)
     | T_Power t -> Printf.sprintf "POW(%a)" to_string_np t
     | T_Product (t1,t2) -> Printf.sprintf "%a*%a" to_string_wp t1 to_string_wp t2
     | T_UVar { contents=Unbound i } -> "?" ^ string_of_int i
@@ -68,11 +64,13 @@ struct
     if ty1 == ty2 then true
     else
       match ty1, ty2 with
-      | T_Abstract_Set (T_Current,s1), T_Abstract_Set (T_Current,s2)
-      | T_Concrete_Set (T_Current,s1), T_Concrete_Set (T_Current,s2) -> String.equal s1 s2
+      | T_Abstract_Set (s1), T_Abstract_Set (s2)
+      | T_Concrete_Set (s1), T_Concrete_Set (s2) -> String.equal s1 s2
+(*
       | T_Abstract_Set (T_Ext m1,s1), T_Abstract_Set (T_Ext m2,s2)
       | T_Concrete_Set (T_Ext m1,s1), T_Concrete_Set (T_Ext m2,s2) ->
         String.equal s1 s2 && String.equal m1 m2
+*)
       | T_Power a, T_Power b -> equal a b
       | T_Product (a1,b1), T_Product (a2,b2) -> equal a1 a2 && equal b1 b2
       | T_UVar { contents=Unbound n1 }, T_UVar {contents=Unbound n2} -> n1 == n2
@@ -86,8 +84,8 @@ struct
 
   let uv_count = ref 0
 
-  let mk_Abstract_Set m s = T_Abstract_Set (m,s)
-  let mk_Concrete_Set m s = T_Concrete_Set (m,s)
+  let mk_Abstract_Set s = T_Abstract_Set (s)
+  let mk_Concrete_Set s = T_Concrete_Set (s)
   let mk_Power ty = T_Power ty
   let mk_Product ty1 ty2 = T_Product (ty1,ty2)
   let mk_Record lst = T_Record lst
@@ -109,18 +107,20 @@ struct
     | T_Record lst -> List.exists (fun (_,ty) -> occurs uv ty) lst
     | T_UVar uv' -> ( uv == uv' )
 
+(*
   let atm_src_eq m1 m2 =
     match m1, m2 with
     | T_Current, T_Current -> true
     | T_Ext s1, T_Ext s2 -> String.equal s1 s2
     | _, _ -> false
+*)
 
   let rec unify_exn (alias:t_alias) t1 t2 =
     if t1 == t2 then ()
     else
       match t1, t2 with
-      | T_Abstract_Set (m1,s1), T_Abstract_Set (m2,s2) when String.equal s1 s2 && atm_src_eq m1 m2 -> ()
-      | T_Concrete_Set (m1,s1), T_Concrete_Set (m2,s2) when String.equal s1 s2 && atm_src_eq m1 m2 -> ()
+      | T_Abstract_Set (s1), T_Abstract_Set (s2) when String.equal s1 s2 -> ()
+      | T_Concrete_Set (s1), T_Concrete_Set (s2) when String.equal s1 s2 -> ()
       | T_Power t1, T_Power t2 -> unify_exn alias t1 t2
       | T_Product (a1,b1), T_Product (a2,b2) -> ( unify_exn alias a1 a2; unify_exn alias b1 b2 )
       | T_Record lst1, T_Record lst2 ->
@@ -135,17 +135,17 @@ struct
       | T_UVar ({ contents=Unbound _} as uv), ty | ty, T_UVar ({ contents=Unbound _} as uv) ->
         if occurs uv ty then raise Not_Unifiable
         else uv := Bound ty
-      | T_Concrete_Set (T_Current,s1), T_Concrete_Set (T_Current,s2)
-      | T_Abstract_Set (T_Current,s1), T_Abstract_Set (T_Current,s2) ->
-        begin match SMap.find_opt s1 alias, SMap.find_opt s2 alias with
+      | T_Concrete_Set (s1), T_Concrete_Set (s2)
+      | T_Abstract_Set (s1), T_Abstract_Set (s2) ->
+        begin match Utils.SMap.find_opt s1 alias, Utils.SMap.find_opt s2 alias with
           | None, None -> raise Not_Unifiable
           | None, Some t2 -> unify_exn alias t1 t2
           | Some t1, None -> unify_exn alias t1 t2
           | Some t1, Some t2 -> unify_exn alias t1 t2
         end
-      | T_Concrete_Set (T_Current,s) , ty | ty, T_Concrete_Set (T_Current,s)
-      | T_Abstract_Set (T_Current,s) , ty | ty, T_Abstract_Set (T_Current,s) ->
-        begin match SMap.find_opt s alias with
+      | T_Concrete_Set (s) , ty | ty, T_Concrete_Set (s)
+      | T_Abstract_Set (s) , ty | ty, T_Abstract_Set (s) ->
+        begin match Utils.SMap.find_opt s alias with
           | None -> raise Not_Unifiable
           | Some ty' -> unify_exn alias ty ty'
         end
@@ -166,8 +166,8 @@ struct
 
   let rec weak_norm alias : t -> t = function
     | T_UVar { contents=Bound ty } -> weak_norm alias ty
-    | T_Abstract_Set (T_Current,s) as ty ->
-      begin match SMap.find_opt s alias with
+    | T_Abstract_Set (s) as ty ->
+      begin match Utils.SMap.find_opt s alias with
         | None -> ty
         | Some ty2 -> weak_norm alias ty2
       end
@@ -183,8 +183,8 @@ let t_int = Open.t_int
 let t_bool = Open.t_bool
 let t_string = Open.t_string
 
-let mk_Abstract_Set m s = Open.T_Abstract_Set (m,s)
-let mk_Concrete_Set m s = Open.T_Concrete_Set (m,s)
+let mk_Abstract_Set s = Open.T_Abstract_Set (s)
+let mk_Concrete_Set s = Open.T_Concrete_Set (s)
 let mk_Power ty = Open.T_Power ty
 let mk_Product ty1 ty2 = Open.T_Product (ty1,ty2)
 let mk_Record lst = Open.T_Record lst
@@ -204,8 +204,8 @@ type t_view =
   | T_Int
   | T_Bool
   | T_String
-  | T_Abstract_Set of t_atomic_src*string
-  | T_Concrete_Set of t_atomic_src*string
+  | T_Abstract_Set of string
+  | T_Concrete_Set of string
   | T_Power of t
   | T_Product of t * t
   | T_Record of (string*t) list
@@ -214,25 +214,27 @@ let view = function
   | Open.T_Int -> T_Int
   | Open.T_Bool -> T_Bool
   | Open.T_String -> T_String
-  | Open.T_Abstract_Set (m,s) -> T_Abstract_Set (m,s)
-  | Open.T_Concrete_Set (m,s) -> T_Concrete_Set (m,s)
+  | Open.T_Abstract_Set (s) -> T_Abstract_Set (s)
+  | Open.T_Concrete_Set (s) -> T_Concrete_Set (s)
   | Open.T_Power ty -> T_Power ty
   | Open.T_Product (ty1,ty2) -> T_Product (ty1,ty2)
   | Open.T_Record lst -> T_Record lst
   | Open.T_UVar _ -> assert false
 
 type t_alias = Open.t_alias
-let no_alias = SMap.empty
+let no_alias = Utils.SMap.empty
 
 let normalize_alias (alias:t_alias) (ty:t) : t =
   let rec loop : t -> t = fun ty ->
     match ty with
-    | Open.T_Int | Open.T_Bool | Open.T_String
+    | Open.T_Int | Open.T_Bool | Open.T_String -> ty
+(*
     | Open.T_Abstract_Set (T_Ext _,_)
     | Open.T_Concrete_Set (T_Ext _,_) -> ty
-    | Open.T_Concrete_Set (T_Current,s)
-    | Open.T_Abstract_Set (T_Current,s) ->
-      begin match SMap.find_opt s alias with
+*)
+    | Open.T_Concrete_Set (s)
+    | Open.T_Abstract_Set (s) ->
+      begin match Utils.SMap.find_opt s alias with
         | None -> ty
         | Some ty' -> ty'
       end
@@ -245,22 +247,23 @@ let normalize_alias (alias:t_alias) (ty:t) : t =
 
 let rec occurs_atm (str:string) (ty:t) : bool =
   match ty with
-  | Open.T_Int | Open.T_Bool | Open.T_String | Open.T_Concrete_Set _
-  | Open.T_Abstract_Set (T_Ext _,_) -> false
-  | Open.T_Abstract_Set (T_Current,str2) -> String.equal str str2
+  | Open.T_Int | Open.T_Bool | Open.T_String | Open.T_Concrete_Set _ -> false
+(*   | Open.T_Abstract_Set (T_Ext _,_) -> false *)
+  | Open.T_Abstract_Set (str2) -> String.equal str str2
   | Open.T_Power ty -> occurs_atm str ty
   | Open.T_Product (ty1,ty2) -> ( occurs_atm str ty1 || occurs_atm str ty2 )
   | Open.T_Record lst ->  List.exists (fun (_,t) -> occurs_atm str t) lst
   | Open.T_UVar _ -> assert false
 
-let is_equal_modulo_alias (alias:t_alias) (t1:t) (t2:t) : bool =
+let is_equal (alias:t_alias) (t1:t) (t2:t) : bool =
   equal (normalize_alias alias t1) (normalize_alias alias t2)
 
 let add_alias (s:t_alias) (alias:string) (ty:t) : t_alias option =
   let ty = normalize_alias s ty in
-  if occurs_atm alias ty || SMap.mem alias s then None
-  else Some (SMap.add alias ty s)
+  if occurs_atm alias ty || Utils.SMap.mem alias s then None
+  else Some (Utils.SMap.add alias ty s)
 
+(*
 let change_current (src:t_atomic_src) (ty:Open.t) : Open.t =
   let rec aux = function
   | Open.T_Abstract_Set (T_Current,s) -> Open.T_Abstract_Set(src,s)
@@ -274,18 +277,18 @@ let change_current (src:t_atomic_src) (ty:Open.t) : Open.t =
   | Open.T_UVar _ -> assert false
   in
   aux ty
+*)
 
 let rec subst s = function
-  | Open.T_Abstract_Set (T_Current,id) as ty ->
-    begin match SMap.find_opt id s with
+  | Open.T_Abstract_Set (id) as ty ->
+    begin match Utils.SMap.find_opt id s with
       | None -> ty
       | Some ty -> ty
     end
   | Open.T_Int
   | Open.T_Bool
   | Open.T_String
-  | Open.T_Abstract_Set (_,_)
-  | Open.T_Concrete_Set (_,_) as ty -> ty
+  | Open.T_Concrete_Set (_) as ty -> ty
   | Open.T_Power ty -> Open.T_Power (subst s ty)
   | Open.T_Product (ty1,ty2) -> Open.T_Product (subst s ty1,subst s ty2)
   | Open.T_Record lst -> Open.T_Record (List.map (fun (id,ty) -> (id,subst s ty)) lst)

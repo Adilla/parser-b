@@ -33,3 +33,5 @@ let fold_map f acc l =
       aux f acc (y :: map_acc) l'
   in
 aux f acc [] l
+
+module SMap = Map.Make(String)

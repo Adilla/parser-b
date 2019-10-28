@@ -3,9 +3,9 @@ module P = PSyntax
 module T = TSyntax
 module V = Visibility
 
-let mk_expr exp_loc exp_typ exp_desc : ('a,'b,'c) T.expression = { T.exp_loc; exp_typ; exp_desc }
-let mk_pred prd_loc prd_desc : ('a,'b,'c) T.predicate = { T.prd_loc; prd_desc }
-let mk_subst sub_loc sub_desc : ('a,'b,'c) T.substitution = { T.sub_loc; sub_desc  }
+let mk_expr exp_loc exp_typ exp_desc : ('a,'c) T.expression = { T.exp_loc; exp_typ; exp_desc }
+let mk_pred prd_loc prd_desc : ('a,'c) T.predicate = { T.prd_loc; prd_desc }
+let mk_subst sub_loc sub_desc : ('a,'c) T.substitution = { T.sub_loc; sub_desc  }
 
 let declare_list (ctx:Local.t) (lst:lident list) (lk:Local.t_local_kind) : Local.t =
   List.fold_left (fun ctx v -> Local.declare ctx v.lid_str lk) ctx lst
@@ -196,7 +196,7 @@ let unexpected_type_exn (lc:Utils.loc) (inf:Btype.Open.t) (exp:Btype.Open.t) =
 
 type t_int_or_power = C_Int | C_Power
 
-let is_int_or_power_exn l alias (arg1:('mr,'cl,Btype.Open.t) T.expression) (arg2:('mr,'cl,Btype.Open.t) T.expression) : t_int_or_power =
+let is_int_or_power_exn l alias (arg1:('mr,Btype.Open.t) T.expression) (arg2:('mr,Btype.Open.t) T.expression) : t_int_or_power =
   let open Btype.Open in
   match weak_norm alias arg1.T.exp_typ with
   | T_Int -> C_Int
@@ -216,8 +216,8 @@ let is_int_or_power_exn l alias (arg1:('mr,'cl,Btype.Open.t) T.expression) (arg2
            ("This expression has type '"^ to_string ty1^
             "' but an expression of type INTEGER or POW(_) was expected.")
 
-let type_ident (type mr cl) (env:mr Global.t) (ctx:Local.t) id_loc (id_prefix:string option) (id_str:string)
-    (cl:(mr,cl) V.clause) : (mr,cl) T.t_ident * Btype.Open.t =
+let type_ident (type mr) (env:mr Global.t) (ctx:Local.t) id_loc (id_prefix:string option)
+    (id_str:string) (cl: mr V.clause) : mr T.t_ident * Btype.Open.t =
   match id_prefix with
   | None ->
     begin match Local.get ctx id_str with
@@ -293,9 +293,9 @@ let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
          { T.bv_loc=lid.lid_loc; bv_typ; bv_id=lid.lid_str }
   ) ids
 
-let rec type_expression_exn : 'mr 'cl.
-  ('mr,'cl) V.clause -> 'mr Global.t -> Local.t -> P.expression ->
-  ('mr,'cl,Btype.Open.t) T.expression =
+let rec type_expression_exn : 'mr.
+  ('mr) V.clause -> 'mr Global.t -> Local.t -> P.expression ->
+  ('mr,Btype.Open.t) T.expression =
   fun cl env ctx e ->
   let open Btype.Open in
   match e.P.exp_desc with
@@ -479,8 +479,8 @@ let rec type_expression_exn : 'mr 'cl.
                  ^"' but is expected to be a record.")
     end
 
-and type_predicate_exn : 'mr 'cl.  ('mr,'cl) V.clause ->
-  'mr Global.t -> Local.t -> P.predicate -> ('mr,'cl,Btype.Open.t) T.predicate
+and type_predicate_exn : 'mr.  'mr V.clause ->
+  'mr Global.t -> Local.t -> P.predicate -> ('mr,Btype.Open.t) T.predicate
   = fun cl env ctx p ->
   let open Btype.Open in
   match p.P.prd_desc with
@@ -586,8 +586,8 @@ and type_predicate_exn : 'mr 'cl.  ('mr,'cl) V.clause ->
     let tids = get_bv_types ctx ids in
     mk_pred p.P.prd_loc (T.Existential_Q (tids,tp))
 
-and check_tpl : 'mr 'cl. ('mr,'cl) V.clause ->
-  'mr Global.t -> Local.t -> utuple -> Btype.Open.t -> ('mr,'cl,Btype.Open.t) T.expression
+and check_tpl : 'mr. 'mr V.clause ->
+  'mr Global.t -> Local.t -> utuple -> Btype.Open.t -> ('mr,Btype.Open.t) T.expression
   = fun cl env ctx tpl ty_exp ->
     match tpl with
     | T_Ident (lc,id,ki) ->
@@ -617,8 +617,8 @@ and check_tpl : 'mr 'cl. ('mr,'cl) V.clause ->
       | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ ty_exp
     end
 
-let type_writable_var_exn (type mr cl) (cl:(mr,cl) V.clause) (env:mr Global.t) (ctx:Local.t)
-    (x:ren_ident) : (mr,cl,Btype.Open.t) T.mut_var =
+let type_writable_var_exn (type mr) (cl:mr V.clause) (env:mr Global.t) (ctx:Local.t)
+    (x:ren_ident) : (mr,Btype.Open.t) T.mut_var =
   let mv_kind, mv_typ = 
     match x.r_prefix with
     | None ->
@@ -665,8 +665,8 @@ let to_op_source (type a) (is_readonly:bool) : a Global.t_op_decl -> T.t_op_sour
   | Global.OD_Refined _ -> None
   | Global.OD_Current_And_Refined _ -> None
 
-let check_writable_nlist : 'mr 'cl. ('mr,'cl) V.clause ->
-  'mr Global.t -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t -> ('mr,'cl,Btype.Open.t) T.mut_var Nlist.t
+let check_writable_nlist : 'mr. 'mr V.clause ->
+  'mr Global.t -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t -> ('mr,Btype.Open.t) T.mut_var Nlist.t
   = fun cl env ctx xlst loc ty ->
     let mk_mut (lid:ren_ident) mv_typ =
       match lid.r_prefix with
@@ -725,8 +725,8 @@ let check_writable_nlist : 'mr 'cl. ('mr,'cl) V.clause ->
       unexpected_type_exn loc ty ty_exp
 
 let type_out_parameter : 'mr 'cl.
-  ('mr,'cl) V.clause -> 'mr Global.t -> Local.t -> ren_ident -> string*Btype.t ->
-  ('mr,'cl,Btype.Open.t) T.mut_var =
+  'mr V.clause -> 'mr Global.t -> Local.t -> ren_ident -> string*Btype.t ->
+  ('mr,Btype.Open.t) T.mut_var =
   fun cl env ctx id (_,ty) ->
   let ty_exp = ( ty :> Btype.Open.t) in
   match id.r_prefix with
@@ -758,8 +758,8 @@ let type_out_parameter : 'mr 'cl.
 
 
 let type_in_parameter : 'mr 'cl.
-  ('mr,'cl) V.clause -> 'mr Global.t -> Local.t -> P.expression -> string*Btype.t ->
-  ('mr,'cl,Btype.Open.t) T.expression =
+  'mr V.clause -> 'mr Global.t -> Local.t -> P.expression -> string*Btype.t ->
+  ('mr,Btype.Open.t) T.expression =
   fun cl env ctx e (_,ty) ->
     let ty_exp = ( ty :> Btype.Open.t) in
     let te = type_expression_exn cl env ctx e in
@@ -767,9 +767,9 @@ let type_in_parameter : 'mr 'cl.
     | None -> unexpected_type_exn te.T.exp_loc te.T.exp_typ ty_exp
     | Some _ -> te
 
-let rec type_substitution_exn : 'mr 'cl.
-  ('mr,'cl) V.clause -> 'mr Global.t -> Local.t -> P.substitution ->
-  ('mr,'cl,Btype.Open.t) T.substitution =
+let rec type_substitution_exn : 'mr.
+  'mr V.clause -> 'mr Global.t -> Local.t -> P.substitution ->
+  ('mr,Btype.Open.t) T.substitution =
   fun cl env ctx s0 ->
   let open Btype.Open in
   match s0.P.sub_desc with
@@ -781,7 +781,7 @@ let rec type_substitution_exn : 'mr 'cl.
     mk_subst s0.P.sub_loc (T.Pre (p,s))
 
   | P.Assert (p,s) ->
-    let p = type_predicate_exn (V.mk_assert_clause cl) env ctx p in
+    let p = type_predicate_exn (assert false (*FIXME*)) env ctx p in
     let s = type_substitution_exn cl env ctx s in
     mk_subst s0.P.sub_loc (T.Assert(p,s))
 
@@ -960,8 +960,8 @@ let rec type_substitution_exn : 'mr 'cl.
   | P.While (p,s,inv,var) ->
     let tp = type_predicate_exn cl env ctx p in
     let ts = type_substitution_exn cl env ctx s in
-    let t_inv = type_predicate_exn (V.mk_assert_clause cl) env ctx inv in
-    let t_var = type_expression_exn (V.mk_assert_clause cl) env ctx var in
+    let t_inv = type_predicate_exn (assert false (*FIXME*)) env ctx inv in
+    let t_var = type_expression_exn (assert false (*FIXME*)) env ctx var in
     let exp = t_int in
     let () = match get_stype (Global.get_alias env) t_var.T.exp_typ exp with
       | None -> unexpected_type_exn var.P.exp_loc t_var.T.exp_typ exp

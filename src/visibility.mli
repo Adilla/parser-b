@@ -1,53 +1,33 @@
 module G = Global
 val extended_sees: bool ref
 
-type ('mr,_) t_global_ident = private 'mr G.t_kind
-type ('mr,_) t_mutable_ident = private 'mr G.t_kind
+type 'mr clause =
+  | C_Mch_Constr : (G.t_mch) clause
+  | C_Mch_Prop : (G.t_mch) clause
+  | C_Mch_Inv : (G.t_mch) clause
+  | C_Mch_Op : (G.t_mch) clause
+  | C_Mch_Assert : (G.t_mch) clause
+  | C_Mch_Param : (G.t_mch) clause
+  | C_Ref_Prop : (G.t_ref) clause
+  | C_Ref_Inv : (G.t_ref) clause
+  | C_Ref_Op : (G.t_ref) clause
+  | C_Ref_Assert : (G.t_ref) clause
+  | C_Ref_Param : (G.t_ref) clause
+  | C_Imp_Prop : (G.t_ref) clause
+  | C_Imp_Inv : (G.t_ref) clause
+  | C_Imp_Op : (G.t_ref) clause
+  | C_Imp_Lop : (G.t_ref) clause
+  | C_Imp_Val : (G.t_ref) clause
+  | C_Imp_Assert : (G.t_ref) clause
+  | C_Imp_Param : (G.t_ref) clause
 
-type t_mch_constr = private M
-type t_mch_prop = private A
-type t_mch_inv = private B
-type t_mch_op = private C
-type t_mch_param = private N
+(*
+val mk_assert_clause: ('mr) clause -> ('mr) clause
+   *)
 
-type t_ref_prop = private D
-type t_ref_inv = private E
-type t_ref_op = private F
-type t_ref_param = private O
-
-type t_imp_prop = private G
-type t_imp_inv = private H
-type t_imp_op = private I
-type t_imp_lop = private J
-type t_imp_val = private K
-type t_imp_param = private P
-
-type 'a t_assert = private L
-
-type ('mr,'cl) clause =
-  | C_Mch_Constr : (G.t_mch,t_mch_constr) clause
-  | C_Mch_Prop : (G.t_mch,t_mch_prop) clause
-  | C_Mch_Inv : (G.t_mch,t_mch_inv) clause
-  | C_Mch_Op : (G.t_mch,t_mch_op) clause
-  | C_Mch_Assert : (G.t_mch,t_mch_op t_assert) clause
-  | C_Mch_Param : (G.t_mch,t_mch_param) clause
-  | C_Ref_Prop : (G.t_ref,t_ref_prop) clause
-  | C_Ref_Inv : (G.t_ref,t_ref_inv) clause
-  | C_Ref_Op : (G.t_ref,t_ref_op) clause
-  | C_Ref_Assert : (G.t_ref,t_ref_op t_assert) clause
-  | C_Ref_Param : (G.t_ref,t_ref_param) clause
-  | C_Imp_Prop : (G.t_ref,t_imp_prop) clause
-  | C_Imp_Inv : (G.t_ref,t_imp_inv) clause
-  | C_Imp_Op : (G.t_ref,t_imp_op) clause
-  | C_Imp_Lop : (G.t_ref,t_imp_lop) clause
-  | C_Imp_Val : (G.t_ref,t_imp_val) clause
-  | C_Imp_Assert : (G.t_ref,t_imp_op t_assert) clause
-  | C_Imp_Param : (G.t_ref,t_imp_param) clause
-
-val mk_assert_clause: ('mr,'cl) clause -> ('mr,'cl t_assert) clause
-
-val get_ident_in_clause: ('mr,'cl) clause -> 'mr G.t_kind -> ('mr,'cl) t_global_ident option 
-val get_mutable_in_clause: ('mr,'cl) clause -> 'mr G.t_kind -> ('mr,'cl) t_mutable_ident option 
+val get_ident_in_clause: ('mr) clause -> 'mr G.t_kind -> 'mr G.t_kind option 
+val get_mutable_in_clause: ('mr) clause -> 'mr G.t_kind -> 'mr G.t_kind option 
+    (*
 
 val make_mch_prop: G.t_mch G.t_kind -> (G.t_mch,t_mch_prop) t_global_ident option
 val make_mch_inv: G.t_mch G.t_kind -> (G.t_mch,t_mch_inv) t_global_ident option
@@ -95,3 +75,4 @@ type t_imp_mut_view =
 val view_imp_op: (G.t_ref,t_imp_op) t_global_ident -> t_imp_op_view
 val view_imp_val: (G.t_ref,t_imp_val) t_global_ident -> t_imp_val_view
 val view_imp_mut: (G.t_ref,t_imp_op) t_mutable_ident -> t_imp_mut_view
+*)

@@ -30,14 +30,14 @@ let close_exn (lc:loc) (ty:Btype.Open.t) : Btype.t =
        Btype.Open.to_string ty^"'.")
   | Some ty -> ty
 
-let mk_expr exp_loc exp_typ exp_desc : (_,_,Btype.t) T.expression =
+let mk_expr exp_loc exp_typ exp_desc : (_,Btype.t) T.expression =
   let exp_typ = close_exn exp_loc exp_typ in
   { T.exp_loc; exp_typ ; exp_desc }
 
-let mk_pred prd_loc prd_desc : (_,_,Btype.t) T.predicate =
+let mk_pred prd_loc prd_desc : (_,Btype.t) T.predicate =
   { T.prd_loc; prd_desc }
 
-let rec close_expr_exn  (e:(_,_,Btype.Open.t) T.expression) : (_,_,Btype.t) T.expression =
+let rec close_expr_exn  (e:(_,Btype.Open.t) T.expression) : (_,Btype.t) T.expression =
     match e.T.exp_desc with
   | T.Ident id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Ident id)
   | T.Dollar id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Dollar id)
@@ -65,7 +65,7 @@ let rec close_expr_exn  (e:(_,_,Btype.Open.t) T.expression) : (_,_,Btype.t) T.ex
     let aux (id,e) = (id,close_expr_exn e) in
     mk_expr e.T.exp_loc e.T.exp_typ (T.Record_Type(Nlist.map aux nlst))
 
-and close_pred_exn (p:(_,_,Btype.Open.t) T.predicate) : (_,_,Btype.t) T.predicate =
+and close_pred_exn (p:(_,Btype.Open.t) T.predicate) : (_,Btype.t) T.predicate =
   match p.T.prd_desc with
   | T.P_Builtin _ as d -> mk_pred p.T.prd_loc d
   | T.Binary_Prop (bop,p1,p2) -> mk_pred p.T.prd_loc (T.Binary_Prop (bop,close_pred_exn p1,close_pred_exn p2))
@@ -74,10 +74,10 @@ and close_pred_exn (p:(_,_,Btype.Open.t) T.predicate) : (_,_,Btype.t) T.predicat
   | T.Universal_Q (xlst,p0) -> mk_pred p.T.prd_loc (T.Universal_Q (xlst,close_pred_exn p0)) 
   | T.Existential_Q (xlst,p0) -> mk_pred p.T.prd_loc (T.Existential_Q (xlst,close_pred_exn p0)) 
 
-let load_included_or_imported_mch_exn (type mr cl)
-    (clause:(mr,cl)V.clause)
+let load_included_or_imported_mch_exn (type mr)
+    (clause:mr V.clause)
     (f:Utils.loc->string->Global.t_interface option)
-    (env:mr Global.t) (mi:P.machine_instanciation) : (mr,cl) T.machine_instanciation
+    (env:mr Global.t) (mi:P.machine_instanciation) : mr T.machine_instanciation
   = 
   match f mi.P.mi_mch.r_loc mi.P.mi_mch.r_str with
   | None -> Error.error mi.P.mi_mch.r_loc ("The machine '"^mi.P.mi_mch.r_str^"' does not typecheck.")
@@ -89,10 +89,10 @@ let load_included_or_imported_mch_exn (type mr cl)
     ( Global.load_interface_for_included_or_imported_machine env itf mi.P.mi_mch params;
       { mi_mch=mi.P.mi_mch; mi_params } )
 
-let load_extended_mch_exn (type mr cl)
-    (clause:(mr,cl)V.clause)
+let load_extended_mch_exn (type mr)
+    (clause:mr V.clause)
     (f:Utils.loc->string->Global.t_interface option)
-    (env:mr Global.t) (mi:P.machine_instanciation) : (mr,cl) T.machine_instanciation
+    (env:mr Global.t) (mi:P.machine_instanciation) : mr T.machine_instanciation
   = 
   match f mi.P.mi_mch.r_loc mi.P.mi_mch.r_str with
   | None -> Error.error mi.P.mi_mch.r_loc ("The machine '"^mi.P.mi_mch.r_str^"' does not typecheck.")
@@ -107,7 +107,7 @@ let load_extended_mch_exn (type mr cl)
 type t_comp_type = Mch | Ref | Imp
 let mk_subst sub_loc sub_desc = { T.sub_loc; sub_desc; }
 
-let close_mut_var (v:(_,_,Btype.Open.t) T.mut_var) : (_,_,Btype.t) T.mut_var =
+let close_mut_var (v:(_,Btype.Open.t) T.mut_var) : (_,Btype.t) T.mut_var =
   match Btype.close v.T.mv_typ with
   | None -> Error.error v.T.mv_loc 
       ("The type of symbol '"^v.T.mv_id^
@@ -115,9 +115,9 @@ let close_mut_var (v:(_,_,Btype.Open.t) T.mut_var) : (_,_,Btype.t) T.mut_var =
        Btype.Open.to_string v.T.mv_typ^"'.")
   | Some mv_typ -> { T.mv_loc=v.T.mv_loc; mv_prefix=v.T.mv_prefix; mv_id=v.T.mv_id; mv_typ; mv_kind=v.T.mv_kind }
 
-let close_mut_var_nlist (lst:(_,_,Btype.Open.t) T.mut_var Nlist.t) = Nlist.lb_map ~f:close_mut_var lst
+let close_mut_var_nlist (lst:(_,Btype.Open.t) T.mut_var Nlist.t) = Nlist.lb_map ~f:close_mut_var lst
 
-let rec close_subst_exn (t:t_comp_type) (s:(_,_,Btype.Open.t) T.substitution) : (_,_,Btype.t) T.substitution =
+let rec close_subst_exn (t:t_comp_type) (s:(_,Btype.Open.t) T.substitution) : (_,Btype.t) T.substitution =
   match s.T.sub_desc with
   | T.Skip ->
     mk_subst s.T.sub_loc T.Skip
@@ -234,17 +234,17 @@ let promote_symbol_exn (type mr ac) (env:mr Global.t) (ctx:Local.t)
   | Some (None,_) -> Error.error lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred.")
   | Some (Some ty,_) -> Global.add_symbol env lid.lid_loc lid.lid_str ty ki
 
-let declare_mch_scalar_parameters_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.t_mch,cl) V.clause)
+let declare_mch_scalar_parameters_exn (env:Global.t_mch Global.t) (cl:(Global.t_mch) V.clause)
     (parameters:lident list) (constraints:P.predicate option)
-  : (Global.t_mch,cl,Btype.t) T.predicate option =
+  : (Global.t_mch,Btype.t) T.predicate option =
   let ctx = List.fold_left declare_local_symbol Local.empty parameters in
   let t_constr = Utils.map_opt (Inference.type_predicate_exn cl env ctx) constraints in
   List.iter (promote_symbol_exn env ctx (Global.K_Parameter Global.Scalar)) parameters;
   Utils.map_opt close_pred_exn t_constr
 
-let declare_mch_constants_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.t_mch,cl) V.clause)
+let declare_mch_constants_exn (env:Global.t_mch Global.t) (cl:(Global.t_mch) V.clause)
     (cconst:lident list) (aconst:lident list) (prop:P.predicate option)
-  : (Global.t_mch,cl,Btype.t) T.predicate option =
+  : (Global.t_mch,Btype.t) T.predicate option =
   let ctx = Local.empty in
   let ctx = List.fold_left declare_local_symbol ctx cconst in
   let ctx = List.fold_left declare_local_symbol ctx aconst in
@@ -253,9 +253,9 @@ let declare_mch_constants_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.
   List.iter (promote_symbol_exn env ctx Global.K_Abstract_Constant) aconst;
   Utils.map_opt close_pred_exn t_prop
 
-let declare_mch_variables_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.t_mch,cl) V.clause)
+let declare_mch_variables_exn (env:Global.t_mch Global.t) (cl:(Global.t_mch) V.clause)
     (cvars:lident list) (avars:lident list) (inv:P.predicate option)
-  : (Global.t_mch,cl,Btype.t) T.predicate option =
+  : (Global.t_mch,Btype.t) T.predicate option =
   let ctx = Local.empty in
   let ctx = List.fold_left declare_local_symbol ctx cvars in
   let ctx = List.fold_left declare_local_symbol ctx avars in
@@ -267,7 +267,7 @@ let declare_mch_variables_exn (type cl) (env:Global.t_mch Global.t) (cl:(Global.
 let type_assertion_exn f env p =
   close_pred_exn (Inference.type_predicate_exn f env Local.empty p)
 
-let type_mch_init_exn (env:Global.t_mch Global.t) (s:P.substitution) : (Global.t_mch,V.t_mch_op,Btype.t) T.substitution =
+let type_mch_init_exn (env:Global.t_mch Global.t) (s:P.substitution) : (Global.t_mch,Btype.t) T.substitution =
   let s = Inference.type_substitution_exn V.C_Mch_Op env Local.empty s in
   close_subst_exn Mch s 
 
@@ -330,7 +330,7 @@ let rec is_read_only (gl:'mr Global.t) (ctx:string list) (s:P.substitution) : bo
   | P.Sequencement (s1,s2) | P.Parallel (s1,s2) ->
     is_read_only gl ctx s1 && is_read_only gl ctx s2
 
-let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : (Global.t_mch,V.t_mch_op) T.operation =
+let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : Global.t_mch T.operation =
   let (ctx0,ctx) = get_mch_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
@@ -426,7 +426,7 @@ let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstra
 let promote_operation env op_name : unit =
   Global.promote_operation env op_name.lid_loc op_name.lid_str
 
-let get_promoted_operations (type mr cl) (env:mr Global.t) : (mr,cl) T.operation list =
+let get_promoted_operations (type mr) (env:mr Global.t) : mr T.operation list =
   let aux (lid_str:string) (infos:mr Global.t_operation_infos) lst =
     let op_out = infos.Global.op_args_out in
     let op_in = infos.Global.op_args_in in
@@ -491,9 +491,9 @@ let declare_local_symbol_in_ref (env:Global.t_ref Global.t) (ctx:Local.t) (lid:l
   | Some infos ->
     Local.declare_with_type ctx lid.lid_str infos.Global.sy_typ Local.L_Expr_Binder
 
-let declare_ref_constants_exn (type cl) (env:Global.t_ref Global.t) (cl:(Global.t_ref,cl) V.clause)
+let declare_ref_constants_exn (env:Global.t_ref Global.t) (cl:Global.t_ref V.clause)
     (cconst:lident list) (aconst:lident list) (prop:P.predicate option)
-  : (Global.t_ref,cl,Btype.t) T.predicate option =
+  : (Global.t_ref,Btype.t) T.predicate option =
   let ctx = Local.empty in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cconst in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx aconst in
@@ -502,9 +502,9 @@ let declare_ref_constants_exn (type cl) (env:Global.t_ref Global.t) (cl:(Global.
   List.iter (promote_symbol_exn env ctx Global.K_Abstract_Constant) aconst;
   Utils.map_opt close_pred_exn t_prop
 
-let declare_ref_variables_exn (type cl) (env:Global.t_ref Global.t) (cl:(Global.t_ref,cl) V.clause) 
+let declare_ref_variables_exn (env:Global.t_ref Global.t) (cl:(Global.t_ref) V.clause) 
     (cvars:lident list) (avars:lident list) (inv:P.predicate option)
-  : (Global.t_ref,cl,Btype.t) T.predicate option =
+  : (Global.t_ref,Btype.t) T.predicate option =
   let ctx = Local.empty in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cvars in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx avars in
@@ -595,7 +595,7 @@ let get_ref_operation_context_exn (env:Global.t_ref Global.t) (op:P.operation) =
     let () = check_signature op infos.Global.op_args_in infos.Global.op_args_out in
     (ctx0,ctx)
 
-let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : (Global.t_ref,V.t_ref_op) T.operation =
+let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : Global.t_ref T.operation =
   let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
@@ -659,7 +659,7 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
     ref_properties; ref_invariant; ref_assertions; ref_initialisation; ref_operations }
 
 let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) :
-  (T.value*(Global.t_ref,V.t_imp_val,Btype.t)T.expression) =
+  (T.value*(Global.t_ref,Btype.t)T.expression) =
   match Global.get_symbol env v.lid_str with
   | None -> Error.error v.lid_loc ("Unknown identifier '"^v.lid_str^"'.")
   | Some infos ->
@@ -793,9 +793,9 @@ let type_imp_init_exn env s =
   close_subst_exn Imp (Inference.type_substitution_exn V.C_Imp_Op env Local.empty s)
 
 module SMap = Map.Make(String)
-type t_lops_map = (Global.t_ref,V.t_imp_lop,Btype.t) T.substitution SMap.t
+type t_lops_map = (Global.t_ref,Btype.t) T.substitution SMap.t
 
-let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:P.operation) : (Global.t_ref,V.t_imp_op) T.operation =
+let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:P.operation) : Global.t_ref T.operation =
   let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then

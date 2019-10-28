@@ -131,21 +131,6 @@ type 'a t_op_source =
   | SO_Included_Or_Imported : ren_ident -> 'a t_op_source
   | SO_Local : loc -> t_ref t_op_source
 
-(*
-let update_decl (type mr ac1 ac2) (ki:ac2 t_global_kind)
-    (decl:(mr,ac1) t_decl) (src:mr t_source) : mr t_kind option =
-  match decl, src with
-  | D_Machine l, S_Refined _ -> Some (Pack(ki,D_Redeclared (By_Machine l)))
-  | D_Disappearing, S_Current l -> Some (Pack(ki,D_Redeclared (By_Machine l)))
-  | D_Included_Or_Imported inc, S_Refined _ ->
-    Some (Pack(ki,D_Redeclared (By_Included_Or_Imported inc)))
-  | D_Disappearing, S_Included_Or_Imported inc ->
-    Some (Pack(ki,D_Redeclared (By_Included_Or_Imported inc)))
-  | D_Redeclared Implicitely, S_Included_Or_Imported inc ->
-    Some (Pack(ki,D_Redeclared (By_Included_Or_Imported inc)))
-  | _, _ -> None
-*)
-
 exception IncompatibleKind
 exception IncompatibleSource
 
@@ -215,10 +200,10 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
   =
   (match src, ki with
    | S_Included_Or_Imported inc, K_Abstract_Set ->
-     let success = add_alias env id (Btype.mk_Abstract_Set (Btype.T_Seen inc.SyntaxCore.r_str) id) in
+     let success = add_alias env id (Btype.mk_Abstract_Set (Btype.T_Ext inc.SyntaxCore.r_str) id) in
      assert success
    | S_Included_Or_Imported inc, K_Concrete_Set _ ->
-     let success = add_alias env id (Btype.mk_Concrete_Set (Btype.T_Seen inc.SyntaxCore.r_str) id) in
+     let success = add_alias env id (Btype.mk_Concrete_Set (Btype.T_Ext inc.SyntaxCore.r_str) id) in
      assert success
    | _, _ -> () );
   match Hashtbl.find_opt env.symb id with
@@ -382,7 +367,7 @@ let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
           | Some p -> p ^ "." ^ id 
         in
         _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ)
+          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
           kind (S_Seen mch)
       | K_Concrete_Variable ->
         let ren_id = match mch.r_prefix with
@@ -390,23 +375,23 @@ let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
           | Some p -> p ^ "." ^ id 
         in
         _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ)
+          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
           kind (S_Seen mch)
       | _ ->
         begin match mch.r_prefix with
           | None ->
             _add_symbol env mch.SyntaxCore.r_loc id
-              (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ)
+              (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
               kind (S_Seen mch)
           | Some _ ->
             if is_in_deps env mch.SyntaxCore.r_str then ()
             else
               _add_symbol env mch.SyntaxCore.r_loc id
-                (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ)
+                (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
                 kind (S_Seen mch)
         end
     ) (get_symbols itf);
-  let change_current = List.map (fun (s,ty) -> (s,Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) ty)) in
+  let change_current = List.map (fun (s,ty) -> (s,Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) ty)) in
   List.iter (fun (r:t_op) ->
       let op_name = match mch.SyntaxCore.r_prefix with
         | None -> r.id
@@ -427,7 +412,7 @@ let load_interface_for_used_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
           | Some p -> p ^ "." ^ id 
         in
         _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ) (*FIXME seen*)
+          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
           kind (S_Used mch)
       | K_Concrete_Variable ->
         let ren_id = match mch.r_prefix with
@@ -435,24 +420,23 @@ let load_interface_for_used_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
           | Some p -> p ^ "." ^ id 
         in
         _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ) (*FIXME seen*)
+          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
           kind (S_Used mch)
       | _ ->
         begin match mch.r_prefix with
           | None ->
             _add_symbol env mch.SyntaxCore.r_loc id
-              (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ) (*FIXME seen*)
+              (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
               kind (S_Used mch)
           | Some _ ->
             if is_in_deps env mch.SyntaxCore.r_str then ()
             else
               _add_symbol env mch.SyntaxCore.r_loc id
-                (Btype.change_current (Btype.T_Seen mch.SyntaxCore.r_str) typ) (*FIXME seen*)
+                (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
                 kind (S_Used mch)
         end
     ) (get_symbols itf);
   env.deps <- mch.r_str::env.deps
-(*FIXME pas les operations?*)
 
 let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInterface.t)
     (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
@@ -571,7 +555,7 @@ let is_exported_symbol (type mr ac) : (mr,ac) t_decl -> bool = function
   | D_Used _ -> false
   | D_Disappearing -> false
 
-let to_interface (type mr) (env:mr t) : MachineInterface.t = (*FIXME on peut se contenter de mr = t_mch*)
+let to_interface (type mr) (env:mr t) : MachineInterface.t =
   let aux1 (x:string) (symb:mr t_symbol_infos) (lst:MachineInterface.t_symb list) =
     match symb.sy_kind with
     | Pack (kind,decl) ->
@@ -620,11 +604,9 @@ let check_operation_coherence_ref (env:t_ref t) (_:loc) : unit =
       | OD_Current_And_Refined _ -> ()
       | OD_Included_Or_Imported_Promoted_And_Refined _ -> ()
       | OD_Refined _ -> ()
-      (*           Error.raise_exn err_loc ("The operation '"^x^"' is not refined.") *)
       | OD_Local_Spec lc ->
         Error.error lc ("The operation '"^x^"' is not implemented.")
       | OD_Included_Or_Imported_And_Refined _ -> ()
-      (*           Error.raise_exn err_loc ("The operation '"^x^"' is not refined (missing promotion?).") *)
   ) env.ops
 
 let check_operation_coherence_imp (env:t_ref t) (err_loc:loc) : unit =

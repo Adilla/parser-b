@@ -658,7 +658,7 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
     ref_abstract_variables = symbs.abstract_variables;
     ref_properties; ref_invariant; ref_assertions; ref_initialisation; ref_operations }
 
-let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) : (*FIXME verifier qu'on a bien tout*)
+let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) :
   (T.value*(Global.t_ref,V.t_imp_val,Btype.t)T.expression) =
   match Global.get_symbol env v.lid_str with
   | None -> Error.error v.lid_loc ("Unknown identifier '"^v.lid_str^"'.")
@@ -727,8 +727,7 @@ let manage_set_concretisation_exn (lst:(Btype.t_atomic_src*string) list) (env:Gl
           if is_abstract_set env id then
             Btype.mk_Abstract_Set Btype.T_Current id
           else
-            ( Error.warn v.lid_loc "Incorrect set valuation (rhs is not an abstract set). Assuming its an integer interval.";
-              Btype.t_int )
+            Btype.t_int
       end
     | P.Builtin_2 (Interval,_,_) -> Btype.t_int
     | _ ->
@@ -736,20 +735,6 @@ let manage_set_concretisation_exn (lst:(Btype.t_atomic_src*string) list) (env:Gl
     in
     if not (Global.add_alias env v.lid_str alias) then
       Error.error v.lid_loc "Incorrect abstract set definition (cyclic alias)."
-(*
-    let te = Inference.type_expression_exn V.C_Imp_Op env Local.empty e in
-    let typ = close_exn te.T.exp_loc te.T.exp_typ in
-    match Btype.view typ with
-    | Btype.T_Power ty ->
-      if not (Global.add_alias env v.lid_str ty) then
-        Error.error v.lid_loc "Incorrect abstract set definition."
-    | _ ->
-      let str = Printf.sprintf
-          "This expression has type '%s' but an expression of type '%s' was expected."
-          (to_string typ) (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
-      in
-      Error.error e.P.exp_loc str
-*)
 
 let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
   (T.t_abs_imp_symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
@@ -850,7 +835,7 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
   | Some _ -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
 
 let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op:P.operation) : t_lops_map =
-  let (ctx0,ctx) = get_ref_operation_context_exn env op in (*FIXME*)
+  let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
       Inference.type_substitution_exn V.C_Imp_Lop env ctx op.P.op_body
@@ -863,7 +848,7 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
         | _ -> Inference.type_substitution_exn V.C_Imp_Lop env ctx op.P.op_body
       end
   in
-  let op_body = close_subst_exn Ref op_body in (*FIXME *)
+  let op_body = close_subst_exn Ref op_body in (*XXX which substitutions are allowed in local operations?*)
   let type_arg_exn ctx lid : T.arg =
     match Local.get ctx lid.lid_str with
     | None ->assert false
@@ -914,7 +899,7 @@ let get_imported_or_seen_csets f sees imports : (Btype.t_atomic_src*string) list
   let aux1 res seen =
     match f seen.r_loc seen.r_str with
     | None -> Error.error seen.r_loc ("The machine '"^seen.r_str^"' does not typecheck.")
-    | Some itf -> Global.add_abstract_sets (Btype.T_Seen seen.r_str) res itf
+    | Some itf -> Global.add_abstract_sets (Btype.T_Ext seen.r_str) res itf
   in
   let aux2 res imported =
     let imported = imported.P.mi_mch in
@@ -935,11 +920,10 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
   let imp_sees = List.map (load_seen_mch_exn f env) imp.P.imp_sees in
   let imp_imports = List.map (load_included_or_imported_mch_exn V.C_Imp_Param f env) imp.P.imp_imports in
   let imp_extends = List.map (load_extended_mch_exn V.C_Imp_Param f env) imp.P.imp_extends in
-(*   let () = List.iter (manage_set_concretisation_exn env) imp.P.imp_values in *)
   let imp_properties = declare_ref_constants_exn env V.C_Imp_Prop
       imp.P.imp_concrete_constants [] imp.P.imp_properties
   in
-  let imp_values = List.map (type_value_exn env) imp.P.imp_values in (*FIXME*)
+  let imp_values = List.map (type_value_exn env) imp.P.imp_values in
   let () = check_values imp.P.imp_refines.lid_loc env imp_values in
   let imp_invariant = declare_ref_variables_exn env V.C_Imp_Inv
       imp.P.imp_concrete_variables [] imp.P.imp_invariant
@@ -950,7 +934,7 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
   let lops_map = List.fold_left (declare_local_operation_exn env) SMap.empty imp.P.imp_local_operations in
   let imp_initialisation = Utils.map_opt (type_imp_init_exn env) imp.P.imp_initialisation in
   let specified_operations = List.map (declare_imp_operation_exn env lops_map) imp.P.imp_operations in
-  let imp_operations = (get_promoted_operations env)@specified_operations in (*FIXME pas de recursivité*)
+  let imp_operations = (get_promoted_operations env)@specified_operations in (*XXX we could check that there is no recursivité*)
   { T.imp_refines=imp.P.imp_refines;
     imp_sees;
     imp_imports;

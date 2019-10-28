@@ -6,7 +6,7 @@ module SMap = Map.Make(
 
 type t_atomic_src =
   | T_Current
-  | T_Seen of string
+  | T_Ext of string
 
 module Open =
 struct
@@ -42,9 +42,9 @@ struct
     | T_Bool -> "BOOLEAN"
     | T_String -> "STRING"
     | T_Abstract_Set (T_Current,s) -> s
-    | T_Abstract_Set (T_Seen mch,s) -> mch^"."^s
+    | T_Abstract_Set (T_Ext mch,s) -> mch^"."^s
     | T_Concrete_Set (T_Current,s) -> s
-    | T_Concrete_Set (T_Seen mch,s) -> mch^"."^s
+    | T_Concrete_Set (T_Ext mch,s) -> mch^"."^s
     | T_Power t -> Printf.sprintf "POW(%a)" to_string_np t
     | T_Product (t1,t2) -> Printf.sprintf "%a*%a" to_string_wp t1 to_string_wp t2
     | T_UVar { contents=Unbound i } -> "?" ^ string_of_int i
@@ -70,8 +70,8 @@ struct
       match ty1, ty2 with
       | T_Abstract_Set (T_Current,s1), T_Abstract_Set (T_Current,s2)
       | T_Concrete_Set (T_Current,s1), T_Concrete_Set (T_Current,s2) -> String.equal s1 s2
-      | T_Abstract_Set (T_Seen m1,s1), T_Abstract_Set (T_Seen m2,s2)
-      | T_Concrete_Set (T_Seen m1,s1), T_Concrete_Set (T_Seen m2,s2) ->
+      | T_Abstract_Set (T_Ext m1,s1), T_Abstract_Set (T_Ext m2,s2)
+      | T_Concrete_Set (T_Ext m1,s1), T_Concrete_Set (T_Ext m2,s2) ->
         String.equal s1 s2 && String.equal m1 m2
       | T_Power a, T_Power b -> equal a b
       | T_Product (a1,b1), T_Product (a2,b2) -> equal a1 a2 && equal b1 b2
@@ -112,7 +112,7 @@ struct
   let atm_src_eq m1 m2 =
     match m1, m2 with
     | T_Current, T_Current -> true
-    | T_Seen s1, T_Seen s2 -> String.equal s1 s2
+    | T_Ext s1, T_Ext s2 -> String.equal s1 s2
     | _, _ -> false
 
   let rec unify_exn (alias:t_alias) t1 t2 =
@@ -228,8 +228,8 @@ let normalize_alias (alias:t_alias) (ty:t) : t =
   let rec loop : t -> t = fun ty ->
     match ty with
     | Open.T_Int | Open.T_Bool | Open.T_String
-    | Open.T_Abstract_Set (T_Seen _,_)
-    | Open.T_Concrete_Set (T_Seen _,_) -> ty
+    | Open.T_Abstract_Set (T_Ext _,_)
+    | Open.T_Concrete_Set (T_Ext _,_) -> ty
     | Open.T_Concrete_Set (T_Current,s)
     | Open.T_Abstract_Set (T_Current,s) ->
       begin match SMap.find_opt s alias with
@@ -246,7 +246,7 @@ let normalize_alias (alias:t_alias) (ty:t) : t =
 let rec occurs_atm (str:string) (ty:t) : bool =
   match ty with
   | Open.T_Int | Open.T_Bool | Open.T_String | Open.T_Concrete_Set _
-  | Open.T_Abstract_Set (T_Seen _,_) -> false
+  | Open.T_Abstract_Set (T_Ext _,_) -> false
   | Open.T_Abstract_Set (T_Current,str2) -> String.equal str str2
   | Open.T_Power ty -> occurs_atm str ty
   | Open.T_Product (ty1,ty2) -> ( occurs_atm str ty1 || occurs_atm str ty2 )
@@ -266,8 +266,8 @@ let change_current (src:t_atomic_src) (ty:Open.t) : Open.t =
   | Open.T_Abstract_Set (T_Current,s) -> Open.T_Abstract_Set(src,s)
   | Open.T_Concrete_Set (T_Current,s) -> Open.T_Concrete_Set(src,s)
   | Open.T_Int | Open.T_Bool | Open.T_String
-  | Open.T_Abstract_Set (T_Seen _,_)
-  | Open.T_Concrete_Set (T_Seen _,_) as ty -> ty
+  | Open.T_Abstract_Set (T_Ext _,_)
+  | Open.T_Concrete_Set (T_Ext _,_) as ty -> ty
   | Open.T_Power ty -> Open.T_Power (aux ty)
   | Open.T_Product (ty1,ty2) -> Open.T_Product (aux ty1,aux ty2)
   | Open.T_Record lst -> Open.T_Record (List.map (fun (s,ty) -> (s,aux ty)) lst)

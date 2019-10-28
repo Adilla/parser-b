@@ -4,7 +4,7 @@ val no_alias: t_alias
 
 type t_atomic_src =
     | T_Current
-    | T_Seen of string
+    | T_Ext of string
 
 module Open :
 sig

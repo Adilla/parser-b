@@ -2,6 +2,7 @@ let continue_on_error = ref false
 let out = ref stdout
 let check_ext = ref false
 let debug_mode = ref false
+let nb_errors = ref 0
 let tags = ref Tags.empty
 
 let set_out file =
@@ -30,15 +31,21 @@ let run_on_file filename =
         tags := Tags.add_tags !tags c
       with
       | Blib.Error.Fatal ->
-        if not !continue_on_error then exit(1)
+        begin
+          incr nb_errors;
+          if not !continue_on_error then raise Exit
+        end
       | Sys_error msg ->
-        ( Printf.fprintf stderr "%s\n" msg;
-          if not !continue_on_error then exit(1) )
+        begin
+          Printf.fprintf stderr "%s\n" msg;
+          incr nb_errors;
+          if not !continue_on_error then raise Exit
+        end
     end
 
 let add_path s =
   try Blib.File.add_path s
-  with Blib.Error.Fatal -> if not !continue_on_error then exit(1)
+  with Blib.Error.Fatal -> ()
 
 let args = [
   ("-c"    , Arg.Set continue_on_error,   "Continue on error" );
@@ -50,5 +57,10 @@ let args = [
 ]
 
 let _ =
-  Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files");
-  Tags.print_tags !out !tags
+  ( try Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")
+    with Exit -> () );
+  Tags.print_tags !out !tags;
+  if !nb_errors > 0 then
+    ( Printf.fprintf stderr "Error found.\n"; exit 1 )
+  else
+    exit 0

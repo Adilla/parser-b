@@ -1,5 +1,6 @@
 open Blib
 let continue_on_error = ref false
+let nb_errors = ref 0
 
 type machine_interface = Global.t_interface
 type t_item = Done of machine_interface option | InProgress
@@ -12,16 +13,6 @@ type interface_table = (string,t_item) Hashtbl.t
 let safe_find ht s =
   try Some (Hashtbl.find ht s)
   with Not_found -> None
-
-(*
-let print_error err =
-  Error.print_error err;
-  if not !continue_on_error then exit(1)
-
-let print_error_no_loc msg =
-  Printf.fprintf stderr "%s\n" msg;
-  if not !continue_on_error then exit(1)
-*)
 
 let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface option =
   match safe_find ht filename with
@@ -59,7 +50,10 @@ let run_on_file (filename:string) : unit =
     ignore(type_component_from_filename ht filename)
   with
   | Error.Fatal ->
-    if not !continue_on_error then exit(1)
+    begin
+      incr nb_errors;
+      if not !continue_on_error then raise Exit
+    end
 
 let add_path x =
   try File.add_path x
@@ -74,4 +68,10 @@ let args = [
   ("-a", Arg.Set Typechecker.allow_becomes_such_that_in_implementation, "Allow the substitution 'Becomes Such That' in implementations" );
 ]
 
-let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")
+let _ =
+  (try Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")
+   with Exit -> () );
+  if !nb_errors > 0 then
+    ( Printf.fprintf stderr "Error found.\n"; exit 1 )
+  else
+    exit 0

@@ -1,4 +1,5 @@
 let continue_on_error = ref false
+let nb_errors = ref 0
 let out = ref stdout
 
 let set_out s =
@@ -11,9 +12,16 @@ let run_on_file filename =
     Blib.Print.print_component !out c
   with
   | Sys_error msg ->
-    ( Printf.fprintf stderr "%s\n" msg;
-      if not !continue_on_error then exit(1) )
-  | Blib.Error.Fatal -> if not !continue_on_error then exit(1)
+    begin
+      Printf.fprintf stderr "%s\n" msg;
+      incr nb_errors;
+      if not !continue_on_error then raise Exit
+    end
+  | Blib.Error.Fatal ->
+    begin
+      incr nb_errors;
+      if not !continue_on_error then raise Exit
+    end
 
 let add_path s =
   try Blib.File.add_path s
@@ -26,4 +34,10 @@ let args = [
   ("-I", Arg.String add_path, "Search directory for definitions files" );
 ]
 
-let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")
+let _ =
+  ( try Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")
+    with Exit -> () );
+  if !nb_errors > 0 then
+    ( Printf.fprintf stderr "Error found.\n"; exit 1 )
+  else
+    exit 0

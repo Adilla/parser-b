@@ -213,22 +213,22 @@ let declare_set_exn (env:'mr Global.t) (s:P.set) : unit =
   match s with
   | P.Abstract_Set v ->
     let typ = Btype.mk_Power (Btype.mk_Abstract_Set Btype.T_Current v.lid_str) in
-    declare_global_symbol_exn env v.lid_loc v.lid_str typ Global.K_Abstract_Set
+    declare_global_symbol_exn env v.lid_loc v.lid_str typ Global.G_Abstract_Set
   | P.Concrete_Set (v,elts) ->
     let typ = Btype.mk_Concrete_Set Btype.T_Current v.lid_str in
     let elts2 = List.map (fun lid -> lid.lid_str) elts in
     let () = declare_global_symbol_exn env v.lid_loc v.lid_str
-        (Btype.mk_Power typ) (Global.K_Concrete_Set elts2)
+        (Btype.mk_Power typ) (Global.G_Concrete_Set elts2)
     in
     List.iter (fun lid ->
-        declare_global_symbol_exn env lid.lid_loc lid.lid_str typ Global.K_Enumerate
+        declare_global_symbol_exn env lid.lid_loc lid.lid_str typ Global.G_Enumerate
       ) elts
 
 let declare_local_symbol (ctx:Local.t) (lid:lident) : Local.t =
   Local.declare ctx lid.lid_str Local.L_Expr_Binder
 
-let promote_symbol_exn (type mr ac) (env:mr Global.t) (ctx:Local.t)
-    (ki:ac Global.t_global_kind) (lid:lident) : unit =
+let promote_symbol_exn (type mr) (env:mr Global.t) (ctx:Local.t)
+    (ki:Global.t_global_kind) (lid:lident) : unit =
   match Local.get ctx lid.lid_str with
   | None -> assert false
   | Some (None,_) -> Error.error lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred.")
@@ -239,7 +239,7 @@ let declare_mch_scalar_parameters_exn (env:Global.t_mch Global.t) (cl:(Global.t_
   : (Global.t_mch,Btype.t) T.predicate option =
   let ctx = List.fold_left declare_local_symbol Local.empty parameters in
   let t_constr = Utils.map_opt (Inference.type_predicate_exn cl env ctx) constraints in
-  List.iter (promote_symbol_exn env ctx (Global.K_Parameter Global.Scalar)) parameters;
+  List.iter (promote_symbol_exn env ctx (Global.G_Parameter Global.Scalar)) parameters;
   Utils.map_opt close_pred_exn t_constr
 
 let declare_mch_constants_exn (env:Global.t_mch Global.t) (cl:(Global.t_mch) V.clause)
@@ -249,8 +249,8 @@ let declare_mch_constants_exn (env:Global.t_mch Global.t) (cl:(Global.t_mch) V.c
   let ctx = List.fold_left declare_local_symbol ctx cconst in
   let ctx = List.fold_left declare_local_symbol ctx aconst in
   let t_prop = Utils.map_opt (Inference.type_predicate_exn cl env ctx) prop in
-  List.iter (promote_symbol_exn env ctx Global.K_Concrete_Constant) cconst;
-  List.iter (promote_symbol_exn env ctx Global.K_Abstract_Constant) aconst;
+  List.iter (promote_symbol_exn env ctx Global.G_Concrete_Constant) cconst;
+  List.iter (promote_symbol_exn env ctx Global.G_Abstract_Constant) aconst;
   Utils.map_opt close_pred_exn t_prop
 
 let declare_mch_variables_exn (env:Global.t_mch Global.t) (cl:(Global.t_mch) V.clause)
@@ -260,15 +260,15 @@ let declare_mch_variables_exn (env:Global.t_mch Global.t) (cl:(Global.t_mch) V.c
   let ctx = List.fold_left declare_local_symbol ctx cvars in
   let ctx = List.fold_left declare_local_symbol ctx avars in
   let t_inv = Utils.map_opt (Inference.type_predicate_exn cl env ctx) inv in
-  List.iter (promote_symbol_exn env ctx Global.K_Concrete_Variable) cvars;
-  List.iter (promote_symbol_exn env ctx Global.K_Abstract_Variable) avars;
+  List.iter (promote_symbol_exn env ctx Global.G_Concrete_Variable) cvars;
+  List.iter (promote_symbol_exn env ctx Global.G_Abstract_Variable) avars;
   Utils.map_opt close_pred_exn t_inv
 
 let type_assertion_exn f env p =
   close_pred_exn (Inference.type_predicate_exn f env Local.empty p)
 
 let type_mch_init_exn (env:Global.t_mch Global.t) (s:P.substitution) : (Global.t_mch,Btype.t) T.substitution =
-  let s = Inference.type_substitution_exn V.C_Mch_Op env Local.empty s in
+  let s = Inference.type_substitution_exn V.C_MCH_OPERATIONS env Local.empty s in
   close_subst_exn Mch s 
 
 let get_mch_operation_context_exn (_:Global.t_mch Global.t) (op:P.operation) : Local.t*Local.t =
@@ -334,14 +334,14 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : Glo
   let (ctx0,ctx) = get_mch_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.C_Mch_Op env ctx op.P.op_body
+      Inference.type_substitution_exn V.C_MCH_OPERATIONS env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_Mch_Op env ctx0 p in
-          let ts = Inference.type_substitution_exn V.C_Mch_Op env ctx s in
+          let tp = Inference.type_predicate_exn V.C_MCH_OPERATIONS env ctx0 p in
+          let ts = Inference.type_substitution_exn V.C_MCH_OPERATIONS env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.C_Mch_Op env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.C_MCH_OPERATIONS env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Mch op_body in
@@ -444,27 +444,27 @@ let is_set_param s = String.equal s.lid_str (String.capitalize_ascii s.lid_str)
 let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_mch Global.t) (mch:P.machine) : T.machine =
   let mch_set_parameters = List.filter is_set_param mch.P.mch_parameters in
   List.iter (fun p ->
-      let ki = Global.K_Parameter Global.Set in
+      let ki = Global.G_Parameter Global.Set in
       let ty = Btype.mk_Power (Btype.mk_Concrete_Set T_Current p.lid_str) in
       Global.add_symbol env p.lid_loc p.lid_str ty ki
     ) mch_set_parameters;
   let scalar_params = List.filter (fun x -> not (is_set_param x)) mch.P.mch_parameters in
   let mch_constraints =
-    declare_mch_scalar_parameters_exn env V.C_Mch_Constr scalar_params mch.P.mch_constraints
+    declare_mch_scalar_parameters_exn env V.C_CONSTRAINTS scalar_params mch.P.mch_constraints
   in
   let mch_uses = List.map (load_used_mch_exn f env) mch.P.mch_uses in
   let mch_sees = List.map (load_seen_mch_exn f env) mch.P.mch_sees in
-  let mch_includes = List.map (load_included_or_imported_mch_exn V.C_Mch_Param f env) mch.P.mch_includes in
-  let mch_extends = List.map (load_extended_mch_exn V.C_Mch_Param f env) mch.P.mch_extends in
+  let mch_includes = List.map (load_included_or_imported_mch_exn V.C_MCH_PARAMTERS f env) mch.P.mch_includes in
+  let mch_extends = List.map (load_extended_mch_exn V.C_MCH_PARAMTERS f env) mch.P.mch_extends in
   let () = List.iter (declare_set_exn env) mch.P.mch_sets in
-  let mch_properties = declare_mch_constants_exn env V.C_Mch_Prop
+  let mch_properties = declare_mch_constants_exn env V.C_PROPERTIES
       mch.P.mch_concrete_constants mch.P.mch_abstract_constants mch.P.mch_properties
   in
-  let mch_invariant = declare_mch_variables_exn env V.C_Mch_Inv
+  let mch_invariant = declare_mch_variables_exn env V.C_INVARIANT
       mch.P.mch_concrete_variables mch.P.mch_abstract_variables mch.P.mch_invariant
   in
   let symbs = get_mch_symbols env in
-  let mch_assertions = List.map (type_assertion_exn V.C_Mch_Inv env) mch.P.mch_assertions in
+  let mch_assertions = List.map (type_assertion_exn V.C_INVARIANT env) mch.P.mch_assertions in
   let () = List.iter (promote_operation env) mch.P.mch_promotes in
   let mch_initialisation = Utils.map_opt (type_mch_init_exn env) mch.P.mch_initialisation in
   let specified_operations = List.map (declare_mch_operation_exn env) mch.P.mch_operations in
@@ -498,8 +498,8 @@ let declare_ref_constants_exn (env:Global.t_ref Global.t) (cl:Global.t_ref V.cla
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cconst in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx aconst in
   let t_prop = Utils.map_opt (Inference.type_predicate_exn cl env ctx) prop in
-  List.iter (promote_symbol_exn env ctx Global.K_Concrete_Constant) cconst;
-  List.iter (promote_symbol_exn env ctx Global.K_Abstract_Constant) aconst;
+  List.iter (promote_symbol_exn env ctx Global.G_Concrete_Constant) cconst;
+  List.iter (promote_symbol_exn env ctx Global.G_Abstract_Constant) aconst;
   Utils.map_opt close_pred_exn t_prop
 
 let declare_ref_variables_exn (env:Global.t_ref Global.t) (cl:(Global.t_ref) V.clause) 
@@ -509,8 +509,8 @@ let declare_ref_variables_exn (env:Global.t_ref Global.t) (cl:(Global.t_ref) V.c
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cvars in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx avars in
   let t_inv = Utils.map_opt (Inference.type_predicate_exn cl env ctx) inv in
-  List.iter (promote_symbol_exn env ctx Global.K_Concrete_Variable) cvars;
-  List.iter (promote_symbol_exn env ctx Global.K_Abstract_Variable) avars;
+  List.iter (promote_symbol_exn env ctx Global.G_Concrete_Variable) cvars;
+  List.iter (promote_symbol_exn env ctx Global.G_Abstract_Variable) avars;
   Utils.map_opt close_pred_exn t_inv
 
 let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) (mch:lident) (parameters:lident list) : unit =
@@ -563,7 +563,7 @@ let get_ref_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
       abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_ref_init_exn env s =
-  close_subst_exn Ref (Inference.type_substitution_exn V.C_Ref_Op env Local.empty s)
+  close_subst_exn Ref (Inference.type_substitution_exn V.C_REF_OPERATIONS env Local.empty s)
 
 let check_signature (op:P.operation) args_in args_out =
   let rec aux lst1 lst2 =
@@ -599,14 +599,14 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : Glo
   let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.C_Ref_Op env ctx op.P.op_body
+      Inference.type_substitution_exn V.C_REF_OPERATIONS env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_Ref_Op env ctx0 p in
-          let ts = Inference.type_substitution_exn V.C_Ref_Op env ctx s in
+          let tp = Inference.type_predicate_exn V.C_REF_OPERATIONS env ctx0 p in
+          let ts = Inference.type_substitution_exn V.C_REF_OPERATIONS env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.C_Ref_Op env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.C_REF_OPERATIONS env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Ref op_body in
@@ -632,15 +632,15 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
   let ref_includes = List.map (load_included_or_imported_mch_exn V.C_Ref_Param f env) ref.P.ref_includes in
   let ref_extends = List.map (load_extended_mch_exn V.C_Ref_Param f env) ref.P.ref_extends in
   let () = List.iter (declare_set_exn env) ref.P.ref_sets in
-  let ref_properties = declare_ref_constants_exn env V.C_Ref_Prop
+  let ref_properties = declare_ref_constants_exn env V.C_PROPERTIES
       ref.P.ref_concrete_constants ref.P.ref_abstract_constants ref.P.ref_properties
   in
-  let ref_invariant = declare_ref_variables_exn env V.C_Ref_Inv
+  let ref_invariant = declare_ref_variables_exn env V.C_INVARIANT
       ref.P.ref_concrete_variables ref.P.ref_abstract_variables ref.P.ref_invariant
   in
   let symbs = get_ref_symbols ref.ref_refines.lid_loc env
   in
-  let ref_assertions = List.map (type_assertion_exn V.C_Ref_Inv env) ref.P.ref_assertions in
+  let ref_assertions = List.map (type_assertion_exn V.C_INVARIANT env) ref.P.ref_assertions in
   let () = List.iter (promote_operation env) ref.P.ref_promotes in
   let ref_initialisation = Utils.map_opt (type_ref_init_exn env) ref.P.ref_initialisation in
   let specified_operations = List.map (declare_ref_operation_exn env) ref.P.ref_operations in

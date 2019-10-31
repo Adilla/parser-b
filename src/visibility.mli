@@ -2,24 +2,16 @@ module G = Global
 val extended_sees: bool ref
 
 type 'mr clause =
-  | C_Mch_Constr : (G.t_mch) clause
-  | C_Mch_Prop : (G.t_mch) clause
-  | C_Mch_Inv : (G.t_mch) clause
-  | C_Mch_Op : (G.t_mch) clause
-  | C_Mch_Assert : (G.t_mch) clause
-  | C_Mch_Param : (G.t_mch) clause
-  | C_Ref_Prop : (G.t_ref) clause
-  | C_Ref_Inv : (G.t_ref) clause
-  | C_Ref_Op : (G.t_ref) clause
-  | C_Ref_Assert : (G.t_ref) clause
-  | C_Ref_Param : (G.t_ref) clause
-  | C_Imp_Prop : (G.t_ref) clause
-  | C_Imp_Inv : (G.t_ref) clause
-  | C_Imp_Op : (G.t_ref) clause
-  | C_Imp_Lop : (G.t_ref) clause
-  | C_Imp_Val : (G.t_ref) clause
-  | C_Imp_Assert : (G.t_ref) clause
-  | C_Imp_Param : (G.t_ref) clause
+  | C_CONSTRAINTS : 'mr clause
+  | C_PROPERTIES : 'mr clause
+  | C_INVARIANT : 'mr clause
+  | C_MCH_OPERATIONS : G.t_mch clause
+  | C_REF_OPERATIONS : G.t_ref clause
+  | C_IMP_OPERATIONS : G.t_ref clause
+  | C_ASSERT : 'mr clause
+  | C_LOCAL_OPERATIONS : G.t_ref clause
+  | C_VALUES : G.t_ref clause
+  | C_MCH_PARAMTERS : G.t_mch clause
 
 (*
 val mk_assert_clause: ('mr) clause -> ('mr) clause

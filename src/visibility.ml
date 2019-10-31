@@ -2,80 +2,24 @@ module G = Global
 
 let extended_sees = ref false
 
-type ('mr) clause =
-  | C_Mch_Constr : (G.t_mch) clause
-  | C_Mch_Prop : (G.t_mch) clause
-  | C_Mch_Inv : (G.t_mch) clause
-  | C_Mch_Op : (G.t_mch) clause
-  | C_Mch_Assert : (G.t_mch) clause
-  | C_Mch_Param : (G.t_mch) clause
-  | C_Ref_Prop : (G.t_ref) clause
-  | C_Ref_Inv : (G.t_ref) clause
-  | C_Ref_Op : (G.t_ref) clause
-  | C_Ref_Assert : (G.t_ref) clause
-  | C_Ref_Param : (G.t_ref) clause
-  | C_Imp_Prop : (G.t_ref) clause
-  | C_Imp_Inv : (G.t_ref) clause
-  | C_Imp_Op : (G.t_ref) clause
-  | C_Imp_Lop : (G.t_ref) clause
-  | C_Imp_Val : (G.t_ref) clause
-  | C_Imp_Assert : (G.t_ref) clause
-  | C_Imp_Param : (G.t_ref) clause
+type 'mr clause =
+  | C_CONSTRAINTS : 'mr clause
+  | C_PROPERTIES : 'mr clause
+  | C_INVARIANT : 'mr clause
+  | C_MCH_OPERATIONS : G.t_mch clause
+  | C_REF_OPERATIONS : G.t_ref clause
+  | C_IMP_OPERATIONS : G.t_ref clause
+  | C_ASSERT : 'mr clause
+  | C_LOCAL_OPERATIONS : G.t_ref clause
+  | C_VALUES : G.t_ref clause
+  | C_MCH_PARAMTERS : G.t_mch clause
 
 (*
-let mk_assert_clause (type mr cl) (cl:(mr,cl) clause) : (mr,cl t_assert) clause =
-  match cl with
-  | C_Mch_Op -> C_Mch_Assert
-  | C_Ref_Op -> C_Ref_Assert
-  | C_Imp_Op -> C_Imp_Assert
-  | _ -> assert false
-
-type ('mr,_) t_global_ident = 'mr Global.t_kind
-type ('mr,_) t_mutable_ident = 'mr Global.t_kind
-
-let make_mch_constr : G.t_mch G.t_kind -> (G.t_mch,t_mch_constr) t_global_ident option = function
-  | G.Pack(G.K_Parameter _,_) as x -> Some x
-  | _ -> None
-
-let make_mch_prop : G.t_mch G.t_kind -> (G.t_mch,t_mch_prop) t_global_ident option = function
-  | G.Pack(G.K_Abstract_Variable,_) -> None
-  | G.Pack(G.K_Concrete_Variable,_) -> None
-  | G.Pack(G.K_Parameter _,_) -> None
-  | x -> Some x
-
-let make_mch_inv (x:G.t_mch G.t_kind) : (G.t_mch,t_mch_inv) t_global_ident option =
-  if !extended_sees then Some x
-  else match x with
-  | G.Pack(G.K_Abstract_Variable,G.D_Seen _) -> None
-  | G.Pack(G.K_Concrete_Variable,G.D_Seen _) -> None
-  | _ -> Some x
-
-let make_mch_op (x:G.t_mch G.t_kind) : (G.t_mch,t_mch_op) t_global_ident option = Some x
 
 let make_mch_mut: G.t_mch G.t_kind -> (G.t_mch,t_mch_op) t_mutable_ident option = function
   | G.Pack(G.K_Abstract_Variable,G.D_Machine _) as x -> Some x
   | G.Pack(G.K_Concrete_Variable,G.D_Machine _) as x -> Some x
   | _ -> None
-
-let make_mch_assert (x:G.t_mch G.t_kind) : (G.t_mch,t_mch_op t_assert) t_global_ident option = Some x
-
-let make_ref_prop: G.t_ref G.t_kind -> (G.t_ref,t_ref_prop) t_global_ident option = function
-  | G.Pack(G.K_Abstract_Variable,_) -> None
-  | G.Pack(G.K_Concrete_Variable,_) -> None
-  | G.Pack(G.K_Parameter _,_) -> None
-  | x -> Some x
-
-let make_ref_inv (x:G.t_ref G.t_kind) : (G.t_ref,t_ref_inv) t_global_ident option =
- if !extended_sees then Some x
-  else match x with
-  | G.Pack(G.K_Abstract_Variable,G.D_Seen _) -> None
-  | G.Pack(G.K_Concrete_Variable,G.D_Seen _) -> None
-  | _ -> Some x
-
-let make_ref_op: G.t_ref G.t_kind -> (G.t_ref,t_ref_op) t_global_ident option = function
-  | G.Pack(G.K_Abstract_Variable,G.D_Disappearing) -> None
-  | G.Pack(G.K_Abstract_Constant,G.D_Disappearing) -> None
-  | x -> Some x
 
 let make_ref_mut: G.t_ref G.t_kind -> (G.t_ref,t_ref_op) t_mutable_ident option = function
   | G.Pack(G.K_Abstract_Variable, G.D_Machine _) as x -> Some x
@@ -85,33 +29,11 @@ let make_ref_mut: G.t_ref G.t_kind -> (G.t_ref,t_ref_op) t_mutable_ident option 
   | G.Pack(G.K_Concrete_Variable, G.D_Redeclared G.Implicitely) as x -> Some x
   | _ -> None
 
-let make_ref_assert (x:G.t_ref G.t_kind) : (G.t_ref,t_ref_op t_assert) t_global_ident option = Some x
-
-let make_imp_prop: G.t_ref G.t_kind -> (G.t_ref,t_imp_prop) t_global_ident option = function
-  | G.Pack(G.K_Abstract_Variable,_) -> None
-  | G.Pack(G.K_Concrete_Variable,_) -> None
-  | G.Pack(G.K_Parameter _,_) -> None
-  | x -> Some x 
-
-let make_imp_inv (x:G.t_ref G.t_kind) : (G.t_ref,t_imp_inv) t_global_ident option =
-  if !extended_sees then Some x
-  else match x with
-    | G.Pack(G.K_Abstract_Variable,G.D_Seen _) -> None
-    | G.Pack(G.K_Concrete_Variable,G.D_Seen _) -> None
-    | _ -> Some x
-
-let make_imp_op: G.t_ref G.t_kind -> (G.t_ref,t_imp_op) t_global_ident option = function
-  | G.Pack(G.K_Abstract_Variable,_) -> None
-  | G.Pack(G.K_Abstract_Constant,_) -> None
-  | x -> Some x
-
 let make_imp_mut: G.t_ref G.t_kind -> (G.t_ref,t_imp_op) t_mutable_ident option = function
   | G.Pack(G.K_Concrete_Variable,G.D_Machine _) as x -> Some x
   | G.Pack(G.K_Concrete_Variable,G.D_Redeclared G.Implicitely) as x -> Some x
   | G.Pack(G.K_Concrete_Variable,G.D_Redeclared G.By_Machine _) as x -> Some x
   | _ -> None
-
-let make_imp_assert (x:G.t_ref G.t_kind) : (G.t_ref,t_imp_op t_assert) t_global_ident option = Some x
 
 let make_imp_val: G.t_ref G.t_kind -> (G.t_ref,t_imp_val) t_global_ident option = function
   | G.Pack(G.K_Concrete_Constant,_) as x -> Some x
@@ -174,7 +96,6 @@ let make_imp_lmut: G.t_ref G.t_kind -> (G.t_ref,t_imp_lop) t_mutable_ident optio
   | G.Pack(G.K_Abstract_Variable,G.D_Redeclared G.By_Included_Or_Imported _) as x -> Some x
   | _ -> None
 
-let make_imp_lassert (x:G.t_ref G.t_kind) : (G.t_ref,t_imp_lop t_assert) t_global_ident option = Some x
 
 let make_mch_param: G.t_mch G.t_kind -> (G.t_mch,t_mch_param) t_global_ident option = function (*FIXME*)
   | G.Pack(G.K_Parameter _,_) as x -> Some x
@@ -201,29 +122,68 @@ let make_imp_param: G.t_ref G.t_kind -> (G.t_ref,t_imp_param) t_global_ident opt
   | _ -> None
    *)
 
-let get_ident_in_clause (type mr) (cl:mr clause) (ki:mr G.t_kind) : mr G.t_kind option =
-  assert false (*FIXME*)
-(*
-  match cl with
-  | C_Mch_Constr -> make_mch_constr ki
-  | C_Mch_Prop -> make_mch_prop ki
-  | C_Mch_Inv -> make_mch_inv ki
-  | C_Mch_Op -> make_mch_op ki
-  | C_Mch_Assert -> make_mch_assert ki
-  | C_Ref_Prop -> make_ref_prop ki
-  | C_Ref_Inv -> make_ref_inv ki
-  | C_Ref_Op -> make_ref_op ki
-  | C_Ref_Assert -> make_ref_assert ki
-  | C_Imp_Prop -> make_imp_prop ki
-  | C_Imp_Inv -> make_imp_inv ki
-  | C_Imp_Op -> make_imp_op ki
-  | C_Imp_Lop -> make_imp_lop ki
-  | C_Imp_Val -> make_imp_val ki
-  | C_Imp_Assert -> make_imp_assert ki
-  | C_Mch_Param -> make_mch_param ki
-  | C_Ref_Param -> make_ref_param ki
-  | C_Imp_Param -> make_imp_param ki
-*)
+let get_ident_in_clause (type mr) (cl:mr clause) (ki:mr G.t_kind) =
+  (*FIXME parameters*)
+  match cl, ki with
+  (* In the CONSTRAINTS clause
+   * only parameters are visible *)
+  | C_CONSTRAINTS, G.K_Parameter _ -> Some ki
+  | C_CONSTRAINTS, _ -> None
+  (* In the PROPERTIES clause
+   * variables are NOT visible *)
+  | C_PROPERTIES, G.K_Abstract_Variable _ -> None
+  | C_PROPERTIES, G.K_Concrete_Variable _ -> None
+  | C_PROPERTIES, _ -> Some ki
+  (* In the INVARIANT clause
+   * variables from seen machines are visible only if the option extended_sees is set *)
+(*   | C_INVARIANT, G.Pack(G.K_Concrete_Variable,D_Seen _) -> if !extended_sees then Some ki else None *)
+  | C_INVARIANT, G.K_Concrete_Variable (D_Seen _) when not !extended_sees -> None
+  | C_INVARIANT, G.K_Abstract_Variable (D_Seen _) when not !extended_sees -> None
+  | C_INVARIANT, _ -> Some ki
+  (* In clause ASSERT
+   * everything is visible *)
+  | C_ASSERT, _ -> Some ki
+  (* In the OPERATIONS clause in an abstract machines
+   * everything is visible *)
+  | C_MCH_OPERATIONS, _ -> Some ki
+  (* In the OPERATIONS clause in a refinement
+   * disappearing datas are not visible *)
+  | C_REF_OPERATIONS, G.K_Abstract_Constant D_Disappearing -> None
+  | C_REF_OPERATIONS, G.K_Abstract_Variable D_Disappearing -> None
+  | C_REF_OPERATIONS, _ -> Some ki
+  (* In the OPERATIONS clause in an implementation
+   * Abstract datas are not visible *)
+  | C_IMP_OPERATIONS, G.K_Abstract_Constant _ -> None
+  | C_IMP_OPERATIONS, G.K_Abstract_Variable _ -> None
+  | C_IMP_OPERATIONS, _ -> Some ki
+  (* In the LOCAL_OPERATIONS clause in an implementation
+   * disappearing datas are not visible *)
+  | C_LOCAL_OPERATIONS, G.K_Abstract_Constant D_Disappearing -> None
+  | C_LOCAL_OPERATIONS, G.K_Abstract_Variable D_Disappearing -> None
+  | C_LOCAL_OPERATIONS, _ -> Some ki
+(* In the VALUES clause
+ * Only concrete data are visible (parameters excluded) *)
+  | C_VALUES, G.K_Concrete_Constant _ -> Some ki
+  | C_VALUES, G.K_Abstract_Set _ -> Some ki
+  | C_VALUES, G.K_Concrete_Set _ -> Some ki
+  | C_VALUES, G.K_Enumerate _ -> Some ki
+  | C_VALUES, _ -> None
+
+(* dans une machine *)
+  | C_MCH_PARAMTERS, G.K_Parameter _ -> Some ki
+  | C_MCH_PARAMTERS, G.K_Concrete_Constant (D_Machine _|D_Seen _) -> Some ki
+  | C_MCH_PARAMTERS, G.K_Concrete_Constant (D_Included_Or_Imported _|D_Used _) -> None
+  | C_MCH_PARAMTERS, G.K_Abstract_Constant (D_Machine _|D_Seen _) -> Some ki
+  | C_MCH_PARAMTERS, G.K_Abstract_Constant (D_Included_Or_Imported _|D_Used _) -> None
+  | C_MCH_PARAMTERS, G.K_Concrete_Set (_,(D_Machine _|D_Seen _)) -> Some ki
+  | C_MCH_PARAMTERS, G.K_Concrete_Set (_,(D_Included_Or_Imported _|D_Used _)) -> None
+  | C_MCH_PARAMTERS, G.K_Abstract_Set (D_Machine _|D_Seen _) -> Some ki
+  | C_MCH_PARAMTERS, G.K_Abstract_Set (D_Included_Or_Imported _|D_Used _) -> None
+  | C_MCH_PARAMTERS, G.K_Enumerate (D_Machine _|D_Seen _) -> Some ki
+  | C_MCH_PARAMTERS, G.K_Enumerate (D_Included_Or_Imported _|D_Used _) -> None
+  | C_MCH_PARAMTERS, G.K_Abstract_Variable _ -> None
+  | C_MCH_PARAMTERS, G.K_Concrete_Variable _ -> None
+
 
 let get_mutable_in_clause (type mr) (cl:mr clause) (ki:mr G.t_kind) : mr G.t_kind option =
   assert false (*FIXME*)

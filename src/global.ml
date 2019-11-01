@@ -26,19 +26,6 @@ type t_constant = private T_Const
 
 type t_param_kind = Set | Scalar
 
-(*
-type _ t_global_kind = 
-  | K_Parameter : t_param_kind -> t_concrete t_global_kind
-  | K_Abstract_Variable : t_abstract t_global_kind
-  | K_Abstract_Constant : t_abstract t_global_kind
-  | K_Concrete_Variable : t_concrete t_global_kind
-  | K_Concrete_Constant : t_concrete t_global_kind
-  | K_Abstract_Set : t_concrete t_global_kind
-  | K_Concrete_Set : string list  -> t_concrete t_global_kind
-  | K_Enumerate : t_concrete t_global_kind
-
-type 'mr t_kind = Pack : 'ac t_global_kind*('mr,'ac) t_decl -> 'mr t_kind
-*)
 type 'mr t_kind =
   | K_Parameter : t_param_kind*loc -> 'mr t_kind
   | K_Abstract_Variable : ('mr,t_abstract) t_decl -> 'mr t_kind
@@ -152,133 +139,93 @@ type 'a t_op_source =
   | SO_Included_Or_Imported : ren_ident -> 'a t_op_source
   | SO_Local : loc -> t_ref t_op_source
 
-(*
-exception IncompatibleKind
-exception IncompatibleSource
+let rec string_list_eq l1 l2 = match l1, l2 with
+  | [], [] -> true
+  | h1::t1, h2::t2 -> String.equal h1 h2 && string_list_eq t1 t2
+  | _, _ -> false
 
-*)
-(*
-let update_kind (type ac1 ac2)  (k1:ac1 t_global_kind) (k2:ac2 t_global_kind) : ac2 t_global_kind =
-  match k1, k2 with
-  | K_Abstract_Variable, K_Abstract_Variable -> k2
-  | K_Abstract_Constant, K_Abstract_Constant -> k2
-  | K_Concrete_Variable,K_Concrete_Variable -> k2
-  | K_Concrete_Constant, K_Concrete_Constant -> k2
-  | K_Abstract_Set, K_Abstract_Set -> k2
-  | K_Concrete_Set lst1, K_Concrete_Set lst2 ->
-    begin try
-        if List.for_all2 String.equal lst1 lst2 then k2
-        else raise IncompatibleKind
-      with Invalid_argument _ -> raise IncompatibleKind
-    end
-  | K_Enumerate, K_Enumerate -> k2
-  | K_Abstract_Constant, K_Concrete_Constant -> k2
-  | K_Abstract_Variable, K_Concrete_Variable -> k2
-  | K_Parameter _, K_Parameter _ -> k2
-  | _, _ -> raise IncompatibleKind
-   *)
+let update_kind (type mr ac) (infos:mr t_kind) (src:mr t_source) (ki:ac t_global_kind) : mr t_kind option =
+  match infos, src, ki with
+  | K_Abstract_Variable D_Disappearing, S_Current l, G_Abstract_Variable ->
+    Some (K_Abstract_Variable (D_Redeclared (By_Machine l)))
+  | K_Abstract_Variable D_Disappearing, S_Current l, G_Concrete_Variable ->
+    Some (K_Concrete_Variable (D_Redeclared (By_Machine l)))
+  | K_Abstract_Variable D_Disappearing, S_Included_Or_Imported l, G_Abstract_Variable ->
+    Some (K_Abstract_Variable (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Abstract_Variable D_Disappearing, S_Included_Or_Imported l, G_Concrete_Variable ->
+    Some (K_Concrete_Variable (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Abstract_Variable _, _, _ -> None
 
-let merge_kinds (type mr ac) (infos:mr t_kind) (ki:ac t_global_kind) : ac t_global_kind
-  =
-  match infos, ki with
-  | K_Parameter (Set,_), G_Parameter Set -> ki
-  | K_Parameter (Scalar,_), G_Parameter Scalar -> ki
-  | K_Parameter _, _ -> assert false (*FIXME*)
-  | K_Abstract_Variable _, G_Abstract_Variable -> ki
-  | K_Abstract_Variable D_Disappearing, G_Concrete_Variable -> ki
-  | K_Abstract_Variable _, _ -> assert false (*FIXME*)
-  | K_Concrete_Variable _, G_Concrete_Variable -> ki
-  | K_Concrete_Variable _, _ -> assert false (*FIXME*)
-  | K_Abstract_Constant _, G_Abstract_Constant -> ki
-  | K_Abstract_Constant D_Disappearing, G_Concrete_Constant -> ki
-  | K_Abstract_Constant _, _ -> assert false (*FIXME*)
-  | K_Concrete_Constant _, G_Concrete_Constant -> ki
-  | K_Concrete_Constant _, _ -> assert false (*FIXME*)
-  | K_Abstract_Set _, G_Abstract_Set -> ki
-  | K_Abstract_Set _, _ -> assert false (*FIXME*)
-  | K_Concrete_Set _, G_Concrete_Set _ -> ki
-  | K_Concrete_Set _, _ -> assert false (*FIXME*)
-  | K_Enumerate _, G_Enumerate -> ki
-  | K_Enumerate _, _ -> assert false (*FIXME*)
+  | K_Abstract_Constant D_Disappearing, S_Current l, G_Abstract_Constant ->
+    Some (K_Abstract_Constant (D_Redeclared (By_Machine l)))
+  | K_Abstract_Constant D_Disappearing, S_Current l, G_Concrete_Constant ->
+    Some (K_Abstract_Constant (D_Redeclared (By_Machine l)))
+  | K_Abstract_Constant D_Disappearing, S_Included_Or_Imported l, G_Abstract_Constant ->
+    Some (K_Abstract_Constant (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Abstract_Constant D_Disappearing, S_Included_Or_Imported l, G_Concrete_Constant ->
+    Some (K_Concrete_Constant (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Abstract_Constant D_Disappearing, S_Seen l, G_Abstract_Constant ->
+    Some (K_Abstract_Constant (D_Redeclared (By_Seen l)))
+  | K_Abstract_Constant D_Disappearing, S_Seen l, G_Concrete_Constant ->
+    Some (K_Concrete_Constant (D_Redeclared (By_Seen l)))
+  | K_Abstract_Constant _, _, _ -> None
 
-let merge_sources (type mr) (infos:mr t_kind) (ki:mr t_source) : mr t_kind =
-  match infos, ki with
-  | K_Parameter _, _ -> assert false (*FIXME*)
+  | K_Concrete_Variable (D_Redeclared Implicitely), S_Included_Or_Imported l, G_Concrete_Variable ->
+    Some (K_Concrete_Variable (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Concrete_Variable (D_Redeclared Implicitely), S_Seen l, G_Concrete_Variable ->
+    Some (K_Concrete_Variable (D_Redeclared (By_Seen l)))
+  | K_Concrete_Variable _, _, _ -> None
 
-  | K_Abstract_Variable D_Disappearing, S_Current l ->
-    K_Abstract_Variable (D_Redeclared (By_Machine l))
-  | K_Abstract_Variable D_Disappearing, S_Included_Or_Imported l ->
-    K_Abstract_Variable (D_Redeclared (By_Included_Or_Imported l))
-  | K_Abstract_Variable _, _ -> assert false (*FIXME*)
+  | K_Concrete_Constant (D_Redeclared Implicitely), S_Included_Or_Imported l, G_Concrete_Constant ->
+    Some (K_Concrete_Constant (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Concrete_Constant (D_Redeclared Implicitely), S_Seen l, G_Concrete_Constant ->
+    Some (K_Concrete_Constant (D_Redeclared (By_Seen l)))
+  | K_Concrete_Constant _, _, _ -> None
 
+  | K_Abstract_Set (D_Redeclared Implicitely), S_Included_Or_Imported l, G_Abstract_Set ->
+    Some (K_Abstract_Set (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Abstract_Set (D_Redeclared Implicitely), S_Seen l, G_Abstract_Set ->
+    Some (K_Abstract_Set (D_Redeclared (By_Seen l)))
+  | K_Abstract_Set _, _, _ -> None
 
-(*
-    Pack(update_kind old_kind ki,D_Redeclared (By_Machine l))
-  | D_Disappearing, S_Current l ->
-    Pack(update_kind old_kind ki,D_Redeclared (By_Machine l))
-  | D_Included_Or_Imported inc, S_Refined _ ->
-    Pack(update_kind old_kind ki,D_Redeclared (By_Included_Or_Imported inc))
-  | D_Disappearing, S_Included_Or_Imported inc ->
-    Pack(update_kind old_kind ki,D_Redeclared (By_Included_Or_Imported inc))
-  | D_Redeclared Implicitely, S_Included_Or_Imported inc ->
-    Pack(update_kind old_kind ki,D_Redeclared (By_Included_Or_Imported inc))
-  | D_Seen seen, S_Refined _ ->
-    begin match ki with
-      | K_Abstract_Variable -> raise IncompatibleSource
-      | K_Concrete_Variable -> raise IncompatibleSource
-      | _ -> Pack(update_kind old_kind ki,D_Redeclared (By_Seen seen))
-    end
-  | D_Disappearing, S_Seen seen ->
-    begin match ki with
-      | K_Abstract_Variable -> raise IncompatibleSource
-      | K_Concrete_Variable -> raise IncompatibleSource
-      | _ -> Pack(update_kind old_kind ki,D_Redeclared (By_Seen seen))
-    end
-  | D_Redeclared Implicitely, S_Seen seen ->
-    begin match ki with
-      | K_Abstract_Variable -> raise IncompatibleSource
-      | K_Concrete_Variable -> raise IncompatibleSource
-      | _ -> Pack(update_kind old_kind ki,D_Redeclared (By_Seen seen))
-    end
-  | _, _ -> raise IncompatibleSource
-*)
+  | K_Concrete_Set (elts,D_Redeclared Implicitely), S_Included_Or_Imported l, G_Concrete_Set elts2 ->
+    if string_list_eq elts elts2 then
+      Some (K_Concrete_Set (elts,D_Redeclared (By_Included_Or_Imported l)))
+    else
+      None
+  | K_Concrete_Set (elts,D_Redeclared Implicitely), S_Seen l, G_Concrete_Set elts2 ->
+    if string_list_eq elts elts2 then
+      Some (K_Concrete_Set (elts,D_Redeclared (By_Seen l)))
+    else
+      None
+  | K_Concrete_Set _, _, _ -> None
+
+  | K_Enumerate (D_Redeclared Implicitely), S_Included_Or_Imported l, G_Enumerate ->
+    Some (K_Enumerate (D_Redeclared (By_Included_Or_Imported l)))
+  | K_Enumerate (D_Redeclared Implicitely), S_Seen l, G_Enumerate ->
+    Some (K_Enumerate (D_Redeclared (By_Seen l)))
+  | K_Enumerate _, _, _ -> None
+
+  | K_Parameter (_, _), _, _ -> None
 
 let add_alias (s:'a t) (alias:string) (ty:Btype.t) : bool =
   match Btype.add_alias s.alias alias ty with
   | None -> false
   | Some alias -> (s.alias <- alias; true)
 
-let to_decl (type ac mr) (ki:ac t_global_kind) (src:mr t_source) : (mr,ac) t_decl = match src with
+let to_decl_a (type mr) (src:mr t_source) : (mr,t_abstract) t_decl = match src with
   | S_Current lc -> D_Machine lc
   | S_Seen mch -> D_Seen mch
   | S_Used mch -> D_Used mch
   | S_Included_Or_Imported mch -> D_Included_Or_Imported mch
-  | S_Refined _ ->
-    begin match ki with
-      | G_Parameter _ -> assert false
-      | G_Abstract_Variable -> D_Disappearing
-      | G_Abstract_Constant -> D_Disappearing
-      | G_Concrete_Variable -> D_Redeclared Implicitely
-      | G_Concrete_Constant -> D_Redeclared Implicitely
-      | G_Abstract_Set -> D_Redeclared Implicitely
-      | G_Concrete_Set _ -> D_Redeclared Implicitely
-      | G_Enumerate -> D_Redeclared Implicitely
-    end
+  | S_Refined _ -> D_Disappearing
 
-let to_kind (type mr ac) (ki:ac t_global_kind) (src: mr t_source) : mr t_kind =
-  match ki with
-  | G_Parameter t ->
-    begin match src with
-      | S_Current lc -> K_Parameter (t,lc)
-      | _ -> assert false
-    end
-  | G_Abstract_Variable -> K_Abstract_Variable (to_decl ki src)
-  | G_Abstract_Constant -> K_Abstract_Constant (to_decl ki src)
-  | G_Concrete_Variable -> K_Concrete_Variable (to_decl ki src)
-  | G_Concrete_Constant -> K_Concrete_Constant (to_decl ki src)
-  | G_Abstract_Set -> K_Abstract_Set (to_decl ki src)
-  | G_Concrete_Set elts -> K_Concrete_Set (elts,to_decl ki src)
-  | G_Enumerate -> K_Enumerate (to_decl ki src)
+let to_decl_c (type mr) (src:mr t_source) : (mr,t_concrete) t_decl = match src with
+  | S_Current lc -> D_Machine lc
+  | S_Seen mch -> D_Seen mch
+  | S_Used mch -> D_Used mch
+  | S_Included_Or_Imported mch -> D_Included_Or_Imported mch
+  | S_Refined _ -> D_Redeclared Implicitely
 
 let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.t)
     (ki:ac t_global_kind) (src:mr t_source) : unit
@@ -293,16 +240,11 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
    | _, _ -> () );
   match Hashtbl.find_opt env.symb id with
   | Some infos ->
-    let sy_kind =
-      to_kind (merge_kinds infos.sy_kind ki) (merge_sources infos.sy_kind src)
+    let sy_kind = match update_kind infos.sy_kind src ki with
+      | Some x -> x
+      | None ->
+        Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
     in
-(*
-     with
-     | IncompatibleKind ->
-       Error.error err_loc ("The kind of the identifier '" ^ id ^ "' is different from previous declaration.") 
-     | IncompatibleSource ->
-       Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
-*)
     if not (Btype.is_equal_modulo_alias env.alias infos.sy_typ sy_typ) then
       Error.error  err_loc
         ("The identifier '" ^ id ^ "' has type " 
@@ -312,7 +254,21 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
     else
       Hashtbl.replace env.symb id { sy_typ; sy_kind }
   | None ->
-    Hashtbl.add env.symb id { sy_typ; sy_kind=to_kind ki src }
+    let sy_kind = match ki with
+      | G_Parameter t ->
+        begin match src with
+          | S_Current lc -> K_Parameter (t,lc)
+          | _ -> assert false
+        end
+      | G_Abstract_Variable -> K_Abstract_Variable (to_decl_a src)
+      | G_Abstract_Constant -> K_Abstract_Constant (to_decl_a src)
+      | G_Concrete_Variable -> K_Concrete_Variable (to_decl_c src)
+      | G_Concrete_Constant -> K_Concrete_Constant (to_decl_c src)
+      | G_Abstract_Set -> K_Abstract_Set (to_decl_c src)
+      | G_Concrete_Set elts -> K_Concrete_Set (elts,to_decl_c src)
+      | G_Enumerate -> K_Enumerate (to_decl_c src)
+    in
+    Hashtbl.add env.symb id { sy_typ; sy_kind }
 
 let add_symbol (type mr ac) (env:mr t) (loc:loc) (id:string) (typ:Btype.t) (ki:ac t_global_kind) : unit =
   _add_symbol env loc id typ ki (S_Current loc)
@@ -429,8 +385,8 @@ let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
   let open MachineInterface in
   List.iter (fun (S { id;typ;kind}:t_symb) ->
       match kind with
-      | K_Parameter _ -> ()
-      | K_Abstract_Variable ->
+      | G_Parameter _ -> ()
+      | G_Abstract_Variable ->
         let ren_id = match mch.r_prefix with
           | None -> id
           | Some p -> p ^ "." ^ id 
@@ -438,7 +394,7 @@ let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
         _add_symbol env mch.SyntaxCore.r_loc ren_id
           (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
           kind (S_Seen mch)
-      | K_Concrete_Variable ->
+      | G_Concrete_Variable ->
         let ren_id = match mch.r_prefix with
           | None -> id
           | Some p -> p ^ "." ^ id 
@@ -474,8 +430,8 @@ let load_interface_for_used_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
   let open MachineInterface in
   List.iter (fun (S { id;typ;kind}:t_symb) ->
       match kind with
-      | K_Parameter _ -> ()
-      | K_Abstract_Variable ->
+      | G_Parameter _ -> ()
+      | G_Abstract_Variable ->
         let ren_id = match mch.r_prefix with
           | None -> id
           | Some p -> p ^ "." ^ id 
@@ -483,7 +439,7 @@ let load_interface_for_used_machine (env:'a t) (itf:MachineInterface.t) (mch:ren
         _add_symbol env mch.SyntaxCore.r_loc ren_id
           (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
           kind (S_Used mch)
-      | K_Concrete_Variable ->
+      | G_Concrete_Variable ->
         let ren_id = match mch.r_prefix with
           | None -> id
           | Some p -> p ^ "." ^ id 
@@ -552,14 +508,14 @@ let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInter
   check_scalar_params (get_params itf) params;
   List.iter (fun (S { id;typ;kind}:t_symb) ->
       match kind with
-      | K_Parameter _ -> ()
-      | K_Abstract_Variable ->
+      | G_Parameter _ -> ()
+      | G_Abstract_Variable ->
         let ren_id = match mch.r_prefix with
           | None -> id
           | Some p -> p ^ "." ^ id 
         in
         _add_symbol env mch.SyntaxCore.r_loc ren_id (Btype.subst alias typ) kind (S_Included_Or_Imported mch)
-      | K_Concrete_Variable ->
+      | G_Concrete_Variable ->
         let ren_id = match mch.r_prefix with
           | None -> id
           | Some p -> p ^ "." ^ id 
@@ -592,7 +548,7 @@ let load_interface_for_refined_machine (env:t_ref t) (itf:MachineInterface.t) (m
     | [], [] -> ()
     | hd1::tl1, hd2::tl2 ->
       if hd1.lid_str = hd2.id then
-        ( _add_symbol env hd1.lid_loc hd2.id hd2.typ (K_Parameter hd2.kind) (S_Current hd1.lid_loc);
+        ( _add_symbol env hd1.lid_loc hd2.id hd2.typ (G_Parameter hd2.kind) (S_Current hd1.lid_loc);
           check_param tl1 tl2 )
       else Error.error hd1.lid_loc "Parameter mismatch."
     | hd1::_, [] -> Error.error hd1.lid_loc "Parameter mismatch."
@@ -627,10 +583,22 @@ let is_exported_symbol (type mr ac) : (mr,ac) t_decl -> bool = function
 let to_interface (type mr) (env:mr t) : MachineInterface.t =
   let aux1 (x:string) (symb:mr t_symbol_infos) (lst:MachineInterface.t_symb list) =
     match symb.sy_kind with
-    | Pack (kind,decl) ->
-      if is_exported_symbol decl then
-        (MachineInterface.S { id=x; typ=symb.sy_typ; kind })::lst
-      else lst
+    | K_Parameter (_, _) -> lst
+    | K_Abstract_Variable d when is_exported_symbol d ->
+      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Abstract_Variable })::lst
+    | K_Abstract_Constant d when is_exported_symbol d ->
+      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Abstract_Constant })::lst
+    | K_Concrete_Variable d when is_exported_symbol d ->
+      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Concrete_Variable })::lst
+    | K_Concrete_Constant d when is_exported_symbol d ->
+      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Concrete_Constant })::lst
+    | K_Abstract_Set d when is_exported_symbol d ->
+      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Abstract_Set })::lst
+    | K_Concrete_Set (elts, d) when is_exported_symbol d ->
+      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Concrete_Set elts })::lst
+    | K_Enumerate d when is_exported_symbol d ->
+      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Enumerate })::lst
+    | _ -> lst
   in
   let aux2 (id:string) (op:mr t_operation_infos) lst =
     let x = { MachineInterface.id; args_in=op.op_args_in;
@@ -653,7 +621,7 @@ let to_interface (type mr) (env:mr t) : MachineInterface.t =
     | None -> assert false
     | Some infos ->
       begin match infos.sy_kind with
-        | Pack(K_Parameter kind,_) ->
+        | K_Parameter (kind,_) ->
           { MachineInterface.id; typ=infos.sy_typ; kind }
         | _ -> assert false
       end
@@ -705,7 +673,7 @@ let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string)
     (itf:t_interface) : (Btype.t_atomic_src*string) list =
   let open MachineInterface in
   let aux accu = function
-    | S { id; kind=K_Abstract_Set; _ } -> (src,id)::accu
+    | S { id; kind=G_Abstract_Set; _ } -> (src,id)::accu
     | _ -> accu
   in
   List.fold_left aux accu (get_symbols itf)

@@ -227,8 +227,8 @@ let declare_set_exn (env:'mr Global.t) (s:P.set) : unit =
 let declare_local_symbol (ctx:Local.t) (lid:lident) : Local.t =
   Local.declare ctx lid.lid_str Local.L_Expr_Binder
 
-let promote_symbol_exn (type mr) (env:mr Global.t) (ctx:Local.t)
-    (ki:Global.t_global_kind) (lid:lident) : unit =
+let promote_symbol_exn (type mr ac) (env:mr Global.t) (ctx:Local.t)
+    (ki:ac Global.t_global_kind) (lid:lident) : unit =
   match Local.get ctx lid.lid_str with
   | None -> assert false
   | Some (None,_) -> Error.error lid.lid_loc ("The type of '"^lid.lid_str^"' could not be inferred.")
@@ -268,7 +268,7 @@ let type_assertion_exn f env p =
   close_pred_exn (Inference.type_predicate_exn f env Local.empty p)
 
 let type_mch_init_exn (env:Global.t_mch Global.t) (s:P.substitution) : (Global.t_mch,Btype.t) T.substitution =
-  let s = Inference.type_substitution_exn V.C_MCH_OPERATIONS env Local.empty s in
+  let s = Inference.type_substitution_exn V.M_MCH_OPERATIONS env Local.empty s in
   close_subst_exn Mch s 
 
 let get_mch_operation_context_exn (_:Global.t_mch Global.t) (op:P.operation) : Local.t*Local.t =
@@ -334,14 +334,14 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : Glo
   let (ctx0,ctx) = get_mch_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.C_MCH_OPERATIONS env ctx op.P.op_body
+      Inference.type_substitution_exn V.M_MCH_OPERATIONS env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
           let tp = Inference.type_predicate_exn V.C_MCH_OPERATIONS env ctx0 p in
-          let ts = Inference.type_substitution_exn V.C_MCH_OPERATIONS env ctx s in
+          let ts = Inference.type_substitution_exn V.M_MCH_OPERATIONS env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.C_MCH_OPERATIONS env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.M_MCH_OPERATIONS env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Mch op_body in
@@ -364,7 +364,7 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : Glo
 
 type ('a_symb,'c_symb) t_symbols = {
   set_parameters: lident list;
-  scalar_parameters: 'c_symb list;
+  scalar_parameters: T.t_param list;
   abstract_sets: 'c_symb list;
   concrete_sets: ('c_symb*string list) list;
   abstract_constants: 'a_symb list;
@@ -373,6 +373,7 @@ type ('a_symb,'c_symb) t_symbols = {
   concrete_variables: 'c_symb list;
 }
 
+(*
 let symb_to_lid (type a) (sy:(a,Global.t_concrete) T.symb) : lident =
   { lid_str = sy.sy_id;
     lid_loc = match sy.sy_src with
@@ -385,6 +386,7 @@ let symb_to_lid (type a) (sy:(a,Global.t_concrete) T.symb) : lident =
       | Global.D_Redeclared (Global.By_Included_Or_Imported lid) -> lid.r_loc
       | Global.D_Redeclared (Global.By_Seen lid) -> lid.r_loc
   }
+*)
 
 let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstract) T.symb,(Global.t_mch,Global.t_concrete) T.symb) t_symbols =
   let aux (id:string) (infos:Global.t_mch Global.t_symbol_infos) rc =
@@ -392,31 +394,31 @@ let get_mch_symbols (env:Global.t_mch Global.t) : ((Global.t_mch,Global.t_abstra
         f { T.sy_id = id; sy_typ = infos.Global.sy_typ; sy_src=d }
     in
     match infos.Global.sy_kind with
-    | Global.Pack (Global.K_Abstract_Set,src) ->
+    | Global.K_Abstract_Set src ->
       add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
           { rc with abstract_sets = (x::rc.abstract_sets) }) src
-    | Global.Pack (Global.K_Concrete_Set elts,src) ->
+    | Global.K_Concrete_Set (elts,src) ->
       add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
           { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
-    | Global.Pack (Global.K_Abstract_Constant,src) ->
+    | Global.K_Abstract_Constant src ->
       add_symb (fun (x:(Global.t_mch,Global.t_abstract) T.symb) ->
           { rc with abstract_constants = (x::rc.abstract_constants) }) src
-    | Global.Pack (Global.K_Concrete_Constant,src) ->
+    | Global.K_Concrete_Constant src ->
       add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
           { rc with concrete_constants = (x::rc.concrete_constants) }) src
-    | Global.Pack (Global.K_Abstract_Variable,src) ->
+    | Global.K_Abstract_Variable src ->
       add_symb (fun (x:(Global.t_mch,Global.t_abstract) T.symb) ->
           { rc with abstract_variables = (x::rc.abstract_variables) }) src
-    | Global.Pack (Global.K_Concrete_Variable,src) ->
+    | Global.K_Concrete_Variable src ->
       add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
           { rc with concrete_variables = (x::rc.concrete_variables) }) src
-    | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
-          { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
-    | Global.Pack (Global.K_Parameter Global.Set,src) ->
-      add_symb (fun (x:(Global.t_mch,Global.t_concrete) T.symb) ->
-          { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
-    | Global.Pack (Global.K_Enumerate,_) -> rc
+    | Global.K_Parameter (Global.Scalar,p_loc) ->
+      let x = { T.p_id=id;p_typ=infos.Global.sy_typ;p_loc } in
+      { rc with scalar_parameters = (x::rc.scalar_parameters) }
+    | Global.K_Parameter (Global.Set,lid_loc) ->
+      let x = { lid_str=id; lid_loc } in
+      { rc with set_parameters = (x::rc.set_parameters) }
+    | Global.K_Enumerate _ -> rc
   in
   Global.fold_symbols aux env
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
@@ -454,8 +456,8 @@ let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
   in
   let mch_uses = List.map (load_used_mch_exn f env) mch.P.mch_uses in
   let mch_sees = List.map (load_seen_mch_exn f env) mch.P.mch_sees in
-  let mch_includes = List.map (load_included_or_imported_mch_exn V.C_MCH_PARAMTERS f env) mch.P.mch_includes in
-  let mch_extends = List.map (load_extended_mch_exn V.C_MCH_PARAMTERS f env) mch.P.mch_extends in
+  let mch_includes = List.map (load_included_or_imported_mch_exn V.C_MCH_PARAMETERS f env) mch.P.mch_includes in
+  let mch_extends = List.map (load_extended_mch_exn V.C_MCH_PARAMETERS f env) mch.P.mch_extends in
   let () = List.iter (declare_set_exn env) mch.P.mch_sets in
   let mch_properties = declare_mch_constants_exn env V.C_PROPERTIES
       mch.P.mch_concrete_constants mch.P.mch_abstract_constants mch.P.mch_properties
@@ -518,7 +520,7 @@ let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Globa
   | None -> Error.error mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
   | Some itf -> Global.load_interface_for_refined_machine env itf mch parameters
 
-let get_ref_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
+let get_ref_symbols (env:Global.t_ref Global.t) :
   ((Global.t_ref,Global.t_abstract) T.symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
   let aux (id:string) (infos:Global.t_ref Global.t_symbol_infos) rc =
     let add_a_symb f (d:(Global.t_ref,Global.t_abstract) Global.t_decl) =
@@ -528,42 +530,32 @@ let get_ref_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
       f { T.sy_id = id; sy_typ = infos.Global.sy_typ; sy_src=d }
     in
     match infos.Global.sy_kind with
-    | Global.Pack (Global.K_Abstract_Set,src) ->
+    | Global.K_Abstract_Set src ->
       add_c_symb (fun x -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
-    | Global.Pack (Global.K_Concrete_Set elts,src) ->
+    | Global.K_Concrete_Set (elts,src) ->
       add_c_symb (fun x -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
-    | Global.Pack (Global.K_Abstract_Constant,src) ->
+    | Global.K_Abstract_Constant src ->
       add_a_symb (fun x -> { rc with abstract_constants = (x::rc.abstract_constants) }) src
-    | Global.Pack (Global.K_Concrete_Constant,src) ->
+    | Global.K_Concrete_Constant src ->
       add_c_symb (fun x -> { rc with concrete_constants = (x::rc.concrete_constants) }) src
-    | Global.Pack (Global.K_Abstract_Variable,src) ->
+    | Global.K_Abstract_Variable src ->
       add_a_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
-    | Global.Pack (Global.K_Concrete_Variable,src) ->
+    | Global.K_Concrete_Variable src ->
       add_c_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
-    | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
-      begin match src with
-        | Global.D_Redeclared Global.Implicitely ->
-          Error.error loc_ref ("Parameter '"^id^"' is missing.")
-        | Global.D_Redeclared (Global.By_Machine _) ->
-          add_c_symb (fun x -> { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
-        | _ -> assert false
-      end
-    | Global.Pack (Global.K_Parameter Global.Set,src) ->
-      begin match src with
-        | Global.D_Redeclared Global.Implicitely ->
-          Error.error loc_ref ("Parameter '"^id^"' is missing.")
-        | Global.D_Redeclared (Global.By_Machine _) ->
-          add_c_symb (fun x -> { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
-        | _ -> assert false
-      end
-    | Global.Pack (Global.K_Enumerate,_) -> rc
+    | Global.K_Parameter (Global.Scalar,p_loc) ->
+      let x = { T.p_id=id;p_typ=infos.Global.sy_typ;p_loc } in
+      { rc with scalar_parameters = (x::rc.scalar_parameters) }
+    | Global.K_Parameter (Global.Set,lid_loc) ->
+      let x = { lid_str=id; lid_loc } in
+      { rc with set_parameters = (x::rc.set_parameters) }
+    | Global.K_Enumerate _ -> rc
   in
   Global.fold_symbols aux env
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
       abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_ref_init_exn env s =
-  close_subst_exn Ref (Inference.type_substitution_exn V.C_REF_OPERATIONS env Local.empty s)
+  close_subst_exn Ref (Inference.type_substitution_exn V.M_REF_OPERATIONS env Local.empty s)
 
 let check_signature (op:P.operation) args_in args_out =
   let rec aux lst1 lst2 =
@@ -599,14 +591,14 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : Glo
   let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.C_REF_OPERATIONS env ctx op.P.op_body
+      Inference.type_substitution_exn V.M_REF_OPERATIONS env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
           let tp = Inference.type_predicate_exn V.C_REF_OPERATIONS env ctx0 p in
-          let ts = Inference.type_substitution_exn V.C_REF_OPERATIONS env ctx s in
+          let ts = Inference.type_substitution_exn V.M_REF_OPERATIONS env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.C_REF_OPERATIONS env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.M_REF_OPERATIONS env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Ref op_body in
@@ -629,8 +621,8 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : Glo
 let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) ref : T.refinement =
   let () = load_refines_exn f env ref.P.ref_refines ref.P.ref_parameters in
   let ref_sees = List.map (load_seen_mch_exn f env) ref.P.ref_sees in
-  let ref_includes = List.map (load_included_or_imported_mch_exn V.C_Ref_Param f env) ref.P.ref_includes in
-  let ref_extends = List.map (load_extended_mch_exn V.C_Ref_Param f env) ref.P.ref_extends in
+  let ref_includes = List.map (load_included_or_imported_mch_exn V.C_REF_PARAMETERS f env) ref.P.ref_includes in
+  let ref_extends = List.map (load_extended_mch_exn V.C_REF_PARAMETERS f env) ref.P.ref_extends in
   let () = List.iter (declare_set_exn env) ref.P.ref_sets in
   let ref_properties = declare_ref_constants_exn env V.C_PROPERTIES
       ref.P.ref_concrete_constants ref.P.ref_abstract_constants ref.P.ref_properties
@@ -638,8 +630,7 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
   let ref_invariant = declare_ref_variables_exn env V.C_INVARIANT
       ref.P.ref_concrete_variables ref.P.ref_abstract_variables ref.P.ref_invariant
   in
-  let symbs = get_ref_symbols ref.ref_refines.lid_loc env
-  in
+  let symbs = get_ref_symbols env in
   let ref_assertions = List.map (type_assertion_exn V.C_INVARIANT env) ref.P.ref_assertions in
   let () = List.iter (promote_operation env) ref.P.ref_promotes in
   let ref_initialisation = Utils.map_opt (type_ref_init_exn env) ref.P.ref_initialisation in
@@ -665,33 +656,33 @@ let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) :
   | Some infos ->
     let var_typ = infos.Global.sy_typ in
     let te = close_expr_exn
-        (Inference.type_expression_exn V.C_Imp_Val env Local.empty e)
+        (Inference.type_expression_exn V.C_VALUES env Local.empty e)
     in
     if Btype.is_equal_modulo_alias (Global.get_alias env) te.T.exp_typ var_typ then
       let val_kind = match infos.Global.sy_kind with
-        | Global.Pack(Global.K_Abstract_Set,Global.D_Machine _) ->
+        | Global.K_Abstract_Set (Global.D_Machine _) ->
           T.VK_Abstract_Set T.VKS_Machine
-        | Global.Pack(Global.K_Abstract_Set,Global.D_Redeclared Global.Implicitely) ->
+        | Global.K_Abstract_Set (Global.D_Redeclared Global.Implicitely) ->
           T.VK_Abstract_Set T.VKS_Implicit
-        | Global.Pack(Global.K_Abstract_Set,Global.D_Redeclared Global.By_Machine _) ->
+        | Global.K_Abstract_Set (Global.D_Redeclared Global.By_Machine _) ->
           T.VK_Abstract_Set T.VKS_Redeclared
-        | Global.Pack(Global.K_Concrete_Constant,Global.D_Machine _) ->
+        | Global.K_Concrete_Constant (Global.D_Machine _) ->
           T.VK_Concrete_Constant T.VKS_Machine
-        | Global.Pack(Global.K_Concrete_Constant,Global.D_Redeclared Global.Implicitely) ->
+        | Global.K_Concrete_Constant (Global.D_Redeclared Global.Implicitely) ->
           T.VK_Concrete_Constant T.VKS_Implicit
-        | Global.Pack(Global.K_Concrete_Constant,Global.D_Redeclared Global.By_Machine _) ->
+        | Global.K_Concrete_Constant (Global.D_Redeclared Global.By_Machine _) ->
           T.VK_Concrete_Constant T.VKS_Redeclared
-        | Global.Pack(Global.K_Abstract_Set, Global.D_Seen _) ->
+        | Global.K_Abstract_Set (Global.D_Seen _) ->
           Error.error v.lid_loc "Cannot give a value to an abstract set from a seen machine."
-        | Global.Pack(Global.K_Abstract_Set, Global.D_Included_Or_Imported _) ->
+        | Global.K_Abstract_Set (Global.D_Included_Or_Imported _) ->
           Error.error v.lid_loc "Cannot give a value to an abstract set from an imported machine."
-        | Global.Pack(Global.K_Abstract_Set, Global.D_Redeclared Global.By_Included_Or_Imported _) ->
+        | Global.K_Abstract_Set (Global.D_Redeclared Global.By_Included_Or_Imported _) ->
           Error.error v.lid_loc "Cannot give a value to an abstract set from an imported machine."
-        | Global.Pack(Global.K_Concrete_Constant, Global.D_Seen _) ->
+        | Global.K_Concrete_Constant (Global.D_Seen _) ->
           Error.error v.lid_loc "Cannot give a value to a concrete constant from a seen machine."
-        | Global.Pack(Global.K_Concrete_Constant, Global.D_Included_Or_Imported _) ->
+        | Global.K_Concrete_Constant (Global.D_Included_Or_Imported _) ->
           Error.error v.lid_loc "Cannot give a value to a concrete constant from an imported machine."
-        | Global.Pack(Global.K_Concrete_Constant, Global.D_Redeclared Global.By_Included_Or_Imported _) ->
+        | Global.K_Concrete_Constant (Global.D_Redeclared Global.By_Included_Or_Imported _) ->
           Error.error v.lid_loc "Cannot give a value to a concrete constant from an imported machine."
 (*
         | Global.Pack(Global.K_Concrete_Set _, _)
@@ -713,7 +704,7 @@ let is_abstract_set env v =
   | None -> false
   | Some infos ->
    begin match infos.Global.sy_kind with
-     | Global.Pack (Global.K_Abstract_Set,_) -> true
+     | Global.K_Abstract_Set _ -> true
      | _ -> false
    end
 
@@ -736,7 +727,7 @@ let manage_set_concretisation_exn (lst:(Btype.t_atomic_src*string) list) (env:Gl
     if not (Global.add_alias env v.lid_str alias) then
       Error.error v.lid_loc "Incorrect abstract set definition (cyclic alias)."
 
-let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
+let get_imp_symbols (env:Global.t_ref Global.t) :
   (T.t_abs_imp_symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
   let aux (id:string) (infos:Global.t_ref Global.t_symbol_infos) rc =
     let add_a_symb f (d:(Global.t_ref,Global.t_abstract) Global.t_decl) =
@@ -755,42 +746,32 @@ let get_imp_symbols (loc_ref:loc) (env:Global.t_ref Global.t) :
       f { T.sy_id = id; sy_typ = infos.Global.sy_typ; sy_src=d }
     in
     match infos.Global.sy_kind with
-    | Global.Pack (Global.K_Abstract_Set,src) ->
+    | Global.K_Abstract_Set src ->
       add_c_symb (fun x -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
-    | Global.Pack (Global.K_Concrete_Set elts,src) ->
+    | Global.K_Concrete_Set (elts,src) ->
       add_c_symb (fun x -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
-    | Global.Pack (Global.K_Abstract_Constant,src) ->
+    | Global.K_Abstract_Constant src ->
       add_a_symb (fun x -> { rc with abstract_constants = (x::rc.abstract_constants) }) src
-    | Global.Pack (Global.K_Concrete_Constant,src) ->
+    | Global.K_Concrete_Constant src ->
       add_c_symb (fun x -> { rc with concrete_constants = (x::rc.concrete_constants) }) src
-    | Global.Pack (Global.K_Abstract_Variable,src) ->
+    | Global.K_Abstract_Variable src ->
       add_a_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
-    | Global.Pack (Global.K_Concrete_Variable,src) ->
+    | Global.K_Concrete_Variable src ->
       add_c_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
-    | Global.Pack (Global.K_Parameter Global.Scalar,src) ->
-      begin match src with
-        | Global.D_Redeclared Global.Implicitely ->
-          Error.error loc_ref ("Parameter '"^id^"' is missing.")
-        | Global.D_Redeclared (Global.By_Machine _) ->
-          add_c_symb (fun x -> { rc with scalar_parameters = (x::rc.scalar_parameters) }) src
-        | _ -> assert false
-      end
-    | Global.Pack (Global.K_Parameter Global.Set,src) ->
-      begin match src with
-        | Global.D_Redeclared Global.Implicitely ->
-          Error.error loc_ref ("Parameter '"^id^"' is missing.")
-        | Global.D_Redeclared (Global.By_Machine _) ->
-          add_c_symb (fun x -> { rc with set_parameters = ((symb_to_lid x)::rc.set_parameters) }) src
-        | _ -> assert false
-      end
-    | Global.Pack (Global.K_Enumerate,_) -> rc
+    | Global.K_Parameter (Global.Scalar,p_loc) ->
+      let x = { T.p_id=id;p_typ=infos.Global.sy_typ;p_loc } in
+      { rc with scalar_parameters = (x::rc.scalar_parameters) }
+    | Global.K_Parameter (Global.Set,lid_loc) ->
+      let x = { lid_str=id; lid_loc } in
+      { rc with set_parameters = (x::rc.set_parameters) }
+    | Global.K_Enumerate _ -> rc
   in
   Global.fold_symbols aux env
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
       abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_imp_init_exn env s =
-  close_subst_exn Imp (Inference.type_substitution_exn V.C_Imp_Op env Local.empty s)
+  close_subst_exn Imp (Inference.type_substitution_exn V.M_IMP_OPERATIONS env Local.empty s)
 
 module SMap = Map.Make(String)
 type t_lops_map = (Global.t_ref,Btype.t) T.substitution SMap.t
@@ -799,14 +780,14 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
   let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.C_Imp_Op env ctx op.P.op_body
+      Inference.type_substitution_exn V.M_IMP_OPERATIONS env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_Imp_Op env ctx0 p in
-          let ts = Inference.type_substitution_exn V.C_Imp_Op env ctx s in
+          let tp = Inference.type_predicate_exn V.C_IMP_OPERATIONS env ctx0 p in
+          let ts = Inference.type_substitution_exn V.M_IMP_OPERATIONS env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.C_Imp_Op env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.M_IMP_OPERATIONS env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Imp op_body in
@@ -838,14 +819,14 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
   let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.C_Imp_Lop env ctx op.P.op_body
+      Inference.type_substitution_exn V.M_LOCAL_OPERATIONS env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_Imp_Lop env ctx0 p in
-          let ts = Inference.type_substitution_exn V.C_Imp_Lop env ctx s in
+          let tp = Inference.type_predicate_exn V.C_LOCAL_OPERATIONS env ctx0 p in
+          let ts = Inference.type_substitution_exn V.M_LOCAL_OPERATIONS env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.C_Imp_Lop env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.M_LOCAL_OPERATIONS env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Ref op_body in (*XXX which substitutions are allowed in local operations?*)
@@ -868,17 +849,17 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
 let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
   let aux id infos map =
     match infos.Global.sy_kind with
-    | Global.Pack(Global.K_Abstract_Set,Global.D_Machine l) ->
+    | Global.K_Abstract_Set (Global.D_Machine l) ->
       SMap.add id (false,l) map
-    | Global.Pack(Global.K_Abstract_Set,Global.D_Redeclared Global.Implicitely) ->
+    | Global.K_Abstract_Set (Global.D_Redeclared Global.Implicitely) ->
       SMap.add id (false,rm_loc) map
-    | Global.Pack(Global.K_Abstract_Set,Global.D_Redeclared Global.By_Machine l) ->
+    | Global.K_Abstract_Set (Global.D_Redeclared Global.By_Machine l) ->
       SMap.add id (false,l) map
-    | Global.Pack(Global.K_Concrete_Constant,Global.D_Machine l) ->
+    | Global.K_Concrete_Constant (Global.D_Machine l) ->
       SMap.add id (false,l) map
-    | Global.Pack(Global.K_Concrete_Constant,Global.D_Redeclared Global.Implicitely) ->
+    | Global.K_Concrete_Constant (Global.D_Redeclared Global.Implicitely) ->
       SMap.add id (false,rm_loc) map
-    | Global.Pack(Global.K_Concrete_Constant,Global.D_Redeclared Global.By_Machine l) ->
+    | Global.K_Concrete_Constant (Global.D_Redeclared Global.By_Machine l) ->
       SMap.add id (false,l) map
     | _ -> map
   in
@@ -918,18 +899,18 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
   let imported_or_seen_csets = get_imported_or_seen_csets f imp.P.imp_sees imp.P.imp_imports in
   let () = List.iter (manage_set_concretisation_exn imported_or_seen_csets env) imp.P.imp_values in
   let imp_sees = List.map (load_seen_mch_exn f env) imp.P.imp_sees in
-  let imp_imports = List.map (load_included_or_imported_mch_exn V.C_Imp_Param f env) imp.P.imp_imports in
-  let imp_extends = List.map (load_extended_mch_exn V.C_Imp_Param f env) imp.P.imp_extends in
-  let imp_properties = declare_ref_constants_exn env V.C_Imp_Prop
+  let imp_imports = List.map (load_included_or_imported_mch_exn V.C_IMP_PARAMETERS f env) imp.P.imp_imports in
+  let imp_extends = List.map (load_extended_mch_exn V.C_IMP_PARAMETERS f env) imp.P.imp_extends in
+  let imp_properties = declare_ref_constants_exn env V.C_PROPERTIES
       imp.P.imp_concrete_constants [] imp.P.imp_properties
   in
   let imp_values = List.map (type_value_exn env) imp.P.imp_values in
   let () = check_values imp.P.imp_refines.lid_loc env imp_values in
-  let imp_invariant = declare_ref_variables_exn env V.C_Imp_Inv
+  let imp_invariant = declare_ref_variables_exn env V.C_INVARIANT
       imp.P.imp_concrete_variables [] imp.P.imp_invariant
   in
-  let symbs = get_imp_symbols imp.imp_refines.lid_loc env in
-  let imp_assertions = List.map (type_assertion_exn V.C_Imp_Inv env) imp.P.imp_assertions in
+  let symbs = get_imp_symbols env in
+  let imp_assertions = List.map (type_assertion_exn V.C_INVARIANT env) imp.P.imp_assertions in
   let () = List.iter (promote_operation env) imp.P.imp_promotes in
   let lops_map = List.fold_left (declare_local_operation_exn env) SMap.empty imp.P.imp_local_operations in
   let imp_initialisation = Utils.map_opt (type_imp_init_exn env) imp.P.imp_initialisation in

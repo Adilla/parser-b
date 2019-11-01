@@ -37,15 +37,15 @@ type 'mr t_kind =
   | K_Concrete_Set : string list  * ('mr,t_concrete) t_decl -> 'mr t_kind
   | K_Enumerate : ('mr,t_concrete) t_decl -> 'mr t_kind
 
-type t_global_kind = 
-  | G_Parameter of t_param_kind
-  | G_Abstract_Variable
-  | G_Abstract_Constant
-  | G_Concrete_Variable
-  | G_Concrete_Constant
-  | G_Abstract_Set
-  | G_Concrete_Set of string list
-  | G_Enumerate
+type 'ac t_global_kind = 
+  | G_Parameter : t_param_kind -> t_concrete t_global_kind
+  | G_Abstract_Variable : t_abstract t_global_kind
+  | G_Abstract_Constant : t_abstract t_global_kind
+  | G_Concrete_Variable : t_concrete t_global_kind
+  | G_Concrete_Constant : t_concrete t_global_kind
+  | G_Abstract_Set : t_concrete t_global_kind
+  | G_Concrete_Set : string list -> t_concrete t_global_kind
+  | G_Enumerate : t_concrete t_global_kind
 
 type 'a t_symbol_infos = {
   sy_typ:Btype.t;
@@ -76,7 +76,7 @@ val create_mch : lident list -> t_mch t
 val create_ref : lident list -> t_ref t
 
 val get_symbol : 'a t -> string -> 'a t_symbol_infos option
-val add_symbol : 'mr t -> loc -> string -> Btype.t -> t_global_kind -> unit
+val add_symbol : 'mr t -> loc -> string -> Btype.t -> 'ac t_global_kind -> unit
 
 val get_operation : 'a t -> string -> 'a t_operation_infos option
 val add_mch_operation : t_mch t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit

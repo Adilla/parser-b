@@ -141,9 +141,15 @@ type 'mr machine_instanciation = {
   mi_params: ('mr,Btype.t) expression list
 }
 
+type t_param = {
+  p_id:string;
+  p_loc:Utils.loc;
+  p_typ:Btype.t;
+}
+
 type machine = {
   mch_set_parameters: lident list;
-  mch_scalar_parameters: (G.t_mch,G.t_concrete) symb list;
+  mch_scalar_parameters: t_param list;
 
   mch_sees: ren_ident list;
   mch_uses: ren_ident list;
@@ -169,7 +175,7 @@ type refinement = {
   ref_refines: mch_name;
 
   ref_set_parameters: lident list;
-  ref_scalar_parameters: (G.t_ref,G.t_concrete) symb list;
+  ref_scalar_parameters: t_param list;
 
   ref_sees: ren_ident list;
   ref_includes: G.t_ref machine_instanciation list;
@@ -217,7 +223,7 @@ type t_abs_imp_symb = {
 }
 type implementation = {
   imp_set_parameters: lident list;
-  imp_scalar_parameters: (G.t_ref,G.t_concrete) symb list;
+  imp_scalar_parameters: t_param list;
 
   imp_refines: mch_name;
 

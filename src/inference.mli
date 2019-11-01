@@ -11,6 +11,6 @@ val type_predicate_exn :
   ('mr,Btype.Open.t) TSyntax.predicate
 
 val type_substitution_exn:
-  'mr Visibility.clause ->
+  'mr Visibility.mclause ->
   'mr Global.t -> Local.t -> PSyntax.substitution ->
   ('mr,Btype.Open.t) TSyntax.substitution

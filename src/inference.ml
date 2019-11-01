@@ -617,7 +617,7 @@ and check_tpl : 'mr. 'mr V.clause ->
       | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ ty_exp
     end
 
-let type_writable_var_exn (type mr) (cl:mr V.clause) (env:mr Global.t) (ctx:Local.t)
+let type_writable_var_exn (type mr) (cl:mr V.mclause) (env:mr Global.t) (ctx:Local.t)
     (x:ren_ident) : (mr,Btype.Open.t) T.mut_var =
   let mv_kind, mv_typ = 
     match x.r_prefix with
@@ -665,7 +665,7 @@ let to_op_source (type a) (is_readonly:bool) : a Global.t_op_decl -> T.t_op_sour
   | Global.OD_Refined _ -> None
   | Global.OD_Current_And_Refined _ -> None
 
-let check_writable_nlist : 'mr. 'mr V.clause ->
+let check_writable_nlist : 'mr. 'mr V.mclause ->
   'mr Global.t -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t -> ('mr,Btype.Open.t) T.mut_var Nlist.t
   = fun cl env ctx xlst loc ty ->
     let mk_mut (lid:ren_ident) mv_typ =
@@ -725,7 +725,7 @@ let check_writable_nlist : 'mr. 'mr V.clause ->
       unexpected_type_exn loc ty ty_exp
 
 let type_out_parameter : 'mr 'cl.
-  'mr V.clause -> 'mr Global.t -> Local.t -> ren_ident -> string*Btype.t ->
+  'mr V.mclause -> 'mr Global.t -> Local.t -> ren_ident -> string*Btype.t ->
   ('mr,Btype.Open.t) T.mut_var =
   fun cl env ctx id (_,ty) ->
   let ty_exp = ( ty :> Btype.Open.t) in
@@ -768,7 +768,7 @@ let type_in_parameter : 'mr 'cl.
     | Some _ -> te
 
 let rec type_substitution_exn : 'mr.
-  'mr V.clause -> 'mr Global.t -> Local.t -> P.substitution ->
+  'mr V.mclause -> 'mr Global.t -> Local.t -> P.substitution ->
   ('mr,Btype.Open.t) T.substitution =
   fun cl env ctx s0 ->
   let open Btype.Open in
@@ -776,17 +776,17 @@ let rec type_substitution_exn : 'mr.
   | P.Skip -> mk_subst s0.P.sub_loc T.Skip
 
   | P.Pre (p,s) ->
-    let p = type_predicate_exn cl env ctx p in
+    let p = type_predicate_exn (V.to_clause cl) env ctx p in
     let s = type_substitution_exn cl env ctx s in
     mk_subst s0.P.sub_loc (T.Pre (p,s))
 
   | P.Assert (p,s) ->
-    let p = type_predicate_exn (assert false (*FIXME*)) env ctx p in
+    let p = type_predicate_exn V.C_ASSERT env ctx p in
     let s = type_substitution_exn cl env ctx s in
     mk_subst s0.P.sub_loc (T.Assert(p,s))
 
   | P.Affectation (P.Tuple xlst,e) ->
-      let te = type_expression_exn cl env ctx e in
+      let te = type_expression_exn (V.to_clause cl) env ctx e in
       let tlst = check_writable_nlist cl env ctx xlst te.T.exp_loc te.T.exp_typ in
       mk_subst s0.P.sub_loc (T.Affectation (T.Tuple tlst,te))
 
@@ -799,14 +799,14 @@ let rec type_substitution_exn : 'mr.
     let lhs = mk_app ff.r_loc
         { P.exp_loc=ff.r_loc; exp_desc=(P.Ident (ff.r_prefix,ff.r_str)); exp_par=false} (Nlist.to_list nlst)
     in
-    let tlhs = type_expression_exn cl env ctx lhs in
-    let te = type_expression_exn cl env ctx e in
+    let tlhs = type_expression_exn (V.to_clause cl) env ctx lhs in
+    let te = type_expression_exn (V.to_clause cl) env ctx e in
     let () = match get_stype (Global.get_alias env) te.T.exp_typ tlhs.T.exp_typ with
       | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ tlhs.T.exp_typ
       | Some _ -> ()
     in
     let tf = type_writable_var_exn cl env ctx ff in
-    let tlst = Nlist.map (type_expression_exn cl env ctx) nlst in
+    let tlst = Nlist.map (type_expression_exn (V.to_clause cl) env ctx) nlst in
     mk_subst s0.P.sub_loc (T.Affectation (T.Function(tf,tlst),te))
 
   | P.Affectation (P.Record(rc,fd),e) ->
@@ -817,8 +817,8 @@ let rec type_substitution_exn : 'mr.
             { P.exp_loc=rc.r_loc; exp_desc=(P.Ident (rc.r_prefix,rc.r_str)); exp_par=false},fd)) }
        in
     let rc = type_writable_var_exn cl env ctx rc in
-    let trf_access = type_expression_exn cl env ctx rf_access in
-    let te = type_expression_exn cl env ctx e in
+    let trf_access = type_expression_exn (V.to_clause cl) env ctx rf_access in
+    let te = type_expression_exn (V.to_clause cl) env ctx e in
     let () = match get_stype (Global.get_alias env) te.T.exp_typ trf_access.T.exp_typ with
       | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ trf_access.T.exp_typ 
       | Some _ -> ()
@@ -831,7 +831,7 @@ let rec type_substitution_exn : 'mr.
 
   | P.IfThenElse (pslst,s_else) ->
     let aux (p,s) =
-      let tp = type_predicate_exn cl env ctx p in
+      let tp = type_predicate_exn (V.to_clause cl) env ctx p in
       let ts = type_substitution_exn cl env ctx s in
       (tp,ts)
     in
@@ -844,7 +844,7 @@ let rec type_substitution_exn : 'mr.
 
   | P.Select (pslst,s_else) ->
     let aux (p,s) =
-      let tp = type_predicate_exn cl env ctx p in
+      let tp = type_predicate_exn (V.to_clause cl) env ctx p in
       let ts = type_substitution_exn cl env ctx s in
       (tp,ts)
     in
@@ -856,10 +856,10 @@ let rec type_substitution_exn : 'mr.
     mk_subst s0.P.sub_loc (T.Select (tps,t_else))
 
   | P.Case (e,nlst,c_else) ->
-    let te = type_expression_exn cl env ctx e in
+    let te = type_expression_exn (V.to_clause cl) env ctx e in
     let aux (lst,s) =
       let aux elt =
-        let telt = type_expression_exn cl env ctx elt in
+        let telt = type_expression_exn (V.to_clause cl) env ctx elt in
         match get_stype (Global.get_alias env) te.T.exp_typ telt.T.exp_typ with
         | None -> unexpected_type_exn telt.T.exp_loc telt.T.exp_typ te.T.exp_typ 
         | Some _ -> telt
@@ -877,7 +877,7 @@ let rec type_substitution_exn : 'mr.
 
   | P.Any (ids,p,s) ->
     let ctx = declare_nelist ctx ids Local.L_Subst_Binder in
-    let tp = type_predicate_exn cl env ctx p in
+    let tp = type_predicate_exn (V.to_clause cl) env ctx p in
     let tids = get_bv_types ctx ids in
     let ts = type_substitution_exn cl env ctx s in
     mk_subst s0.P.sub_loc (T.Any (tids,tp,ts))
@@ -885,7 +885,7 @@ let rec type_substitution_exn : 'mr.
   | P.Let (ids,nlst,s) ->
     let ctx = declare_nelist ctx ids Local.L_Subst_Binder in
     let aux (v,e:lident*P.expression) =
-      let te = type_expression_exn cl env ctx e in
+      let te = type_expression_exn (V.to_clause cl) env ctx e in
       let () =
         if not (List.exists (fun id -> String.equal id.lid_str v.lid_str) (Nlist.to_list ids)) then
           Error.error v.lid_loc ("Unexpected variable '"^v.lid_str^"'.")
@@ -915,7 +915,7 @@ let rec type_substitution_exn : 'mr.
 
   | P.BecomesElt (xlst,e) ->
       let ty_exp = mk_Power (new_meta ()) in
-      let te = type_expression_exn cl env ctx e in
+      let te = type_expression_exn (V.to_clause cl) env ctx e in
       let ty = match get_stype (Global.get_alias env) te.T.exp_typ ty_exp with
         | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ ty_exp
         | Some (T_Power ty) -> ty
@@ -925,7 +925,7 @@ let rec type_substitution_exn : 'mr.
       mk_subst s0.P.sub_loc (T.BecomesElt (tlst,te))
 
   | P.BecomesSuch (xlst,p) ->
-    let p = type_predicate_exn cl env ctx p in
+    let p = type_predicate_exn (V.to_clause cl) env ctx p in
     let tlst = Nlist.map (type_writable_var_exn cl env ctx) xlst in
     mk_subst s0.P.sub_loc (T.BecomesSuch (tlst,p))
 
@@ -949,7 +949,7 @@ let rec type_substitution_exn : 'mr.
             begin try
                 let op = { T.op_prefix=op.r_prefix; op_id = op.r_str; op_loc = op.r_loc; op_src } in
                 let tids = List.map2 (type_out_parameter cl env ctx) ids infos.Global.op_args_out in
-                let tparams = List.map2 (type_in_parameter cl env ctx) params infos.Global.op_args_in in
+                let tparams = List.map2 (type_in_parameter (V.to_clause cl) env ctx) params infos.Global.op_args_in in
                 mk_subst s0.P.sub_loc (T.CallUp (tids,op,tparams))
               with Invalid_argument _ ->
                 Error.error op.r_loc ("Incorrect number of in/out parameters.")
@@ -958,10 +958,10 @@ let rec type_substitution_exn : 'mr.
     end
 
   | P.While (p,s,inv,var) ->
-    let tp = type_predicate_exn cl env ctx p in
+    let tp = type_predicate_exn (V.to_clause cl) env ctx p in
     let ts = type_substitution_exn cl env ctx s in
-    let t_inv = type_predicate_exn (assert false (*FIXME*)) env ctx inv in
-    let t_var = type_expression_exn (assert false (*FIXME*)) env ctx var in
+    let t_inv = type_predicate_exn V.C_ASSERT env ctx inv in
+    let t_var = type_expression_exn V.C_ASSERT env ctx var in
     let exp = t_int in
     let () = match get_stype (Global.get_alias env) t_var.T.exp_typ exp with
       | None -> unexpected_type_exn var.P.exp_loc t_var.T.exp_typ exp

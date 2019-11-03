@@ -23,7 +23,7 @@ Included | no  | no  | yes | yes | yes
 || CONSTRAINTS | INCLUDES/EXTENDS | PROPERTIES | INVARIANT | OPERATIONS
 ---------|-----|-----|-----|-----|---
 Machine  | no  | no  | no  | yes   | yes (rw)
-Seen     | no  | no  | no  | no (*)| yes (ro)
+Seen     | no  | no  | no  | no (1)| yes (ro)
 Used     | no  | no  | no  | yes   | yes (ro)
 Included | no  | no  | no  | yes   | yes (ro)
 
@@ -45,8 +45,8 @@ Refinememt           | yes | yes | yes | yes | yes
 Refined              | yes | yes | yes | yes | yes
 Seen                 | yes | yes | yes | yes | yes
 Included             | no  | yes | yes | yes | yes
-Refined and Seen     | yes | yes | yes | yes | yes
-Refined and Included | no  | yes | yes | yes | yes
+Refined and Seen (2) | yes | yes | yes | yes | yes
+Refined and Included (2) | no  | yes | yes | yes | yes
 
 ## Abstract Constant
 
@@ -58,7 +58,7 @@ Seen       | yes | yes | yes | yes | yes
 Included   | no  | yes | yes | yes | yes
 Refined and Refinement | yes(?) | yes | yes | yes | yes
 Refined and Seen       | yes    | yes | yes | yes | yes
-Refined and Included   | non(?) | yes | yes | yes | yes
+Refined and Included   | no (?) | yes | yes | yes | yes
 
 ## Concrete Variable
 
@@ -66,9 +66,9 @@ Refined and Included   | non(?) | yes | yes | yes | yes
 ---------------------|-----|-----|-----------|--------|-----------
 Refinement           | no  | no  | yes    | yes | yes (rw)
 Refined              | no  | no  | yes    | yes | yes (rw)
-Seen                 | no  | no  | no (*) | yes | yes (ro)
+Seen                 | no  | no  | no (1) | yes | yes (ro)
 Included             | no  | no  | yes    | yes | yes (ro)
-Refined and Included | no  | no  | yes    | yes | yes (ro)
+Refined and Included (2) | no  | no  | yes    | yes | yes (ro)
 
 ## Abstract Variable
 
@@ -76,8 +76,8 @@ Refined and Included | no  | no  | yes    | yes | yes (ro)
 ---------------------|-----|-----|-----------|--------|-----------
 Refinement | no  | no  | yes    | yes | yes (rw)
 Refined    | no  | no  | yes    | yes | no 
-Seen       | no  | no  | non(?) | yes | yes (ro)
-Included   | no  | no  | yes    | yes | non (ro)
+Seen       | no  | no  | no (1) | yes | yes (ro)
+Included   | no  | no  | yes    | yes | yes (ro)
 Refined and Refinement | no  | no  | yes | yes | yes (rw)
 Refined and Included   | no  | no  | yes | yes | yes (ro)
  
@@ -99,8 +99,8 @@ Implementation | yes | yes | yes | yes | yes | yes | yes
 Refined        | yes | yes | yes | yes | yes | yes | yes
 Seen           | yes | yes | yes | yes | yes | yes | yes
 Imported       | no  | yes | yes | yes | yes | yes | yes
-Refined and Seen     | yes | yes | yes | yes | yes | yes | yes
-Refined and Imported | no (?) | yes | yes | yes | yes | yes | yes
+Refined and Seen (2) | yes | yes | yes | yes | yes | yes | yes
+Refined and Imported (2) | no (?) | yes | yes | yes | yes | yes | yes
 
 ## Abstract Constant
 
@@ -118,15 +118,18 @@ Refined and Imported | no  | yes | no  | yes | yes | yes(?) | no
 -------------------|------------|--------|-----------|--------------|-------------------|-----------|---
 Implementation       | no  | no  | no  | yes    | yes | yes (rw) | yes (rw)
 Refined              | no  | no  | no  | yes    | yes | yes (rw) | yes (rw)
-Seen                 | no  | no  | no  | no (*) | yes | yes (ro) | yes (ro)
+Seen                 | no  | no  | no  | no (1) | yes | yes (ro) | yes (ro)
 Imported             | no  | no  | no  | yes    | yes | yes (rw) | yes (ro)
-Refined and Imported | no  | no  | no  | yes    | yes | yes (rw) | yes (ro)
+Refined and Imported (2) | no  | no  | no  | yes    | yes | yes (rw) | yes (ro)
 
 ## Abstract Variable
 
 || IMPORTS/EXTENDS | PROPERTIES | VALUES | INVARIANT | ASSERT/WHILE | LOCAL\_OPERATIONS | OPERATIONS 
 -------------------|------------|--------|-----------|--------------|-------------------|-----------|---
 Refined              | no  | no  | no  | yes   | yes | no     | no 
-Seen                 | no  | no  | no  | no (*)| yes | yes (ro) | no 
+Seen                 | no  | no  | no  | no (1)| yes | yes (ro) | no 
 Imported             | no  | no  | no  | yes   | yes | yes (rw) | no 
 Refined and Imported | no  | no  | no  | yes   | yes | yes (rw) | no 
+
+(1) yes if option Extended\_Sees is on
+(2) the concrete variable/constant may be abstract in the refined machine.

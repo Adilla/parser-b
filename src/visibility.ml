@@ -30,13 +30,13 @@ let get_ident_in_clause (type mr) (cl:mr clause) (ki:mr G.t_kind) =
   | C_CONSTRAINTS, G.K_Parameter _ -> Some ki
   | C_CONSTRAINTS, _ -> None
   (* In the PROPERTIES clause
-   * variables are NOT visible *)
+   * parameters variables are NOT visible *)
+  | C_PROPERTIES, G.K_Parameter _ -> None
   | C_PROPERTIES, G.K_Abstract_Variable _ -> None
   | C_PROPERTIES, G.K_Concrete_Variable _ -> None
   | C_PROPERTIES, _ -> Some ki
   (* In the INVARIANT clause
    * variables from seen machines are visible only if the option extended_sees is set *)
-(*   | C_INVARIANT, G.Pack(G.K_Concrete_Variable,D_Seen _) -> if !extended_sees then Some ki else None *)
   | C_INVARIANT, G.K_Concrete_Variable (G.D_Seen _) when not !extended_sees -> None
   | C_INVARIANT, G.K_Abstract_Variable (G.D_Seen _) when not !extended_sees -> None
   | C_INVARIANT, _ -> Some ki
@@ -68,8 +68,7 @@ let get_ident_in_clause (type mr) (cl:mr clause) (ki:mr G.t_kind) =
   | C_VALUES, G.K_Concrete_Set _ -> Some ki
   | C_VALUES, G.K_Enumerate _ -> Some ki
   | C_VALUES, _ -> None
-
-(* dans une machine *)
+(* INCLUDES/EXTENDS parameters in a machine *)
   | C_MCH_PARAMETERS, G.K_Parameter _ -> Some ki
   | C_MCH_PARAMETERS, G.K_Concrete_Constant (G.D_Machine _|G.D_Seen _) -> Some ki
   | C_MCH_PARAMETERS, G.K_Concrete_Constant (G.D_Included_Or_Imported _|G.D_Used _) -> None
@@ -83,7 +82,10 @@ let get_ident_in_clause (type mr) (cl:mr clause) (ki:mr G.t_kind) =
   | C_MCH_PARAMETERS, G.K_Enumerate (G.D_Included_Or_Imported _|G.D_Used _) -> None
   | C_MCH_PARAMETERS, G.K_Abstract_Variable _ -> None
   | C_MCH_PARAMETERS, G.K_Concrete_Variable _ -> None
-  | _, _ -> assert false (*FIXME*)
+(* INCLUDES/EXTENDS parameters in a refinemnt *)
+  | C_REF_PARAMETERS , _ -> assert false (*FIXME*)
+(* INCLUDES/EXTENDS parameters in an implementation *)
+  | C_IMP_PARAMETERS , _ -> assert false (*FIXME*)
 
 let get_mutable_in_clause (type mr) (cl:mr mclause) (ki:mr G.t_kind) : mr G.t_kind option =
   match cl, ki with

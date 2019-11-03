@@ -22,7 +22,7 @@ Included | no  | no  | yes | yes | yes
 
 || CONSTRAINTS | INCLUDES/EXTENDS | PROPERTIES | INVARIANT | OPERATIONS
 ---------|-----|-----|-----|-----|---
-Machine  | no  | no  | yes | yes   | yes (rw)
+Machine  | no  | no  | no  | yes   | yes (rw)
 Seen     | no  | no  | no  | no (*)| yes (ro)
 Used     | no  | no  | no  | yes   | yes (ro)
 Included | no  | no  | no  | yes   | yes (ro)

@@ -2,77 +2,32 @@ type lident = SyntaxCore.lident
 type ren_ident = SyntaxCore.ren_ident
 type loc = Utils.loc
 
-type t_abstract = private T_Abs
-type t_concrete = private T_Conc
-type t_mch = private T_Mch
-type t_ref = private T_Ref
-
-type 'ac t_redeclared =
-  | Implicitely : t_concrete t_redeclared
-  | By_Machine : loc -> 'ac t_redeclared
-  | By_Included_Or_Imported : ren_ident -> 'ac t_redeclared
-  | By_Seen : ren_ident -> 'ac t_redeclared
-
-type ('mr,'ac) t_decl =
-  | D_Machine : loc -> ('mr,'ac) t_decl
-  | D_Seen : ren_ident -> ('mr,'ac) t_decl
-  | D_Used : ren_ident -> (t_mch,'ac) t_decl
-  | D_Included_Or_Imported : ren_ident -> ('mr,'ac) t_decl
-  | D_Disappearing : (t_ref,t_abstract) t_decl
-  | D_Redeclared : 'ac t_redeclared -> (t_ref,'ac) t_decl
-
-type t_variable = private T_Var
-type t_constant = private T_Const
-
 type t_param_kind = Set | Scalar
-
-type 'mr t_kind =
-  | K_Parameter : t_param_kind*loc -> 'mr t_kind
-  | K_Abstract_Variable : ('mr,t_abstract) t_decl -> 'mr t_kind
-  | K_Abstract_Constant : ('mr,t_abstract) t_decl -> 'mr t_kind
-  | K_Concrete_Variable : ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Concrete_Constant : ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Abstract_Set : ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Concrete_Set : string list  * ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Enumerate : ('mr,t_concrete) t_decl -> 'mr t_kind
-
-type 'ac t_global_kind = 
-  | G_Parameter : t_param_kind -> t_concrete t_global_kind
-  | G_Abstract_Variable : t_abstract t_global_kind
-  | G_Abstract_Constant : t_abstract t_global_kind
-  | G_Concrete_Variable : t_concrete t_global_kind
-  | G_Concrete_Constant : t_concrete t_global_kind
-  | G_Abstract_Set : t_concrete t_global_kind
-  | G_Concrete_Set : string list -> t_concrete t_global_kind
-  | G_Enumerate : t_concrete t_global_kind
 
 type 'a t_symbol_infos = {
   sy_typ:Btype.t;
-  sy_kind:'a t_kind
+  sy_kind:'a
 }
-
-type 'a t_op_decl =
-  | OD_Current : loc -> t_mch t_op_decl
-  | OD_Seen : ren_ident -> 'a t_op_decl
-  | OD_Included_Or_Imported : ren_ident -> 'a t_op_decl
-  | OD_Included_Or_Imported_And_Promoted : ren_ident*loc -> t_mch t_op_decl
-  | OD_Refined : lident -> t_ref t_op_decl
-  | OD_Current_And_Refined : loc*lident -> t_ref t_op_decl
-  | OD_Included_Or_Imported_And_Refined : ren_ident*lident -> t_ref t_op_decl
-  | OD_Included_Or_Imported_Promoted_And_Refined : ren_ident*loc*lident -> t_ref t_op_decl
-  | OD_Local_Spec : loc -> t_ref t_op_decl
-  | OD_Local_Spec_And_Implem : loc*loc -> t_ref t_op_decl
 
 type 'a t_operation_infos =
   { op_args_in: (string*Btype.t) list;
     op_args_out: (string*Btype.t) list;
     op_readonly:bool;
-    op_src: 'a t_op_decl; }
+    op_src: 'a; }
+
+type t_global_kind =
+  | K_Abstract_Variable
+  | K_Abstract_Constant
+  | K_Concrete_Variable
+  | K_Concrete_Constant
+  | K_Abstract_Set
+  | K_Concrete_Set of string list
+  | K_Enumerate
 
 module MachineInterface :
 sig
   type t
-  type t_symb = S : { id:string; typ:Btype.t; kind:'ac t_global_kind } -> t_symb
+  type t_symb = { id:string; typ:Btype.t; kind:t_global_kind }
   type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   type t_param = { id:string; typ:Btype.t; kind:t_param_kind }
   val make : t_param list -> t_symb list -> t_op list -> t
@@ -80,7 +35,7 @@ sig
   val get_operations : t -> t_op list
   val get_params : t -> t_param list
 end = struct
-  type t_symb = S : { id:string; typ:Btype.t; kind:'ac t_global_kind } -> t_symb
+  type t_symb = { id:string; typ:Btype.t; kind:t_global_kind }
   type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   type t_param = { id:string; typ:Btype.t; kind:t_param_kind }
   type t = t_param list * t_symb list * t_op list
@@ -93,44 +48,682 @@ end
 
 type t_interface = MachineInterface.t
 
-type _ env_kind = Mch : t_mch env_kind | Ref : t_ref env_kind
+let check_args_type alias (err_loc:loc) (args_old:(string*Btype.t)list) (args_new:(string*Btype.t)list) : unit =
+  let aux (x1,ty1) (x2,ty2) =
+    if String.equal x1 x2 then
+      if Btype.is_equal_modulo_alias alias ty1 ty2 then ()
+      else Error.error err_loc
+          ("The parameter '"^x1^"' has type '"^Btype.to_string ty1^
+           "' but parameter of type '"^Btype.to_string ty2^"' was expected.")
+    else Error.error err_loc ("Parameter '"^x2^"' expected but '"^x1^"' was found.")
+  in
+  try List.iter2 aux args_old args_new;
+  with Invalid_argument _ -> Error.error err_loc "Unexpected number of parameters."
 
-type 'a t = {
-  kind:'a env_kind;
-  mutable alias: Btype.t_alias;
-  mutable deps: string list;
-  params: lident list;
-  symb:(string,'a t_symbol_infos) Hashtbl.t;
-  ops:(string,'a t_operation_infos) Hashtbl.t
-}
+let is_in_deps (deps:string list) (mch:string) : bool =
+  List.exists (String.equal mch) deps
 
-let create_mch params : t_mch t =
-  { kind=Mch;
-    alias=Btype.no_alias;
-    deps=[];
-    params;
-    symb=Hashtbl.create 47;
-    ops=Hashtbl.create 47 }
+let rec find_duplicate : (string*'a) list -> string option = function
+  | [] -> None
+  | (x,_)::tl ->
+    let aux (y,_) = String.equal x y in
+    if List.exists aux tl then Some x
+    else find_duplicate tl
 
-let create_ref params : t_ref t =
-  { kind=Ref;
-    params;
-    deps=[];
-    alias=Btype.no_alias;
-    symb=Hashtbl.create 47;
-    ops=Hashtbl.create 47 }
+module Mch = struct
 
-let get_alias env = env.alias
+  type t_source =
+    | Machine of loc
+    | Seen of ren_ident
+    | Used of ren_ident
+    | Included of ren_ident
 
-let get_symbol (env:'a t) (id:string) : 'a t_symbol_infos option =
-  Hashtbl.find_opt env.symb id
+  type t_kind =
+    | Parameter of t_param_kind*loc
+    | Abstract_Variable of t_source
+    | Abstract_Constant of t_source
+    | Concrete_Variable of t_source
+    | Concrete_Constant of t_source
+    | Abstract_Set of t_source
+    | Concrete_Set of string list * t_source
+    | Enumerate of t_source
 
-type 'a t_source =
-  | S_Current : loc -> 'a t_source
-  | S_Seen : ren_ident -> 'a t_source
-  | S_Used : ren_ident -> t_mch t_source
-  | S_Refined : lident -> t_ref t_source
-  | S_Included_Or_Imported : ren_ident -> 'a t_source
+  type t_op_decl =
+    | O_Machine of loc
+    | O_Seen of ren_ident
+    | O_Used of ren_ident
+    | O_Included of ren_ident
+    | O_Included_And_Promoted of ren_ident
+
+  type t = {
+    mutable deps: string list;
+    params: lident list;
+    symb:(string,t_kind t_symbol_infos) Hashtbl.t;
+    ops:(string,t_op_decl t_operation_infos) Hashtbl.t
+  }
+
+  let create params : t =
+    { deps=[];
+      params;
+      symb=Hashtbl.create 47;
+      ops=Hashtbl.create 47 }
+
+  let get_symbol (env:t) (id:string) : t_kind t_symbol_infos option =
+    Hashtbl.find_opt env.symb id
+
+  let add_symbol (env:t) (err_loc:loc) (id:string) (sy_typ:Btype.t) (sy_kind: t_kind) : unit = (*FIXME*)
+    match Hashtbl.find_opt env.symb id with
+    | Some _ ->
+      Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
+    | None ->
+      Hashtbl.add env.symb id { sy_typ; sy_kind }
+
+  let get_operation (env:t) (id:string) : t_op_decl t_operation_infos option =
+    Hashtbl.find_opt env.ops id
+
+  let _add_operation (env:t) (err_loc:loc) (id:string) (op_args_in:(string*Btype.t)list)
+      (op_args_out:(string*Btype.t)list) (op_readonly:bool) (src:t_source) : unit =
+    match Hashtbl.find_opt env.ops id with
+    | Some _ ->
+      Error.error err_loc ("The operation '" ^ id ^ "' clashes with previous declaration.") 
+    | None ->
+      let op_src = match src with
+        | Machine l -> O_Machine l
+        | Seen mch -> O_Seen mch
+        | Used mch -> O_Used mch
+        | Included mch -> O_Included mch
+      in
+      Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly; op_src }
+
+  let add_operation (env:t) (loc:loc) (id:string) (args_in) (args_out) ~is_readonly : unit =
+    match find_duplicate (args_in@args_out) with
+    | None -> _add_operation env loc id args_in args_out is_readonly (Machine loc)
+    | Some arg ->
+      Error.error loc ("The argument '"^arg^"' appears twice in this operation declaration.")
+
+  let promote_operation (env:t) (lc:loc) (id:string) : unit =
+    match get_operation env id with
+    | None -> Error.error lc ("Unknown operation '"^id^"'.")
+    | Some ({ op_src=O_Included mch; _ } as op) ->
+      Hashtbl.replace env.ops id { op with op_src=O_Included_And_Promoted mch}
+    | Some { op_src=O_Included_And_Promoted _; _ } -> assert false (*FIXME*)
+    | Some _ ->
+      Error.error lc ("The operation '"^id^"' is not an operation of an included machine.")
+
+  let mk_kind kind src = match kind with
+    | K_Abstract_Variable -> Abstract_Variable src
+    | K_Abstract_Constant -> Abstract_Constant src
+    | K_Concrete_Variable -> Concrete_Variable src
+    | K_Concrete_Constant -> Concrete_Constant src
+    | K_Abstract_Set -> Abstract_Set src
+    | K_Concrete_Set elts -> Concrete_Set (elts,src)
+    | K_Enumerate -> Enumerate src
+
+  let load_external_symbol (env:t) (mch:ren_ident) (src:t_source)
+      ({id;typ;kind}:MachineInterface.t_symb) : unit =
+    let open MachineInterface in
+    let mk_id id = match mch.r_prefix with
+      | None -> id
+      | Some p -> p ^ "." ^ id 
+    in
+    match kind with
+    | K_Abstract_Variable | K_Concrete_Variable ->
+      add_symbol env mch.SyntaxCore.r_loc (mk_id id)
+        (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
+        (mk_kind kind src)
+    | _ ->
+      if (is_in_deps env.deps mch.SyntaxCore.r_str) then ()
+      else
+        add_symbol env mch.SyntaxCore.r_loc id
+          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
+          (mk_kind kind src)
+
+  let load_external_op (env:t) (mch:ren_ident) (src:t_source)
+      (op:MachineInterface.t_op) : unit =
+    let change_current = List.map (fun (s,ty) ->
+        (s,Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) ty)
+      ) in
+    let op_name = match mch.SyntaxCore.r_prefix with
+      | None -> op.id
+      | Some p -> p ^ "." ^ op.id
+    in
+    _add_operation env mch.SyntaxCore.r_loc op_name (change_current op.args_in)
+      (change_current op.args_out) op.readonly src
+
+  let load_interface_for_seen_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    (*FIXME check not already in deps*)
+    let open MachineInterface in
+    List.iter (load_external_symbol env mch (Seen mch)) (get_symbols itf);
+    List.iter (load_external_op env mch (Seen mch)) (get_operations itf);
+    env.deps <- mch.r_str::env.deps
+
+  let load_interface_for_used_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    (*FIXME check not already in deps*)
+    let open MachineInterface in
+    List.iter (load_external_symbol env mch (Used mch)) (get_symbols itf);
+    env.deps <- mch.r_str::env.deps
+
+  let load_interface_for_included_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    (*FIXME check not already in deps*)
+    let open MachineInterface in
+    List.iter (load_external_symbol env mch (Included mch)) (get_symbols itf);
+    List.iter (load_external_op env mch (Included mch)) (get_operations itf);
+    env.deps <- mch.r_str::env.deps
+
+  let load_interface_for_extended_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    let open MachineInterface in
+    load_interface_for_included_machine env itf mch;
+    List.iter (fun (r:t_op) ->
+        promote_operation env mch.SyntaxCore.r_loc r.id
+      ) (get_operations itf)
+
+  let to_interface (env:t) : t_interface =
+    let get_symbols (x:string) (symb:t_kind t_symbol_infos) (lst:MachineInterface.t_symb list) =
+      match symb.sy_kind with
+      | Parameter (_, _) -> lst
+      | Abstract_Variable (Machine _|Included _)->
+        { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable }::lst
+      | Abstract_Constant (Machine _|Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant }::lst
+      | Concrete_Variable (Machine _|Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable }::lst
+      | Concrete_Constant (Machine _|Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant }::lst
+      | Abstract_Set (Machine _|Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Abstract_Set }::lst
+      | Concrete_Set (elts, (Machine _|Included _)) ->
+        { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts }::lst
+      | Enumerate (Machine _|Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Enumerate }::lst
+      | _ -> lst
+    in
+    let get_operations (id:string) (op:t_op_decl t_operation_infos) lst =
+      match op.op_src with
+      | O_Machine _ | O_Included_And_Promoted _ ->
+        { MachineInterface.id; args_in=op.op_args_in;
+          args_out=op.op_args_out; readonly=op.op_readonly }::lst
+      | _ -> lst
+    in
+    let get_params (lid:lident) : MachineInterface.t_param =
+      let id = lid.SyntaxCore.lid_str in
+      match Hashtbl.find_opt env.symb id with
+      | None -> assert false
+      | Some infos ->
+        begin match infos.sy_kind with
+          | Parameter (kind,_) ->
+            { MachineInterface.id; typ=infos.sy_typ; kind }
+          | _ -> assert false
+        end
+    in
+    let params:MachineInterface.t_param list = List.map get_params env.params in
+    let symbs = Hashtbl.fold get_symbols env.symb [] in
+    let ops = Hashtbl.fold get_operations env.ops [] in
+    MachineInterface.make params symbs ops
+end
+
+module Ref = struct
+
+  type t_source =
+    | Machine of loc
+    | Seen of ren_ident
+    | Refined
+    | Included of ren_ident
+
+  type t_source_2 =
+    | A_Machine of loc
+    | A_Seen of ren_ident
+    | A_Refined
+    | A_Included of ren_ident
+    | A_Redeclared_In_Machine of loc
+    | A_Redeclared_In_Included of ren_ident
+
+  type t_kind =
+    | Parameter of t_param_kind*loc
+    | Abstract_Variable of t_source_2
+    | Abstract_Constant of t_source_2
+    | Concrete_Variable of t_source_2
+    | Concrete_Constant of t_source_2
+    | Abstract_Set of t_source
+    | Concrete_Set of string list * t_source
+    | Enumerate of t_source
+
+  type t_op_decl =
+    | O_Refined
+    | O_Refined_And_Machine of loc
+    | O_Seen of ren_ident
+    | O_Included of ren_ident
+    | O_Refined_And_Included of ren_ident
+    | O_Refined_Included_And_Promoted of ren_ident
+
+  type t = {
+    mutable deps: string list;
+    params: lident list;
+    symb:(string,t_kind t_symbol_infos) Hashtbl.t;
+    ops:(string,t_op_decl t_operation_infos) Hashtbl.t
+  }
+
+  let create params : t =
+    { deps=[];
+      params;
+      symb=Hashtbl.create 47;
+      ops=Hashtbl.create 47 }
+
+  let get_symbol (env:t) (id:string) : t_kind t_symbol_infos option =
+    Hashtbl.find_opt env.symb id
+
+  let update_kind (decl:t_kind) (ki:t_global_kind) (src:t_source) : t_kind option =
+    match decl, ki with
+    | Abstract_Variable src2, K_Abstract_Variable ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Abstract_Variable (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch ->
+          Some (Abstract_Variable (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | Abstract_Variable src2, K_Concrete_Variable ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Concrete_Variable (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch->
+          Some (Concrete_Variable (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | Abstract_Constant src2, K_Abstract_Constant ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Abstract_Constant (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch ->
+          Some (Abstract_Constant (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | Abstract_Constant src2, K_Concrete_Constant ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Concrete_Constant (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch->
+          Some (Concrete_Constant (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | _ -> None
+
+  let to_source_2 = function
+    | Machine l -> A_Machine l
+    | Seen mch -> A_Seen mch
+    | Refined -> A_Refined
+    | Included mch -> A_Included mch
+
+  let mk_kind (kind:t_global_kind) (src:t_source) : t_kind =
+    match kind with
+    | K_Abstract_Variable -> Abstract_Variable (to_source_2 src)
+    | K_Abstract_Constant -> Abstract_Constant (to_source_2 src)
+    | K_Concrete_Variable -> Concrete_Variable (to_source_2 src)
+    | K_Concrete_Constant -> Concrete_Constant (to_source_2 src)
+    | K_Abstract_Set -> Abstract_Set src
+    | K_Concrete_Set elts -> Concrete_Set (elts,src)
+    | K_Enumerate -> Enumerate src
+
+  let add_symbol (env:t) (err_loc:loc) (id:string) (sy_typ:Btype.t)
+      (ki:t_global_kind) (src:t_source) : unit =
+    match Hashtbl.find_opt env.symb id with
+    | Some infos ->
+      let sy_kind = match update_kind infos.sy_kind ki src with
+        | Some x -> x
+        | None ->
+          Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
+      in
+      if not (Btype.is_equal_modulo_alias Btype.no_alias infos.sy_typ sy_typ) then
+        Error.error  err_loc
+          ("The identifier '" ^ id ^ "' has type " 
+           ^ Btype.to_string sy_typ
+           ^ " but was previously declared with type "
+           ^ Btype.to_string infos.sy_typ ^ ".")
+      else
+        Hashtbl.replace env.symb id { sy_typ; sy_kind }
+    | None ->
+      Hashtbl.add env.symb id { sy_typ; sy_kind=mk_kind ki src }
+
+  let get_operation (env:t) (id:string) : t_op_decl t_operation_infos option =
+    Hashtbl.find_opt env.ops id
+
+  let update_op_source (old_src:t_op_decl) (new_src:t_source) : t_op_decl option =
+    match old_src, new_src with
+    | O_Refined, Machine lc -> Some (O_Refined_And_Machine lc)
+    | O_Included mch, Refined
+    | O_Refined, Included mch -> Some (O_Refined_And_Included mch)
+    | _, _ -> None
+
+  let _add_operation (env:t) (err_loc:loc) (id:string) (op_args_in:(string*Btype.t)list)
+      (op_args_out:(string*Btype.t)list) (src:t_source) : unit =
+    match Hashtbl.find_opt env.ops id with
+    | Some infos ->
+      begin match update_op_source infos.op_src src with
+        | None ->
+          Error.error err_loc ("The operation '" ^ id ^ "' clashes with previous declaration.") 
+        | Some op_src ->
+          ( check_args_type Btype.no_alias err_loc infos.op_args_in op_args_in;
+            check_args_type Btype.no_alias err_loc infos.op_args_out op_args_out;
+            Hashtbl.replace env.ops id { infos with op_src } )
+      end
+    | None ->
+      let op_src = match src with
+        | Refined -> O_Refined
+        | Seen mch -> O_Seen mch
+        | Included mch -> O_Included mch
+        | Machine _ -> assert false (*FIXME*)
+      in
+      Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly=false; op_src }
+
+  let add_operation (env:t) (loc:loc) (id:string) (args_in:(string*Btype.t) list)
+      (args_out:(string*Btype.t) list) : unit
+    =
+    match find_duplicate (args_in@args_out) with
+    | None -> _add_operation env loc id args_in args_out (Machine loc)
+    | Some arg ->
+      Error.error loc ("The argument '"^arg^"' appears twice in this operation declaration.")
+
+  let promote_operation (env:t) (loc:loc) (id:string) : unit =
+    match get_operation env id with
+    | None -> Error.error loc ("Unknown operation '"^id^"'.")
+    | Some ({ op_src=O_Refined_And_Included mch; _ } as op) ->
+      Hashtbl.replace env.ops id { op with op_src=O_Refined_Included_And_Promoted mch}
+    | Some { op_src=O_Included _; _ } -> assert false (*FIXME*)
+    | Some { op_src=O_Refined_Included_And_Promoted _; _ } -> assert false (*FIXME*)
+    | Some _ ->
+      Error.error loc ("The operation '"^id^"' is not an operation of an included machine.")
+
+  let load_external_symbol (env:t) (mch:ren_ident) (src:t_source)
+      ({id;typ;kind}:MachineInterface.t_symb) : unit =
+    let open MachineInterface in
+    let mk_id id = match mch.r_prefix with
+      | None -> id
+      | Some p -> p ^ "." ^ id 
+    in
+    match kind with
+    | K_Abstract_Variable | K_Concrete_Variable ->
+      add_symbol env mch.SyntaxCore.r_loc (mk_id id)
+        (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ) kind src
+    | _ ->
+      if (is_in_deps env.deps mch.SyntaxCore.r_str) then ()
+      else
+        add_symbol env mch.SyntaxCore.r_loc id
+          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ) kind src
+
+  let load_external_op (env:t) (mch:ren_ident) (src:t_source)
+      (op:MachineInterface.t_op) : unit =
+    let change_current = List.map (fun (s,ty) ->
+        (s,Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) ty)
+      ) in
+    let op_name = match mch.SyntaxCore.r_prefix with
+      | None -> op.id
+      | Some p -> p ^ "." ^ op.id
+    in
+    _add_operation env mch.SyntaxCore.r_loc op_name (change_current op.args_in)
+      (change_current op.args_out) src
+
+  let load_interface_for_seen_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    (*FIXME check not already in deps*)
+    let open MachineInterface in
+    List.iter (load_external_symbol env mch (Seen mch)) (get_symbols itf);
+    List.iter (load_external_op env mch (Seen mch)) (get_operations itf);
+    env.deps <- mch.r_str::env.deps
+
+  let load_interface_for_refined_machine (env:t) (itf:t_interface) (mch:lident) : unit =
+    (*FIXME check not already in deps*)
+    let open MachineInterface in
+    let ren_mch = { SyntaxCore.r_prefix=None; r_str=mch.lid_str; r_loc=mch.lid_loc } in
+    List.iter (load_external_symbol env ren_mch Refined) (get_symbols itf);
+    List.iter (load_external_op env ren_mch Refined) (get_operations itf);
+    env.deps <- mch.lid_str::env.deps
+
+  let load_interface_for_included_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    (*FIXME check not already in deps*)
+    let open MachineInterface in
+    List.iter (load_external_symbol env mch (Included mch)) (get_symbols itf);
+    List.iter (load_external_op env mch (Included mch)) (get_operations itf);
+    env.deps <- mch.r_str::env.deps
+
+  let load_interface_for_extended_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    let open MachineInterface in
+    load_interface_for_included_machine env itf mch;
+    List.iter (fun (r:t_op) ->
+        promote_operation env mch.SyntaxCore.r_loc r.id
+      ) (get_operations itf)
+
+  let to_interface (env:t) : t_interface =
+    let get_symbols (x:string) (symb:t_kind t_symbol_infos) (lst:MachineInterface.t_symb list) =
+      match symb.sy_kind with
+      | Parameter (_, _) -> lst
+      | Abstract_Variable (A_Machine _|A_Included _
+                          |A_Redeclared_In_Machine _|A_Redeclared_In_Included _)->
+        { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable }::lst
+      | Abstract_Constant (A_Machine _|A_Included _
+                          |A_Redeclared_In_Machine _|A_Redeclared_In_Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant }::lst
+      | Concrete_Variable (A_Machine _|A_Included _|A_Refined
+                          |A_Redeclared_In_Machine _|A_Redeclared_In_Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable }::lst
+      | Concrete_Constant (A_Machine _|A_Included _|A_Refined
+                          |A_Redeclared_In_Machine _|A_Redeclared_In_Included _) ->
+        { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant }::lst
+      | Abstract_Set (Machine _|Included _|Refined) ->
+        { id=x; typ=symb.sy_typ; kind=K_Abstract_Set }::lst
+      | Concrete_Set (elts, (Machine _|Included _|Refined)) ->
+        { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts }::lst
+      | Enumerate (Machine _|Included _|Refined) ->
+        { id=x; typ=symb.sy_typ; kind=K_Enumerate }::lst
+      | _ -> lst
+    in
+    let get_operations (id:string) (op:t_op_decl t_operation_infos) lst =
+      match op.op_src with
+      | O_Refined_And_Machine _ | O_Refined | O_Refined_Included_And_Promoted _ ->
+        { MachineInterface.id; args_in=op.op_args_in;
+          args_out=op.op_args_out; readonly=op.op_readonly }::lst
+      | O_Seen _ | O_Included _ | O_Refined_And_Included _ -> lst
+    in
+    let get_params (lid:lident) : MachineInterface.t_param =
+      let id = lid.SyntaxCore.lid_str in
+      match Hashtbl.find_opt env.symb id with
+      | None -> assert false
+      | Some infos ->
+        begin match infos.sy_kind with
+          | Parameter (kind,_) ->
+            { MachineInterface.id; typ=infos.sy_typ; kind }
+          | _ -> assert false
+        end
+    in
+    let params:MachineInterface.t_param list = List.map get_params env.params in
+    let symbs = Hashtbl.fold get_symbols env.symb [] in
+    let ops = Hashtbl.fold get_operations env.ops [] in
+    MachineInterface.make params symbs ops
+end
+
+module Imp = struct
+
+  type t_source =
+    | Machine of loc
+    | Seen of ren_ident
+    | Refined
+    | Imported of ren_ident
+
+  type t_abstract_decl =
+    | A_Seen of ren_ident
+    | A_Refined
+    | A_Imported of ren_ident
+    | A_Redeclared_In_Imported of ren_ident
+
+  type t_concrete_var_decl =
+    | V_Machine of loc
+    | V_Seen of ren_ident
+    | V_Refined
+    | V_Included of ren_ident
+    | V_Redeclared_In_Imported of ren_ident
+
+  type t_concrete_const_decl =
+    | C_Machine of loc
+    | C_Seen of ren_ident
+    | C_Refined
+    | C_Imported of ren_ident
+    | C_Redeclared_In_Seen of ren_ident
+    | C_Redeclared_In_Imported of ren_ident
+
+  type t_kind =
+    | Parameter of t_param_kind*loc
+    | Abstract_Variable of t_abstract_decl
+    | Abstract_Constant of t_abstract_decl
+    | Concrete_Variable of t_concrete_var_decl
+    | Concrete_Constant of t_concrete_const_decl
+    | Abstract_Set of t_concrete_const_decl
+    | Concrete_Set of string list * t_concrete_const_decl
+    | Enumerate of t_concrete_const_decl
+
+  type t_op_decl =
+    | OD_Current of loc
+    | OD_Seen of ren_ident
+    | OD_Imported of ren_ident
+    | OD_Imported_And_Promoted of ren_ident*loc
+    | OD_Refined
+    | OD_Current_And_Refined of loc
+    | OD_Imported_And_Refined of ren_ident
+    | OD_Imported_Promoted_And_Refined of ren_ident*loc
+    | OD_Local_Spec of loc
+    | OD_Local_Spec_And_Implem of loc*loc
+
+  type t = {
+    mutable deps: string list;
+    params: lident list;
+    mutable alias:Btype.t_alias;
+    symb:(string,t_kind t_symbol_infos) Hashtbl.t;
+    ops:(string,t_op_decl t_operation_infos) Hashtbl.t
+  }
+
+  let create params : t =
+    { params;
+      deps=[];
+      alias=Btype.no_alias;
+      symb=Hashtbl.create 47;
+      ops=Hashtbl.create 47 }
+
+  let get_alias env = env.alias
+
+  let add_alias (s:t) (alias:string) (ty:Btype.t) : bool =
+    match Btype.add_alias s.alias alias ty with
+    | None -> false
+    | Some alias -> (s.alias <- alias; true)
+
+  let get_symbol (env:t) (id:string) : t_kind t_symbol_infos option =
+    Hashtbl.find_opt env.symb id
+
+  let to_abstract_decl (src:t_source) : t_abstract_decl = assert false (*FIXME*)
+  let to_concrete_var_decl (src:t_source) : t_concrete_var_decl = assert false (*FIXME*)
+  let to_concrete_const_decl (src:t_source) : t_concrete_const_decl = assert false (*FIXME*)
+
+  let mk_kind (kind:t_global_kind) (src:t_source) : t_kind =
+    match kind with
+    | K_Abstract_Variable -> Abstract_Variable (to_abstract_decl src)
+    | K_Abstract_Constant -> Abstract_Constant (to_abstract_decl src)
+    | K_Concrete_Variable -> Concrete_Variable (to_concrete_var_decl src)
+    | K_Concrete_Constant -> Concrete_Constant (to_concrete_const_decl src)
+    | K_Abstract_Set -> Abstract_Set (to_concrete_const_decl src)
+    | K_Concrete_Set elts -> Concrete_Set (elts,to_concrete_const_decl src)
+    | K_Enumerate -> Enumerate (to_concrete_const_decl src)
+
+  let update_kind (decl:t_kind) (ki:t_global_kind) (src:t_source) : t_kind option =
+    assert false (*FIXME*)
+    (*
+    match decl, ki with
+    | Abstract_Variable src2, K_Abstract_Variable ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Abstract_Variable (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch ->
+          Some (Abstract_Variable (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | Abstract_Variable src2, K_Concrete_Variable ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Concrete_Variable (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch->
+          Some (Concrete_Variable (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | Abstract_Constant src2, K_Abstract_Constant ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Abstract_Constant (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch ->
+          Some (Abstract_Constant (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | Abstract_Constant src2, K_Concrete_Constant ->
+      begin match src2, src with
+        | A_Refined, Machine l ->
+          Some (Concrete_Constant (A_Redeclared_In_Machine l))
+        | A_Refined, Included mch->
+          Some (Concrete_Constant (A_Redeclared_In_Included mch))
+        | _, _ -> None
+      end
+    | _ -> None
+       *)
+
+  let add_symbol (env:t) (err_loc:loc) (id:string) (sy_typ:Btype.t)
+      (ki:t_global_kind) (src:t_source) : unit =
+    match Hashtbl.find_opt env.symb id with
+    | Some infos ->
+      let sy_kind = match update_kind infos.sy_kind ki src with
+        | Some x -> x
+        | None ->
+          Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
+      in
+      if not (Btype.is_equal_modulo_alias Btype.no_alias infos.sy_typ sy_typ) then
+        Error.error  err_loc
+          ("The identifier '" ^ id ^ "' has type " 
+           ^ Btype.to_string sy_typ
+           ^ " but was previously declared with type "
+           ^ Btype.to_string infos.sy_typ ^ ".")
+      else
+        Hashtbl.replace env.symb id { sy_typ; sy_kind }
+    | None ->
+      Hashtbl.add env.symb id { sy_typ; sy_kind=mk_kind ki src }
+
+  let get_operation (env:t) (id:string) : t_op_decl t_operation_infos option =
+    Hashtbl.find_opt env.ops id
+
+  let add_operation (env:t) (lc:loc) (id:string) (args_in:(string*Btype.t) list)
+    (args_out:(string*Btype.t) list) =
+    assert false (*FIXME*)
+
+  let promote_operation (env:t) (lc:loc) (id:string) : unit =
+    match get_operation env id with
+    | None -> Error.error lc ("Unknown operation '"^id^"'.")
+    | Some ({ op_src=OD_Imported_And_Refined mch; _ } as op) ->
+      Hashtbl.replace env.ops id { op with op_src=OD_Imported_Promoted_And_Refined (mch,lc)}
+    | Some { op_src=OD_Imported _; _ } -> assert false (*FIXME*)
+    | Some { op_src=OD_Imported_Promoted_And_Refined _; _ } -> assert false (*FIXME*)
+    | Some _ ->
+      Error.error lc ("The operation '"^id^"' is not an operation of an imported machine.")
+
+  let load_interface_for_seen_machine (env:t) (itf:t_interface) (mch:ren_ident) : unit =
+    assert false (*FIXME*)
+
+  let load_interface_for_refined_machine (env:t) (itf:t_interface) (mch:lident) : unit =
+    assert false (*FIXME*)
+
+  let load_interface_for_imported_machine (env:t) (itf:t_interface) (mch:ren_ident)
+      (params:(loc*Btype.t) list) : unit =
+    assert false (*FIXME*)
+
+  let load_interface_for_extended_machine (env:t) (itf:t_interface) (mch:ren_ident)
+    (params:(loc*Btype.t) list) : unit =
+    assert false (*FIXME*)
+
+  let check_operation_coherence (env:t) (lc:loc) : unit = assert false (*FIXME*)
+end
+
+(*
+
+
 
 type 'a t_op_source =
   | SO_Current : loc -> 'a t_op_source
@@ -144,16 +737,120 @@ let rec string_list_eq l1 l2 = match l1, l2 with
   | h1::t1, h2::t2 -> String.equal h1 h2 && string_list_eq t1 t2
   | _, _ -> false
 
-let update_kind (type mr ac) (infos:mr t_kind) (src:mr t_source) (ki:ac t_global_kind) : mr t_kind option =
-  match infos, src, ki with
-  | K_Abstract_Variable D_Disappearing, S_Current l, G_Abstract_Variable ->
-    Some (K_Abstract_Variable (D_Redeclared (By_Machine l)))
-  | K_Abstract_Variable D_Disappearing, S_Current l, G_Concrete_Variable ->
-    Some (K_Concrete_Variable (D_Redeclared (By_Machine l)))
-  | K_Abstract_Variable D_Disappearing, S_Included_Or_Imported l, G_Abstract_Variable ->
-    Some (K_Abstract_Variable (D_Redeclared (By_Included_Or_Imported l)))
-  | K_Abstract_Variable D_Disappearing, S_Included_Or_Imported l, G_Concrete_Variable ->
-    Some (K_Concrete_Variable (D_Redeclared (By_Included_Or_Imported l)))
+let update_kind (type mr h) (old_kind:(mr,h) t_kind) (new_kind:(mr,t_simple) t_kind)
+  : (mr,_) t_kind option =
+  match old_kind with
+  (* Parameters *)
+    | K_Parameter (_, _) -> None
+    (* Machine *)
+    | M_Abstract_Variable_Machine _ -> None
+    | M_Abstract_Variable_Seen _ -> None
+    | M_Abstract_Variable_Used _ -> None
+    | M_Abstract_Variable_Included _ -> None
+    | M_Abstract_Constant_Machine _ -> None
+    | M_Abstract_Constant_Seen _ -> None
+    | M_Abstract_Constant_Used _ -> None
+    | M_Abstract_Constant_Included _ -> None
+    | M_Concrete_Variable_Machine _ -> None
+    | M_Concrete_Variable_Seen _ -> None
+    | M_Concrete_Variable_Used _ -> None
+    | M_Concrete_Variable_Included _ -> None
+    | M_Concrete_Constant_Machine _ -> None
+    | M_Concrete_Constant_Seen _ -> None
+    | M_Concrete_Constant_Used _ -> None
+    | M_Concrete_Constant_Included _ -> None
+    | M_Set_Or_Enum_Machine _ -> None
+    | M_Set_Or_Enum_Seen _ -> None
+    | M_Set_Or_Enum_Used _ -> None
+    | M_Set_Or_Enum_Included _ -> None
+    (* Abstract Variables in Refinement *)
+    | R_Abstract_Variable_Machine lc ->
+      begin match new_kind with
+        | R_Abstract_Variable_Refined -> Some (R_Abstract_Variable_Redeclared_In_Machine lc)
+        | _ -> None
+      end
+    | R_Abstract_Variable_Refined ->
+      begin match new_kind with
+        | R_Abstract_Variable_Machine lc -> Some (R_Abstract_Variable_Redeclared_In_Machine lc)
+        | R_Abstract_Variable_Included mch -> Some (R_Abstract_Variable_Redeclared_In_Included mch)
+        | _ -> None
+      end
+    | R_Abstract_Variable_Seen _ -> None
+    | R_Abstract_Variable_Included mch ->
+      begin match new_kind with
+        | R_Abstract_Variable_Refined -> Some (R_Abstract_Variable_Redeclared_In_Included mch)
+        | _ -> None
+      end
+    | R_Abstract_Variable_Redeclared_In_Machine _ -> None
+    | R_Abstract_Variable_Redeclared_In_Included _ -> None
+    (* Abstract Constant in Refinement *)
+    | R_Abstract_Constant_Machine lc ->
+      begin match new_kind with
+        | R_Abstract_Constant_Refined ->
+          Some (R_Abstract_Constant_Redeclared_In_Machine lc)
+        | _ -> None
+      end
+    | R_Abstract_Constant_Refined ->
+      begin match new_kind with
+        | R_Abstract_Constant_Machine lc ->
+          Some (R_Abstract_Constant_Redeclared_In_Machine lc)
+        | R_Abstract_Constant_Included mch ->
+          Some (R_Abstract_Constant_Redeclared_In_Included mch)
+        | _ -> None
+      end
+    | R_Abstract_Constant_Seen _ -> None
+    | R_Abstract_Constant_Included _ -> assert false (*FIXME*)
+    | R_Abstract_Constant_Redeclared_In_Machine _ -> None
+    | R_Abstract_Constant_Redeclared_In_Included _ -> None
+    | R_Concrete_Variable_Machine _ -> None
+    | R_Concrete_Variable_Seen _ -> None
+    | R_Concrete_Variable_Refined -> None
+    | R_Concrete_Variable_Included _ -> None
+    | R_Concrete_Constant_Machine _ -> None
+    | R_Concrete_Constant_Seen _ -> None
+    | R_Concrete_Constant_Refined -> None
+    | R_Concrete_Constant_Included _ -> None
+    | R_Set_Or_Enum_Machine _ -> None
+    | R_Set_Or_Enum_Seen _ -> None
+    | R_Set_Or_Enum_Refined _ -> None
+    | R_Set_Or_Enum_Included _ -> None
+    | I_Abstract_Variable_Refined -> assert false (*FIXME*)
+    | I_Abstract_Variable_Seen _ -> None
+    | I_Abstract_Variable_Imported _ -> assert false (*FIXME*)
+    | I_Abstract_Variable_Redeclared_In_Imported _ -> None
+    | I_Abstract_Constant_Refined -> assert false (*FIXME*)
+    | I_Abstract_Constant_Seen _ -> None
+    | I_Abstract_Constant_Imported _ -> assert false (*FIXME*)
+    | I_Abstract_Constant_Redeclared_In_Imported _ -> None
+    | I_Concrete_Variable_Machine -> None
+    | I_Concrete_Variable_Refined -> assert false (*FIXME*)
+    | I_Concrete_Variable_Seen _ -> None
+    | I_Concrete_Variable_Imported _ -> assert false (*FIXME*)
+    | I_Concrete_Variable_Redeclared_In_Imported _ -> None
+    | I_Concrete_Constant_Machine -> None
+    | I_Concrete_Constant_Refined -> assert false (*FIXME*)
+    | I_Concrete_Constant_Seen _ -> assert false (*FIXME*)
+    | I_Concrete_Constant_Imported _ -> assert false (*FIXME*)
+    | I_Concrete_Constant_Redeclared_In_Imported _ -> None
+    | I_Concrete_Constant_Redeclared_In_Seen _ -> None
+    | I_Set_Or_Enum_Machine _ -> None
+    | I_Set_Or_Enum_Refined _ -> assert false (*FIXME*)
+    | I_Set_Or_Enum_Seen _ -> assert false (*FIXME*)
+    | I_Set_Or_Enum_Imported _ -> assert false (*FIXME*)
+    | I_Set_Or_Enum_Redeclared_In_Imported _ -> None
+    | I_Set_Or_Enum_Redeclared_In_Seen _ -> None
+    (*
+  (*Machine*)
+
+  (*Abstract Variables*)
+  | K_Abstract_Variable R_Refined, S_Current_Ref l, G_Abstract_Variable ->
+    Some (K_Abstract_Variable (R_Redeclared_In_Machine l))
+  | K_Abstract_Variable R_Refined, S_Included_Ref l, G_Abstract_Variable ->
+    Some (K_Abstract_Variable (R_Redeclared_In_Included l))
+  | K_Abstract_Variable R_Refined, S_Current_Ref l, G_Concrete_Variable ->
+    Some (K_Concrete_Variable (R_Redeclared_In_Machine l))
+  | K_Abstract_Variable R_Disappearing, S_Included_Or_Imported l, G_Concrete_Variable ->
+    Some (K_Concrete_Variable (R_Redeclared (By_Included_Or_Imported l)))
   | K_Abstract_Variable _, _, _ -> None
 
   | K_Abstract_Constant D_Disappearing, S_Current l, G_Abstract_Constant ->
@@ -207,29 +904,17 @@ let update_kind (type mr ac) (infos:mr t_kind) (src:mr t_source) (ki:ac t_global
   | K_Enumerate _, _, _ -> None
 
   | K_Parameter (_, _), _, _ -> None
+*)
 
 let add_alias (s:'a t) (alias:string) (ty:Btype.t) : bool =
   match Btype.add_alias s.alias alias ty with
   | None -> false
   | Some alias -> (s.alias <- alias; true)
 
-let to_decl_a (type mr) (src:mr t_source) : (mr,t_abstract) t_decl = match src with
-  | S_Current lc -> D_Machine lc
-  | S_Seen mch -> D_Seen mch
-  | S_Used mch -> D_Used mch
-  | S_Included_Or_Imported mch -> D_Included_Or_Imported mch
-  | S_Refined _ -> D_Disappearing
-
-let to_decl_c (type mr) (src:mr t_source) : (mr,t_concrete) t_decl = match src with
-  | S_Current lc -> D_Machine lc
-  | S_Seen mch -> D_Seen mch
-  | S_Used mch -> D_Used mch
-  | S_Included_Or_Imported mch -> D_Included_Or_Imported mch
-  | S_Refined _ -> D_Redeclared Implicitely
-
 let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.t)
-    (ki:ac t_global_kind) (src:mr t_source) : unit
+    (sy_kind:(mr,t_simple) t_kind) : unit
   =
+(*
   (match src, ki with
    | S_Included_Or_Imported inc, G_Abstract_Set ->
      let success = add_alias env id (Btype.mk_Abstract_Set (Btype.T_Ext inc.SyntaxCore.r_str) id) in
@@ -238,9 +923,10 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
      let success = add_alias env id (Btype.mk_Concrete_Set (Btype.T_Ext inc.SyntaxCore.r_str) id) in
      assert success
    | _, _ -> () );
+*)
   match Hashtbl.find_opt env.symb id with
-  | Some infos ->
-    let sy_kind = match update_kind infos.sy_kind src ki with
+  | Some (I infos) ->
+    let sy_kind = match update_kind infos.sy_kind sy_kind with
       | Some x -> x
       | None ->
         Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
@@ -252,26 +938,20 @@ let _add_symbol (type mr ac) (env:mr t) (err_loc:loc) (id:string) (sy_typ:Btype.
          ^ " but was previously declared with type "
          ^ Btype.to_string infos.sy_typ ^ ".")
     else
-      Hashtbl.replace env.symb id { sy_typ; sy_kind }
+      Hashtbl.replace env.symb id (I{ sy_typ; sy_kind })
   | None ->
-    let sy_kind = match ki with
-      | G_Parameter t ->
-        begin match src with
-          | S_Current lc -> K_Parameter (t,lc)
-          | _ -> assert false
-        end
-      | G_Abstract_Variable -> K_Abstract_Variable (to_decl_a src)
-      | G_Abstract_Constant -> K_Abstract_Constant (to_decl_a src)
-      | G_Concrete_Variable -> K_Concrete_Variable (to_decl_c src)
-      | G_Concrete_Constant -> K_Concrete_Constant (to_decl_c src)
-      | G_Abstract_Set -> K_Abstract_Set (to_decl_c src)
-      | G_Concrete_Set elts -> K_Concrete_Set (elts,to_decl_c src)
-      | G_Enumerate -> K_Enumerate (to_decl_c src)
-    in
-    Hashtbl.add env.symb id { sy_typ; sy_kind }
+    Hashtbl.add env.symb id (I { sy_typ; sy_kind })
 
-let add_symbol (type mr ac) (env:mr t) (loc:loc) (id:string) (typ:Btype.t) (ki:ac t_global_kind) : unit =
-  _add_symbol env loc id typ ki (S_Current loc)
+let add_symbol (type mr) (env:mr t) (loc:loc) (id:string) (typ:Btype.t) (ki:t_global_kind) : unit =
+  match env.kind, ki with
+  | Mch, G_Abstract_Variable -> _add_symbol env loc id typ (M_Abstract_Variable_Machine loc)
+  | Mch, G_Abstract_Constant -> _add_symbol env loc id typ (M_Abstract_Constant_Machine loc)
+  | Mch, G_Concrete_Variable -> _add_symbol env loc id typ (M_Concrete_Variable_Machine loc)
+  | Mch, G_Concrete_Constant -> _add_symbol env loc id typ (M_Concrete_Constant_Machine loc)
+  | Mch, G_Abstract_Set -> _add_symbol env loc id typ (M_Concrete_Constant_Machine loc)
+  | Mch, G_Concrete_Set _
+  | Mch, G_Enumerate -> assert false (*FIXME*)
+  | _, _ -> assert false (*FIXME*)
 
 let update_op_source (type a) (current_source:a t_op_decl) (new_source:a t_op_source) : a t_op_decl option =
   match current_source, new_source with
@@ -281,17 +961,6 @@ let update_op_source (type a) (current_source:a t_op_decl) (new_source:a t_op_so
   | OD_Local_Spec spe, SO_Current imp -> Some (OD_Local_Spec_And_Implem (spe,imp))
   | _, _ -> None
 
-let check_args_type env (err_loc:loc) (args_old:(string*Btype.t)list) (args_new:(string*Btype.t)list) : unit =
-  let aux (x1,ty1) (x2,ty2) =
-    if String.equal x1 x2 then
-      if Btype.is_equal_modulo_alias env.alias ty1 ty2 then ()
-      else Error.error err_loc
-          ("The parameter '"^x1^"' has type '"^Btype.to_string ty1^
-           "' but parameter of type '"^Btype.to_string ty2^"' was expected.")
-    else Error.error err_loc ("Parameter '"^x2^"' expected but '"^x1^"' was found.")
-  in
-  try List.iter2 aux args_old args_new;
-  with Invalid_argument _ -> Error.error err_loc "Unexpected number of parameters."
 
 let _add_operation (type a) (env:a t) (err_loc:loc) (id:string) (op_args_in:(string*Btype.t)list)
     (op_args_out:(string*Btype.t)list) (op_readonly:bool) (op_src:a t_op_source) : unit =
@@ -672,8 +1341,9 @@ let fold_operations (f:string -> 'mr t_operation_infos -> 'a -> 'a) (env:'mr t) 
 let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string) list)
     (itf:t_interface) : (Btype.t_atomic_src*string) list =
   let open MachineInterface in
-  let aux accu = function
-    | S { id; kind=G_Abstract_Set; _ } -> (src,id)::accu
+  let aux accu (x:t_symb) = match x.kind with
+    | G_Abstract_Set -> (src,x.id)::accu
     | _ -> accu
   in
   List.fold_left aux accu (get_symbols itf)
+   *)

@@ -1,56 +1,193 @@
 (** Global typing environment *)
+
 type lident = SyntaxCore.lident
 type ren_ident = SyntaxCore.ren_ident
 type loc = Utils.loc
 
-type t_abstract = private T_Abs
-type t_concrete = private T_Conc
-type t_mch = private T_Mch
-type t_ref = private T_Ref
-
-type 'ac t_redeclared =
-  | Implicitely : t_concrete t_redeclared
-  | By_Machine : loc -> 'ac t_redeclared
-  | By_Included_Or_Imported : ren_ident -> 'ac t_redeclared
-  | By_Seen : ren_ident -> 'ac t_redeclared
-
-type ('mr,'ac) t_decl =
-  | D_Machine : loc -> ('mr,'ac) t_decl
-  | D_Seen : ren_ident -> ('mr,'ac) t_decl
-  | D_Used : ren_ident -> (t_mch,'ac) t_decl
-  | D_Included_Or_Imported : ren_ident -> ('mr,'ac) t_decl
-  | D_Disappearing : (t_ref,t_abstract) t_decl
-  | D_Redeclared : 'ac t_redeclared -> (t_ref,'ac) t_decl
-
-type t_variable = private T_Var
-type t_constant = private T_Const
-
 type t_param_kind = Set | Scalar
-
-type 'mr t_kind =
-  | K_Parameter : t_param_kind*loc -> 'mr t_kind
-  | K_Abstract_Variable : ('mr,t_abstract) t_decl -> 'mr t_kind
-  | K_Abstract_Constant : ('mr,t_abstract) t_decl -> 'mr t_kind
-  | K_Concrete_Variable : ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Concrete_Constant : ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Abstract_Set : ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Concrete_Set : string list  * ('mr,t_concrete) t_decl -> 'mr t_kind
-  | K_Enumerate : ('mr,t_concrete) t_decl -> 'mr t_kind
-
-type 'ac t_global_kind = 
-  | G_Parameter : t_param_kind -> t_concrete t_global_kind
-  | G_Abstract_Variable : t_abstract t_global_kind
-  | G_Abstract_Constant : t_abstract t_global_kind
-  | G_Concrete_Variable : t_concrete t_global_kind
-  | G_Concrete_Constant : t_concrete t_global_kind
-  | G_Abstract_Set : t_concrete t_global_kind
-  | G_Concrete_Set : string list -> t_concrete t_global_kind
-  | G_Enumerate : t_concrete t_global_kind
 
 type 'a t_symbol_infos = {
   sy_typ:Btype.t;
-  sy_kind:'a t_kind
+  sy_kind:'a
 }
+
+type 'a t_operation_infos =
+  { op_args_in: (string*Btype.t) list;
+    op_args_out: (string*Btype.t) list;
+    op_readonly:bool;
+    op_src: 'a; }
+
+type t_interface
+
+module Mch : sig
+  type t
+
+  type t_source =
+    | Machine of loc
+    | Seen of ren_ident
+    | Used of ren_ident
+    | Included of ren_ident
+
+  type t_kind =
+    | Parameter of t_param_kind*loc
+    | Abstract_Variable of t_source
+    | Abstract_Constant of t_source
+    | Concrete_Variable of t_source
+    | Concrete_Constant of t_source
+    | Abstract_Set of t_source
+    | Concrete_Set of string list * t_source
+    | Enumerate of t_source
+
+  val create : lident list -> t
+  val get_symbol : t -> string -> t_kind t_symbol_infos option
+  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
+
+  type t_op_decl =
+    | O_Machine of loc
+    | O_Seen of ren_ident
+    | O_Used of ren_ident
+    | O_Included of ren_ident
+    | O_Included_And_Promoted of ren_ident
+
+  val get_operation : t -> string -> t_op_decl t_operation_infos option
+  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
+  val promote_operation : t -> loc -> string -> unit
+
+  val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
+  val load_interface_for_used_machine : t -> t_interface -> ren_ident -> unit
+  val load_interface_for_included_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+
+  val to_interface : t -> t_interface
+end
+
+module Ref : sig
+  type t
+
+  type t_source =
+    | Machine of loc
+    | Seen of ren_ident
+    | Refined
+    | Included of ren_ident
+
+  type t_abstract_source =
+    | A_Machine of loc
+    | A_Seen of ren_ident
+    | A_Refined
+    | A_Included of ren_ident
+    | A_Redeclared_In_Machine of loc
+    | A_Redeclared_In_Included of ren_ident
+
+  type t_kind =
+    | Parameter of t_param_kind*loc
+    | Abstract_Variable of t_abstract_source
+    | Abstract_Constant of t_abstract_source
+    | Concrete_Variable of t_source
+    | Concrete_Constant of t_source
+    | Abstract_Set of t_source
+    | Concrete_Set of string list * t_source
+    | Enumerate of t_source
+
+  val create : lident list -> t
+  val get_symbol : t -> string -> t_kind t_symbol_infos option
+  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
+
+  type t_op_decl =
+    | OD_Current of loc
+    | OD_Seen of ren_ident
+    | OD_Included of ren_ident
+    | OD_Included_And_Promoted of ren_ident*loc
+    | OD_Refined of lident
+    | OD_Current_And_Refined of loc*lident
+    | OD_Included_And_Refined of ren_ident*lident
+    | OD_Included_Promoted_And_Refined of ren_ident*loc*lident
+
+  val get_operation : t -> string -> t_op_decl t_operation_infos option
+  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
+  val promote_operation : t -> loc -> string -> unit
+
+  val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
+  val load_interface_for_refined_machine : t -> t_interface -> lident -> unit
+  val load_interface_for_included_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+
+  val to_interface : t -> t_interface
+end
+
+module Imp : sig
+  type t
+
+  type t_source =
+    | Machine of loc
+    | Seen of ren_ident
+    | Refined
+    | Imported of ren_ident
+
+  type t_abstract_decl =
+    | A_Seen of ren_ident
+    | A_Refined
+    | A_Imported of ren_ident
+    | A_Redeclared_In_Imported of ren_ident
+
+  type t_concrete_var_decl =
+    | V_Machine of loc
+    | V_Seen of ren_ident
+    | V_Refined
+    | V_Included of ren_ident
+    | V_Redeclared_In_Imported of ren_ident
+
+  type t_concrete_const_decl =
+    | C_Machine of loc
+    | C_Seen of ren_ident
+    | C_Refined
+    | C_Imported of ren_ident
+    | C_Redeclared_In_Seen of ren_ident
+    | C_Redeclared_In_Imported of ren_ident
+
+  type t_kind =
+    | Parameter of t_param_kind*loc
+    | Abstract_Variable of t_abstract_decl
+    | Abstract_Constant of t_abstract_decl
+    | Concrete_Variable of t_concrete_var_decl
+    | Concrete_Constant of t_concrete_const_decl
+    | Abstract_Set of t_concrete_const_decl
+    | Concrete_Set of string list * t_concrete_const_decl
+    | Enumerate of t_concrete_const_decl
+
+  val create : lident list -> t
+  val get_symbol : t -> string -> t_kind t_symbol_infos option
+  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
+
+  type t_op_decl =
+    | OD_Current of loc
+    | OD_Seen of ren_ident
+    | OD_Imported of ren_ident
+    | OD_Imported_And_Promoted of ren_ident*loc
+    | OD_Refined of lident
+    | OD_Current_And_Refined of loc*lident
+    | OD_Imported_And_Refined of ren_ident*lident
+    | OD_Imported_Promoted_And_Refined of ren_ident*loc*lident
+    | OD_Local_Spec of loc
+    | OD_Local_Spec_And_Implem of loc*loc
+
+  val get_operation : t -> string -> t_op_decl t_operation_infos option
+  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
+  val promote_operation : t -> loc -> string -> unit
+
+  val get_alias : t -> Btype.t_alias 
+  val add_alias : t -> string -> Btype.t -> bool
+
+  val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
+  val load_interface_for_refined_machine : t -> t_interface -> lident -> unit
+  val load_interface_for_imported_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+
+  val to_interface : t -> t_interface
+
+  val check_operation_coherence : t  -> loc -> unit
+end
+
+(*
 
 type 'a t_op_decl =
   | OD_Current : loc -> t_mch t_op_decl
@@ -61,44 +198,14 @@ type 'a t_op_decl =
   | OD_Current_And_Refined : loc*lident -> t_ref t_op_decl
   | OD_Included_Or_Imported_And_Refined : ren_ident*lident -> t_ref t_op_decl
   | OD_Included_Or_Imported_Promoted_And_Refined : ren_ident*loc*lident -> t_ref t_op_decl
-  | OD_Local_Spec : loc -> t_ref t_op_decl
-  | OD_Local_Spec_And_Implem : loc*loc -> t_ref t_op_decl
 
-type 'a t_operation_infos =
-  { op_args_in: (string*Btype.t) list;
-    op_args_out: (string*Btype.t) list;
-    op_readonly:bool;
-    op_src: 'a t_op_decl; }
 
-type 'a t
+*)
 
-val create_mch : lident list -> t_mch t
-val create_ref : lident list -> t_ref t
+(* val add_abstract_sets : Btype.t_atomic_src -> (Btype.t_atomic_src*string) list -> t_interface -> (Btype.t_atomic_src*string) list *)
 
-val get_symbol : 'a t -> string -> 'a t_symbol_infos option
-val add_symbol : 'mr t -> loc -> string -> Btype.t -> 'ac t_global_kind -> unit
 
-val get_operation : 'a t -> string -> 'a t_operation_infos option
-val add_mch_operation : t_mch t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
-val add_ref_operation : t_ref t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_local:bool -> unit
-val promote_operation : 'a t -> loc -> string -> unit
-
-val get_alias : 'a t -> Btype.t_alias 
-val add_alias : 'a t -> string -> Btype.t -> bool
-
-type t_interface
-val to_interface : 'a t -> t_interface 
-
-val load_interface_for_seen_machine : 'a t -> t_interface -> ren_ident -> unit
-val load_interface_for_used_machine : t_mch t -> t_interface -> ren_ident -> unit
-val load_interface_for_refined_machine : t_ref t -> t_interface -> lident -> lident list -> unit
-val load_interface_for_included_or_imported_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
-val load_interface_for_extended_machine : 'a t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
-
-val add_abstract_sets : Btype.t_atomic_src -> (Btype.t_atomic_src*string) list -> t_interface -> (Btype.t_atomic_src*string) list
-
-val check_operation_coherence_ref : t_ref t  -> loc -> unit
-val check_operation_coherence_imp : t_ref t  -> loc -> unit
-
+(*
 val fold_symbols: (string -> 'x t_symbol_infos -> 'a -> 'a) -> 'x t -> 'a -> 'a
 val fold_operations: (string -> 'x t_operation_infos -> 'a -> 'a) -> 'x t -> 'a -> 'a
+*)

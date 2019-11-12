@@ -1,21 +1,6 @@
 open SyntaxCore
 module V = Visibility
 module G = Global
-(*
-type 'src t_ident_kind =
-  | L_Expr_Binder
-  | L_Subst_Binder
-  | L_Param_In
-  | L_Param_Out
-  | G_Parameter of Utils.loc
-  | G_Abstract_Variable of 'src
-  | G_Abstract_Constant of 'src
-  | G_Concrete_Variable of 'src
-  | G_Concrete_Constant of 'src
-  | G_Abstract_Set of 'src
-  | G_Concrete_Set of 'src
-  | G_Enumerate of 'src
-*)
 
 type ('ki,'typ) t_ident = 
   { id_loc:Utils.loc;
@@ -23,23 +8,6 @@ type ('ki,'typ) t_ident =
     id_type:'typ;
     id_kind:'ki }
   
-  
-  (* clause properties*)
-  (* clause operations*)
-  (* REFINEMENT *)
-  (* IMPLEMENTATION *)
-(*
-  | K_Local of string * Local.t_local_kind
-  | K_Global of string option*string * 'mr G.t_kind
-*)
-
-(*
-type t_op_source =
-  | SO_Included_Or_Imported of ren_ident
-  | SO_Seen_Read_Only of ren_ident
-  | SO_Local of Utils.loc
-*)
-
 type 'op_src called_op = {
   op_prefix:string option;
   op_id:string;
@@ -95,23 +63,6 @@ and ('ki,'typ) predicate = {
   prd_desc: ('ki,'typ) predicate_desc
 }
 
-(*
-type 'mr t_mutable_ident
-  | MI_Subst_Binder
-  | MI_Out_Param
-  | MI_Global of 'mr G.t_kind
-*)
-
-(*
-type ('mr,'typ) mut_var = {
-  mv_loc:Utils.loc;
-  mv_prefix:string option;
-  mv_id:string;
-  mv_typ:'typ;
-  mv_kind: 'mr t_mutable_ident
-}
-*)
-
 type ('id_ki,'mut_ki,'typ) lhs =
   | Tuple of ('mut_ki,'typ) t_ident Nlist.t
   | Function of ('mut_ki,'typ) t_ident * ('id_ki,'typ) expression Nlist.t
@@ -148,7 +99,6 @@ type 'src symb = {
   sy_typ:Btype.t;
   sy_src:'src
 }
-
 
 type ('id_ki,'mut_ki,'assert_ki,'op_src) operation =
   { op_out: arg list;

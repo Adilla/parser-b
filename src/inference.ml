@@ -625,6 +625,7 @@ and check_utuple : type  env_ki id_ki. (env_ki,id_ki) V.clause ->
       | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ ty_exp
     end
 
+(*
 let type_global_mut_ident (type env_ki mut_ki)
     (cl:(env_ki,_,mut_ki,_,_,_) Visibility.sclause) (env:(env_ki,_) Global.env)
     (id_loc:Utils.loc) (id_name:string) : (mut_ki,Btype.Open.t) T.t_ident
@@ -654,6 +655,7 @@ let type_mut_ident (type env_ki mut_ki)
     end
   | Some p ->
     type_global_mut_ident cl env id_loc (p ^ "." ^ id_str)
+*)
 
 let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibility.sclause ->
   (env_ki,_) Global.env -> Local.t -> ren_ident -> (mut_ki,Btype.Open.t) T.t_ident

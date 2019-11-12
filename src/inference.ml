@@ -3,9 +3,9 @@ module P = PSyntax
 module T = TSyntax
 module V = Visibility
 
-let mk_expr exp_loc exp_typ exp_desc : ('a,'c) T.expression = { T.exp_loc; exp_typ; exp_desc }
-let mk_pred prd_loc prd_desc : ('a,'c) T.predicate = { T.prd_loc; prd_desc }
-let mk_subst sub_loc sub_desc : ('a,'c) T.substitution = { T.sub_loc; sub_desc  }
+let mk_expr (type ki ty) (exp_loc:Utils.loc) (exp_typ:ty) (exp_desc:(ki,ty) T.expression_desc) : (ki,ty) T.expression = { T.exp_loc; exp_typ; exp_desc }
+let mk_pred prd_loc prd_desc : _ T.predicate = { T.prd_loc; prd_desc }
+let mk_subst sub_loc sub_desc : _ T.substitution = { T.sub_loc; sub_desc  }
 
 let declare_list (ctx:Local.t) (lst:lident list) (lk:Local.t_local_kind) : Local.t =
   List.fold_left (fun ctx v -> Local.declare ctx v.lid_str lk) ctx lst
@@ -216,32 +216,35 @@ let is_int_or_power_exn l alias (arg1:('mr,Btype.Open.t) T.expression) (arg2:('m
            ("This expression has type '"^ to_string ty1^
             "' but an expression of type INTEGER or POW(_) was expected.")
 
-let type_ident (type mr) (env:mr Global.t) (ctx:Local.t) id_loc (id_prefix:string option)
-    (id_str:string) (cl: mr V.clause) : mr T.t_ident * Btype.Open.t =
+let type_global_ident (type env_ki id_ki)
+    (cl:(env_ki,id_ki) Visibility.clause) (env:(env_ki,_) Global.env)
+    (id_loc:Utils.loc) (id_name:string) : (id_ki,Btype.Open.t) T.t_ident
+  =
+  match Global.get_symbol env id_name with
+  | Some infos ->
+    { T.id_name;
+      id_loc;
+      id_type=(infos.Global.sy_typ :> Btype.Open.t);
+      id_kind=Visibility.mk_global cl infos.Global.sy_kind }
+  | None -> Error.error id_loc ("Unknown identifier '"^id_name^"'.")
+
+let type_ident (type env_ki id_ki)
+    (cl:(env_ki,id_ki) Visibility.clause) (env:(env_ki,_) Global.env) (ctx:Local.t) 
+    (id_loc:Utils.loc) (id_prefix:string option) (id_str:string) : (id_ki,Btype.Open.t) T.t_ident =
   match id_prefix with
   | None ->
     begin match Local.get ctx id_str with
-      | Some(Some ty,ki) -> (T.K_Local (id_str,ki),(ty:>Btype.Open.t))
-      | Some(None,_) -> Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
-      | None ->
-        begin match Global.get_symbol env id_str with
-          | Some infos ->
-            begin match V.get_ident_in_clause cl infos.Global.sy_kind with
-              | Some ki -> (T.K_Global (id_prefix,id_str,ki), (infos.Global.sy_typ :> Btype.Open.t) )
-              | None -> Error.error id_loc ("The identifier '"^id_str^"' is not visible in this clause.")
-            end
-          | None -> Error.error id_loc ("Unknown identifier '"^id_str^"'.")
-        end
+      | Some(Some ty,ki) ->
+        { T.id_name = id_str;
+          id_loc;
+          id_type=(ty :> Btype.Open.t);
+          id_kind=Visibility.mk_local cl ki }
+      | Some(None,_) ->
+        Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
+      | None -> type_global_ident cl env id_loc id_str
     end
   | Some p ->
-    begin match Global.get_symbol env (p^"."^id_str) with
-      | Some infos ->
-        begin match V.get_ident_in_clause cl infos.Global.sy_kind with
-          | Some ki -> (T.K_Global (id_prefix,id_str,ki), (infos.Global.sy_typ :> Btype.Open.t) )
-          | None -> Error.error id_loc ("The identifier '"^id_str^"' is not visible in this clause.")
-        end
-      | None -> Error.error id_loc ("Unknown identifier '"^id_str^"'.")
-    end
+    type_global_ident cl env id_loc (p ^ "." ^ id_str)
 
 type utuple =
   | T_Ident of (Utils.loc*string*Local.t_local_kind)
@@ -271,15 +274,18 @@ let rec is_untyped_tuple (ctx:Local.t) (e:P.expression) : utuple =
     end
   | _ -> T_Expr e
 
-let type_untyped_id ctx lc id ki ty =
+let type_untyped_id (type env_ki id_ki) (cl:(env_ki,id_ki) Visibility.clause) (ctx:Local.t)
+    (id_loc:Utils.loc) (id_name:string) (ki:Local.t_local_kind) (ty:Btype.Open.t)
+  : (id_ki,Btype.Open.t) T.expression
+  =
   match Btype.close ty with
   | None ->
-    Error.error lc
+    Error.error id_loc
       ("The type of this expression could not be fully inferred. The type infered so far is '"^
        Btype.Open.to_string ty^"'.")
   | Some cty ->
-    let () = Local.set_type ctx id cty in
-    mk_expr lc ty (T.Ident (T.K_Local (id,ki)))
+    let () = Local.set_type ctx id_name cty in
+    mk_expr id_loc ty (T.Ident { T.id_name; id_loc; id_type=ty; id_kind=Visibility.mk_local cl ki })
 
 let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
   Nlist.map (
@@ -293,20 +299,20 @@ let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
          { T.bv_loc=lid.lid_loc; bv_typ; bv_id=lid.lid_str }
   ) ids
 
-let rec type_expression_exn : 'mr.
-  ('mr) V.clause -> 'mr Global.t -> Local.t -> P.expression ->
-  ('mr,Btype.Open.t) T.expression =
-  fun cl env ctx e ->
+let rec type_expression_exn : type env_ki id_ki.
+  (env_ki,id_ki) Visibility.clause -> (env_ki,_) Global.env -> Local.t ->
+  P.expression -> (id_ki,Btype.Open.t) T.expression
+  = fun cl env ctx e ->
   let open Btype.Open in
   match e.P.exp_desc with
 
   | P.Ident (id_prefix,id_str) ->
-    let ki,ty = type_ident env ctx e.P.exp_loc id_prefix id_str cl in
-    mk_expr e.P.exp_loc ty (T.Ident ki)
+    let id = type_ident cl env ctx e.P.exp_loc id_prefix id_str in
+    mk_expr e.P.exp_loc id.T.id_type (T.Ident id)
 
   | P.Dollar (id_prefix,id_str) ->
-    let ki,ty = type_ident env ctx e.P.exp_loc id_prefix id_str cl in
-    mk_expr e.P.exp_loc ty (T.Dollar ki)
+    let id = type_ident cl env ctx e.P.exp_loc id_prefix id_str in
+    mk_expr e.P.exp_loc id.T.id_type (T.Dollar id)
 
   | P.Builtin_0 bi ->
     mk_expr e.P.exp_loc (get_builtin0_type bi) (T.Builtin_0 bi)
@@ -479,8 +485,9 @@ let rec type_expression_exn : 'mr.
                  ^"' but is expected to be a record.")
     end
 
-and type_predicate_exn : 'mr.  'mr V.clause ->
-  'mr Global.t -> Local.t -> P.predicate -> ('mr,Btype.Open.t) T.predicate
+and type_predicate_exn : type env_ki id_ki.
+    (env_ki,id_ki)Visibility.clause -> (env_ki,_) Global.env ->
+    Local.t -> P.predicate -> (id_ki,Btype.Open.t) T.predicate
   = fun cl env ctx p ->
   let open Btype.Open in
   match p.P.prd_desc with
@@ -530,7 +537,7 @@ and type_predicate_exn : 'mr.  'mr V.clause ->
           | T_Expr _ -> type_eq ()
           | tpl ->
             let te2 = type_expression_exn cl env ctx e2 in
-            let te1 = check_tpl cl env ctx tpl te2.T.exp_typ in
+            let te1 = check_utuple cl env ctx tpl te2.T.exp_typ in
             mk_pred p.P.prd_loc (T.Binary_Pred (Equality,te1,te2))
         end
       | Non_Membership -> type_mem ()
@@ -541,7 +548,7 @@ and type_predicate_exn : 'mr.  'mr V.clause ->
             let te2 = type_expression_exn cl env ctx e2 in
             begin match weak_norm (Global.get_alias env) te2.T.exp_typ with
               | T_Power ty ->
-                let te1 = check_tpl cl env ctx tpl ty in
+                let te1 = check_utuple cl env ctx tpl ty in
                 mk_pred p.P.prd_loc (T.Binary_Pred (Membership,te1,te2))
               | _ -> unexpected_type_exn e2.P.exp_loc te2.T.exp_typ (mk_Power (new_meta ()))
             end
@@ -552,7 +559,7 @@ and type_predicate_exn : 'mr.  'mr V.clause ->
             let te2 = type_expression_exn cl env ctx e2 in
             begin match weak_norm (Global.get_alias env) te2.T.exp_typ with
             | (T_Power _) as ty ->
-              let te1 = type_untyped_id ctx e1.P.exp_loc id ki ty in
+              let te1 = type_untyped_id cl ctx e1.P.exp_loc id ki ty in
               mk_pred p.P.prd_loc (T.Binary_Pred (Inclusion op,te1,te2))
             | _ -> unexpected_type_exn e2.P.exp_loc te2.T.exp_typ (mk_Power (new_meta ()))
             end
@@ -586,70 +593,95 @@ and type_predicate_exn : 'mr.  'mr V.clause ->
     let tids = get_bv_types ctx ids in
     mk_pred p.P.prd_loc (T.Existential_Q (tids,tp))
 
-and check_tpl : 'mr. 'mr V.clause ->
-  'mr Global.t -> Local.t -> utuple -> Btype.Open.t -> ('mr,Btype.Open.t) T.expression
-  = fun cl env ctx tpl ty_exp ->
+and check_utuple : type  env_ki id_ki. (env_ki,id_ki) V.clause ->
+  (env_ki,_) Global.env -> Local.t -> utuple -> Btype.Open.t ->
+  (id_ki,Btype.Open.t) T.expression = fun cl env ctx tpl ty_exp ->
     match tpl with
-    | T_Ident (lc,id,ki) ->
+    | T_Ident (id_loc,id_name,ki) ->
       begin match Btype.close ty_exp with
         | None ->
-          Error.error lc
+          Error.error id_loc
             ("The type of this expression could not be fully inferred. The type infered so far is '"^
              Btype.Open.to_string ty_exp^"'.")
         | Some cty ->
-          let () = Local.set_type ctx id cty in
-          mk_expr lc ty_exp (T.Ident (T.K_Local (id,ki)))
+          let () = Local.set_type ctx id_name cty in
+          mk_expr id_loc ty_exp
+            (T.Ident { T.id_name; id_loc; id_type=ty_exp; id_kind=Visibility.mk_local cl ki })
       end
   | T_Couple (c,lc,t1,t2) ->
     begin match Btype.Open.weak_norm (Global.get_alias env) ty_exp with
       | Btype.Open.T_Product (ty1,ty2) ->
-        let t1 = check_tpl cl env ctx t1 ty1 in
-        let t2 = check_tpl cl env ctx t2 ty2 in
+        let t1 = check_utuple cl env ctx t1 ty1 in
+        let t2 = check_utuple cl env ctx t2 ty2 in
         mk_expr lc ty_exp (T.Builtin_2(Couple c,t1,t2))
       | _ ->
         let ty_inf = Btype.Open.mk_Product (Btype.Open.new_meta ()) (Btype.Open.new_meta ()) in
         unexpected_type_exn lc ty_inf ty_exp
     end
   | T_Expr e ->
-    let te = type_expression_exn cl env ctx e in
+    let te:(id_ki,Btype.Open.t) T.expression = type_expression_exn cl env ctx e in
     begin match Btype.Open.get_stype (Global.get_alias env) te.T.exp_typ ty_exp with
       | Some _ -> te
       | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ ty_exp
     end
 
-let type_writable_var_exn (type mr) (cl:mr V.mclause) (env:mr Global.t) (ctx:Local.t)
-    (x:ren_ident) : (mr,Btype.Open.t) T.mut_var =
-  let mv_kind, mv_typ = 
+let type_global_mut_ident (type env_ki mut_ki)
+    (cl:(env_ki,_,mut_ki,_,_,_) Visibility.sclause) (env:(env_ki,_) Global.env)
+    (id_loc:Utils.loc) (id_name:string) : (mut_ki,Btype.Open.t) T.t_ident
+  =
+  match Global.get_symbol env id_name with
+  | Some infos ->
+    { T.id_name;
+      id_loc;
+      id_type=(infos.Global.sy_typ :> Btype.Open.t);
+      id_kind=Visibility.mk_global_mut cl infos.Global.sy_kind }
+  | None -> Error.error id_loc ("Unknown identifier '"^id_name^"'.")
+
+let type_mut_ident (type env_ki mut_ki)
+    (cl:(env_ki,_,mut_ki,_,_,_) Visibility.sclause) (env:(env_ki,_) Global.env) (ctx:Local.t) 
+    (id_loc:Utils.loc) (id_prefix:string option) (id_str:string) : (mut_ki,Btype.Open.t) T.t_ident =
+  match id_prefix with
+  | None ->
+    begin match Local.get ctx id_str with
+      | Some(Some ty,ki) ->
+        { T.id_name = id_str;
+          id_loc;
+          id_type=(ty :> Btype.Open.t);
+          id_kind=Visibility.mk_local_mut cl ki }
+      | Some(None,_) ->
+        Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
+      | None -> type_global_mut_ident cl env id_loc id_str
+    end
+  | Some p ->
+    type_global_mut_ident cl env id_loc (p ^ "." ^ id_str)
+
+let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibility.sclause ->
+  (env_ki,_) Global.env -> Local.t -> ren_ident -> (mut_ki,Btype.Open.t) T.t_ident
+  = fun cl env ctx x ->
     match x.r_prefix with
     | None ->
       begin match Local.get ctx x.r_str with
-        | Some(Some ty,Local.L_Param_Out) -> (T.MI_Out_Param,(ty:>Btype.Open.t))
-        | Some(Some ty,Local.L_Subst_Binder) -> (T.MI_Subst_Binder,(ty:>Btype.Open.t))
         | Some(None,_) -> Error.error x.r_loc ("The identifier '"^x.r_str^"' must be typed before use.")
-        | Some _ -> Error.error x.r_loc ("The variable '"^x.r_str^"' is read-only.")
+        | Some (Some ty,ki) ->
+          { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(ty:>Btype.Open.t); id_kind=V.mk_local_mut cl ki }
         | None ->
           begin match Global.get_symbol env x.r_str with
             | Some infos ->
-              begin match V.get_mutable_in_clause cl infos.Global.sy_kind with
-                | Some ki -> (T.MI_Global ki, (infos.Global.sy_typ :> Btype.Open.t) )
-                | None -> Error.error x.r_loc ("The variable '"^x.r_str^"' cannot be modified.")
-              end
+              { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(infos.Global.sy_typ:>Btype.Open.t);
+                id_kind=V.mk_global_mut cl infos.Global.sy_kind }
             | None -> Error.error x.r_loc ("Unknown identifier '"^x.r_str^"'.")
           end
       end
     | Some p ->
-      let str = p ^ "." ^ x.r_str in
-      begin match Global.get_symbol env str with
+      let id_name = p ^ "." ^ x.r_str in
+      begin match Global.get_symbol env id_name with
         | Some infos ->
-          begin match V.get_mutable_in_clause cl infos.Global.sy_kind with
-            | Some ki -> (T.MI_Global ki, (infos.Global.sy_typ :> Btype.Open.t) )
-            | None -> Error.error x.r_loc ("The variable '"^str^"' cannot be modified.")
-          end
-        | None -> Error.error x.r_loc ("Unknown identifier '"^str^"'.")
+          { T.id_loc=x.r_loc; id_name; id_type=(infos.Global.sy_typ:>Btype.Open.t);
+            id_kind=V.mk_global_mut cl infos.Global.sy_kind }
+        | None -> Error.error x.r_loc ("Unknown identifier '"^id_name^"'.")
       end
-  in
-  { T.mv_loc=x.r_loc; mv_prefix=x.r_prefix; mv_id=x.r_str; mv_typ; mv_kind }
 
+(*
 let to_op_source (type a) (is_readonly:bool) : a Global.t_op_decl -> T.t_op_source option =
   function
   | Global.OD_Seen mch ->
@@ -664,113 +696,100 @@ let to_op_source (type a) (is_readonly:bool) : a Global.t_op_decl -> T.t_op_sour
   | Global.OD_Current _ -> None
   | Global.OD_Refined _ -> None
   | Global.OD_Current_And_Refined _ -> None
+*)
 
-let check_writable_nlist : 'mr. 'mr V.mclause ->
-  'mr Global.t -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t -> ('mr,Btype.Open.t) T.mut_var Nlist.t
+let check_writable_nlist : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) V.sclause ->
+  (env_ki,_) Global.env -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t ->
+  (mut_ki,Btype.Open.t) T.t_ident Nlist.t
   = fun cl env ctx xlst loc ty ->
-    let mk_mut (lid:ren_ident) mv_typ =
-      match lid.r_prefix with
-      | None ->
-        begin match Local.get ctx lid.r_str with
-          | Some (None,ki) ->
-            begin
-              let mv_kind = match ki with
-                | Local.L_Param_Out -> T.MI_Out_Param
-                | Local.L_Subst_Binder -> T.MI_Subst_Binder
-                | _ ->
-                  Error.error lid.r_loc ("The variable '"^lid.r_str^"' is read-only.")
-              in
-              match Btype.close mv_typ with
-              | None ->
-                Error.error lid.r_loc
-                  ("The type of this expression could not be fully inferred. The type infered so far is '"^
-                   Btype.Open.to_string mv_typ^"'.")
-              | Some cty ->
-                let () = Local.set_type ctx lid.r_str cty in
-                { T.mv_loc=lid.r_loc; mv_prefix=lid.r_prefix; mv_id=lid.r_str; mv_typ; mv_kind }
-            end
-          | _ ->
-            let v = type_writable_var_exn cl env ctx lid in
-            begin match Btype.Open.get_stype (Global.get_alias env) v.T.mv_typ mv_typ with
-              | None -> unexpected_type_exn v.mv_loc v.T.mv_typ mv_typ
-              | Some _ -> v
-            end
-        end
-      | Some _ ->
-        let v = type_writable_var_exn cl env ctx lid in
-        begin match Btype.Open.get_stype (Global.get_alias env) v.T.mv_typ mv_typ with
-          | None -> unexpected_type_exn v.mv_loc v.T.mv_typ mv_typ
-          | Some _ -> v
-        end
+  let mk_mut (lid:ren_ident) id_type =
+    match lid.r_prefix with
+    | None ->
+      begin match Local.get ctx lid.r_str with
+        | Some (None,ki) ->
+          begin match Btype.close id_type with
+            | None ->
+              Error.error lid.r_loc
+                ("The type of this expression could not be fully inferred. The type infered so far is '"^
+                 Btype.Open.to_string id_type^"'.")
+            | Some cty ->
+              let () = Local.set_type ctx lid.r_str cty in
+              { T.id_loc=lid.r_loc; id_name=lid.r_str; id_type; id_kind=Visibility.mk_local_mut cl ki }
+          end
+        | _ ->
+          let v = type_writable_var_exn cl env ctx lid in
+          begin match Btype.Open.get_stype (Global.get_alias env) v.T.id_type id_type with
+            | None -> unexpected_type_exn v.id_loc v.T.id_type id_type
+            | Some _ -> v
+          end
+      end
+    | Some _ ->
+      let v = type_writable_var_exn cl env ctx lid in
+      begin match Btype.Open.get_stype (Global.get_alias env) v.T.id_type id_type with
+        | None -> unexpected_type_exn v.id_loc v.T.id_type id_type
+        | Some _ -> v
+      end
+  in
+  let exception Product_Exn in
+  let rec aux ty xlst =
+    match Nlist.tl xlst with
+    | [] -> Nlist.make1 (mk_mut (Nlist.hd xlst) ty)
+    | hd::tl ->
+      begin match Btype.Open.weak_norm (Global.get_alias env) ty with
+        | Btype.Open.T_Product (ty1,ty2) ->
+          Nlist.cons (mk_mut (Nlist.hd xlst) ty2) (aux ty1 (Nlist.make hd tl))
+        | _ -> raise Product_Exn
+      end
+  in
+  try Nlist.rev (aux ty (Nlist.rev xlst))
+  with Product_Exn ->
+    let rec mk_product acc = function
+      | [] -> acc
+      | _::tl ->
+        mk_product (Btype.Open.mk_Product acc (Btype.Open.new_meta ())) tl
     in
-    let exception Product_Exn in
-    let rec aux ty xlst =
-      match Nlist.tl xlst with
-      | [] -> Nlist.make1 (mk_mut (Nlist.hd xlst) ty)
-      | hd::tl ->
-        begin match Btype.Open.weak_norm (Global.get_alias env) ty with
-          | Btype.Open.T_Product (ty1,ty2) ->
-            Nlist.cons (mk_mut (Nlist.hd xlst) ty2) (aux ty1 (Nlist.make hd tl))
-          | _ -> raise Product_Exn
-        end
-    in
-    try Nlist.rev (aux ty (Nlist.rev xlst))
-    with Product_Exn ->
-      let rec mk_product acc = function
-        | [] -> acc
-        | _::tl ->
-          mk_product (Btype.Open.mk_Product acc (Btype.Open.new_meta ())) tl
-      in
-      let ty_exp = mk_product (Btype.Open.new_meta ()) (Nlist.tl xlst) in
-      unexpected_type_exn loc ty ty_exp
+    let ty_exp = mk_product (Btype.Open.new_meta ()) (Nlist.tl xlst) in
+    unexpected_type_exn loc ty ty_exp
 
-let type_out_parameter : 'mr 'cl.
-  'mr V.mclause -> 'mr Global.t -> Local.t -> ren_ident -> string*Btype.t ->
-  ('mr,Btype.Open.t) T.mut_var =
-  fun cl env ctx id (_,ty) ->
+let type_out_parameter (type env_ki mut_ki) (cl:(env_ki,_,mut_ki,_,_,_) V.sclause)
+    (env:(env_ki,_) Global.env) (ctx:Local.t) (id:ren_ident) (_,ty:_*Btype.t) :
+  (mut_ki,Btype.Open.t) T.t_ident
+  =
   let ty_exp = ( ty :> Btype.Open.t) in
   match id.r_prefix with
   | None ->
     begin match Local.get ctx id.r_str with
       | Some(None,ki) ->
         let () = Local.set_type ctx id.r_str ty in
-        begin match ki with
-          | Local.L_Param_Out ->
-            { T.mv_loc=id.r_loc; mv_prefix=None; mv_id=id.r_str; mv_typ=ty_exp; mv_kind=T.MI_Out_Param }
-          | Local.L_Subst_Binder ->
-            { T.mv_loc=id.r_loc; mv_prefix=None; mv_id=id.r_str; mv_typ=ty_exp; mv_kind=T.MI_Subst_Binder }
-          | _ ->
-            Error.error id.r_loc ("The variable '"^id.r_str^"' is read-only.")
-        end
+        { T.id_loc=id.r_loc; id_name=id.r_str; id_type=ty_exp; id_kind=V.mk_local_mut cl ki }
       | _ ->
         let tid = type_writable_var_exn cl env ctx id in
-        begin match Btype.Open.get_stype (Global.get_alias env) tid.T.mv_typ ty_exp with
-          | None -> unexpected_type_exn tid.T.mv_loc tid.T.mv_typ ty_exp
+        begin match Btype.Open.get_stype (Global.get_alias env) tid.T.id_type ty_exp with
+          | None -> unexpected_type_exn tid.T.id_loc tid.T.id_type ty_exp
           | Some _ -> tid
         end
     end
   | Some _ ->
     let tid = type_writable_var_exn cl env ctx id in
-    begin match Btype.Open.get_stype (Global.get_alias env) tid.T.mv_typ ty_exp with
-      | None -> unexpected_type_exn tid.T.mv_loc tid.T.mv_typ ty_exp
+    begin match Btype.Open.get_stype (Global.get_alias env) tid.T.id_type ty_exp with
+      | None -> unexpected_type_exn tid.T.id_loc tid.T.id_type ty_exp
       | Some _ -> tid
     end
 
-
-let type_in_parameter : 'mr 'cl.
-  'mr V.clause -> 'mr Global.t -> Local.t -> P.expression -> string*Btype.t ->
-  ('mr,Btype.Open.t) T.expression =
-  fun cl env ctx e (_,ty) ->
+let type_in_parameter (type env_ki id_ki) (cl:(env_ki,id_ki) V.clause)
+  (env:(env_ki,_) Global.env) (ctx:Local.t) (e:P.expression) (_,ty:string*Btype.t) :
+  (id_ki,Btype.Open.t) T.expression
+  =
     let ty_exp = ( ty :> Btype.Open.t) in
     let te = type_expression_exn cl env ctx e in
     match Btype.Open.get_stype (Global.get_alias env) te.T.exp_typ ty_exp with
     | None -> unexpected_type_exn te.T.exp_loc te.T.exp_typ ty_exp
     | Some _ -> te
 
-let rec type_substitution_exn : 'mr.
-  'mr V.mclause -> 'mr Global.t -> Local.t -> P.substitution ->
-  ('mr,Btype.Open.t) T.substitution =
-  fun cl env ctx s0 ->
+let rec type_substitution_exn : type env_ki id_ki mut_ki assert_ki env_op_ki op_ki.
+  (env_ki,id_ki,mut_ki,assert_ki,env_op_ki,op_ki) V.sclause -> (env_ki,env_op_ki) Global.env ->
+  Local.t -> P.substitution -> (id_ki,mut_ki,assert_ki,op_ki,Btype.Open.t) T.substitution
+  = fun cl env ctx s0 ->
   let open Btype.Open in
   match s0.P.sub_desc with
   | P.Skip -> mk_subst s0.P.sub_loc T.Skip
@@ -781,7 +800,7 @@ let rec type_substitution_exn : 'mr.
     mk_subst s0.P.sub_loc (T.Pre (p,s))
 
   | P.Assert (p,s) ->
-    let p = type_predicate_exn V.C_ASSERT env ctx p in
+    let p = type_predicate_exn (V.to_assert cl) env ctx p in
     let s = type_substitution_exn cl env ctx s in
     mk_subst s0.P.sub_loc (T.Assert(p,s))
 
@@ -943,10 +962,13 @@ let rec type_substitution_exn : 'mr.
     begin match Global.get_operation env op_name with
       | None -> Error.error op.r_loc ("Unknown operation '"^op_name^"'.")
       | Some infos ->
+(*
         begin match to_op_source infos.Global.op_readonly infos.Global.op_src with
           | None -> Error.error op.r_loc ("The operation '"^op_name^"' is not visible.")
           | Some op_src ->
+*)
             begin try
+                let op_src = Visibility.mk_op cl infos.op_src in
                 let op = { T.op_prefix=op.r_prefix; op_id = op.r_str; op_loc = op.r_loc; op_src } in
                 let tids = List.map2 (type_out_parameter cl env ctx) ids infos.Global.op_args_out in
                 let tparams = List.map2 (type_in_parameter (V.to_clause cl) env ctx) params infos.Global.op_args_in in
@@ -954,14 +976,14 @@ let rec type_substitution_exn : 'mr.
               with Invalid_argument _ ->
                 Error.error op.r_loc ("Incorrect number of in/out parameters.")
             end
-        end
+(*         end *)
     end
 
   | P.While (p,s,inv,var) ->
     let tp = type_predicate_exn (V.to_clause cl) env ctx p in
     let ts = type_substitution_exn cl env ctx s in
-    let t_inv = type_predicate_exn V.C_ASSERT env ctx inv in
-    let t_var = type_expression_exn V.C_ASSERT env ctx var in
+    let t_inv = type_predicate_exn (V.to_assert cl) env ctx inv in
+    let t_var = type_expression_exn (V.to_assert cl) env ctx var in
     let exp = t_int in
     let () = match get_stype (Global.get_alias env) t_var.T.exp_typ exp with
       | None -> unexpected_type_exn var.P.exp_loc t_var.T.exp_typ exp

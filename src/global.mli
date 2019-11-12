@@ -19,8 +19,12 @@ type 'a t_operation_infos =
 
 type t_interface
 
+type ('sy_ki,'op_ki) env
+val get_symbol : ('sy_ki,_) env -> string -> 'sy_ki t_symbol_infos option
+val get_operation : (_,'op_ki) env -> string -> 'op_ki t_operation_infos option
+val get_alias : _ env -> Btype.t_alias 
+
 module Mch : sig
-  type t
 
   type t_source =
     | Machine of loc
@@ -38,10 +42,6 @@ module Mch : sig
     | Concrete_Set of string list * t_source
     | Enumerate of t_source
 
-  val create : lident list -> t
-  val get_symbol : t -> string -> t_kind t_symbol_infos option
-  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
-
   type t_op_decl =
     | O_Machine of loc
     | O_Seen of ren_ident
@@ -49,7 +49,12 @@ module Mch : sig
     | O_Included of ren_ident
     | O_Included_And_Promoted of ren_ident
 
-  val get_operation : t -> string -> t_op_decl t_operation_infos option
+  type t = (t_kind,t_op_decl) env
+
+  val create : lident list -> t
+  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
+
+
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
   val promote_operation : t -> loc -> string -> unit
 
@@ -62,8 +67,6 @@ module Mch : sig
 end
 
 module Ref : sig
-  type t
-
   type t_source =
     | Machine of loc
     | Seen of ren_ident
@@ -88,10 +91,6 @@ module Ref : sig
     | Concrete_Set of string list * t_source
     | Enumerate of t_source
 
-  val create : lident list -> t
-  val get_symbol : t -> string -> t_kind t_symbol_infos option
-  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
-
   type t_op_decl =
     | OD_Current of loc
     | OD_Seen of ren_ident
@@ -102,7 +101,11 @@ module Ref : sig
     | OD_Included_And_Refined of ren_ident*lident
     | OD_Included_Promoted_And_Refined of ren_ident*loc*lident
 
-  val get_operation : t -> string -> t_op_decl t_operation_infos option
+  type t = (t_kind,t_op_decl) env
+
+  val create : lident list -> t
+  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
+
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
   val promote_operation : t -> loc -> string -> unit
 
@@ -115,8 +118,6 @@ module Ref : sig
 end
 
 module Imp : sig
-  type t
-
   type t_source =
     | Machine of loc
     | Seen of ren_ident
@@ -154,10 +155,6 @@ module Imp : sig
     | Concrete_Set of string list * t_concrete_const_decl
     | Enumerate of t_concrete_const_decl
 
-  val create : lident list -> t
-  val get_symbol : t -> string -> t_kind t_symbol_infos option
-  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
-
   type t_op_decl =
     | OD_Current of loc
     | OD_Seen of ren_ident
@@ -170,7 +167,11 @@ module Imp : sig
     | OD_Local_Spec of loc
     | OD_Local_Spec_And_Implem of loc*loc
 
-  val get_operation : t -> string -> t_op_decl t_operation_infos option
+  type t = (t_kind,t_op_decl) env
+
+  val create : lident list -> t
+  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
+
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
   val promote_operation : t -> loc -> string -> unit
 

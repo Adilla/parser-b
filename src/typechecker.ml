@@ -12,6 +12,7 @@ let allow_out_parameters_in_precondition = ref true
  * Type Checking for Components
  * ************************************************************************** *)
 
+(*
 let load_seen_mch_exn (f:Utils.loc->string->Global.t_interface option) (env:'mr Global.t) (mch:ren_ident) : ren_ident =
   match f mch.r_loc mch.r_str with
   | None -> Error.error mch.r_loc ("The machine '"^mch.r_str^"' does not typecheck.")
@@ -441,9 +442,14 @@ let get_promoted_operations (type mr) (env:mr Global.t) : mr T.operation list =
   in
   Global.fold_operations aux env []
 
+*)
 let is_set_param s = String.equal s.lid_str (String.capitalize_ascii s.lid_str)
 
-let type_machine_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_mch Global.t) (mch:P.machine) : T.machine =
+let type_machine_exn
+    (f:Utils.loc->string->Global.t_interface option)
+    (env:(Global.Mch.t_kind,Global.Mch.t_op_decl) Global.env)
+    (mch:P.machine) : T.machine
+  =
   let mch_set_parameters = List.filter is_set_param mch.P.mch_parameters in
   List.iter (fun p ->
       let ki = Global.G_Parameter Global.Set in

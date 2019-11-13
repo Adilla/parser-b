@@ -17,6 +17,16 @@ type 'a t_operation_infos =
     op_readonly:bool;
     op_src: 'a; }
 
+type t_global_kind =
+  | K_Parameter  of t_param_kind
+  | K_Abstract_Variable
+  | K_Abstract_Constant
+  | K_Concrete_Variable
+  | K_Concrete_Constant
+  | K_Abstract_Set
+  | K_Concrete_Set of string list
+  | K_Enumerate
+
 type t_interface
 
 type ('sy_ki,'op_ki) env
@@ -55,14 +65,7 @@ module Mch : sig
 
   val create : lident list -> t
 
-  val add_parameter : t -> loc -> string -> Btype.t -> t_param_kind -> unit
-  val add_abstract_variable : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_constant : t -> loc -> string -> Btype.t -> unit
-  val add_concrete_variable : t -> loc -> string -> Btype.t -> unit
-  val add_concrete_constant : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_set : t -> loc -> string -> Btype.t -> unit (*FIXME type*)
-  val add_concrete_set : t -> loc -> string -> Btype.t -> lident list -> unit (*FIXME type*)
-
+  val add_symbol : t -> loc -> string -> Btype.t -> t_global_kind -> unit
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
   val promote_operation : t -> loc -> string -> unit
 
@@ -116,7 +119,13 @@ module Ref : sig
   type t = (t_kind,t_op_decl) env
 
   val create : lident list -> t
-  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
+  val add_parameter : t -> loc -> string -> Btype.t -> unit
+  val add_abstract_variable : t -> loc -> string -> Btype.t -> unit
+  val add_abstract_constant : t -> loc -> string -> Btype.t -> unit
+  val add_concrete_variable : t -> loc -> string -> Btype.t -> unit
+  val add_concrete_constant : t -> loc -> string -> Btype.t -> unit
+  val add_abstract_set : t -> loc -> string -> unit
+  val add_concrete_set : t -> loc -> string -> lident list -> unit
 
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
 (*

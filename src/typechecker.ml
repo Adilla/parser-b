@@ -14,7 +14,12 @@ let allow_out_parameters_in_precondition = ref true
  * Type Checking for Components
  * ************************************************************************** *)
 
-let load (f:Utils.loc->string->Global.t_interface option) f_load env (mch:ren_ident) : ren_ident =
+let load (f:Utils.loc->string->Global.t_interface option) f_load env (mch:lident) : lident =
+  match f mch.lid_loc mch.lid_str with
+  | None -> Error.error mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
+  | Some itf -> ( f_load env itf mch; mch )
+
+let load_r (f:Utils.loc->string->Global.t_interface option) f_load env (mch:ren_ident) : ren_ident =
   match f mch.r_loc mch.r_str with
   | None -> Error.error mch.r_loc ("The machine '"^mch.r_str^"' does not typecheck.")
   | Some itf -> ( f_load env itf mch; mch )
@@ -34,10 +39,12 @@ let mk_expr exp_loc exp_typ exp_desc : (_,Btype.t) T.expression =
 let mk_pred prd_loc prd_desc : (_,Btype.t) T.predicate =
   { T.prd_loc; prd_desc }
 
+let close_ident t = { t with T.id_type=close_exn t.T.id_loc t.T.id_type }
+
 let rec close_expr_exn  (e:(_,Btype.Open.t) T.expression) : (_,Btype.t) T.expression =
     match e.T.exp_desc with
-  | T.Ident id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Ident id)
-  | T.Dollar id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Dollar id)
+  | T.Ident id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Ident (close_ident id))
+  | T.Dollar id -> mk_expr e.T.exp_loc e.T.exp_typ (T.Dollar (close_ident id))
   | T.Builtin_0 _ as d -> mk_expr e.T.exp_loc e.T.exp_typ d
   | T.Builtin_1 (bi,e) ->
     mk_expr e.T.exp_loc e.T.exp_typ (T.Builtin_1 (bi,close_expr_exn e))
@@ -96,10 +103,11 @@ let load_extended_mch_exn (type mr)
     let params = List.map (fun x -> (x.T.exp_loc,x.T.exp_typ)) mi_params in
     ( Global.load_interface_for_extended_machine env itf mi.P.mi_mch params;
       { mi_mch=mi.P.mi_mch; mi_params } )
-
+*)
 type t_comp_type = Mch | Ref | Imp
 let mk_subst sub_loc sub_desc = { T.sub_loc; sub_desc; }
 
+(*
 let close_mut_var (v:(_,Btype.Open.t) T.mut_var) : (_,Btype.t) T.mut_var =
   match Btype.close v.T.mv_typ with
   | None -> Error.error v.T.mv_loc 
@@ -107,19 +115,20 @@ let close_mut_var (v:(_,Btype.Open.t) T.mut_var) : (_,Btype.t) T.mut_var =
        "' could not be fully infered. The type infered so far is '"^
        Btype.Open.to_string v.T.mv_typ^"'.")
   | Some mv_typ -> { T.mv_loc=v.T.mv_loc; mv_prefix=v.T.mv_prefix; mv_id=v.T.mv_id; mv_typ; mv_kind=v.T.mv_kind }
+*)
 
-let close_mut_var_nlist (lst:(_,Btype.Open.t) T.mut_var Nlist.t) = Nlist.lb_map ~f:close_mut_var lst
+let close_mut_var_nlist (lst:(_,Btype.Open.t) T.t_ident Nlist.t) = Nlist.lb_map ~f:close_ident lst
 
-let rec close_subst_exn (t:t_comp_type) (s:(_,Btype.Open.t) T.substitution) : (_,Btype.t) T.substitution =
+let rec close_subst_exn (t:t_comp_type) (s:(_,_,_,_,Btype.Open.t) T.substitution) : (_,_,_,_,Btype.t) T.substitution =
   match s.T.sub_desc with
   | T.Skip ->
     mk_subst s.T.sub_loc T.Skip
   | T.Affectation (T.Tuple xlst,e) ->
     mk_subst s.T.sub_loc (T.Affectation(T.Tuple (close_mut_var_nlist xlst),close_expr_exn e))
   | T.Affectation (T.Function(v,nlst),e) ->
-    mk_subst s.T.sub_loc (T.Affectation (T.Function(close_mut_var v,Nlist.map close_expr_exn nlst),close_expr_exn e))
+    mk_subst s.T.sub_loc (T.Affectation (T.Function(close_ident v,Nlist.map close_expr_exn nlst),close_expr_exn e))
   | T.Affectation (T.Record(v,id),e) ->
-    mk_subst s.T.sub_loc (T.Affectation (T.Record(close_mut_var v,id),close_expr_exn e))
+    mk_subst s.T.sub_loc (T.Affectation (T.Record(close_ident v,id),close_expr_exn e))
   | T.Pre (p,s0) ->
     if t = Imp then
       Error.error s.T.sub_loc "The subsitution 'Precondition' is not allowed in implementations."
@@ -182,7 +191,7 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,Btype.Open.t) T.substitution) : (_
     else
       mk_subst s.T.sub_loc (T.Var (xlst,close_subst_exn t s0))
   | T.CallUp (args_out,id,args_in) ->
-    mk_subst s.T.sub_loc (T.CallUp (List.map close_mut_var args_out,id,List.map close_expr_exn args_in))
+    mk_subst s.T.sub_loc (T.CallUp (List.map close_ident args_out,id,List.map close_expr_exn args_in))
   | T.While (p1,s0,p2,e) ->
     if t != Imp then
       Error.error s.T.sub_loc ("Substitution 'While' is only allowed in implementations.")
@@ -199,16 +208,6 @@ let rec close_subst_exn (t:t_comp_type) (s:(_,Btype.Open.t) T.substitution) : (_
     else
       mk_subst s.T.sub_loc (T.Parallel (close_subst_exn t s1,close_subst_exn t s2))
 
-   *)
-
-let declare_set_exn env (s:P.set) : unit =
-  match s with
-  | P.Abstract_Set v ->
-    let typ = Btype.mk_Power (Btype.mk_Abstract_Set Btype.T_Current v.lid_str) in
-    M.add_abstract_set env v.lid_loc v.lid_str typ
-  | P.Concrete_Set (v,elts) ->
-    let typ = Btype.mk_Concrete_Set Btype.T_Current v.lid_str in
-    M.add_concrete_set env v.lid_loc v.lid_str (Btype.mk_Power typ) elts
 
 let declare_local_symbol (ctx:Local.t) (lid:lident) : Local.t =
   Local.declare ctx lid.lid_str Local.L_Expr_Binder
@@ -251,16 +250,16 @@ let type_assertion_exn cl env p =
   close_pred_exn (Inference.type_predicate_exn cl env Local.empty p)
 
 let type_mch_init_exn (env) (s:P.substitution) : _ T.substitution =
-  let s = Inference.type_substitution_exn V.M_Operation env Local.empty s in
+  let s = Inference.type_substitution_exn V.MS_Operations env Local.empty s in
   close_subst_exn Mch s 
 
-let get_mch_operation_context_exn (_:Global.t_mch Global.t) (op:P.operation) : Local.t*Local.t =
+let get_mch_operation_context_exn (_:_ Global.env) (op:P.operation) : Local.t*Local.t =
   let aux ki ctx lid = Local.declare ctx lid.lid_str ki in
   let ctx0 = List.fold_left (aux Local.L_Param_In) Local.empty op.P.op_in in
   let ctx  = List.fold_left (aux Local.L_Param_Out) ctx0 op.P.op_out in
   (ctx0,ctx)
 
-let rec is_read_only (gl:'mr Global.t) (ctx:string list) (s:P.substitution) : bool =
+let rec is_read_only (gl:_ Global.env) (ctx:string list) (s:P.substitution) : bool =
   match s.P.sub_desc with
   | P.Skip -> true
   | P.Affectation (P.Tuple xlst,_) | P.BecomesElt (xlst,_) | P.BecomesSuch (xlst,_) ->
@@ -313,18 +312,18 @@ let rec is_read_only (gl:'mr Global.t) (ctx:string list) (s:P.substitution) : bo
   | P.Sequencement (s1,s2) | P.Parallel (s1,s2) ->
     is_read_only gl ctx s1 && is_read_only gl ctx s2
 
-let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : Global.t_mch T.operation =
+let declare_mch_operation_exn (env:_ Global.env) (op:P.operation) : _ T.operation =
   let (ctx0,ctx) = get_mch_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.M_MCH_OPERATIONS env ctx op.P.op_body
+      Inference.type_substitution_exn V.MS_Operations env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_MCH_OPERATIONS env ctx0 p in
-          let ts = Inference.type_substitution_exn V.M_MCH_OPERATIONS env ctx s in
+          let tp = Inference.type_predicate_exn V.M_Operations env ctx0 p in
+          let ts = Inference.type_substitution_exn V.MS_Operations env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.M_MCH_OPERATIONS env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.MS_Operations env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Mch op_body in
@@ -342,8 +341,8 @@ let declare_mch_operation_exn (env:Global.t_mch Global.t) (op:P.operation) : Glo
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
   let is_readonly = is_read_only env (Local.get_vars ctx) op.P.op_body in
-  Global.add_mch_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_readonly;
-  T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
+  G.Mch.add_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_readonly;
+  { T.op_name=op.P.op_name; op_in; op_out; op_body }
 
 type t_mch_symbols = {
   set_parameters: lident list;
@@ -405,15 +404,24 @@ let get_mch_symbols (env:M.t) : t_mch_symbols =
 let promote_operation env op_name : unit =
   M.promote_operation env op_name.lid_loc op_name.lid_str
 
-let get_promoted_operations (type mr) (env:mr Global.t) : mr T.operation list =
-  let aux (lid_str:string) (infos:mr Global.t_operation_infos) lst =
+let get_mch_promoted_operations (env:(_,G.Mch.t_op_decl) G.env) : T.promoted list =
+  let aux (lid_str:string) (infos:G.Mch.t_op_decl G.t_operation_infos) lst =
     let op_out = infos.Global.op_args_out in
     let op_in = infos.Global.op_args_in in
     match infos.Global.op_src with
-    | Global.OD_Included_Or_Imported_And_Promoted (op_source,lid_loc) ->
-      (T.O_Promoted {op_out; op_name={lid_loc;lid_str}; op_in; op_source})::lst
-    | Global.OD_Included_Or_Imported_Promoted_And_Refined (op_source,lid_loc,_) ->
-      (T.O_Promoted {op_out; op_name={lid_loc;lid_str}; op_in; op_source})::lst
+    | O_Included_And_Promoted op_source -> (*FIXME*)
+      {T.op_out; op_name={lid_loc=Utils.dloc;lid_str}; op_in; op_source}::lst (*FIXME*)
+    | _ -> lst
+  in
+  Global.fold_operations aux env []
+
+let get_ref_promoted_operations (env:(_,G.Ref.t_op_decl) G.env) : T.promoted list =
+  let aux (lid_str:string) (infos:G.Ref.t_op_decl G.t_operation_infos) lst =
+    let op_out = infos.Global.op_args_out in
+    let op_in = infos.Global.op_args_in in
+    match infos.Global.op_src with
+    | G.Ref.O_Refined_Included_And_Promoted op_source -> (*FIXME*)
+      {T.op_out; op_name={lid_loc=Utils.dloc;lid_str}; op_in; op_source}::lst (*FIXME*)
     | _ -> lst
   in
   Global.fold_operations aux env []
@@ -432,11 +440,15 @@ let type_machine_exn
     ) mch_set_parameters;
   let scalar_params = List.filter (fun x -> not (is_set_param x)) mch.P.mch_parameters in
   let mch_constraints = declare_mch_scalar_parameters_exn env scalar_params mch.P.mch_constraints in
-  let mch_uses = List.map (load f M.load_interface_for_used_machine env) mch.P.mch_uses in
-  let mch_sees = List.map (load f M.load_interface_for_seen_machine env) mch.P.mch_sees in
+  let mch_uses = List.map (load_r f M.load_interface_for_used_machine env) mch.P.mch_uses in
+  let mch_sees = List.map (load_r f M.load_interface_for_seen_machine env) mch.P.mch_sees in
   let mch_includes = List.map (load_mi V.M_Includes f M.load_interface_for_included_machine env) mch.P.mch_includes in
   let mch_extends = List.map (load_mi V.M_Includes f M.load_interface_for_extended_machine env) mch.P.mch_extends in
-  let () = List.iter (declare_set_exn env) mch.P.mch_sets in
+  let () = List.iter (function
+      | P.Abstract_Set v -> M.add_abstract_set env v.lid_loc v.lid_str
+      | P.Concrete_Set (v,elts) -> M.add_concrete_set env v.lid_loc v.lid_str elts
+    ) mch.P.mch_sets
+  in
   let mch_properties = declare_mch_constants_exn env mch.P.mch_concrete_constants
       mch.P.mch_abstract_constants mch.P.mch_properties
   in
@@ -448,7 +460,7 @@ let type_machine_exn
   let () = List.iter (promote_operation env) mch.P.mch_promotes in
   let mch_initialisation = Utils.map_opt (type_mch_init_exn env) mch.P.mch_initialisation in
   let mch_operations = List.map (declare_mch_operation_exn env) mch.P.mch_operations in
-  let mch_promoted = get_promoted_operations env in
+  let mch_promoted = get_mch_promoted_operations env in
   { T.mch_sees; mch_includes; mch_extends; mch_uses; mch_set_parameters;
     mch_scalar_parameters = symbs.scalar_parameters;
     mch_abstract_sets = symbs.abstract_sets;
@@ -461,75 +473,84 @@ let type_machine_exn
     mch_initialisation; mch_operations; mch_promoted
   }
 
-let declare_local_symbol_in_ref (env:Global.t_ref Global.t) (ctx:Local.t) (lid:lident) : Local.t =
+let declare_local_symbol_in_ref (env:_ Global.env) (ctx:Local.t) (lid:lident) : Local.t =
   match Global.get_symbol env lid.lid_str with
   | None -> Local.declare ctx lid.lid_str Local.L_Expr_Binder
   | Some infos ->
     Local.declare_with_type ctx lid.lid_str infos.Global.sy_typ Local.L_Expr_Binder
 
-let declare_ref_constants_exn (env:Global.t_ref Global.t) (cl:Global.t_ref V.clause)
+let declare_ref_constants_exn (env:_ Global.env) cl
     (cconst:lident list) (aconst:lident list) (prop:P.predicate option)
-  : (Global.t_ref,Btype.t) T.predicate option =
+  : (_,Btype.t) T.predicate option =
   let ctx = Local.empty in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cconst in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx aconst in
   let t_prop = Utils.map_opt (Inference.type_predicate_exn cl env ctx) prop in
-  List.iter (promote_symbol_exn env ctx Global.G_Concrete_Constant) cconst;
-  List.iter (promote_symbol_exn env ctx Global.G_Abstract_Constant) aconst;
+  List.iter (promote_symbol_exn env ctx G.Ref.add_concrete_constant) cconst;
+  List.iter (promote_symbol_exn env ctx G.Ref.add_abstract_constant) aconst;
   Utils.map_opt close_pred_exn t_prop
 
-let declare_ref_variables_exn (env:Global.t_ref Global.t) (cl:(Global.t_ref) V.clause) 
+let declare_ref_variables_exn (env:_ Global.env) cl
     (cvars:lident list) (avars:lident list) (inv:P.predicate option)
-  : (Global.t_ref,Btype.t) T.predicate option =
+  : (_,Btype.t) T.predicate option =
   let ctx = Local.empty in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cvars in
   let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx avars in
   let t_inv = Utils.map_opt (Inference.type_predicate_exn cl env ctx) inv in
-  List.iter (promote_symbol_exn env ctx Global.G_Concrete_Variable) cvars;
-  List.iter (promote_symbol_exn env ctx Global.G_Abstract_Variable) avars;
+  List.iter (promote_symbol_exn env ctx G.Ref.add_concrete_variable) cvars;
+  List.iter (promote_symbol_exn env ctx G.Ref.add_abstract_variable) avars;
   Utils.map_opt close_pred_exn t_inv
 
+(*
 let load_refines_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) (mch:lident) (parameters:lident list) : unit =
   match f mch.lid_loc mch.lid_str with
   | None -> Error.error mch.lid_loc ("The machine '"^mch.lid_str^"' does not typecheck.")
   | Some itf -> Global.load_interface_for_refined_machine env itf mch parameters
+   *)
 
-let get_ref_symbols (env:Global.t_ref Global.t) :
-  ((Global.t_ref,Global.t_abstract) T.symb,(Global.t_ref,Global.t_concrete) T.symb) t_symbols =
-  let aux (id:string) (infos:Global.t_ref Global.t_symbol_infos) rc =
-    let add_a_symb f (d:(Global.t_ref,Global.t_abstract) Global.t_decl) =
-      f { T.sy_id = id; sy_typ = infos.Global.sy_typ; sy_src=d }
-    in
-    let add_c_symb f (d:(Global.t_ref,Global.t_concrete) Global.t_decl) =
-      f { T.sy_id = id; sy_typ = infos.Global.sy_typ; sy_src=d }
+type t_ref_symbols = {
+  set_parameters: lident list;
+  scalar_parameters: T.t_param list;
+  abstract_sets: G.Ref.t_source T.symb list;
+  concrete_sets: (G.Ref.t_source T.symb*string list) list;
+  abstract_constants: G.Ref.t_source_2 T.symb list;
+  concrete_constants: G.Ref.t_source_2 T.symb list;
+  abstract_variables: G.Ref.t_source_2 T.symb list;
+  concrete_variables: G.Ref.t_source_2 T.symb list;
+}
+
+let get_ref_symbols (env:(G.Ref.t_kind,_) Global.env) : t_ref_symbols =
+  let aux (id:string) (infos:_ Global.t_symbol_infos) rc =
+    let add_symb f sy_src =
+      f { T.sy_id = id; sy_typ = infos.Global.sy_typ; sy_src }
     in
     match infos.Global.sy_kind with
-    | Global.K_Abstract_Set src ->
-      add_c_symb (fun x -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
-    | Global.K_Concrete_Set (elts,src) ->
-      add_c_symb (fun x -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
-    | Global.K_Abstract_Constant src ->
-      add_a_symb (fun x -> { rc with abstract_constants = (x::rc.abstract_constants) }) src
-    | Global.K_Concrete_Constant src ->
-      add_c_symb (fun x -> { rc with concrete_constants = (x::rc.concrete_constants) }) src
-    | Global.K_Abstract_Variable src ->
-      add_a_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
-    | Global.K_Concrete_Variable src ->
-      add_c_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
-    | Global.K_Parameter (Global.Scalar,p_loc) ->
+    | G.Ref.Abstract_Set src ->
+      add_symb (fun x -> { rc with abstract_sets = (x::rc.abstract_sets) }) src
+    | G.Ref.Concrete_Set (elts,src) ->
+      add_symb (fun x -> { rc with concrete_sets = ((x,elts)::rc.concrete_sets) }) src
+    | G.Ref.Abstract_Constant src ->
+      add_symb (fun x -> { rc with abstract_constants = (x::rc.abstract_constants) }) src
+    | G.Ref.Concrete_Constant src ->
+      add_symb (fun x -> { rc with concrete_constants = (x::rc.concrete_constants) }) src
+    | G.Ref.Abstract_Variable src ->
+      add_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
+    | G.Ref.Concrete_Variable src ->
+      add_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
+    | G.Ref.Parameter (Global.Scalar,p_loc) ->
       let x = { T.p_id=id;p_typ=infos.Global.sy_typ;p_loc } in
       { rc with scalar_parameters = (x::rc.scalar_parameters) }
-    | Global.K_Parameter (Global.Set,lid_loc) ->
+    | G.Ref.Parameter (Global.Set,lid_loc) ->
       let x = { lid_str=id; lid_loc } in
       { rc with set_parameters = (x::rc.set_parameters) }
-    | Global.K_Enumerate _ -> rc
+    | G.Ref.Enumerate _ -> rc
   in
   Global.fold_symbols aux env
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
       abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 let type_ref_init_exn env s =
-  close_subst_exn Ref (Inference.type_substitution_exn V.M_REF_OPERATIONS env Local.empty s)
+  close_subst_exn Ref (Inference.type_substitution_exn V.RS_Operations env Local.empty s)
 
 let check_signature (op:P.operation) args_in args_out =
   let rec aux lst1 lst2 =
@@ -545,8 +566,8 @@ let check_signature (op:P.operation) args_in args_out =
   aux op.P.op_in args_in;
   aux op.P.op_out args_out
 
-let get_ref_operation_context_exn (env:Global.t_ref Global.t) (op:P.operation) =
-  match Global.get_operation env op.P.op_name.lid_str with
+let get_ref_operation_context_exn (env:_ Global.env) (op:P.operation) =
+  match G.get_operation env op.P.op_name.lid_str with
   | None ->
     let aux ki ctx lid = Local.declare ctx lid.lid_str ki in
     let ctx0 = List.fold_left (aux Local.L_Param_In) Local.empty op.P.op_in in
@@ -561,18 +582,18 @@ let get_ref_operation_context_exn (env:Global.t_ref Global.t) (op:P.operation) =
     let () = check_signature op infos.Global.op_args_in infos.Global.op_args_out in
     (ctx0,ctx)
 
-let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : Global.t_ref T.operation =
+let declare_ref_operation_exn (env:_ Global.env) (op:P.operation) : _ T.operation =
   let (ctx0,ctx) = get_ref_operation_context_exn env op in
   let op_body =
     if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.M_REF_OPERATIONS env ctx op.P.op_body
+      Inference.type_substitution_exn V.RS_Operations env ctx op.P.op_body
     else
       begin match op.P.op_body.P.sub_desc with
         | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_REF_OPERATIONS env ctx0 p in
-          let ts = Inference.type_substitution_exn V.M_REF_OPERATIONS env ctx s in
+          let tp = Inference.type_predicate_exn V.R_Operations env ctx0 p in
+          let ts = Inference.type_substitution_exn V.RS_Operations env ctx s in
           { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.M_REF_OPERATIONS env ctx op.P.op_body
+        | _ -> Inference.type_substitution_exn V.RS_Operations env ctx op.P.op_body
       end
   in
   let op_body = close_subst_exn Ref op_body in
@@ -589,29 +610,37 @@ let declare_ref_operation_exn (env:Global.t_ref Global.t) (op:P.operation) : Glo
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false;
-  T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
+  G.Ref.add_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_readonly:false;
+  { op_name=op.P.op_name; op_in; op_out; op_body }
 
-let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Global.t_ref Global.t) ref : T.refinement =
-  let () = load_refines_exn f env ref.P.ref_refines ref.P.ref_parameters in
-  let ref_sees = List.map (load_seen_mch_exn f env) ref.P.ref_sees in
-  let ref_includes = List.map (load_included_or_imported_mch_exn V.C_REF_PARAMETERS f env) ref.P.ref_includes in
-  let ref_extends = List.map (load_extended_mch_exn V.C_REF_PARAMETERS f env) ref.P.ref_extends in
-  let () = List.iter (declare_set_exn env) ref.P.ref_sets in
-  let ref_properties = declare_ref_constants_exn env V.C_PROPERTIES
+let type_refinement_exn (f:Utils.loc->string->Global.t_interface option)
+    (env:(G.Ref.t_kind,G.Ref.t_op_decl) Global.env) ref : T.refinement
+  =
+  let ref_refines = load f G.Ref.load_interface_for_refined_machine env ref.P.ref_refines in
+  let ref_sees = List.map (load_r f G.Ref.load_interface_for_seen_machine env) ref.P.ref_sees in
+  let ref_includes = List.map (load_mi V.R_Includes f G.Ref.load_interface_for_included_machine env) ref.P.ref_includes in
+  let ref_extends = List.map (load_mi V.R_Includes f G.Ref.load_interface_for_extended_machine env) ref.P.ref_extends in
+  let () = List.iter (function
+      | P.Abstract_Set v -> G.Ref.add_abstract_set env v.lid_loc v.lid_str
+      | P.Concrete_Set (v,elts) -> G.Ref.add_concrete_set env v.lid_loc v.lid_str elts
+    ) ref.P.ref_sets
+  in
+  let ref_properties = declare_ref_constants_exn env V.R_Properties
       ref.P.ref_concrete_constants ref.P.ref_abstract_constants ref.P.ref_properties
   in
-  let ref_invariant = declare_ref_variables_exn env V.C_INVARIANT
+  let ref_invariant = declare_ref_variables_exn env V.R_Invariant
       ref.P.ref_concrete_variables ref.P.ref_abstract_variables ref.P.ref_invariant
   in
   let symbs = get_ref_symbols env in
-  let ref_assertions = List.map (type_assertion_exn V.C_INVARIANT env) ref.P.ref_assertions in
-  let () = List.iter (promote_operation env) ref.P.ref_promotes in
+  let ref_assertions = List.map (type_assertion_exn V.R_Invariant env) ref.P.ref_assertions in
+  let () = List.iter (fun op_name ->
+      G.Ref.promote_operation env op_name.lid_loc op_name.lid_str
+    ) ref.P.ref_promotes
+  in
   let ref_initialisation = Utils.map_opt (type_ref_init_exn env) ref.P.ref_initialisation in
-  let specified_operations = List.map (declare_ref_operation_exn env) ref.P.ref_operations in
-  let ref_operations = (get_promoted_operations env)@specified_operations in
-  { T.ref_refines=ref.P.ref_refines;
-    ref_sees;
+  let ref_operations = List.map (declare_ref_operation_exn env) ref.P.ref_operations in
+  let ref_promoted = get_ref_promoted_operations env in
+  { T.ref_refines; ref_sees;
     ref_includes; ref_extends;
     ref_set_parameters = symbs.set_parameters;
     ref_scalar_parameters = symbs.scalar_parameters;
@@ -621,8 +650,9 @@ let type_refinement_exn (f:Utils.loc->string->Global.t_interface option) (env:Gl
     ref_abstract_constants = symbs.abstract_constants;
     ref_concrete_variables = symbs.concrete_variables;
     ref_abstract_variables = symbs.abstract_variables;
-    ref_properties; ref_invariant; ref_assertions; ref_initialisation; ref_operations }
-
+    ref_properties; ref_invariant; ref_assertions; ref_initialisation;
+    ref_operations; ref_promoted }
+(*
 let type_value_exn (env:Global.t_ref Global.t) (v,e:lident*P.expression) :
   (T.value*(Global.t_ref,Btype.t)T.expression) =
   match Global.get_symbol env v.lid_str with
@@ -865,15 +895,16 @@ let get_imported_or_seen_csets f sees imports : (Btype.t_atomic_src*string) list
   let res = [] in
   let res = List.fold_left aux1 res sees in
   List.fold_left aux2 res imports
-
+*)
 let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
-    (env:Global.t_ref Global.t) (imp:P.implementation) : T.implementation =
-  let () = load_refines_exn f env imp.P.imp_refines imp.P.imp_parameters in
+    (env:_ Global.env) (imp:P.implementation) : T.implementation
+  =
+  let imp_refines = load f G.Imp.load_interface_for_refined_machine env imp.P.imp_refines in
   let () = List.iter (declare_set_exn env) imp.P.imp_sets in
   let imported_or_seen_csets = get_imported_or_seen_csets f imp.P.imp_sees imp.P.imp_imports in
   let () = List.iter (manage_set_concretisation_exn imported_or_seen_csets env) imp.P.imp_values in
-  let imp_sees = List.map (load_seen_mch_exn f env) imp.P.imp_sees in
-  let imp_imports = List.map (load_included_or_imported_mch_exn V.C_IMP_PARAMETERS f env) imp.P.imp_imports in
+  let imp_sees = List.map (load_r f G.Imp.load_interface_for_seen_machine env) imp.P.imp_sees in
+  let imp_imports = List.map (load_mi V.I_Imports f G.Imp.load_interface_for_imported_machine env) imp.P.imp_imports in
   let imp_extends = List.map (load_extended_mch_exn V.C_IMP_PARAMETERS f env) imp.P.imp_extends in
   let imp_properties = declare_ref_constants_exn env V.C_PROPERTIES
       imp.P.imp_concrete_constants [] imp.P.imp_properties
@@ -890,10 +921,7 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
   let imp_initialisation = Utils.map_opt (type_imp_init_exn env) imp.P.imp_initialisation in
   let specified_operations = List.map (declare_imp_operation_exn env lops_map) imp.P.imp_operations in
   let imp_operations = (get_promoted_operations env)@specified_operations in (*XXX we could check that there is no recursivité*)
-  { T.imp_refines=imp.P.imp_refines;
-    imp_sees;
-    imp_imports;
-    imp_extends;
+  { T.imp_refines; imp_sees; imp_imports; imp_extends;
     imp_set_parameters = symbs.set_parameters;
     imp_scalar_parameters = symbs.scalar_parameters;
     imp_abstract_sets=symbs.abstract_sets;
@@ -902,26 +930,22 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
     imp_concrete_constants=symbs.concrete_constants;
     imp_abstract_variables=symbs.abstract_variables;
     imp_concrete_variables=symbs.concrete_variables;
-    imp_properties;
-    imp_values;
-    imp_invariant;
-    imp_assertions;
-    imp_initialisation;
-    imp_operations }
+    imp_properties; imp_values; imp_invariant; imp_assertions;
+    imp_initialisation; imp_operations }
 
 let type_component (f:Utils.loc -> string -> Global.t_interface option) (co:P.component) : (T.component*Global.t_interface option) =
   match co.P.co_desc with
   | P.Machine mch ->
-    let env = Global.create_mch mch.P.mch_parameters in
+    let env = G.Mch.create mch.P.mch_parameters in
     let cp = { T.co_name = co.P.co_name; co_desc   = T.Machine (type_machine_exn f env mch) } in
-    (cp,Some (Global.to_interface env))
+    (cp,Some (G.Mch.to_interface env))
   | P.Refinement ref ->
-    let env = Global.create_ref ref.P.ref_parameters in
+    let env = G.Ref.create ref.P.ref_parameters in
     let cp = { T.co_name = co.P.co_name; co_desc = T.Refinement (type_refinement_exn f env ref) } in
-    Global.check_operation_coherence_ref env co.P.co_name.lid_loc;
-    (cp,Some (Global.to_interface env))
+    G.Ref.check_operation_coherence_ref env co.P.co_name.lid_loc;
+    (cp,Some (G.Ref.to_interface env))
   | P.Implementation imp ->
-    let env = Global.create_ref imp.P.imp_parameters in
+    let env = G.Imp.create imp.P.imp_parameters in
     let cp = { T.co_name = co.P.co_name; co_desc   = T.Implementation (type_implementation_exn f env imp) } in
-    Global.check_operation_coherence_imp env co.P.co_name.lid_loc;
+    G.Imp.check_operation_coherence_imp env co.P.co_name.lid_loc;
     (cp,None)

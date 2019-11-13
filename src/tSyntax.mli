@@ -159,13 +159,13 @@ type machine = {
   mch_operations: (t_mch_ident_op,t_mch_ident_mut,t_mch_ident_assert,t_mch_op_source) operation list;
 }
 
-type t_ref_ident_params
-type t_ref_ident_prop
-type t_ref_ident_inv
-type t_ref_ident_op
-type t_ref_ident_mut
-type t_ref_ident_assert
-type t_ref_op_source
+type t_ref_ident_params = V.Ref.Includes.t
+type t_ref_ident_prop = V.Ref.Properties.t
+type t_ref_ident_inv = V.Ref.Invariant.t
+type t_ref_ident_op = V.Ref.Operations.t
+type t_ref_ident_mut = V.Ref.Operations.t_mut
+type t_ref_ident_assert = V.Ref.Assert.t
+type t_ref_op_source = V.Ref.Operations.t_op
 
 type refinement = {
   ref_refines: mch_name;
@@ -179,10 +179,10 @@ type refinement = {
 
   ref_abstract_sets: G.Ref.t_source symb list;
   ref_concrete_sets: (G.Ref.t_source symb*string list) list;
-  ref_concrete_constants: G.Ref.t_source symb list;
-  ref_abstract_constants: G.Ref.t_source symb list;
-  ref_concrete_variables: G.Ref.t_source symb list;
-  ref_abstract_variables: G.Ref.t_source symb list;
+  ref_concrete_constants: G.Ref.t_source_2 symb list;
+  ref_abstract_constants: G.Ref.t_source_2 symb list;
+  ref_concrete_variables: G.Ref.t_source_2 symb list;
+  ref_abstract_variables: G.Ref.t_source_2 symb list;
   
   ref_properties: (t_ref_ident_prop,Btype.t) predicate option;
   ref_invariant: (t_ref_ident_inv,Btype.t) predicate option;

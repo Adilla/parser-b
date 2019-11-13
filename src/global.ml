@@ -14,8 +14,9 @@ type 'a t_operation_infos =
     op_args_out: (string*Btype.t) list;
     op_readonly:bool;
     op_src: 'a; }
-(*
+
 type t_global_kind =
+  | K_Parameter  of t_param_kind
   | K_Abstract_Variable
   | K_Abstract_Constant
   | K_Concrete_Variable
@@ -24,17 +25,6 @@ type t_global_kind =
   | K_Concrete_Set of string list
   | K_Enumerate
 
-type t_mch = Mch
-type t_ref = Mch
-type t_imp = Mch
-
-type _ t_source =
-    | M_Machine : loc -> t_mch t_source
-    | M_Seen : ren_ident -> t_mch t_source
-    | M_Used : ren_ident -> t_mch t_source
-    | M_Included : ren_ident -> t_mch t_source
-
-*)
 module MachineInterface :
 sig
   type t
@@ -129,12 +119,25 @@ module Mch = struct
       symb=Hashtbl.create 47;
       ops=Hashtbl.create 47 }
 
-  let add_symbol (env:t) (err_loc:loc) (id:string) (sy_typ:Btype.t) (sy_kind: t_kind) : unit = (*FIXME*)
+  
+  let _add_symbol (env:t) (l:loc) (id:string) (sy_typ:Btype.t) (ki: t_global_kind) (src:t_source) : unit = (*FIXME*)
     match Hashtbl.find_opt env.symb id with
     | Some _ ->
-      Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
+      Error.error l ("The identifier '" ^ id ^ "' clashes with previous declaration.")
     | None ->
-      Hashtbl.add env.symb id { sy_typ; sy_kind }
+      let sy_kind = match ki with
+        | K_Parameter k -> Parameter (k,l)
+        | K_Abstract_Variable -> Abstract_Variable src
+        | K_Abstract_Constant -> Abstract_Constant src
+        | K_Concrete_Variable -> Concrete_Variable src
+        | K_Concrete_Constant -> Concrete_Constant src
+        | K_Abstract_Set -> Abstract_Set src
+        | K_Concrete_Set elts -> Concrete_Set (elts,Machine l)
+        | K_Enumerate -> Enumerate (Machine l)
+      in
+      Hashtbl.add env.symb id { sy_typ; sy_kind}
+
+  let add_symbol (env:t) (l:loc) (id:string) (sy_typ:Btype.t) (ki: t_global_kind) : unit = (*FIXME*)
 
   let _add_operation (env:t) (err_loc:loc) (id:string) (op_args_in:(string*Btype.t)list)
       (op_args_out:(string*Btype.t)list) (op_readonly:bool) (src:t_source) : unit =
@@ -165,27 +168,29 @@ module Mch = struct
     | Some _ ->
       Error.error lc ("The operation '"^id^"' is not an operation of an included machine.")
 
-  let mk_kind kind src = match kind with
-    | K_Abstract_Variable -> Abstract_Variable src
-    | K_Abstract_Constant -> Abstract_Constant src
-    | K_Concrete_Variable -> Concrete_Variable src
-    | K_Concrete_Constant -> Concrete_Constant src
-    | K_Abstract_Set -> Abstract_Set src
-    | K_Concrete_Set elts -> Concrete_Set (elts,src)
-    | K_Enumerate -> Enumerate src
+(*
+  let mk_kind (kind:MachineInterface.t_kind) src = match kind with
+    | MachineInterface.Abstract_Variable -> Abstract_Variable src
+    | MachineInterface.Abstract_Constant -> Abstract_Constant src
+    | MachineInterface.Concrete_Variable -> Concrete_Variable src
+    | MachineInterface.Concrete_Constant -> Concrete_Constant src
+    | MachineInterface.Abstract_Set -> Abstract_Set src
+    | MachineInterface.Concrete_Set elts -> Concrete_Set (elts,src)
+    | MachineInterface.Enumerate -> Enumerate src
+*)
 
   let load_external_symbol (env:t) (mch:ren_ident) (src:t_source)
       ({id;typ;kind}:MachineInterface.t_symb) : unit =
-    let open MachineInterface in
     let mk_id id = match mch.r_prefix with
       | None -> id
       | Some p -> p ^ "." ^ id 
     in
     match kind with
-    | K_Abstract_Variable | K_Concrete_Variable ->
+    | MachineInterface.Abstract_Variable
+    | MachineInterface.Concrete_Variable ->
       add_symbol env mch.SyntaxCore.r_loc (mk_id id)
         (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-        (mk_kind kind src)
+        kind src
     | _ ->
       if (is_in_deps env.deps mch.SyntaxCore.r_str) then ()
       else
@@ -237,19 +242,19 @@ module Mch = struct
       match symb.sy_kind with
       | Parameter (_, _) -> lst
       | Abstract_Variable (Machine _|Included _)->
-        { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable }::lst
+        { id=x; typ=symb.sy_typ; kind=Abstract_Variable }::lst
       | Abstract_Constant (Machine _|Included _) ->
-        { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant }::lst
+        { id=x; typ=symb.sy_typ; kind=Abstract_Constant }::lst
       | Concrete_Variable (Machine _|Included _) ->
-        { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable }::lst
+        { id=x; typ=symb.sy_typ; kind=Concrete_Variable }::lst
       | Concrete_Constant (Machine _|Included _) ->
-        { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant }::lst
+        { id=x; typ=symb.sy_typ; kind=Concrete_Constant }::lst
       | Abstract_Set (Machine _|Included _) ->
-        { id=x; typ=symb.sy_typ; kind=K_Abstract_Set }::lst
+        { id=x; typ=symb.sy_typ; kind=Abstract_Set }::lst
       | Concrete_Set (elts, (Machine _|Included _)) ->
-        { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts }::lst
+        { id=x; typ=symb.sy_typ; kind=Concrete_Set elts }::lst
       | Enumerate (Machine _|Included _) ->
-        { id=x; typ=symb.sy_typ; kind=K_Enumerate }::lst
+        { id=x; typ=symb.sy_typ; kind=Enumerate }::lst
       | _ -> lst
     in
     let get_operations (id:string) (op:t_op_decl t_operation_infos) lst =
@@ -319,6 +324,7 @@ module Ref = struct
       symb=Hashtbl.create 47;
       ops=Hashtbl.create 47 }
 
+(*
   let update_kind (decl:t_kind) (ki:t_global_kind) (src:t_source) : t_kind option =
     match decl, ki with
     | Abstract_Variable src2, K_Abstract_Variable ->
@@ -370,6 +376,7 @@ module Ref = struct
     | K_Abstract_Set -> Abstract_Set src
     | K_Concrete_Set elts -> Concrete_Set (elts,src)
     | K_Enumerate -> Enumerate src
+*)
 
   let add_symbol (env:t) (err_loc:loc) (id:string) (sy_typ:Btype.t)
       (ki:t_global_kind) (src:t_source) : unit =

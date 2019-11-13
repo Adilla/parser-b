@@ -98,25 +98,25 @@ val mk_global : ('env_ki,'id_ki) clause -> 'env_ki -> 'id_ki
 val mk_local : (_,'id_ki) clause -> Local.t_local_kind -> 'id_ki
 
 type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
-  | M_Operation : (Global.Mch.t_kind,
+  | MS_Operations : (Global.Mch.t_kind,
                    Mch.Operations.t,
                    Mch.Operations.t_mut,
                    Mch.Assert.t,
                    Global.Mch.t_op_decl,
                    Mch.Operations.t_op) sclause
-  | R_Operation : (Global.Ref.t_kind,
+  | RS_Operations : (Global.Ref.t_kind,
                    Ref.Operations.t,
                    Ref.Operations.t_mut,
                    Ref.Assert.t,
                    Global.Ref.t_op_decl,
                    Ref.Operations.t_op) sclause
-  | I_Operation : (Global.Imp.t_kind,
+  | IS_Operations : (Global.Imp.t_kind,
                    Imp.Operations.t,
                    Imp.Operations.t_mut,
                    Imp.Assert.t,
                    Global.Imp.t_op_decl,
                    Imp.Operations.t_op) sclause
-  | I_Local_Operation : (Global.Imp.t_kind,
+  | IS_Local_Operations : (Global.Imp.t_kind,
                    Imp.Local_Operations.t,
                    Imp.Local_Operations.t_mut,
                    Imp.Assert.t,

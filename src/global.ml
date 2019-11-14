@@ -48,7 +48,7 @@ end = struct
 end
 
 type t_interface = MachineInterface.t
-
+(*
 let check_args_type alias (err_loc:loc) (args_old:(string*Btype.t)list) (args_new:(string*Btype.t)list) : unit =
   let aux (x1,ty1) (x2,ty2) =
     if String.equal x1 x2 then
@@ -60,30 +60,19 @@ let check_args_type alias (err_loc:loc) (args_old:(string*Btype.t)list) (args_ne
   in
   try List.iter2 aux args_old args_new;
   with Invalid_argument _ -> Error.error err_loc "Unexpected number of parameters."
+   *)
 
 let is_in_deps (deps:string list) (mch:string) : bool =
   List.exists (String.equal mch) deps
-
+(*
 let rec find_duplicate : (string*'a) list -> string option = function
   | [] -> None
   | (x,_)::tl ->
     let aux (y,_) = String.equal x y in
     if List.exists aux tl then Some x
     else find_duplicate tl
+   *)
 
-type ('sy_ki,'op_ki) env = {
-  mutable deps: string list;
-  params: lident list;
-  mutable alias:Btype.t_alias;
-  symb:(string,'sy_ki t_symbol_infos) Hashtbl.t;
-  ops:(string,'op_ki t_operation_infos) Hashtbl.t
-}
-
-let get_alias env = env.alias
-let get_symbol (env:_ env) (id:string) : _ t_symbol_infos option =
-  Hashtbl.find_opt env.symb id
-let get_operation (env:_ env) (id:string) : _ t_operation_infos option =
-  Hashtbl.find_opt env.ops id
 
 module Mch = struct
 
@@ -103,42 +92,16 @@ module Mch = struct
     | Concrete_Set of string list * t_source
     | Enumerate of t_source
 
-  type t_op_decl =
+  type t_op_source =
     | O_Machine of loc
     | O_Seen of ren_ident
     | O_Used of ren_ident
     | O_Included of ren_ident
     | O_Included_And_Promoted of ren_ident
 
-  type t = (t_kind,t_op_decl) env
-
-  let create params : t =
-    { deps=[];
-      params;
-      alias=Btype.no_alias;
-      symb=Hashtbl.create 47;
-      ops=Hashtbl.create 47 }
-
+  (*
   
-  let _add_symbol (env:t) (l:loc) (id:string) (sy_typ:Btype.t) (ki: t_global_kind) (src:t_source) : unit = (*FIXME*)
-    match Hashtbl.find_opt env.symb id with
-    | Some _ ->
-      Error.error l ("The identifier '" ^ id ^ "' clashes with previous declaration.")
-    | None ->
-      let sy_kind = match ki with
-        | K_Parameter k -> Parameter (k,l)
-        | K_Abstract_Variable -> Abstract_Variable src
-        | K_Abstract_Constant -> Abstract_Constant src
-        | K_Concrete_Variable -> Concrete_Variable src
-        | K_Concrete_Constant -> Concrete_Constant src
-        | K_Abstract_Set -> Abstract_Set src
-        | K_Concrete_Set elts -> Concrete_Set (elts,Machine l)
-        | K_Enumerate -> Enumerate (Machine l)
-      in
-      Hashtbl.add env.symb id { sy_typ; sy_kind}
-
-  let add_symbol (env:t) (l:loc) (id:string) (sy_typ:Btype.t) (ki: t_global_kind) : unit = (*FIXME*)
-
+ 
   let _add_operation (env:t) (err_loc:loc) (id:string) (op_args_in:(string*Btype.t)list)
       (op_args_out:(string*Btype.t)list) (op_readonly:bool) (src:t_source) : unit =
     match Hashtbl.find_opt env.ops id with
@@ -279,6 +242,7 @@ module Mch = struct
     let symbs = Hashtbl.fold get_symbols env.symb [] in
     let ops = Hashtbl.fold get_operations env.ops [] in
     MachineInterface.make params symbs ops
+     *)
 end
 
 module Ref = struct
@@ -307,7 +271,7 @@ module Ref = struct
     | Concrete_Set of string list * t_source
     | Enumerate of t_source
 
-  type t_op_decl =
+  type t_op_source =
     | O_Refined
     | O_Refined_And_Machine of loc
     | O_Seen of ren_ident
@@ -315,6 +279,7 @@ module Ref = struct
     | O_Refined_And_Included of ren_ident
     | O_Refined_Included_And_Promoted of ren_ident
 
+  (*
   type t = (t_kind,t_op_decl) env
 
   let create params : t =
@@ -551,6 +516,7 @@ module Ref = struct
     let symbs = Hashtbl.fold get_symbols env.symb [] in
     let ops = Hashtbl.fold get_operations env.ops [] in
     MachineInterface.make params symbs ops
+     *)
 end
 
 module Imp = struct
@@ -592,7 +558,7 @@ module Imp = struct
     | Concrete_Set of string list * t_concrete_const_decl
     | Enumerate of t_concrete_const_decl
 
-  type t_op_decl =
+  type t_op_source =
     | O_Current of loc
     | O_Seen of ren_ident
     | O_Imported of ren_ident
@@ -604,6 +570,7 @@ module Imp = struct
     | O_Local_Spec of loc
     | O_Local_Spec_And_Implem of loc*loc
 
+  (*
   type t = (t_kind,t_op_decl) env
 
   let create params : t =
@@ -814,6 +781,7 @@ module Imp = struct
       ) (get_operations itf)
 
   let check_operation_coherence (_:t) (_:loc) : unit = () (*FIXME*)
+     *)
 end
 
 (*
@@ -1427,12 +1395,6 @@ let check_operation_coherence_imp (env:t_ref t) (err_loc:loc) : unit =
         Error.error err_loc ("The operation '"^x^"' is not refined (missing promotion?).")
   ) env.ops
 
-let fold_symbols (f:string -> 'mr t_symbol_infos -> 'a -> 'a) (env:'mr t) : 'a -> 'a =
-  Hashtbl.fold f env.symb
-
-let fold_operations (f:string -> 'mr t_operation_infos -> 'a -> 'a) (env:'mr t) : 'a -> 'a =
-  Hashtbl.fold f env.ops
-
 let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string) list)
     (itf:t_interface) : (Btype.t_atomic_src*string) list =
   let open MachineInterface in
@@ -1442,3 +1404,87 @@ let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string)
   in
   List.fold_left aux accu (get_symbols itf)
    *)
+
+type (_,_) c_kind =
+  | Mch : (Mch.t_kind,Mch.t_op_source) c_kind
+  | Ref : (Ref.t_kind,Ref.t_op_source) c_kind
+  | Imp : (Imp.t_kind,Imp.t_op_source) c_kind
+
+type ('sy_ki,'op_ki) t = {
+  witness: ('sy_ki,'op_ki) c_kind;
+  mutable deps: string list;
+  params: lident list;
+  mutable alias:Btype.t_alias;
+  symb:(string,'sy_ki t_symbol_infos) Hashtbl.t;
+  ops:(string,'op_ki t_operation_infos) Hashtbl.t
+}
+
+let create witness params : _ t =
+  { witness;
+    deps=[];
+    params;
+    alias=Btype.no_alias;
+    symb=Hashtbl.create 47;
+    ops=Hashtbl.create 47 }
+
+type mEnv = (Mch.t_kind,Mch.t_op_source) t
+type rEnv = (Ref.t_kind,Ref.t_op_source) t
+type iEnv = (Imp.t_kind,Imp.t_op_source) t
+
+let get_alias env = env.alias
+
+let get_symbol (env:_ t) (id:string) : _ t_symbol_infos option =
+  Hashtbl.find_opt env.symb id
+
+let get_operation (env:_ t) (id:string) : _ t_operation_infos option =
+  Hashtbl.find_opt env.ops id
+
+let fold_symbols (f:string -> 'mr t_symbol_infos -> 'a -> 'a) (env:('mr,_) t) : 'a -> 'a =
+  Hashtbl.fold f env.symb
+
+let fold_operations (f:string -> 'mr t_operation_infos -> 'a -> 'a) (env:(_,'mr) t) : 'a -> 'a =
+  Hashtbl.fold f env.ops
+
+let add_mch_symbol (env:mEnv) (l:loc) (id:string) (sy_typ:Btype.t) (sy_kind: Mch.t_kind) : unit =
+  match Hashtbl.find_opt env.symb id with
+  | Some _ ->
+    Error.error l ("The identifier '" ^ id ^ "' clashes with previous declaration.")
+  | None ->
+    Hashtbl.add env.symb id { sy_typ; sy_kind}
+
+let add_symbol (type a b) (env:(a,b) t) l id ty ki : unit =
+  match env.witness with
+  | Mch ->
+    let ki = match ki with
+      | K_Parameter k -> Mch.Parameter (k,l)
+      | K_Abstract_Variable -> Mch.Abstract_Variable (Machine l)
+      | K_Abstract_Constant -> Mch.Abstract_Constant (Machine l)
+      | K_Concrete_Variable -> Mch.Concrete_Variable (Machine l)
+      | K_Concrete_Constant -> Mch.Concrete_Constant (Machine l)
+      | K_Abstract_Set -> Mch.Abstract_Set (Machine l)
+      | K_Concrete_Set elts -> Mch.Concrete_Set (elts,Machine l)
+      | K_Enumerate -> Mch.Enumerate (Machine l)
+    in
+    add_mch_symbol env l id ty ki
+  | Ref -> assert false (*FIXME*)
+  | Imp -> assert false (*FIXME*)
+
+let add_operation : _ t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit = assert false (*FIXME*)
+let promote_operation : _ t -> loc -> string -> unit = assert false (*FIXME*)
+
+let add_parameter env loc id ty ki = add_symbol env loc id ty (K_Parameter ki)
+let add_abstract_variable env loc id ty = add_symbol env loc id ty K_Abstract_Variable
+let add_concrete_variable env loc id ty = add_symbol env loc id ty K_Concrete_Variable
+let add_abstract_constant env loc id ty = add_symbol env loc id ty K_Abstract_Constant
+let add_concrete_constant env loc id ty = add_symbol env loc id ty K_Concrete_Constant
+let add_abstract_set env loc id = assert false (*FIXME*)
+let add_concrete_set env loc id elts = assert false (*FIXME*)
+
+(* val load_interface_for_used_machine : mEnv -> t_interface -> ren_ident -> unit *)
+
+(*
+val load_interface_for_seen_machine : _ t -> t_interface -> ren_ident -> unit
+val load_interface_for_included_or_imported_machine : _ t -> t_interface -> ren_ident -> unit
+val load_interface_for_extended_machine : _ t -> t_interface -> ren_ident -> unit
+val load_interface_for_refined_machine : _ t -> t_interface -> lident -> unit
+*)

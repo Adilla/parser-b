@@ -114,15 +114,6 @@ type promoted =
     op_source:ren_ident
   }
   
-type t_mch_ident_constr = V.Mch.Constraints.t
-type t_mch_ident_params = V.Mch.Includes.t
-type t_mch_ident_prop = V.Mch.Properties.t
-type t_mch_ident_inv = V.Mch.Invariant.t
-type t_mch_ident_op = V.Mch.Operations.t
-type t_mch_ident_mut = V.Mch.Operations.t_mut
-type t_mch_ident_assert = V.Mch.Assert.t
-type t_mch_op_source = V.Mch.Operations.t_op
-
 type 'id_ki machine_instanciation = {
   mi_mch: ren_ident;
   mi_params: ('id_ki,Btype.t) expression list
@@ -140,8 +131,8 @@ type machine = {
 
   mch_sees: ren_ident list;
   mch_uses: ren_ident list;
-  mch_includes: t_mch_ident_params machine_instanciation list;
-  mch_extends: t_mch_ident_params machine_instanciation list;
+  mch_includes: V.Mch.Includes.t machine_instanciation list;
+  mch_extends: V.Mch.Includes.t machine_instanciation list;
 
   mch_abstract_sets: G.Mch.t_source symb list;
   mch_concrete_sets: (G.Mch.t_source symb*string list) list;
@@ -150,22 +141,16 @@ type machine = {
   mch_concrete_variables: G.Mch.t_source symb list;
   mch_abstract_variables: G.Mch.t_source symb list;
 
-  mch_constraints: (t_mch_ident_constr,Btype.t) predicate option;
-  mch_properties: (t_mch_ident_prop,Btype.t) predicate option;
-  mch_invariant: (t_mch_ident_inv,Btype.t) predicate option;
-  mch_assertions: (t_mch_ident_inv,Btype.t) predicate list;
-  mch_initialisation: (t_mch_ident_op,t_mch_ident_mut,t_mch_ident_assert,t_mch_op_source,Btype.t) substitution option;
+  mch_constraints: (V.Mch.Constraints.t,Btype.t) predicate option;
+  mch_properties: (V.Mch.Properties.t,Btype.t) predicate option;
+  mch_invariant: (V.Mch.Invariant.t,Btype.t) predicate option;
+  mch_assertions: (V.Mch.Invariant.t,Btype.t) predicate list;
+  mch_initialisation: (V.Mch.Operations.t,V.Mch.Operations.t_mut,
+                       V.Mch.Assert.t,V.Mch.Operations.t_op,Btype.t) substitution option;
   mch_promoted: promoted list;
-  mch_operations: (t_mch_ident_op,t_mch_ident_mut,t_mch_ident_assert,t_mch_op_source) operation list;
+  mch_operations: (V.Mch.Operations.t,V.Mch.Operations.t_mut,
+                   V.Mch.Assert.t,V.Mch.Operations.t_op) operation list;
 }
-
-type t_ref_ident_params = V.Ref.Includes.t
-type t_ref_ident_prop = V.Ref.Properties.t
-type t_ref_ident_inv = V.Ref.Invariant.t
-type t_ref_ident_op = V.Ref.Operations.t
-type t_ref_ident_mut = V.Ref.Operations.t_mut
-type t_ref_ident_assert = V.Ref.Assert.t
-type t_ref_op_source = V.Ref.Operations.t_op
 
 type refinement = {
   ref_refines: mch_name;
@@ -174,8 +159,8 @@ type refinement = {
   ref_scalar_parameters: t_param list;
 
   ref_sees: ren_ident list;
-  ref_includes: t_ref_ident_params machine_instanciation list;
-  ref_extends: t_ref_ident_params machine_instanciation list;
+  ref_includes: V.Ref.Includes.t machine_instanciation list;
+  ref_extends: V.Ref.Includes.t machine_instanciation list;
 
   ref_abstract_sets: G.Ref.t_source symb list;
   ref_concrete_sets: (G.Ref.t_source symb*string list) list;
@@ -184,22 +169,26 @@ type refinement = {
   ref_concrete_variables: G.Ref.t_source_2 symb list;
   ref_abstract_variables: G.Ref.t_source_2 symb list;
   
-  ref_properties: (t_ref_ident_prop,Btype.t) predicate option;
-  ref_invariant: (t_ref_ident_inv,Btype.t) predicate option;
-  ref_assertions: (t_ref_ident_inv,Btype.t) predicate list;
-  ref_initialisation: (t_ref_ident_op,t_ref_ident_mut,t_ref_ident_assert,t_ref_op_source,Btype.t) substitution option;
+  ref_properties: (V.Ref.Properties.t,Btype.t) predicate option;
+  ref_invariant: (V.Ref.Invariant.t,Btype.t) predicate option;
+  ref_assertions: (V.Ref.Invariant.t,Btype.t) predicate list;
+  ref_initialisation: (V.Ref.Operations.t,V.Ref.Operations.t_mut,V.Ref.Assert.t,
+                       V.Ref.Operations.t_op,Btype.t) substitution option;
   ref_promoted: promoted list;
-  ref_operations: (t_ref_ident_op,t_ref_ident_mut,t_ref_ident_assert,t_ref_op_source) operation list;
+  ref_operations: (V.Ref.Operations.t,V.Ref.Operations.t_mut,V.Ref.Assert.t,
+                   V.Ref.Operations.t_op) operation list;
 }
 
+(*
 type val_kind_source =
   | VKS_Machine
   | VKS_Implicit
   | VKS_Redeclared
+*)
 
 type val_kind =
-  | VK_Abstract_Set of val_kind_source
-  | VK_Concrete_Constant of val_kind_source
+  | VK_Abstract_Set (*of val_kind_source*)
+  | VK_Concrete_Constant (*of val_kind_source*)
 
 type value =
   { val_loc:Utils.loc;
@@ -215,31 +204,14 @@ type t_asy_src =
   | I_Redeclared_By_Seen of ren_ident
 *)
 
-(*
-type t_abs_imp_symb = {
-  asy_id:string;
-  asy_typ:Btype.t;
-  asy_src:t_asy_src
-}
-*)
-
-type t_imp_ident_params
-type t_imp_ident_prop
-type t_imp_ident_inv
-type t_imp_ident_op
-type t_imp_ident_mut
-type t_imp_ident_assert
-type t_imp_ident_lop
-type t_imp_ident_lmut
-type t_imp_ident_values
-type t_imp_op_source
-
 type t_local_operation =
   { op_out: arg list;
     op_name: lident;
     op_in: arg list;
-    op_spec: (t_imp_ident_lop,t_imp_ident_lmut,t_imp_ident_assert,t_imp_op_source,Btype.t) substitution;
-    op_body: (t_imp_ident_op,t_imp_ident_mut,t_imp_ident_assert,t_imp_op_source,Btype.t) substitution
+    op_spec: (V.Imp.Local_Operations.t,V.Imp.Local_Operations.t_mut,
+              V.Imp.Assert.t,V.Imp.Local_Operations.t_op,Btype.t) substitution;
+    op_body: (V.Imp.Operations.t,V.Imp.Operations.t_mut,V.Imp.Assert.t,
+              V.Imp.Operations.t_op,Btype.t) substitution
   }
 
 type implementation = {
@@ -249,25 +221,27 @@ type implementation = {
   imp_refines: mch_name;
 
   imp_sees: ren_ident list;
-  imp_imports: t_imp_ident_params machine_instanciation list;
-  imp_extends: t_imp_ident_params machine_instanciation list;
+  imp_imports: V.Imp.Imports.t machine_instanciation list;
+  imp_extends: V.Imp.Imports.t machine_instanciation list;
 
-  imp_abstract_sets: G.Imp.t_source symb list;
-  imp_concrete_sets: (G.Imp.t_source symb*string list) list;
-  imp_abstract_constants: G.Imp.t_source symb list;
-  imp_concrete_constants: G.Imp.t_source symb list;
-  imp_abstract_variables: G.Imp.t_source symb list;
-  imp_concrete_variables: G.Imp.t_source symb list;
+  imp_abstract_sets: G.Imp.t_concrete_const_decl symb list;
+  imp_concrete_sets: (G.Imp.t_concrete_const_decl symb*string list) list;
+  imp_abstract_constants: G.Imp.t_abstract_decl symb list;
+  imp_concrete_constants: G.Imp.t_concrete_const_decl symb list;
+  imp_abstract_variables: G.Imp.t_abstract_decl symb list;
+  imp_concrete_variables: G.Imp.t_concrete_var_decl symb list;
 
-  imp_values: (value*(t_imp_ident_values,Btype.t) expression) list;
+  imp_values: (value*(V.Imp.Values.t,Btype.t) expression) list;
 
-  imp_properties: (t_imp_ident_prop,Btype.t) predicate option;
-  imp_invariant: (t_imp_ident_inv,Btype.t) predicate option;
-  imp_assertions: (t_imp_ident_inv,Btype.t) predicate list;
-  imp_initialisation: (t_imp_ident_op,t_imp_ident_mut,t_imp_ident_assert,t_imp_op_source,Btype.t) substitution option;
+  imp_properties: (V.Imp.Properties.t,Btype.t) predicate option;
+  imp_invariant: (V.Imp.Invariant.t,Btype.t) predicate option;
+  imp_assertions: (V.Imp.Invariant.t,Btype.t) predicate list;
+  imp_initialisation: (V.Imp.Operations.t,V.Imp.Operations.t_mut,
+                       V.Imp.Assert.t,V.Imp.Operations.t_op,Btype.t) substitution option;
   imp_promoted: promoted list;
   imp_local_operations: t_local_operation list;
-  imp_operations: (t_imp_ident_op,t_imp_ident_mut,t_imp_ident_assert,t_imp_op_source) operation list;
+  imp_operations: (V.Imp.Operations.t,V.Imp.Operations.t_mut,V.Imp.Assert.t,
+                   V.Imp.Operations.t_op) operation list;
 }
 
 type component_desc =

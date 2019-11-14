@@ -217,7 +217,7 @@ let is_int_or_power_exn l alias (arg1:('mr,Btype.Open.t) T.expression) (arg2:('m
             "' but an expression of type INTEGER or POW(_) was expected.")
 
 let type_global_ident (type env_ki id_ki)
-    (cl:(env_ki,id_ki) Visibility.clause) (env:(env_ki,_) Global.env)
+    (cl:(env_ki,id_ki) Visibility.clause) (env:(env_ki,_) Global.t)
     (id_loc:Utils.loc) (id_name:string) : (id_ki,Btype.Open.t) T.t_ident
   =
   match Global.get_symbol env id_name with
@@ -229,7 +229,7 @@ let type_global_ident (type env_ki id_ki)
   | None -> Error.error id_loc ("Unknown identifier '"^id_name^"'.")
 
 let type_ident (type env_ki id_ki)
-    (cl:(env_ki,id_ki) Visibility.clause) (env:(env_ki,_) Global.env) (ctx:Local.t) 
+    (cl:(env_ki,id_ki) Visibility.clause) (env:(env_ki,_) Global.t) (ctx:Local.t) 
     (id_loc:Utils.loc) (id_prefix:string option) (id_str:string) : (id_ki,Btype.Open.t) T.t_ident =
   match id_prefix with
   | None ->
@@ -300,7 +300,7 @@ let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
   ) ids
 
 let rec type_expression_exn : type env_ki id_ki.
-  (env_ki,id_ki) Visibility.clause -> (env_ki,_) Global.env -> Local.t ->
+  (env_ki,id_ki) Visibility.clause -> (env_ki,_) Global.t -> Local.t ->
   P.expression -> (id_ki,Btype.Open.t) T.expression
   = fun cl env ctx e ->
   let open Btype.Open in
@@ -486,7 +486,7 @@ let rec type_expression_exn : type env_ki id_ki.
     end
 
 and type_predicate_exn : type env_ki id_ki.
-    (env_ki,id_ki)Visibility.clause -> (env_ki,_) Global.env ->
+    (env_ki,id_ki)Visibility.clause -> (env_ki,_) Global.t ->
     Local.t -> P.predicate -> (id_ki,Btype.Open.t) T.predicate
   = fun cl env ctx p ->
   let open Btype.Open in
@@ -594,7 +594,7 @@ and type_predicate_exn : type env_ki id_ki.
     mk_pred p.P.prd_loc (T.Existential_Q (tids,tp))
 
 and check_utuple : type  env_ki id_ki. (env_ki,id_ki) V.clause ->
-  (env_ki,_) Global.env -> Local.t -> utuple -> Btype.Open.t ->
+  (env_ki,_) Global.t -> Local.t -> utuple -> Btype.Open.t ->
   (id_ki,Btype.Open.t) T.expression = fun cl env ctx tpl ty_exp ->
     match tpl with
     | T_Ident (id_loc,id_name,ki) ->
@@ -658,7 +658,7 @@ let type_mut_ident (type env_ki mut_ki)
 *)
 
 let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibility.sclause ->
-  (env_ki,_) Global.env -> Local.t -> ren_ident -> (mut_ki,Btype.Open.t) T.t_ident
+  (env_ki,_) Global.t -> Local.t -> ren_ident -> (mut_ki,Btype.Open.t) T.t_ident
   = fun cl env ctx x ->
     match x.r_prefix with
     | None ->
@@ -701,7 +701,7 @@ let to_op_source (type a) (is_readonly:bool) : a Global.t_op_decl -> T.t_op_sour
 *)
 
 let check_writable_nlist : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) V.sclause ->
-  (env_ki,_) Global.env -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t ->
+  (env_ki,_) Global.t -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t ->
   (mut_ki,Btype.Open.t) T.t_ident Nlist.t
   = fun cl env ctx xlst loc ty ->
   let mk_mut (lid:ren_ident) id_type =
@@ -754,7 +754,7 @@ let check_writable_nlist : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) V.sclause
     unexpected_type_exn loc ty ty_exp
 
 let type_out_parameter (type env_ki mut_ki) (cl:(env_ki,_,mut_ki,_,_,_) V.sclause)
-    (env:(env_ki,_) Global.env) (ctx:Local.t) (id:ren_ident) (_,ty:_*Btype.t) :
+    (env:(env_ki,_) Global.t) (ctx:Local.t) (id:ren_ident) (_,ty:_*Btype.t) :
   (mut_ki,Btype.Open.t) T.t_ident
   =
   let ty_exp = ( ty :> Btype.Open.t) in
@@ -779,7 +779,7 @@ let type_out_parameter (type env_ki mut_ki) (cl:(env_ki,_,mut_ki,_,_,_) V.sclaus
     end
 
 let type_in_parameter (type env_ki id_ki) (cl:(env_ki,id_ki) V.clause)
-  (env:(env_ki,_) Global.env) (ctx:Local.t) (e:P.expression) (_,ty:string*Btype.t) :
+  (env:(env_ki,_) Global.t) (ctx:Local.t) (e:P.expression) (_,ty:string*Btype.t) :
   (id_ki,Btype.Open.t) T.expression
   =
     let ty_exp = ( ty :> Btype.Open.t) in
@@ -789,7 +789,7 @@ let type_in_parameter (type env_ki id_ki) (cl:(env_ki,id_ki) V.clause)
     | Some _ -> te
 
 let rec type_substitution_exn : type env_ki id_ki mut_ki assert_ki env_op_ki op_ki.
-  (env_ki,id_ki,mut_ki,assert_ki,env_op_ki,op_ki) V.sclause -> (env_ki,env_op_ki) Global.env ->
+  (env_ki,id_ki,mut_ki,assert_ki,env_op_ki,op_ki) V.sclause -> (env_ki,env_op_ki) Global.t ->
   Local.t -> P.substitution -> (id_ki,mut_ki,assert_ki,op_ki,Btype.Open.t) T.substitution
   = fun cl env ctx s0 ->
   let open Btype.Open in

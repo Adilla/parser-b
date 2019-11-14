@@ -76,7 +76,9 @@ module Imp = struct
     type t_mut = unit
     type t_op = unit
   end
-
+  module Values = struct
+    type t = unit
+  end
 end
 
 type (_,_) clause =
@@ -97,41 +99,42 @@ type (_,_) clause =
   | I_Invariant : (Global.Imp.t_kind,Imp.Invariant.t) clause
   | I_Operations : (Global.Imp.t_kind,Imp.Operations.t) clause
   | I_Local_Operations : (Global.Imp.t_kind,Imp.Local_Operations.t) clause
+  | I_Values : (Global.Imp.t_kind,Imp.Values.t) clause
 
-let mk_global (type a b) (cl:(a,b) clause) (ki:a) : b = assert false (*FIXME*)
+let mk_global (type a b) (_:(a,b) clause) (_:a) : b = assert false (*FIXME*)
 
-let mk_local (type b) (cl:(_,b) clause) (ki:Local.t_local_kind) : b = assert false (*FIXME*)
+let mk_local (type b) (_:(_,b) clause) (_:Local.t_local_kind) : b = assert false (*FIXME*)
 
 type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
   | MS_Operations : (Global.Mch.t_kind,
                    Mch.Operations.t,
                    Mch.Operations.t_mut,
                    Mch.Assert.t,
-                   Global.Mch.t_op_decl,
+                   Global.Mch.t_op_source,
                    Mch.Operations.t_op) sclause
   | RS_Operations : (Global.Ref.t_kind,
                    Ref.Operations.t,
                    Ref.Operations.t_mut,
                    Ref.Assert.t,
-                   Global.Ref.t_op_decl,
+                   Global.Ref.t_op_source,
                    Ref.Operations.t_op) sclause
   | IS_Operations : (Global.Imp.t_kind,
                    Imp.Operations.t,
                    Imp.Operations.t_mut,
                    Imp.Assert.t,
-                   Global.Imp.t_op_decl,
+                   Global.Imp.t_op_source,
                    Imp.Operations.t_op) sclause
   | IS_Local_Operations : (Global.Imp.t_kind,
                    Imp.Local_Operations.t,
                    Imp.Local_Operations.t_mut,
                    Imp.Assert.t,
-                   Global.Imp.t_op_decl,
+                   Global.Imp.t_op_source,
                    Imp.Local_Operations.t_op) sclause
 
-let mk_global_mut (type a b) (cl:(a,_,b,_,_,_) sclause) (ki:a) : b = assert false (*FIXME*)
-let mk_local_mut (type a) (cl:(_,_,a,_,_,_) sclause) (ki:Local.t_local_kind) : a = assert false (*FIXME*)
+let mk_global_mut (type a b) (_:(a,_,b,_,_,_) sclause) (_:a) : b = assert false (*FIXME*)
+let mk_local_mut (type a) (_:(_,_,a,_,_,_) sclause) (_:Local.t_local_kind) : a = assert false (*FIXME*)
 
-let mk_op (type a b) (cl: (_,_,_,_,a,b) sclause) (ki:a) : b = assert false (*FIXME*)
+let mk_op (type a b) (_: (_,_,_,_,a,b) sclause) (_:a) : b = assert false (*FIXME*)
 
 let to_clause : type a b c d e f. (a,b,c,d,e,f) sclause -> (a,b) clause = function
   | MS_Operations -> M_Operations
@@ -139,4 +142,9 @@ let to_clause : type a b c d e f. (a,b,c,d,e,f) sclause -> (a,b) clause = functi
   | IS_Operations -> I_Operations
   | IS_Local_Operations -> I_Local_Operations
 
-let to_assert : ('env_ki,_,_,'assert_ki,_,_) sclause -> ('env_ki,'assert_ki) clause
+let to_assert : type a b c d e f.(a,b,c,d,e,f) sclause -> (a,d) clause = function
+  | MS_Operations -> M_Assert
+  | RS_Operations -> R_Assert
+  | IS_Operations -> I_Assert
+  | IS_Local_Operations -> I_Assert
+

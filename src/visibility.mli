@@ -7,8 +7,10 @@ module Mch : sig
       | Expr_Binder
       | Parameter of Utils.loc 
 
+(*
     val mk_local : Local.t_local_kind -> t
     val mk_global : G.Mch.t_kind -> t
+*)
   end
   module Includes : sig
     type t
@@ -73,7 +75,9 @@ module Imp : sig
     type t_mut
     type t_op
   end
-
+  module Values : sig
+    type t
+  end
 end
 
 type (_,_) clause =
@@ -93,6 +97,8 @@ type (_,_) clause =
   | I_Properties : (Global.Imp.t_kind,Imp.Properties.t) clause
   | I_Invariant : (Global.Imp.t_kind,Imp.Invariant.t) clause
   | I_Operations : (Global.Imp.t_kind,Imp.Operations.t) clause
+  | I_Local_Operations : (Global.Imp.t_kind,Imp.Local_Operations.t) clause
+  | I_Values : (Global.Imp.t_kind,Imp.Values.t) clause
 
 val mk_global : ('env_ki,'id_ki) clause -> 'env_ki -> 'id_ki
 val mk_local : (_,'id_ki) clause -> Local.t_local_kind -> 'id_ki
@@ -102,25 +108,25 @@ type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
                    Mch.Operations.t,
                    Mch.Operations.t_mut,
                    Mch.Assert.t,
-                   Global.Mch.t_op_decl,
+                   Global.Mch.t_op_source,
                    Mch.Operations.t_op) sclause
   | RS_Operations : (Global.Ref.t_kind,
                    Ref.Operations.t,
                    Ref.Operations.t_mut,
                    Ref.Assert.t,
-                   Global.Ref.t_op_decl,
+                   Global.Ref.t_op_source,
                    Ref.Operations.t_op) sclause
   | IS_Operations : (Global.Imp.t_kind,
                    Imp.Operations.t,
                    Imp.Operations.t_mut,
                    Imp.Assert.t,
-                   Global.Imp.t_op_decl,
+                   Global.Imp.t_op_source,
                    Imp.Operations.t_op) sclause
   | IS_Local_Operations : (Global.Imp.t_kind,
                    Imp.Local_Operations.t,
                    Imp.Local_Operations.t_mut,
                    Imp.Assert.t,
-                   Global.Imp.t_op_decl,
+                   Global.Imp.t_op_source,
                    Imp.Local_Operations.t_op) sclause
 
 val mk_global_mut : ('env_ki,_,'mut_ki,_,_,_) sclause -> 'env_ki -> 'mut_ki

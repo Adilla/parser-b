@@ -29,12 +29,29 @@ type t_global_kind =
 
 type t_interface
 
-type ('sy_ki,'op_ki) env
-val get_symbol : ('sy_ki,_) env -> string -> 'sy_ki t_symbol_infos option
-val get_operation : (_,'op_ki) env -> string -> 'op_ki t_operation_infos option
-val get_alias : _ env -> Btype.t_alias 
-val fold_symbols: (string -> 'x t_symbol_infos -> 'a -> 'a) -> ('x,_) env -> 'a -> 'a
-val fold_operations: (string -> 'x t_operation_infos -> 'a -> 'a) -> (_,'x) env -> 'a -> 'a
+type ('sy_ki,'op_ki) t
+
+val get_symbol : ('sy_ki,_) t -> string -> 'sy_ki t_symbol_infos option
+val get_operation : (_,'op_ki) t -> string -> 'op_ki t_operation_infos option
+val get_alias : _ t -> Btype.t_alias 
+
+val add_symbol : _ t -> loc -> string -> Btype.t -> t_global_kind -> unit
+val add_operation : _ t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
+val promote_operation : _ t -> loc -> string -> unit
+
+val add_parameter : _ t -> loc -> string -> Btype.t -> t_param_kind -> unit
+val add_abstract_variable : _ t -> loc -> string -> Btype.t -> unit
+val add_concrete_variable : _ t -> loc -> string -> Btype.t -> unit
+val add_abstract_constant : _ t -> loc -> string -> Btype.t -> unit
+val add_concrete_constant : _ t -> loc -> string -> Btype.t -> unit
+val add_abstract_set : _ t -> loc -> string -> unit
+val add_concrete_set : _ t -> loc -> string -> lident list -> unit
+
+
+val to_interface : _ t -> t_interface
+
+val fold_symbols: (string -> 'x t_symbol_infos -> 'a -> 'a) -> ('x,_) t -> 'a -> 'a
+val fold_operations: (string -> 'x t_operation_infos -> 'a -> 'a) -> (_,'x) t -> 'a -> 'a
 
 module Mch : sig
 
@@ -54,27 +71,24 @@ module Mch : sig
     | Concrete_Set of string list * t_source
     | Enumerate of t_source
 
-  type t_op_decl =
+  type t_op_source =
     | O_Machine of loc
     | O_Seen of ren_ident
     | O_Used of ren_ident
     | O_Included of ren_ident
     | O_Included_And_Promoted of ren_ident
 
-  type t = (t_kind,t_op_decl) env
+(*
 
-  val create : lident list -> t
 
-  val add_symbol : t -> loc -> string -> Btype.t -> t_global_kind -> unit
+  (*   val add_enumerate : t -> loc -> string -> Btype.t -> unit *)
+
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
   val promote_operation : t -> loc -> string -> unit
 
-  val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_used_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_included_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> unit
 
   val to_interface : t -> t_interface
+*)
 end
 
 module Ref : sig
@@ -102,13 +116,7 @@ module Ref : sig
     | Concrete_Set of string list * t_source
     | Enumerate of t_source
 
-(*
-  val create : lident list -> t
-  val get_symbol : t -> string -> t_kind t_symbol_infos option
-  val add_symbol : t -> loc -> string -> Btype.t -> t_global_kind -> t_source -> unit
-*)
-
-  type t_op_decl =
+  type t_op_source =
     | O_Refined
     | O_Refined_And_Machine of loc
     | O_Seen of ren_ident
@@ -116,8 +124,8 @@ module Ref : sig
     | O_Refined_And_Included of ren_ident
     | O_Refined_Included_And_Promoted of ren_ident
 
-  type t = (t_kind,t_op_decl) env
 
+(*
   val create : lident list -> t
   val add_parameter : t -> loc -> string -> Btype.t -> unit
   val add_abstract_variable : t -> loc -> string -> Btype.t -> unit
@@ -128,20 +136,15 @@ module Ref : sig
   val add_concrete_set : t -> loc -> string -> lident list -> unit
 
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
-(*
-=======
-  val get_operation : t -> string -> t_op_decl t_operation_infos option
-  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> unit
->>>>>>> Stashed changes
 *)
+(*
   val promote_operation : t -> loc -> string -> unit
 
   val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_refined_machine : t -> t_interface -> lident -> unit
   val load_interface_for_included_machine : t -> t_interface -> ren_ident -> unit
   val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> unit
 
-  val to_interface : t -> t_interface
+*)
 end
 
 module Imp : sig
@@ -182,13 +185,7 @@ module Imp : sig
     | Concrete_Set of string list * t_concrete_const_decl
     | Enumerate of t_concrete_const_decl
 
-(*
-  val create : lident list -> t
-  val get_symbol : t -> string -> t_kind t_symbol_infos option
-  val add_symbol : t -> loc -> string -> Btype.t -> t_global_kind -> t_source -> unit
-*)
-
-  type t_op_decl =
+  type t_op_source =
     | O_Current of loc
     | O_Seen of ren_ident
     | O_Imported of ren_ident
@@ -200,18 +197,26 @@ module Imp : sig
     | O_Local_Spec of loc
     | O_Local_Spec_And_Implem of loc*loc
 
-  type t = (t_kind,t_op_decl) env
 
+(*
   val create : lident list -> t
   val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
-
+  val add_parameter : t -> loc -> string -> Btype.t -> unit
+  val add_abstract_variable : t -> loc -> string -> Btype.t -> unit
+  val add_abstract_constant : t -> loc -> string -> Btype.t -> unit
+  val add_concrete_variable : t -> loc -> string -> Btype.t -> unit
+  val add_concrete_constant : t -> loc -> string -> Btype.t -> unit
+  val add_abstract_set : t -> loc -> string -> unit
+  val add_concrete_set : t -> loc -> string -> lident list -> unit
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
+*)
 (*
 =======
   val get_operation : t -> string -> t_op_decl t_operation_infos option
   val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> unit
 >>>>>>> Stashed changes
 *)
+(*
   val promote_operation : t -> loc -> string -> unit
 
   val get_alias : t -> Btype.t_alias 
@@ -219,29 +224,27 @@ module Imp : sig
 
   val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
   val load_interface_for_refined_machine : t -> t_interface -> lident -> unit
-  val load_interface_for_imported_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
-  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+  val load_interface_for_imported_machine : t -> t_interface -> ren_ident -> unit
+  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> unit
 
   val check_operation_coherence : t  -> loc -> unit
+*)
 end
 
-(*
+type (_,_) c_kind =
+  | Mch : (Mch.t_kind,Mch.t_op_source) c_kind
+  | Ref : (Ref.t_kind,Ref.t_op_source) c_kind
+  | Imp : (Imp.t_kind,Imp.t_op_source) c_kind
 
-type 'a t_op_decl =
-  | OD_Current : loc -> t_mch t_op_decl
-  | OD_Seen : ren_ident -> 'a t_op_decl
-  | OD_Included_Or_Imported : ren_ident -> 'a t_op_decl
-  | OD_Included_Or_Imported_And_Promoted : ren_ident*loc -> t_mch t_op_decl
-  | OD_Refined : lident -> t_ref t_op_decl
-  | OD_Current_And_Refined : loc*lident -> t_ref t_op_decl
-  | OD_Included_Or_Imported_And_Refined : ren_ident*lident -> t_ref t_op_decl
-  | OD_Included_Or_Imported_Promoted_And_Refined : ren_ident*loc*lident -> t_ref t_op_decl
+val create : ('a,'b) c_kind -> lident list -> ('a,'b) t
 
+type mEnv = (Mch.t_kind,Mch.t_op_source) t
+type rEnv = (Ref.t_kind,Ref.t_op_source) t
+type iEnv = (Imp.t_kind,Imp.t_op_source) t
 
-*)
+val load_interface_for_used_machine : mEnv -> t_interface -> ren_ident -> unit
 
-(* val add_abstract_sets : Btype.t_atomic_src -> (Btype.t_atomic_src*string) list -> t_interface -> (Btype.t_atomic_src*string) list *)
-
-
-(*
-*)
+val load_interface_for_seen_machine : _ t -> t_interface -> ren_ident -> unit
+val load_interface_for_included_or_imported_machine : _ t -> t_interface -> ren_ident -> unit
+val load_interface_for_extended_machine : _ t -> t_interface -> ren_ident -> unit
+val load_interface_for_refined_machine : _ t -> t_interface -> lident -> unit

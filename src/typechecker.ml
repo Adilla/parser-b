@@ -312,7 +312,8 @@ let declare_operation_exn (cl:_ V.sclause) (env:_ Global.t) (op:P.operation) : _
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  G.add_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_readonly:false;
+  G.add_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out
+    ~is_readonly:(is_read_only env [] op.P.op_body);
   { op_name=op.P.op_name; op_in; op_out; op_body }
 
 type t_mch_symbols = {

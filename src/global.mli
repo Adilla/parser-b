@@ -133,6 +133,7 @@ module Imp : sig
     | V_Refined
     | V_Imported of ren_ident
     | V_Redeclared_In_Imported of ren_ident
+    | V_Redeclared_In_Machine of loc
 
   type t_concrete_const_decl =
     | C_Machine of loc
@@ -141,6 +142,7 @@ module Imp : sig
     | C_Imported of ren_ident
     | C_Redeclared_In_Seen of ren_ident
     | C_Redeclared_In_Imported of ren_ident
+    | C_Redeclared_In_Machine of loc
 
   type t_kind =
     | Parameter of t_param_kind*loc

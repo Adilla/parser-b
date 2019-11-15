@@ -292,6 +292,7 @@ module Imp = struct
     | V_Refined
     | V_Imported of ren_ident
     | V_Redeclared_In_Imported of ren_ident
+    | V_Redeclared_In_Machine of loc
 
   type t_concrete_const_decl =
     | C_Machine of loc
@@ -300,6 +301,7 @@ module Imp = struct
     | C_Imported of ren_ident
     | C_Redeclared_In_Seen of ren_ident
     | C_Redeclared_In_Imported of ren_ident
+    | C_Redeclared_In_Machine of loc
 
   type t_kind =
     | Parameter of t_param_kind*loc
@@ -364,8 +366,8 @@ module Imp = struct
       end
     | Abstract_Variable src2, K_Concrete_Variable ->
       begin match src2, src with
-        | A_Refined, Machine _ -> assert false (*FIXME*)
-        (*           Some (Concrete_Variable (A_Redeclared_In_Machine l)) *)
+        | A_Refined, Machine l ->
+          Some (Concrete_Variable (V_Redeclared_In_Machine l))
         | A_Refined, Imported mch->
           Some (Concrete_Variable (V_Redeclared_In_Imported mch))
         | _, _ -> None
@@ -379,8 +381,8 @@ module Imp = struct
       end
     | Abstract_Constant src2, K_Concrete_Constant ->
       begin match src2, src with
-        | A_Refined, Machine _ -> assert false (*FIXME*)
-        (*           Some (Concrete_Constant (A_Redeclared_In_Machine l)) *)
+        | A_Refined, Machine l ->
+          Some (Concrete_Constant (C_Redeclared_In_Machine l))
         | A_Refined, Imported mch->
           Some (Concrete_Constant (C_Redeclared_In_Imported mch))
         | _, _ -> None

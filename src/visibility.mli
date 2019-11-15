@@ -100,8 +100,8 @@ type (_,_) clause =
   | I_Local_Operations : (Global.Imp.t_kind,Imp.Local_Operations.t) clause
   | I_Values : (Global.Imp.t_kind,Imp.Values.t) clause
 
-val mk_global : ('env_ki,'id_ki) clause -> 'env_ki -> 'id_ki
-val mk_local : (_,'id_ki) clause -> Local.t_local_kind -> 'id_ki
+val mk_global : ('env_ki,'id_ki) clause -> 'env_ki -> 'id_ki option
+val mk_local : (_,'id_ki) clause -> Local.t_local_kind -> 'id_ki option
 
 type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
   | MS_Operations : (Global.Mch.t_kind,

@@ -47,7 +47,6 @@ val add_concrete_constant : _ t -> loc -> string -> Btype.t -> unit
 val add_abstract_set : _ t -> loc -> string -> unit
 val add_concrete_set : _ t -> loc -> string -> lident list -> unit
 
-
 val to_interface : _ t -> t_interface
 
 val fold_symbols: (string -> 'x t_symbol_infos -> 'a -> 'a) -> ('x,_) t -> 'a -> 'a
@@ -78,17 +77,6 @@ module Mch : sig
     | O_Included of ren_ident
     | O_Included_And_Promoted of ren_ident
 
-(*
-
-
-  (*   val add_enumerate : t -> loc -> string -> Btype.t -> unit *)
-
-  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
-  val promote_operation : t -> loc -> string -> unit
-
-
-  val to_interface : t -> t_interface
-*)
 end
 
 module Ref : sig
@@ -124,27 +112,6 @@ module Ref : sig
     | O_Refined_And_Included of ren_ident
     | O_Refined_Included_And_Promoted of ren_ident
 
-
-(*
-  val create : lident list -> t
-  val add_parameter : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_variable : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_constant : t -> loc -> string -> Btype.t -> unit
-  val add_concrete_variable : t -> loc -> string -> Btype.t -> unit
-  val add_concrete_constant : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_set : t -> loc -> string -> unit
-  val add_concrete_set : t -> loc -> string -> lident list -> unit
-
-  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
-*)
-(*
-  val promote_operation : t -> loc -> string -> unit
-
-  val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_included_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> unit
-
-*)
 end
 
 module Imp : sig
@@ -186,10 +153,10 @@ module Imp : sig
     | Enumerate of t_concrete_const_decl
 
   type t_op_source =
-    | O_Current of loc
+(*     | O_Current of loc *)
     | O_Seen of ren_ident
     | O_Imported of ren_ident
-    | O_Imported_And_Promoted of ren_ident*loc
+(*     | O_Imported_And_Promoted of ren_ident*loc *)
     | O_Refined
     | O_Current_And_Refined of loc
     | O_Imported_And_Refined of ren_ident
@@ -197,38 +164,6 @@ module Imp : sig
     | O_Local_Spec of loc
     | O_Local_Spec_And_Implem of loc*loc
 
-
-(*
-  val create : lident list -> t
-  val add_symbol : t -> loc -> string -> Btype.t -> t_kind -> unit
-  val add_parameter : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_variable : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_constant : t -> loc -> string -> Btype.t -> unit
-  val add_concrete_variable : t -> loc -> string -> Btype.t -> unit
-  val add_concrete_constant : t -> loc -> string -> Btype.t -> unit
-  val add_abstract_set : t -> loc -> string -> unit
-  val add_concrete_set : t -> loc -> string -> lident list -> unit
-  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
-*)
-(*
-=======
-  val get_operation : t -> string -> t_op_decl t_operation_infos option
-  val add_operation : t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> unit
->>>>>>> Stashed changes
-*)
-(*
-  val promote_operation : t -> loc -> string -> unit
-
-  val get_alias : t -> Btype.t_alias 
-  val add_alias : t -> string -> Btype.t -> bool
-
-  val load_interface_for_seen_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_refined_machine : t -> t_interface -> lident -> unit
-  val load_interface_for_imported_machine : t -> t_interface -> ren_ident -> unit
-  val load_interface_for_extended_machine : t -> t_interface -> ren_ident -> unit
-
-  val check_operation_coherence : t  -> loc -> unit
-*)
 end
 
 type (_,_) c_kind =
@@ -248,3 +183,5 @@ val load_interface_for_seen_machine : _ t -> t_interface -> ren_ident -> unit
 val load_interface_for_included_or_imported_machine : _ t -> t_interface -> ren_ident -> unit
 val load_interface_for_extended_machine : _ t -> t_interface -> ren_ident -> unit
 val load_interface_for_refined_machine : _ t -> t_interface -> lident -> unit
+
+val check_operation_coherence : iEnv -> loc -> unit

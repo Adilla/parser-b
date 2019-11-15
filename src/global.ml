@@ -79,7 +79,11 @@ module Mch = struct
 
   let mk_kind kind src =
     match kind with
-    | K_Parameter _ -> assert false (*FIXME*)(*Mch.Parameter (k,l)*)
+    | K_Parameter k ->
+     begin match src with
+       | Machine l -> Parameter (k,l)
+       | _ -> failwith "Error in Global.Mch.mk_kind"
+     end
     | K_Abstract_Variable -> Abstract_Variable src
     | K_Abstract_Constant -> Abstract_Constant src
     | K_Concrete_Variable -> Concrete_Variable src
@@ -90,8 +94,13 @@ module Mch = struct
 
   let update_kind _ _ _ = None
 
-  let mk_op_source _ = assert false (*FIXME*)
-  let update_op_source _ _ = assert false (*FIXME*)
+  let mk_op_source = function
+    | Machine l -> O_Machine l
+    | Seen mch -> O_Seen mch
+    | Used mch -> O_Used mch
+    | Included mch -> O_Included mch
+
+  let update_op_source _ _ = None
 
   let get_symbols (x:string) (symb:t_kind t_symbol_infos) (lst:MachineInterface.t_symb list) =
     match symb.sy_kind with
@@ -210,10 +219,23 @@ module Ref = struct
     | K_Abstract_Set -> Abstract_Set src
     | K_Concrete_Set elts -> Concrete_Set (elts,src)
     | K_Enumerate -> Enumerate src
-    | K_Parameter _ -> assert false (*FIXME*)
+    | K_Parameter k ->
+      begin match src with
+        | Machine l -> Parameter(k,l)
+        | _ -> assert false (*FIXME*)
+      end
 
-  let mk_op_source _ = assert false (*FIXME*)
-  let update_op_source _ _ = assert false (*FIXME*)
+  let mk_op_source = function
+    | Machine _ -> assert false (*FIXME*)
+    | Seen mch -> O_Seen mch
+    | Refined -> O_Refined
+    | Included mch -> O_Included mch
+
+  let update_op_source old_src new_src =
+    match old_src, new_src with
+    | O_Refined, Machine l -> Some (O_Refined_And_Machine l)
+    | O_Refined, Included l -> Some (O_Refined_And_Included l)
+    | _, _ -> None
 
   let get_symbols (x:string) (symb:t_kind t_symbol_infos) (lst:MachineInterface.t_symb list) =
     match symb.sy_kind with
@@ -290,10 +312,8 @@ module Imp = struct
     | Enumerate of t_concrete_const_decl
 
   type t_op_source =
-    | O_Current of loc
     | O_Seen of ren_ident
     | O_Imported of ren_ident
-    | O_Imported_And_Promoted of ren_ident*loc
     | O_Refined
     | O_Current_And_Refined of loc
     | O_Imported_And_Refined of ren_ident
@@ -368,8 +388,19 @@ module Imp = struct
     (*FIXME*)
     | _ -> None
 
-  let mk_op_source _ = assert false (*FIXME*)
-  let update_op_source _ _ = assert false (*FIXME*)
+  let mk_op_source = function
+    | Machine _ -> assert false (*FIXME*)
+    | Refined -> O_Refined
+    | Seen mch -> O_Seen mch
+    | Imported mch -> O_Imported mch
+
+  let update_op_source (old_src:t_op_source) (new_src:t_source) : t_op_source option =
+    match old_src, new_src with
+    | O_Refined, Machine l -> Some (O_Current_And_Refined l)
+    | O_Refined, Imported mch -> Some (O_Imported_And_Refined mch)
+    | O_Local_Spec l1 , Machine l2 -> Some (O_Local_Spec_And_Implem (l1,l2))
+    | _, _ -> None
+
 end
 
 type (_,_) c_kind =
@@ -419,8 +450,8 @@ let _add_symbol (type a b src) update_kind mk_kind (env:(a,b)t) (err_loc:loc)
   | Some infos ->
     let sy_kind = match update_kind infos.sy_kind ki src with
       | Some x -> x
-      | None ->
-        Error.error err_loc ("The identifier '" ^ id ^ "' clashes with previous declaration.")
+      | None -> Error.error err_loc ("The identifier '" ^ id ^
+                                     "' clashes with previous declaration.")
     in
     if not (Btype.is_equal_modulo_alias Btype.no_alias infos.sy_typ sy_typ) then
       Error.error  err_loc
@@ -651,9 +682,22 @@ let to_interface (type a b) (env:(a,b)t) : t_interface =
   | Mch -> _to_interface Mch.get_symbols Mch.get_operations Mch.param_kind env
   | Ref -> _to_interface Ref.get_symbols Ref.get_operations Ref.param_kind env
   | Imp -> assert false (*FIXME*)
+
+let check_operation_coherence (env:iEnv) (lc:loc) : unit =
+  Hashtbl.iter (
+    fun x op ->
+      match op.op_src with
+      | Imp.O_Seen _ -> ()
+      | Imp.O_Imported _ -> ()
+      | Imp.O_Local_Spec_And_Implem _ -> ()
+      | Imp.O_Current_And_Refined _ -> ()
+      | Imp.O_Imported_Promoted_And_Refined _ -> ()
+      | Imp.O_Refined -> Error.error lc ("The operation '"^x^"' is not refined.")
+      | Imp.O_Local_Spec lc -> Error.error lc ("The operation '"^x^"' is not implemented.")
+      | Imp.O_Imported_And_Refined _ ->
+        Error.error lc ("The operation '"^x^"' is not refined (missing promotion?).")
+  ) env.ops
 (*
-let is_in_deps (env:'a t) (mch:string) : bool =
-  List.exists (String.equal mch) env.deps
 
 let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:ren_ident) : unit =
   let open MachineInterface in
@@ -814,7 +858,6 @@ let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInter
     ) (get_operations itf);
   env.deps <- mch.r_str::env.deps
 
-
 let load_interface_for_refined_machine (env:t_ref t) (itf:MachineInterface.t) (mch:lident) (params:lident list): unit =
   let open MachineInterface in
   let rec check_param (lst1:lident list) (lst2:t_param list) =
@@ -904,38 +947,6 @@ let to_interface (type mr) (env:mr t) : MachineInterface.t =
   let symbs = Hashtbl.fold aux1 env.symb [] in
   let ops = Hashtbl.fold aux2 env.ops [] in
   MachineInterface.make params symbs ops
-
-let check_operation_coherence_ref (env:t_ref t) (_:loc) : unit =
-  Hashtbl.iter (
-    fun x op ->
-      match op.op_src with
-      | OD_Seen _ -> ()
-      | OD_Included_Or_Imported _ -> ()
-      | OD_Local_Spec_And_Implem _ -> ()
-      | OD_Current_And_Refined _ -> ()
-      | OD_Included_Or_Imported_Promoted_And_Refined _ -> ()
-      | OD_Refined _ -> ()
-      | OD_Local_Spec lc ->
-        Error.error lc ("The operation '"^x^"' is not implemented.")
-      | OD_Included_Or_Imported_And_Refined _ -> ()
-  ) env.ops
-
-let check_operation_coherence_imp (env:t_ref t) (err_loc:loc) : unit =
-  Hashtbl.iter (
-    fun x op ->
-      match op.op_src with
-      | OD_Seen _ -> ()
-      | OD_Included_Or_Imported _ -> ()
-      | OD_Local_Spec_And_Implem _ -> ()
-      | OD_Current_And_Refined _ -> ()
-      | OD_Included_Or_Imported_Promoted_And_Refined _ -> ()
-      | OD_Refined _ ->
-        Error.error err_loc ("The operation '"^x^"' is not refined.")
-      | OD_Local_Spec lc ->
-        Error.error lc ("The operation '"^x^"' is not implemented.")
-      | OD_Included_Or_Imported_And_Refined _ ->
-        Error.error err_loc ("The operation '"^x^"' is not refined (missing promotion?).")
-  ) env.ops
 
 let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string) list)
     (itf:t_interface) : (Btype.t_atomic_src*string) list =

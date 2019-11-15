@@ -572,7 +572,7 @@ let add_concrete_set env loc id elts =
   add_symbol env loc id (Btype.mk_Power ty)
     (K_Concrete_Set (List.map (fun x -> x.SyntaxCore.lid_str) elts))
 
-let load_external_symbol (type a b src) update_kind mk_kind (env:(a,b)t) (mch:ren_ident) (src:src)
+let load_external_symbol (type a b src) update_kind mk_kind (env:(a,b)t) alias (mch:ren_ident) (src:src)
     ({id;typ;kind}:MachineInterface.t_symb) : unit =
   let mk_id id = match mch.r_prefix with
     | None -> id
@@ -582,7 +582,7 @@ let load_external_symbol (type a b src) update_kind mk_kind (env:(a,b)t) (mch:re
   | K_Abstract_Variable
   | K_Concrete_Variable ->
     _add_symbol update_kind mk_kind env mch.SyntaxCore.r_loc (mk_id id)
-      (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
+      (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) (Btype.subst alias typ))
       kind src
   | _ ->
     if (is_in_deps env.deps mch.SyntaxCore.r_str) then ()
@@ -606,48 +606,104 @@ let load_external_op (type a b src) update_op_source mk_op_source (env:(a,b)t)
 
 let load_interface_for_used_machine (env:mEnv) (itf:t_interface) (mch:ren_ident) : unit =
   (*FIXME check not already in deps*)
+  (*FIXME parameters*)
   let open MachineInterface in
-  List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env mch (Mch.Used mch)) (get_symbols itf);
+  List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env Btype.SMap.empty mch (Mch.Used mch)) (get_symbols itf);
   env.deps <- mch.r_str::env.deps
 
 let load_interface_for_seen_machine (type a b) (env:(a,b) t) (itf:t_interface) (mch:ren_ident) : unit =
   let open MachineInterface in
   (*FIXME check not already in deps*)
+  (*FIXME parameters*)
   env.deps <- mch.r_str::env.deps;
   match env.witness with
   | Mch ->
-    List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env mch (Mch.Seen mch)) (get_symbols itf);
+    List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env Btype.SMap.empty mch (Mch.Seen mch)) (get_symbols itf);
     List.iter (load_external_op Mch.update_op_source Mch.mk_op_source env mch (Mch.Seen mch)) (get_operations itf)
   | Ref ->
-    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env mch (Ref.Seen mch)) (get_symbols itf);
+    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env Btype.SMap.empty mch (Ref.Seen mch)) (get_symbols itf);
     List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env mch (Ref.Seen mch)) (get_operations itf)
   | Imp ->
-    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env mch (Imp.Seen mch)) (get_symbols itf);
+    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env Btype.SMap.empty mch (Imp.Seen mch)) (get_symbols itf);
     List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Seen mch)) (get_operations itf)
 
-let load_interface_for_included_or_imported_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) : unit =
+let rec check_set_params err_loc lst1 lst2 alias =
+  let open MachineInterface in
+  match lst1, lst2 with
+  | [], [] -> alias
+  | hd1::tl1, (lc,hd2)::tl2 ->
+    begin match hd1.kind with
+      | Scalar -> check_set_params err_loc tl1 tl2 alias
+      | Set ->
+        begin match Btype.view hd2 with
+          | Btype.T_Power ty -> check_set_params err_loc tl1 tl2 (Btype.SMap.add hd1.id ty alias)
+          | _ ->
+            let err_txt = Printf.sprintf
+                "This expression has type '%s' but an expression of type '%s' was expected."
+                (Btype.to_string hd2)
+                (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
+            in
+            Error.error lc err_txt
+        end
+    end
+  | _, _ -> Error.error err_loc "Wrong number of parameters."
+
+let rec check_scalar_params alias lst1 lst2 =
+  let open MachineInterface in
+  match lst1, lst2 with
+  | [], [] -> ()
+  | hd1::tl1, (lc,hd2)::tl2 ->
+    begin match hd1.kind with
+      | Scalar ->
+        if Btype.equal (Btype.subst alias hd1.typ) hd2 then
+          check_scalar_params alias tl1 tl2
+        else
+          let err_txt = Printf.sprintf
+              "This expression has type '%s' but an expression of type '%s' was expected."
+              (Btype.to_string hd2)
+              (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
+          in
+          Error.error lc err_txt
+      | Set -> check_scalar_params alias tl1 tl2
+    end
+  | _, _ -> assert false (*FIXME*)
+
+let load_interface_for_included_or_imported_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
   let open MachineInterface in
   (*FIXME check not already in deps*)
   env.deps <- mch.r_str::env.deps;
+  let alias = check_set_params mch.r_loc (get_params itf) params Btype.SMap.empty in
+  check_scalar_params alias (get_params itf) params;
   match env.witness with
   | Mch ->
-    List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env mch (Mch.Included mch)) (get_symbols itf);
-    List.iter (load_external_op Mch.update_op_source Mch.mk_op_source env mch (Mch.Included mch)) (get_operations itf)
+    List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env alias mch (Mch.Included mch)) (get_symbols itf);
+    List.iter (load_external_op Mch.update_op_source Mch.mk_op_source env mch (Mch.Included mch)) (get_operations itf) (*FIXME alias*)
   | Ref ->
-    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env mch (Ref.Included mch)) (get_symbols itf);
-    List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env mch (Ref.Included mch)) (get_operations itf)
+    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env alias mch (Ref.Included mch)) (get_symbols itf);
+    List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env mch (Ref.Included mch)) (get_operations itf) (*FIXME alias*)
   | Imp ->
-    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env mch (Imp.Imported mch)) (get_symbols itf);
-    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Imported mch)) (get_operations itf)
+    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env alias mch (Imp.Imported mch)) (get_symbols itf);
+    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Imported mch)) (get_operations itf) (*FIXME alias*)
 
-let load_interface_for_extended_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) : unit =
+let load_interface_for_extended_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
   let open MachineInterface in
-  load_interface_for_included_or_imported_machine env itf mch;
+  load_interface_for_included_or_imported_machine env itf mch params;
   List.iter (fun (r:t_op) ->
       promote_operation env mch.SyntaxCore.r_loc r.id
     ) (get_operations itf)
 
-let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:lident) : unit =
+let rec check_param err_loc (add_param:loc -> MachineInterface.t_param -> unit)
+    (lst1:lident list) (lst2:MachineInterface.t_param list) : unit =
+    match lst1, lst2 with
+    | [], [] -> ()
+    | hd1::tl1, hd2::tl2 ->
+      if hd1.lid_str = hd2.id then
+        ( add_param hd1.lid_loc hd2; check_param err_loc add_param tl1 tl2 )
+      else Error.error hd1.lid_loc "Parameter mismatch."
+    | hd1::_, [] -> Error.error hd1.lid_loc "Parameter mismatch."
+    | [], hd2::_ -> Error.error err_loc ("Missing parameter '"^hd2.id^"'.")
+
+let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:lident) (params:lident list) : unit =
   (*FIXME check not already in deps*)
   let open MachineInterface in
   let ren_mch = { SyntaxCore.r_prefix=None; r_str=mch.lid_str; r_loc=mch.lid_loc } in
@@ -655,10 +711,18 @@ let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface)
   match env.witness with
   | Mch -> assert false (*FIXME*)
   | Ref ->
-    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env ren_mch Ref.Refined) (get_symbols itf);
+    let add_param l p =
+      _add_symbol Ref.update_kind Ref.mk_kind env l p.id p.typ (K_Parameter p.kind)(Ref.Machine l)
+    in
+    check_param mch.lid_loc add_param params (get_params itf);
+    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env Btype.SMap.empty ren_mch Ref.Refined) (get_symbols itf);
     List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env ren_mch Ref.Refined) (get_operations itf)
   | Imp ->
-    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env ren_mch Imp.Refined) (get_symbols itf);
+    let add_param l p =
+      _add_symbol Imp.update_kind Imp.mk_kind env l p.id p.typ (K_Parameter p.kind)(Imp.Machine l)
+    in
+    check_param mch.lid_loc add_param params (get_params itf);
+    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env Btype.SMap.empty ren_mch Imp.Refined) (get_symbols itf);
     List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env ren_mch Imp.Refined) (get_operations itf)
 
 let _to_interface (type a b) get_symbols get_operations param_kind (env:(a,b)t) : t_interface =
@@ -699,131 +763,12 @@ let check_operation_coherence (env:iEnv) (lc:loc) : unit =
   ) env.ops
 (*
 
-let load_interface_for_seen_machine (env:'a t) (itf:MachineInterface.t) (mch:ren_ident) : unit =
-  let open MachineInterface in
-  List.iter (fun (S { id;typ;kind}:t_symb) ->
-      match kind with
-      | G_Parameter _ -> ()
-      | G_Abstract_Variable ->
-        let ren_id = match mch.r_prefix with
-          | None -> id
-          | Some p -> p ^ "." ^ id 
-        in
-        _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-          kind (S_Seen mch)
-      | G_Concrete_Variable ->
-        let ren_id = match mch.r_prefix with
-          | None -> id
-          | Some p -> p ^ "." ^ id 
-        in
-        _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-          kind (S_Seen mch)
-      | _ ->
-        begin match mch.r_prefix with
-          | None ->
-            _add_symbol env mch.SyntaxCore.r_loc id
-              (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-              kind (S_Seen mch)
-          | Some _ ->
-            if is_in_deps env mch.SyntaxCore.r_str then ()
-            else
-              _add_symbol env mch.SyntaxCore.r_loc id
-                (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-                kind (S_Seen mch)
-        end
-    ) (get_symbols itf);
-  let change_current = List.map (fun (s,ty) -> (s,Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) ty)) in
-  List.iter (fun (r:t_op) ->
-      let op_name = match mch.SyntaxCore.r_prefix with
-        | None -> r.id
-        | Some p -> p ^ "." ^ r.id
-      in
-      _add_operation env mch.SyntaxCore.r_loc op_name (change_current r.args_in) (change_current r.args_out) r.readonly (SO_Seen mch)
-    ) (get_operations itf);
-  env.deps <- mch.r_str::env.deps
 
-let load_interface_for_used_machine (env:'a t) (itf:MachineInterface.t) (mch:ren_ident) : unit =
-  let open MachineInterface in
-  List.iter (fun (S { id;typ;kind}:t_symb) ->
-      match kind with
-      | G_Parameter _ -> ()
-      | G_Abstract_Variable ->
-        let ren_id = match mch.r_prefix with
-          | None -> id
-          | Some p -> p ^ "." ^ id 
-        in
-        _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-          kind (S_Used mch)
-      | G_Concrete_Variable ->
-        let ren_id = match mch.r_prefix with
-          | None -> id
-          | Some p -> p ^ "." ^ id 
-        in
-        _add_symbol env mch.SyntaxCore.r_loc ren_id
-          (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-          kind (S_Used mch)
-      | _ ->
-        begin match mch.r_prefix with
-          | None ->
-            _add_symbol env mch.SyntaxCore.r_loc id
-              (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-              kind (S_Used mch)
-          | Some _ ->
-            if is_in_deps env mch.SyntaxCore.r_str then ()
-            else
-              _add_symbol env mch.SyntaxCore.r_loc id
-                (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-                kind (S_Used mch)
-        end
-    ) (get_symbols itf);
-  env.deps <- mch.r_str::env.deps
 
 let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInterface.t)
     (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
   let open MachineInterface in
-  let rec check_set_params lst1 lst2 alias =
-    match lst1, lst2 with
-    | [], [] -> alias
-    | hd1::tl1, (lc,hd2)::tl2 ->
-      begin match hd1.kind with
-        | Scalar -> check_set_params tl1 tl2 alias
-        | Set ->
-          begin match Btype.view hd2 with
-            | Btype.T_Power ty -> check_set_params tl1 tl2 (Btype.SMap.add hd1.id ty alias)
-            | _ ->
-              let err_txt = Printf.sprintf
-                  "This expression has type '%s' but an expression of type '%s' was expected."
-                  (Btype.to_string hd2)
-                  (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
-              in
-              Error.error lc err_txt
-          end
-      end
-    | _, _ -> Error.error mch.r_loc "Wrong number of parameters."
-  in
-  let alias = check_set_params (get_params itf) params Btype.SMap.empty in
-  let rec check_scalar_params lst1 lst2 =
-    match lst1, lst2 with
-    | [], [] -> ()
-    | hd1::tl1, (lc,hd2)::tl2 ->
-      begin match hd1.kind with
-        | Scalar ->
-          if Btype.equal (Btype.subst alias hd1.typ) hd2 then check_scalar_params tl1 tl2
-          else
-            let err_txt = Printf.sprintf
-                "This expression has type '%s' but an expression of type '%s' was expected."
-                (Btype.to_string hd2)
-                (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
-            in
-            Error.error lc err_txt
-        | Set -> check_scalar_params tl1 tl2
-      end
-    | _, _ -> assert false
-  in
-  check_scalar_params (get_params itf) params;
+  
   List.iter (fun (S { id;typ;kind}:t_symb) ->
       match kind with
       | G_Parameter _ -> ()
@@ -880,73 +825,7 @@ let load_interface_for_refined_machine (env:t_ref t) (itf:MachineInterface.t) (m
     ) (get_operations itf);
   env.deps <- mch.lid_str::env.deps
 
-let load_interface_for_extended_machine (env:'mr t) (itf:MachineInterface.t)
-    (mch:ren_ident) (params:(loc*Btype.t) list) : unit
-  =
-  let open MachineInterface in
-  load_interface_for_included_or_imported_machine env itf mch params;
-  List.iter (fun (r:t_op) ->
-      promote_operation env mch.SyntaxCore.r_loc r.id
-    ) (get_operations itf)
 
-let is_exported_symbol (type mr ac) : (mr,ac) t_decl -> bool = function
-  | D_Machine _ -> true
-  | D_Included_Or_Imported _ -> true
-  | D_Redeclared _ -> true
-  | D_Seen _ -> false
-  | D_Used _ -> false
-  | D_Disappearing -> false
-
-let to_interface (type mr) (env:mr t) : MachineInterface.t =
-  let aux1 (x:string) (symb:mr t_symbol_infos) (lst:MachineInterface.t_symb list) =
-    match symb.sy_kind with
-    | K_Parameter (_, _) -> lst
-    | K_Abstract_Variable d when is_exported_symbol d ->
-      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Abstract_Variable })::lst
-    | K_Abstract_Constant d when is_exported_symbol d ->
-      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Abstract_Constant })::lst
-    | K_Concrete_Variable d when is_exported_symbol d ->
-      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Concrete_Variable })::lst
-    | K_Concrete_Constant d when is_exported_symbol d ->
-      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Concrete_Constant })::lst
-    | K_Abstract_Set d when is_exported_symbol d ->
-      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Abstract_Set })::lst
-    | K_Concrete_Set (elts, d) when is_exported_symbol d ->
-      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Concrete_Set elts })::lst
-    | K_Enumerate d when is_exported_symbol d ->
-      (MachineInterface.S { id=x; typ=symb.sy_typ; kind=G_Enumerate })::lst
-    | _ -> lst
-  in
-  let aux2 (id:string) (op:mr t_operation_infos) lst =
-    let x = { MachineInterface.id; args_in=op.op_args_in;
-              args_out=op.op_args_out; readonly=op.op_readonly }
-    in
-    match op.op_src with
-    | OD_Current _ -> x::lst
-    | OD_Refined _ -> x::lst
-    | OD_Current_And_Refined _ -> x::lst
-    | OD_Included_Or_Imported_Promoted_And_Refined _ -> x::lst
-    | OD_Included_Or_Imported_And_Refined _ -> x::lst
-    | OD_Included_Or_Imported_And_Promoted _ -> x::lst
-    | OD_Local_Spec _ -> lst
-    | OD_Local_Spec_And_Implem _ -> lst
-    | OD_Seen _ | OD_Included_Or_Imported _ -> lst
-  in
-  let aux (lid:lident) : MachineInterface.t_param =
-    let id = lid.SyntaxCore.lid_str in
-    match Hashtbl.find_opt env.symb id with
-    | None -> assert false
-    | Some infos ->
-      begin match infos.sy_kind with
-        | K_Parameter (kind,_) ->
-          { MachineInterface.id; typ=infos.sy_typ; kind }
-        | _ -> assert false
-      end
-  in
-  let params:MachineInterface.t_param list = List.map aux env.params in
-  let symbs = Hashtbl.fold aux1 env.symb [] in
-  let ops = Hashtbl.fold aux2 env.ops [] in
-  MachineInterface.make params symbs ops
 
 let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string) list)
     (itf:t_interface) : (Btype.t_atomic_src*string) list =

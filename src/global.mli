@@ -153,10 +153,8 @@ module Imp : sig
     | Enumerate of t_concrete_const_decl
 
   type t_op_source =
-(*     | O_Current of loc *)
     | O_Seen of ren_ident
     | O_Imported of ren_ident
-(*     | O_Imported_And_Promoted of ren_ident*loc *)
     | O_Refined
     | O_Current_And_Refined of loc
     | O_Imported_And_Refined of ren_ident
@@ -180,8 +178,8 @@ type iEnv = (Imp.t_kind,Imp.t_op_source) t
 val load_interface_for_used_machine : mEnv -> t_interface -> ren_ident -> unit
 
 val load_interface_for_seen_machine : _ t -> t_interface -> ren_ident -> unit
-val load_interface_for_included_or_imported_machine : _ t -> t_interface -> ren_ident -> unit
-val load_interface_for_extended_machine : _ t -> t_interface -> ren_ident -> unit
-val load_interface_for_refined_machine : _ t -> t_interface -> lident -> unit
+val load_interface_for_included_or_imported_machine : _ t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+val load_interface_for_extended_machine : _ t -> t_interface -> ren_ident -> (loc*Btype.t) list -> unit
+val load_interface_for_refined_machine : _ t -> t_interface -> lident -> lident list -> unit
 
 val check_operation_coherence : iEnv -> loc -> unit

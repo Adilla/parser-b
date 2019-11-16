@@ -6,13 +6,23 @@
 ---------|-----|-----|-----|-----|---
 Machine (D) | yes | yes | no  | yes | yes
 Used (D)    | no  | no  | no  | yes | yes
+Seen (D)    | no  | no  | no  | no  | no
 
-## Abstract Set/Concrete Set/Enumerate/Concrete Constant/Abstract Constant
+## Abstract Set/Concrete Set/Enumerate/Concrete Constant
 
 || CONSTRAINTS | INCLUDES/EXTENDS | PROPERTIES | INVARIANT | OPERATIONS
 ---------|-----|-----|-----|-----|---
 Machine (D) | no  | yes | yes | yes | yes
 Seen    (E) | no  | yes | yes | yes | yes
+Used    (E) | no  | no  | yes | yes | yes
+Included (E) | no  | no  | yes | yes | yes
+
+## Abstract Constant
+
+|| CONSTRAINTS | INCLUDES/EXTENDS | PROPERTIES | INVARIANT | OPERATIONS
+---------|-----|-----|-----|-----|---
+Machine (D) | no  | no | yes | yes | yes
+Seen    (E) | no  | no | yes | yes | yes
 Used    (E) | no  | no  | yes | yes | yes
 Included (E) | no  | no  | yes | yes | yes
 
@@ -32,8 +42,9 @@ Included (E) | no  | no  | no  | yes   | yes (ro)
 || INCLUDES/EXTENDS | PROPERTIES | INVARIANT | ASSERT | OPERATIONS 
 ---------------------|-----|-----|-----------|--------|-----------
 Refinement (D) | yes | no  | yes | yes | yes
+Seen (D)       | no  | no  | no  | no  | no
 
-## Abstract Set/Concrete Set/Enum/Concrete Constant
+## Abstract Set/Concrete Set/Enumerate
 
 || INCLUDES/EXTENDS | PROPERTIES | INVARIANT | ASSERT | OPERATIONS 
 ---------------------|-----|-----|-----------|--------|-----------
@@ -41,6 +52,17 @@ Refinememt (D)       | yes | yes | yes | yes | yes
 Refined (E)          | yes | yes | yes | yes | yes
 Seen (E)             | yes | yes | yes | yes | yes
 Included (E) (3)     | no  | yes | yes | yes | yes
+
+## Concrete Constant
+
+|| INCLUDES/EXTENDS | PROPERTIES | INVARIANT | ASSERT | OPERATIONS 
+---------------------|-----|-----|-----------|--------|-----------
+Refinememt (D)       | yes | yes | yes | yes | yes
+Refined (E)          | yes | yes | yes | yes | yes
+Seen (E)             | yes | yes | yes | yes | yes
+Included (E) (3)     | no  | yes | yes | yes | yes
+Refined (E) and Refinement (D) (2) | yes  | yes | yes | yes | yes
+Refined (E) and Included (E) (2) | no  | yes | yes | yes | yes
 
 ## Abstract Constant
 
@@ -61,6 +83,8 @@ Refinement (D)          | no  | no  | yes    | yes | yes (rw)
 Refined (E)             | no  | no  | yes    | yes | yes (rw)
 Seen (E)                | no  | no  | no (1) | yes | yes (ro)
 Included (3) (E)        | no  | no  | yes    | yes | yes (ro)
+Refined (E) and Refinement (D) (2) | no  | no  | yes | yes | yes (rw)
+Refined (E) and Included (E) (2) | no  | no  | yes | yes | yes (ro)
 
 ## Abstract Variable
 
@@ -80,8 +104,9 @@ Refined (E) and Included (E)   | no  | no  | yes | yes | yes (ro)
 || IMPORTS/EXTENDS | PROPERTIES | VALUES | INVARIANT | ASSERT/WHILE | LOCAL\_OPERATIONS | OPERATIONS 
 -------------------|------------|--------|-----------|--------------|-------------------|-----------|---
 Implementation (D) | yes | no  | no  | yes | yes | yes | yes
+Seen (D)           | no  | no  | no  | no  | no  | no  | no
 
-## Abstract Set/Concrete Set/Enum/Concrete Constant
+## Abstract Set/Concrete Set/Enumerate
 
 || IMPORTS/EXTENDS | PROPERTIES | VALUES | INVARIANT | ASSERT/WHILE | LOCAL\_OPERATIONS | OPERATIONS 
 -------------------|------------|--------|-----------|--------------|-------------------|-----------|---
@@ -89,8 +114,19 @@ Implementation (D) | yes | yes | yes | yes | yes | yes | yes
 Refined (E)        | yes | yes | yes | yes | yes | yes | yes
 Seen (E)           | yes | yes | yes | yes | yes | yes | yes
 Imported (E)       | no  | yes | yes | yes | yes | yes | yes
-Refined (E) and Seen (E) (2) | yes | yes | yes | yes | yes | yes | yes
-Refined (E) and Imported (E) (2) | no | yes | yes | yes | yes | yes | yes
+Refined (E) and Seen (E) | yes | yes | yes | yes | yes | yes | yes
+Refined (E) and Imported (E) | no | yes | yes | yes | yes | yes | yes
+
+## Concrete Constant
+
+|| IMPORTS/EXTENDS | PROPERTIES | VALUES | INVARIANT | ASSERT/WHILE | LOCAL\_OPERATIONS | OPERATIONS 
+-------------------|------------|--------|-----------|--------------|-------------------|-----------|---
+Implementation (D) | yes | yes | yes | yes | yes | yes | yes
+Refined (E)        | yes | yes | yes | yes | yes | yes | yes
+Seen (E)           | yes | yes | yes | yes | yes | yes | yes
+Imported (E)       | no  | yes | yes | yes | yes | yes | yes
+Refined (E) and Implementation (E) (2) | yes | yes | yes | yes | yes | yes | yes
+Refined (E) and Imported (E) | no | yes | yes | yes | yes | yes | yes
 
 ## Abstract Constant
 
@@ -121,7 +157,7 @@ Imported (E)            | no  | no  | no  | yes   | yes | yes (rw) | no
 Refined (E) and Imported (E) | no  | no  | no  | yes   | yes | yes (rw) | no 
 
  - (1) yes if option Extended\_Sees is on
- - (2) the concrete variable/constant may be abstract in the refined machine.
+ - (2) only if the concrete variable/constant is abstract in the refined machine.
  - (3) This line also applies when the data is declared in a machine included both by the refinement and the refined machine
  - (D) Data declared in the component
  - (E) Data exported by the component. A data is exported by a component if it is declared in the component or exported by an included/extended/imported component.

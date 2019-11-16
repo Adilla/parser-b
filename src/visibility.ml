@@ -1,33 +1,6 @@
 module G = Global
 
 let extended_sees = ref false
-    (*
-## Parameter
-
-|| CONSTRAINTS | INCLUDES/EXTENDS | PROPERTIES | INVARIANT | OPERATIONS
----------|-----|-----|-----|-----|---
-Machine (D) | yes | yes | no  | yes | yes
-Used (D)    | no  | no  | no  | yes | yes
-
-## Abstract Set/Concrete Set/Enumerate/Concrete Constant/Abstract Constant
-
-|| CONSTRAINTS | INCLUDES/EXTENDS | PROPERTIES | INVARIANT | OPERATIONS
----------|-----|-----|-----|-----|---
-Machine (D) | no  | yes | yes | yes | yes
-Seen    (E) | no  | yes | yes | yes | yes
-Used    (E) | no  | no  | yes | yes | yes
-Included (E) | no  | no  | yes | yes | yes
-
-## Concrete Variable/Abstract Variable
-
-|| CONSTRAINTS | INCLUDES/EXTENDS | PROPERTIES | INVARIANT | OPERATIONS
----------|-----|-----|-----|-----|---
-Machine  (D) | no  | no  | no  | yes   | yes (rw)
-Seen     (E) | no  | no  | no  | no (1)| yes (ro)
-Used     (E) | no  | no  | no  | yes   | yes (ro)
-Included (E) | no  | no  | no  | yes   | yes (ro)
-       *)
-
 
 module Mch = struct
   module Constraints = struct
@@ -52,6 +25,7 @@ module Mch = struct
       | Concrete_Constant of  t_source
       | Concrete_Set of string list * t_source
       | Abstract_Set of t_source
+      | Enumerate of t_source
 
     let mk_global = function
       | G.Mch.Parameter (k,l) -> Some (Parameter (k,l))
@@ -61,76 +35,481 @@ module Mch = struct
       | G.Mch.Abstract_Set (Global.Mch.Seen mch) -> Some (Abstract_Set (Seen mch))
       | G.Mch.Concrete_Set (elts,Global.Mch.Machine l) -> Some (Concrete_Set (elts,Machine l))
       | G.Mch.Concrete_Set (elts,Global.Mch.Seen mch) -> Some (Concrete_Set (elts,Seen mch))
+      | G.Mch.Enumerate (Global.Mch.Machine l) -> Some (Enumerate (Machine l))
+      | G.Mch.Enumerate (Global.Mch.Seen mch) -> Some (Enumerate (Seen mch))
       | _ -> None
 
     let mk_local = function
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> assert false (*FIXME*)
+
+  end
+
+  module Assert = struct
+    type t =
+      | Global of G.Mch.t_kind
+      | Expr_Binder
+
+    let mk_global x = Some (Global x)
+
+    let mk_local = function
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> assert false (*FIXME*)
+  end
+
+  module Properties = struct
+    type t =
+      | Expr_Binder
+      | Concrete_Constant of G.Mch.t_source
+      | Abstract_Set of G.Mch.t_source
+      | Enumerate of G.Mch.t_source
+      | Concrete_Set of string list*G.Mch.t_source
+      | Abstract_Constant of G.Mch.t_source
+
+    let mk_global = function
+      | G.Mch.Abstract_Variable _ -> None
+      | G.Mch.Concrete_Variable _ -> None
+      | G.Mch.Parameter _ -> None
+      | G.Mch.Concrete_Constant src -> Some (Concrete_Constant src)
+      | G.Mch.Abstract_Set src -> Some (Abstract_Set src)
+      | G.Mch.Enumerate src -> Some (Enumerate src)
+      | G.Mch.Concrete_Set (elts,src) -> Some (Concrete_Set (elts,src))
+      | G.Mch.Abstract_Constant src -> Some (Abstract_Constant src)
+
+    let mk_local = function
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> assert false (*FIXME*)
+  end
+
+  module Invariant = struct
+    type t =
+      | Global of G.Mch.t_kind
+      | Expr_Binder
+
+    let mk_global x =
+      if !extended_sees then Some (Global x)
+      else match x with
+      | G.Mch.Abstract_Variable _ -> None
+      | G.Mch.Concrete_Variable _ -> None
+      | _ -> Some (Global x)
+
+    let mk_local = function
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> assert false (*FIXME*)
+  end
+
+  module Operations = struct
+    type t =
+      | Global of G.Mch.t_kind
+      | Local of Local.t_local_kind
+
+    type t_mut =
+      | Param_Out
+      | Subst_Binder
+      | Abstract_Variable of Utils.loc
+      | Concrete_Variable of Utils.loc
+
+    type t_op =
+      | O_Seen of SyntaxCore.ren_ident
+      | O_Used of SyntaxCore.ren_ident
+      | O_Included of SyntaxCore.ren_ident
+      | O_Included_And_Promoted of SyntaxCore.ren_ident
+
+    let mk_global x = Some (Global x)
+
+    let mk_global_mut = function
+      | G.Mch.Abstract_Variable (G.Mch.Machine l) -> Some (Abstract_Variable (l))
+      | G.Mch.Concrete_Variable (G.Mch.Machine l) -> Some (Concrete_Variable (l))
+      | _ -> None
+
+    let mk_op = function
+      | G.Mch.O_Machine _ -> None
+      | G.Mch.O_Seen mch -> Some (O_Seen mch)
+      | G.Mch.O_Used mch -> Some (O_Used mch)
+      | G.Mch.O_Included mch -> Some (O_Included mch)
+      | G.Mch.O_Included_And_Promoted mch -> Some (O_Included_And_Promoted mch)
+
+    let mk_local x = Some (Local x)
+
+    let mk_local_mut = function
+      | Local.L_Expr_Binder -> None
+      | Local.L_Subst_Binder -> Some Subst_Binder
+      | Local.L_Param_In -> None
+      | Local.L_Param_Out -> Some Param_Out
+
+  end
+
+end
+ 
+module Ref = struct
+
+  module Includes = struct
+    type t_source = Machine of Utils.loc | Refined | Seen of SyntaxCore.ren_ident
+    type t =
+      | Expr_Binder
+      | Parameter of G.t_param_kind*Utils.loc 
+      | Concrete_Constant of  t_source
+      | Concrete_Set of string list * t_source
+      | Abstract_Set of t_source
+      | Enumerate of t_source
+
+    let mk_global = function 
+      | G.Ref.Parameter (k,l) -> Some (Parameter (k,l))
+      | G.Ref.Concrete_Constant (Global.Ref.A_Machine l) -> Some (Concrete_Constant (Machine l))
+      | G.Ref.Concrete_Constant (Global.Ref.A_Seen mch) -> Some (Concrete_Constant (Seen mch))
+      | G.Ref.Concrete_Constant (Global.Ref.A_Refined) -> Some (Concrete_Constant (Refined))
+      | G.Ref.Concrete_Constant (Global.Ref.A_Redeclared_In_Machine l) -> Some (Concrete_Constant (Machine l)) (*FIXME*)
+      | G.Ref.Abstract_Set (Global.Ref.Machine l) -> Some (Abstract_Set (Machine l))
+      | G.Ref.Abstract_Set (Global.Ref.Seen mch) -> Some (Abstract_Set (Seen mch))
+      | G.Ref.Abstract_Set (Global.Ref.Refined) -> Some (Abstract_Set (Refined))
+      | G.Ref.Concrete_Set (elts,Global.Ref.Machine l) -> Some (Concrete_Set (elts,Machine l))
+      | G.Ref.Concrete_Set (elts,Global.Ref.Seen mch) -> Some (Concrete_Set (elts,Seen mch))
+      | G.Ref.Concrete_Set (elts,Global.Ref.Refined) -> Some (Concrete_Set (elts,Refined))
+      | G.Ref.Enumerate (Global.Ref.Machine l) -> Some (Enumerate (Machine l))
+      | G.Ref.Enumerate (Global.Ref.Seen mch) -> Some (Enumerate (Seen mch))
+      | G.Ref.Enumerate (Global.Ref.Refined) -> Some (Enumerate (Refined))
+      | _ -> None
+
+    let mk_local = function 
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> None
+  end
+
+  module Assert = struct
+    type t =
+      | Expr_Binder
+      | Global of G.Ref.t_kind
+
+    let mk_global x = Some (Global x)
+
+    let mk_local = function 
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> None
+  end
+
+  module Properties = struct
+    type t =
+      | Expr_Binder
+      | Concrete_Constant of G.Ref.t_source_2
+      | Abstract_Set of G.Ref.t_source
+      | Enumerate of G.Ref.t_source
+      | Concrete_Set of string list*G.Ref.t_source
+      | Abstract_Constant of G.Ref.t_source_2
+
+    let mk_global = function
+      | G.Ref.Abstract_Variable _ -> None
+      | G.Ref.Concrete_Variable _ -> None
+      | G.Ref.Parameter _ -> None
+      | G.Ref.Concrete_Constant src -> Some (Concrete_Constant src)
+      | G.Ref.Abstract_Set src -> Some (Abstract_Set src)
+      | G.Ref.Enumerate src -> Some (Enumerate src)
+      | G.Ref.Concrete_Set (elts,src) -> Some (Concrete_Set (elts,src))
+      | G.Ref.Abstract_Constant src -> Some (Abstract_Constant src)
+
+    let mk_local = function 
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> None
+  end
+
+  module Invariant = struct
+    type t =
+      | Global of G.Ref.t_kind
+      | Expr_Binder
+
+    let mk_global x =
+      if !extended_sees then Some (Global x)
+      else match x with
+      | G.Ref.Abstract_Variable _ -> None
+      | G.Ref.Concrete_Variable _ -> None
+      | _ -> Some (Global x)
+
+    let mk_local = function
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> assert false (*FIXME*)
+  end
+
+  module Operations = struct
+    type t =
+      | Global of G.Ref.t_kind (*FIXME*)
+      | Local of Local.t_local_kind
+
+    let mk_global = function 
+      | G.Ref.Abstract_Variable G.Ref.A_Refined
+      | G.Ref.Abstract_Constant G.Ref.A_Refined -> None
+      | x -> Some (Global x)
+
+    type t_mut =
+      | Param_Out
+      | Subst_Binder
+      | Abstract_Variable of Utils.loc
+      | Concrete_Variable of Utils.loc
+
+    let mk_local x = Some (Local x)
+
+    let mk_local_mut = function
+      | Local.L_Expr_Binder -> None
+      | Local.L_Subst_Binder -> Some Subst_Binder
+      | Local.L_Param_In -> None
+      | Local.L_Param_Out -> Some Param_Out
+
+    let mk_global_mut = function
+      | G.Ref.Abstract_Variable (G.Ref.A_Machine l) -> Some (Abstract_Variable l)
+      | G.Ref.Abstract_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Abstract_Variable l) (*FIXME*)
+      | G.Ref.Concrete_Variable (G.Ref.A_Machine l) -> Some (Concrete_Variable l)
+      | G.Ref.Concrete_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Concrete_Variable l) (*FIXME*)
+      | _ -> None
+
+    type t_op =
+      | O_Seen of SyntaxCore.ren_ident
+      | O_Included of SyntaxCore.ren_ident
+      | O_Refined_And_Included of SyntaxCore.ren_ident
+      | O_Included_And_Promoted of SyntaxCore.ren_ident
+      | O_Refined_Included_And_Promoted of SyntaxCore.ren_ident
+
+    let mk_op = function
+      | G.Ref.O_Refined -> None
+      | G.Ref.O_Refined_And_Machine _ -> None
+      | G.Ref.O_Seen mch -> Some (O_Seen mch)
+      | G.Ref.O_Included mch -> Some (O_Included mch)
+      | G.Ref.O_Refined_And_Included mch -> Some (O_Refined_And_Included mch)
+      | G.Ref.O_Refined_Included_And_Promoted mch -> Some (O_Refined_Included_And_Promoted mch)
+
+  end
+end
+
+module Imp = struct
+
+  module Imports = struct
+    
+    type t_source = Machine of Utils.loc | Refined | Seen of SyntaxCore.ren_ident
+    type t =
+      | Expr_Binder
+      | Parameter of G.t_param_kind*Utils.loc 
+      | Concrete_Constant of  t_source
+      | Concrete_Set of string list * t_source
+      | Abstract_Set of t_source
+      | Enumerate of t_source
+
+    let mk_global = function 
+      | G.Imp.Parameter (k,l) -> Some (Parameter (k,l))
+      | G.Imp.Concrete_Constant (G.Imp.C_Machine l) -> Some (Concrete_Constant (Machine l))
+      | G.Imp.Concrete_Constant (G.Imp.C_Seen mch) -> Some (Concrete_Constant (Seen mch))
+      | G.Imp.Concrete_Constant (G.Imp.C_Refined) -> Some (Concrete_Constant (Refined))
+      | G.Imp.Concrete_Constant (G.Imp.C_Redeclared_In_Machine l) -> Some (Concrete_Constant (Machine l)) (*FIXME*)
+      | G.Imp.Concrete_Constant (G.Imp.C_Redeclared_In_Seen mch) -> Some (Concrete_Constant (Seen mch)) (*FIXME*)
+      | G.Imp.Abstract_Set (G.Imp.C_Machine l) -> Some (Abstract_Set (Machine l))
+      | G.Imp.Abstract_Set (G.Imp.C_Seen mch) -> Some (Abstract_Set (Seen mch))
+      | G.Imp.Abstract_Set (G.Imp.C_Refined) -> Some (Abstract_Set (Refined))
+      | G.Imp.Abstract_Set (G.Imp.C_Redeclared_In_Machine l) -> Some (Abstract_Set (Machine l)) (*FIXME*)
+      | G.Imp.Abstract_Set (G.Imp.C_Redeclared_In_Seen mch) -> Some (Abstract_Set (Seen mch)) (*FIXME*)
+      | G.Imp.Concrete_Set (elts,G.Imp.C_Machine l) -> Some (Concrete_Set (elts,Machine l))
+      | G.Imp.Concrete_Set (elts,G.Imp.C_Seen mch) -> Some (Concrete_Set (elts,Seen mch))
+      | G.Imp.Concrete_Set (elts,G.Imp.C_Refined) -> Some (Concrete_Set (elts,Refined))
+      | G.Imp.Concrete_Set (elts,G.Imp.C_Redeclared_In_Machine l) -> Some (Concrete_Set (elts,Machine l)) (*FIXME*)
+      | G.Imp.Concrete_Set (elts,G.Imp.C_Redeclared_In_Seen mch) -> Some (Concrete_Set (elts,Seen mch)) (*FIXME*)
+      | G.Imp.Enumerate (G.Imp.C_Machine l) -> Some (Enumerate (Machine l))
+      | G.Imp.Enumerate (G.Imp.C_Seen mch) -> Some (Enumerate (Seen mch))
+      | G.Imp.Enumerate (G.Imp.C_Refined) -> Some (Enumerate (Refined))
+      | G.Imp.Enumerate (G.Imp.C_Redeclared_In_Machine l) -> Some (Enumerate (Machine l)) (*FIXME*)
+      | G.Imp.Enumerate (G.Imp.C_Redeclared_In_Seen mch) -> Some (Enumerate (Seen mch)) (*FIXME*)
+      | _ -> None
+
+    let mk_local = function 
       | Local.L_Expr_Binder -> Some Expr_Binder
       | _ -> None
 
   end
 
   module Assert = struct
-    type t = unit
-  end
-  module Properties = struct
-    type t = unit
-  end
-  module Invariant = struct
-    type t = unit
-  end
-  module Operations = struct
-    type t = unit
-    type t_mut = unit
-    type t_op = unit
+    type t =
+      | Expr_Binder
+      | Global of G.Imp.t_kind
+
+    let mk_global x = Some (Global x)
+
+    let mk_local = function 
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> None
   end
 
-end
-
-module Ref = struct
-  module Includes = struct
-    type t = unit
-  end
-  module Assert = struct
-    type t = unit
-  end
   module Properties = struct
-    type t = unit
-  end
-  module Invariant = struct
-    type t = unit
-  end
-  module Operations = struct
-    type t = unit
-    type t_mut = unit
-    type t_op = unit
-  end
-end
+    type t =
+      | Expr_Binder
+      | Concrete_Constant of G.Imp.t_concrete_const_decl
+      | Abstract_Set of G.Imp.t_concrete_const_decl
+      | Enumerate of G.Imp.t_concrete_const_decl
+      | Concrete_Set of string list*G.Imp.t_concrete_const_decl
+      | Abstract_Constant of G.Imp.t_abstract_decl
 
-module Imp = struct
-  module Imports = struct
-    type t = unit
+    let mk_global = function
+      | G.Imp.Abstract_Variable _ -> None
+      | G.Imp.Concrete_Variable _ -> None
+      | G.Imp.Parameter _ -> None
+      | G.Imp.Concrete_Constant src -> Some (Concrete_Constant src)
+      | G.Imp.Abstract_Set src -> Some (Abstract_Set src)
+      | G.Imp.Enumerate src -> Some (Enumerate src)
+      | G.Imp.Concrete_Set (elts,src) -> Some (Concrete_Set (elts,src))
+      | G.Imp.Abstract_Constant src -> Some (Abstract_Constant src)
+
+    let mk_local = function 
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> None
   end
-  module Assert = struct
-    type t = unit
-  end
-  module Properties = struct
-    type t = unit
-  end
+
   module Invariant = struct
-    type t = unit
+    type t =
+      | Global of G.Imp.t_kind
+      | Expr_Binder
+
+    let mk_global x =
+      if !extended_sees then Some (Global x)
+      else match x with
+      | G.Imp.Abstract_Variable _ -> None
+      | G.Imp.Concrete_Variable _ -> None
+      | _ -> Some (Global x)
+
+    let mk_local = function
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> assert false (*FIXME*)
   end
+
   module Operations = struct
-    type t = unit
-    type t_mut = unit
-    type t_op = unit
+    type t =
+      | Global of G.Imp.t_kind (*FIXME*)
+      | Local of Local.t_local_kind
+
+    let mk_global = function 
+      | G.Imp.Abstract_Variable _ | G.Imp.Abstract_Constant _ -> None
+      | x -> Some (Global x)
+
+    type t_source =
+      | Machine of Utils.loc
+      | Refined
+      | Redeclared_In_Machine of Utils.loc
+
+    type t_mut =
+      | Param_Out
+      | Subst_Binder
+      | Concrete_Variable of t_source
+
+    let mk_local x = Some (Local x)
+
+    let mk_local_mut = function
+      | Local.L_Expr_Binder -> None
+      | Local.L_Subst_Binder -> Some Subst_Binder
+      | Local.L_Param_In -> None
+      | Local.L_Param_Out -> Some Param_Out
+
+    let mk_global_mut = function
+      | G.Imp.Concrete_Variable (G.Imp.V_Machine l) -> Some (Concrete_Variable (Machine l))
+      | G.Imp.Concrete_Variable (G.Imp.V_Redeclared_In_Machine l) -> Some (Concrete_Variable (Redeclared_In_Machine l))
+      | G.Imp.Concrete_Variable (G.Imp.V_Refined) -> Some (Concrete_Variable Refined)
+      | _ -> None
+
+    type t_op =
+      | O_Seen of SyntaxCore.ren_ident
+      | O_Imported of SyntaxCore.ren_ident
+      | O_Refined_And_Imported of SyntaxCore.ren_ident
+      | O_Included_And_Promoted of SyntaxCore.ren_ident
+      | O_Refined_Imported_And_Promoted of SyntaxCore.ren_ident
+      | O_Local of Utils.loc
+
+    let mk_op = function
+      | G.Imp.O_Refined -> None
+      | G.Imp.O_Current_And_Refined _ -> None
+      | G.Imp.O_Seen mch -> Some (O_Seen mch)
+      | G.Imp.O_Imported mch -> Some (O_Imported mch)
+      | G.Imp.O_Imported_And_Refined mch -> Some (O_Refined_And_Imported mch)
+      | G.Imp.O_Imported_Promoted_And_Refined (mch,_) -> Some (O_Refined_Imported_And_Promoted mch)
+      | O_Local_Spec l -> Some (O_Local l)
+      | O_Local_Spec_And_Implem (l,_) -> Some (O_Local l)
+
   end
+
   module Local_Operations = struct
-    type t = unit
-    type t_mut = unit
-    type t_op = unit
+    type t =
+      | Global of G.Imp.t_kind (*FIXME*)
+      | Local of Local.t_local_kind
+
+    let mk_global = function 
+      | G.Imp.Abstract_Variable G.Imp.A_Refined
+      | G.Imp.Abstract_Constant G.Imp.A_Refined -> None
+      | x -> Some (Global x)
+
+    let mk_local x = Some (Local x)
+
+    type t_source_a =
+      | A_Imported of SyntaxCore.ren_ident
+      | A_Redeclared_In_Imported of SyntaxCore.ren_ident
+
+    type t_source_c =
+      | C_Imported of SyntaxCore.ren_ident
+      | C_Redeclared_In_Imported of SyntaxCore.ren_ident
+      | C_Machine of Utils.loc
+      | C_Redeclared_In_Machine of Utils.loc
+
+    type t_mut =
+      | Param_Out
+      | Subst_Binder
+      | Abstract_Variable of t_source_a
+      | Concrete_Variable of t_source_c
+
+    let mk_local_mut = function
+      | Local.L_Expr_Binder -> None
+      | Local.L_Subst_Binder -> Some Subst_Binder
+      | Local.L_Param_In -> None
+      | Local.L_Param_Out -> Some Param_Out
+
+    let mk_global_mut = function
+      | G.Imp.Abstract_Variable (G.Imp.A_Imported mch) -> Some (Abstract_Variable (A_Imported mch))
+      | G.Imp.Abstract_Variable (G.Imp.A_Redeclared_In_Imported mch) -> Some (Abstract_Variable (A_Redeclared_In_Imported mch))
+      | G.Imp.Concrete_Variable (G.Imp.V_Machine l) -> Some (Concrete_Variable (C_Machine l))
+      | G.Imp.Concrete_Variable (G.Imp.V_Redeclared_In_Machine l) -> Some (Concrete_Variable (C_Redeclared_In_Machine l))
+      | G.Imp.Concrete_Variable (G.Imp.V_Redeclared_In_Imported mch) -> Some (Concrete_Variable (C_Redeclared_In_Imported mch))
+      | G.Imp.Concrete_Variable (G.Imp.V_Imported mch) -> Some (Concrete_Variable (C_Imported mch))
+      | _ -> None
+
+    type t_op =
+      | O_Seen of SyntaxCore.ren_ident
+      | O_Imported of SyntaxCore.ren_ident
+      | O_Refined_And_Imported of SyntaxCore.ren_ident
+      | O_Included_And_Promoted of SyntaxCore.ren_ident
+      | O_Refined_Imported_And_Promoted of SyntaxCore.ren_ident
+      | O_Local of Utils.loc
+
+    let mk_op = function
+      | G.Imp.O_Refined -> None
+      | G.Imp.O_Current_And_Refined _ -> None
+      | G.Imp.O_Seen mch -> Some (O_Seen mch)
+      | G.Imp.O_Imported mch -> Some (O_Imported mch)
+      | G.Imp.O_Imported_And_Refined mch -> Some (O_Refined_And_Imported mch)
+      | G.Imp.O_Imported_Promoted_And_Refined (mch,_) -> Some (O_Refined_Imported_And_Promoted mch)
+      | O_Local_Spec l -> Some (O_Local l)
+      | O_Local_Spec_And_Implem (l,_) -> Some (O_Local l)
   end
+
   module Values = struct
-    type t = unit
+    type t =
+      | Expr_Binder
+      | Concrete_Constant of G.Imp.t_concrete_const_decl
+      | Abstract_Set of G.Imp.t_concrete_const_decl
+      | Enumerate of G.Imp.t_concrete_const_decl
+      | Concrete_Set of string list*G.Imp.t_concrete_const_decl
+
+    let mk_global = function
+      | G.Imp.Abstract_Variable _ -> None
+      | G.Imp.Concrete_Variable _ -> None
+      | G.Imp.Parameter _ -> None
+      | G.Imp.Abstract_Constant _ -> None
+      | G.Imp.Concrete_Constant src -> Some (Concrete_Constant src)
+      | G.Imp.Abstract_Set src -> Some (Abstract_Set src)
+      | G.Imp.Enumerate src -> Some (Enumerate src)
+      | G.Imp.Concrete_Set (elts,src) -> Some (Concrete_Set (elts,src))
+
+    let mk_local = function 
+      | Local.L_Expr_Binder -> Some Expr_Binder
+      | _ -> None
+
   end
 end
 
@@ -154,9 +533,47 @@ type (_,_) clause =
   | I_Local_Operations : (Global.Imp.t_kind,Imp.Local_Operations.t) clause
   | I_Values : (Global.Imp.t_kind,Imp.Values.t) clause
 
-let mk_global (type a b) (_:(a,b) clause) (_:a) : b option = assert false (*FIXME*)
+let mk_global (type a b) (cl:(a,b) clause) (ki:a) : b option =
+  match cl with
+  | M_Constraints -> Mch.Constraints.mk_global ki
+  | M_Includes -> Mch.Includes.mk_global ki
+  | M_Assert -> Mch.Assert.mk_global ki
+  | M_Properties -> Mch.Properties.mk_global ki
+  | M_Invariant -> Mch.Invariant.mk_global ki
+  | M_Operations -> Mch.Operations.mk_global ki
+  | R_Includes -> Ref.Includes.mk_global ki
+  | R_Assert -> Ref.Assert.mk_global ki
+  | R_Properties -> Ref.Properties.mk_global ki
+  | R_Invariant -> Ref.Invariant.mk_global ki
+  | R_Operations -> Ref.Operations.mk_global ki
+  | I_Imports -> Imp.Imports.mk_global ki
+  | I_Assert -> Imp.Assert.mk_global ki
+  | I_Properties -> Imp.Properties.mk_global ki
+  | I_Invariant -> Imp.Invariant.mk_global ki
+  | I_Operations -> Imp.Operations.mk_global ki
+  | I_Local_Operations -> Imp.Local_Operations.mk_global ki
+  | I_Values -> Imp.Values.mk_global ki
 
-let mk_local (type b) (_:(_,b) clause) (_:Local.t_local_kind) : b option = assert false (*FIXME*)
+let mk_local (type a b) (cl:(a,b) clause) (ki:Local.t_local_kind) : b option =
+  match cl with
+  | M_Constraints -> Mch.Constraints.mk_local ki
+  | M_Includes -> Mch.Includes.mk_local ki
+  | M_Assert -> Mch.Assert.mk_local ki
+  | M_Properties -> Mch.Properties.mk_local ki
+  | M_Invariant -> Mch.Invariant.mk_local ki
+  | M_Operations -> Mch.Operations.mk_local ki
+  | R_Includes -> Ref.Includes.mk_local ki
+  | R_Assert -> Ref.Assert.mk_local ki
+  | R_Properties -> Ref.Properties.mk_local ki
+  | R_Invariant -> Ref.Invariant.mk_local ki
+  | R_Operations -> Ref.Operations.mk_local ki
+  | I_Imports -> Imp.Imports.mk_local ki
+  | I_Assert -> Imp.Assert.mk_local ki
+  | I_Properties -> Imp.Properties.mk_local ki
+  | I_Invariant -> Imp.Invariant.mk_local ki
+  | I_Operations -> Imp.Operations.mk_local ki
+  | I_Local_Operations -> Imp.Local_Operations.mk_local ki
+  | I_Values -> Imp.Values.mk_local ki
 
 type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
   | MS_Operations : (Global.Mch.t_kind,
@@ -184,10 +601,26 @@ type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
                    Global.Imp.t_op_source,
                    Imp.Local_Operations.t_op) sclause
 
-let mk_global_mut (type a b) (_:(a,_,b,_,_,_) sclause) (_:a) : b = assert false (*FIXME*)
-let mk_local_mut (type a) (_:(_,_,a,_,_,_) sclause) (_:Local.t_local_kind) : a = assert false (*FIXME*)
+let mk_global_mut (type a b c d e f) (cl:(a,b,c,d,e,f) sclause) (ki:a) : c option =
+  match cl with
+  | MS_Operations -> Mch.Operations.mk_global_mut ki
+  | RS_Operations ->  Ref.Operations.mk_global_mut ki
+  | IS_Operations ->  Imp.Operations.mk_global_mut ki
+  | IS_Local_Operations ->  Imp.Local_Operations.mk_global_mut ki
 
-let mk_op (type a b) (_: (_,_,_,_,a,b) sclause) (_:a) : b = assert false (*FIXME*)
+let mk_local_mut (type a b c d e f) (cl:(a,b,c,d,e,f) sclause) (ki:Local.t_local_kind) : c option =
+  match cl with
+  | MS_Operations -> Mch.Operations.mk_local_mut ki
+  | RS_Operations ->  Ref.Operations.mk_local_mut ki
+  | IS_Operations ->  Imp.Operations.mk_local_mut ki
+  | IS_Local_Operations ->  Imp.Local_Operations.mk_local_mut ki
+
+let mk_op (type a b c d e f) (cl: (a,b,c,d,e,f) sclause) (ki:e) : f option =
+  match cl with
+  | MS_Operations -> Mch.Operations.mk_op ki
+  | RS_Operations ->  Ref.Operations.mk_op ki
+  | IS_Operations ->  Imp.Operations.mk_op ki
+  | IS_Local_Operations -> Imp.Local_Operations.mk_op ki
 
 let to_clause : type a b c d e f. (a,b,c,d,e,f) sclause -> (a,b) clause = function
   | MS_Operations -> M_Operations
@@ -200,4 +633,3 @@ let to_assert : type a b c d e f.(a,b,c,d,e,f) sclause -> (a,d) clause = functio
   | RS_Operations -> R_Assert
   | IS_Operations -> I_Assert
   | IS_Local_Operations -> I_Assert
-

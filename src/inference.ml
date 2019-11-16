@@ -222,10 +222,15 @@ let type_global_ident (type env_ki id_ki)
   =
   match Global.get_symbol env id_name with
   | Some infos ->
-    { T.id_name;
-      id_loc;
-      id_type=(infos.Global.sy_typ :> Btype.Open.t);
-      id_kind=Visibility.mk_global cl infos.Global.sy_kind }
+    begin match Visibility.mk_global cl infos.Global.sy_kind with
+      | Some id_kind ->
+        { T.id_name;
+          id_loc;
+          id_type=(infos.Global.sy_typ :> Btype.Open.t);
+          id_kind}
+      | None ->
+        Error.error id_loc ("The symbol '"^id_name^"' is not visible in this clause.") (*FIXME*)
+    end
   | None -> Error.error id_loc ("Unknown identifier '"^id_name^"'.")
 
 let type_ident (type env_ki id_ki)
@@ -235,10 +240,15 @@ let type_ident (type env_ki id_ki)
   | None ->
     begin match Local.get ctx id_str with
       | Some(Some ty,ki) ->
-        { T.id_name = id_str;
-          id_loc;
-          id_type=(ty :> Btype.Open.t);
-          id_kind=Visibility.mk_local cl ki }
+        begin match Visibility.mk_local cl ki with
+          | Some id_kind ->
+            { T.id_name = id_str;
+              id_loc;
+              id_type=(ty :> Btype.Open.t);
+              id_kind }
+          | None ->
+            Error.error id_loc ("The symbol '"^id_str^"' is not visible in this clause.") (*FIXME*)
+        end
       | Some(None,_) ->
         Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
       | None -> type_global_ident cl env id_loc id_str
@@ -285,7 +295,10 @@ let type_untyped_id (type env_ki id_ki) (cl:(env_ki,id_ki) Visibility.clause) (c
        Btype.Open.to_string ty^"'.")
   | Some cty ->
     let () = Local.set_type ctx id_name cty in
-    mk_expr id_loc ty (T.Ident { T.id_name; id_loc; id_type=ty; id_kind=Visibility.mk_local cl ki })
+    begin match Visibility.mk_local cl ki with
+      | Some id_kind -> mk_expr id_loc ty (T.Ident { T.id_name; id_loc; id_type=ty; id_kind })
+      | None -> assert false (*FIXME*)
+    end
 
 let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
   Nlist.map (
@@ -605,8 +618,11 @@ and check_utuple : type  env_ki id_ki. (env_ki,id_ki) V.clause ->
              Btype.Open.to_string ty_exp^"'.")
         | Some cty ->
           let () = Local.set_type ctx id_name cty in
-          mk_expr id_loc ty_exp
-            (T.Ident { T.id_name; id_loc; id_type=ty_exp; id_kind=Visibility.mk_local cl ki })
+          begin match Visibility.mk_local cl ki with
+            | Some id_kind ->
+              mk_expr id_loc ty_exp (T.Ident { T.id_name; id_loc; id_type=ty_exp; id_kind })
+            | None -> assert false (*FIXME*)
+          end
       end
   | T_Couple (c,lc,t1,t2) ->
     begin match Btype.Open.weak_norm (Global.get_alias env) ty_exp with
@@ -665,12 +681,20 @@ let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibili
       begin match Local.get ctx x.r_str with
         | Some(None,_) -> Error.error x.r_loc ("The identifier '"^x.r_str^"' must be typed before use.")
         | Some (Some ty,ki) ->
-          { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(ty:>Btype.Open.t); id_kind=V.mk_local_mut cl ki }
+          begin match V.mk_local_mut cl ki with
+            | Some id_kind -> { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(ty:>Btype.Open.t); id_kind }
+            | None -> assert false (*FIXME*)
+          end
         | None ->
           begin match Global.get_symbol env x.r_str with
             | Some infos ->
-              { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(infos.Global.sy_typ:>Btype.Open.t);
-                id_kind=V.mk_global_mut cl infos.Global.sy_kind }
+              begin match V.mk_global_mut cl infos.Global.sy_kind with
+                | Some id_kind ->
+                  { T.id_loc=x.r_loc; id_name=x.r_str;
+                    id_type=(infos.Global.sy_typ:>Btype.Open.t);
+                    id_kind }
+                | None -> assert false (*FIXME*)
+              end
             | None -> Error.error x.r_loc ("Unknown identifier '"^x.r_str^"'.")
           end
       end
@@ -678,27 +702,14 @@ let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibili
       let id_name = p ^ "." ^ x.r_str in
       begin match Global.get_symbol env id_name with
         | Some infos ->
-          { T.id_loc=x.r_loc; id_name; id_type=(infos.Global.sy_typ:>Btype.Open.t);
-            id_kind=V.mk_global_mut cl infos.Global.sy_kind }
+          begin match V.mk_global_mut cl infos.Global.sy_kind with
+            | Some id_kind ->
+              { T.id_loc=x.r_loc; id_name; id_type=(infos.Global.sy_typ:>Btype.Open.t);
+                id_kind }
+            | None -> assert false (*FIXME*)
+          end
         | None -> Error.error x.r_loc ("Unknown identifier '"^id_name^"'.")
       end
-
-(*
-let to_op_source (type a) (is_readonly:bool) : a Global.t_op_decl -> T.t_op_source option =
-  function
-  | Global.OD_Seen mch ->
-    if is_readonly then Some (T.SO_Seen_Read_Only mch)
-    else None
-  | Global.OD_Included_Or_Imported mch -> Some (T.SO_Included_Or_Imported mch)
-  | Global.OD_Included_Or_Imported_And_Refined (mch,_) -> Some(T.SO_Included_Or_Imported mch)
-  | Global.OD_Included_Or_Imported_And_Promoted (mch,_) -> Some(T.SO_Included_Or_Imported mch)
-  | Global.OD_Included_Or_Imported_Promoted_And_Refined (mch,_,_) -> Some(T.SO_Included_Or_Imported mch)
-  | Global.OD_Local_Spec l  -> Some (T.SO_Local l)
-  | Global.OD_Local_Spec_And_Implem (l,_) -> Some(T.SO_Local l)
-  | Global.OD_Current _ -> None
-  | Global.OD_Refined _ -> None
-  | Global.OD_Current_And_Refined _ -> None
-*)
 
 let check_writable_nlist : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) V.sclause ->
   (env_ki,_) Global.t -> Local.t -> ren_ident Nlist.t -> Utils.loc -> Btype.Open.t ->
@@ -716,7 +727,10 @@ let check_writable_nlist : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) V.sclause
                  Btype.Open.to_string id_type^"'.")
             | Some cty ->
               let () = Local.set_type ctx lid.r_str cty in
-              { T.id_loc=lid.r_loc; id_name=lid.r_str; id_type; id_kind=Visibility.mk_local_mut cl ki }
+              begin match Visibility.mk_local_mut cl ki with
+                | Some id_kind -> { T.id_loc=lid.r_loc; id_name=lid.r_str; id_type; id_kind }
+                | None -> assert false (*FIXME*)
+              end
           end
         | _ ->
           let v = type_writable_var_exn cl env ctx lid in
@@ -763,7 +777,10 @@ let type_out_parameter (type env_ki mut_ki) (cl:(env_ki,_,mut_ki,_,_,_) V.sclaus
     begin match Local.get ctx id.r_str with
       | Some(None,ki) ->
         let () = Local.set_type ctx id.r_str ty in
-        { T.id_loc=id.r_loc; id_name=id.r_str; id_type=ty_exp; id_kind=V.mk_local_mut cl ki }
+        begin match V.mk_local_mut cl ki with
+          | Some id_kind -> { T.id_loc=id.r_loc; id_name=id.r_str; id_type=ty_exp; id_kind }
+          | None -> assert false (*FIXME*)
+        end
       | _ ->
         let tid = type_writable_var_exn cl env ctx id in
         begin match Btype.Open.get_stype (Global.get_alias env) tid.T.id_type ty_exp with
@@ -970,7 +987,10 @@ let rec type_substitution_exn : type env_ki id_ki mut_ki assert_ki env_op_ki op_
           | Some op_src ->
 *)
             begin try
-                let op_src = Visibility.mk_op cl infos.op_src in
+                let op_src = match Visibility.mk_op cl infos.op_src with
+                  | None -> assert false (*FIXME*)
+                  | Some op_src -> op_src
+                in
                 let op = { T.op_prefix=op.r_prefix; op_id = op.r_str; op_loc = op.r_loc; op_src } in
                 let tids = List.map2 (type_out_parameter cl env ctx) ids infos.Global.op_args_out in
                 let tparams = List.map2 (type_in_parameter (V.to_clause cl) env ctx) params infos.Global.op_args_in in

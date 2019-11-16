@@ -109,7 +109,7 @@ module Ref : sig
     | O_Refined_And_Machine of loc
     | O_Seen of ren_ident
     | O_Included of ren_ident
-    | O_Refined_And_Included of ren_ident
+    | O_Refined_And_Included of ren_ident (*FIXME*)
     | O_Refined_Included_And_Promoted of ren_ident
 
 end
@@ -142,7 +142,7 @@ module Imp : sig
     | C_Imported of ren_ident
     | C_Redeclared_In_Seen of ren_ident
     | C_Redeclared_In_Imported of ren_ident
-    | C_Redeclared_In_Machine of loc
+    | C_Redeclared_In_Machine of loc (*FIXME only of constant*)
 
   type t_kind =
     | Parameter of t_param_kind*loc

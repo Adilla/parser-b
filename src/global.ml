@@ -445,6 +445,11 @@ let fold_symbols (f:string -> 'mr t_symbol_infos -> 'a -> 'a) (env:('mr,_) t) : 
 let fold_operations (f:string -> 'mr t_operation_infos -> 'a -> 'a) (env:(_,'mr) t) : 'a -> 'a =
   Hashtbl.fold f env.ops
 
+let add_alias (s:_ t) (alias:string) (ty:Btype.t) : bool =
+  match Btype.add_alias s.alias alias ty with
+  | None -> false
+  | Some alias -> (s.alias <- alias; true)
+
 let _add_symbol (type a b src) update_kind mk_kind (env:(a,b)t) (err_loc:loc)
     (id:string) (sy_typ:Btype.t) (ki:t_global_kind) (src:src) : unit
   =
@@ -525,6 +530,16 @@ let add_operation (type a b) (env:(a,b) t) (loc:loc) (id:string)
     end
   | Some arg ->
     Error.error loc ("The argument '"^arg^"' appears twice in this operation declaration.")
+
+let add_local_operation  (env:iEnv) (lc:loc) (id:string)
+    (op_args_in:(string*Btype.t)list) (op_args_out:(string*Btype.t)list) : unit
+  =
+  match Hashtbl.find_opt env.ops id with
+  | Some _ ->
+    Error.error lc ("The operation '" ^ id ^ "' clashes with previous declaration.") 
+  | None ->
+    Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly=false;
+                             op_src=Imp.O_Local_Spec lc }
 
 let mch_promote _ = function
   | Mch.O_Included mch -> Some (Mch.O_Included_And_Promoted mch)

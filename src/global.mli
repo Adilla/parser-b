@@ -35,6 +35,7 @@ val get_symbol : ('sy_ki,_) t -> string -> 'sy_ki t_symbol_infos option
 val get_operation : (_,'op_ki) t -> string -> 'op_ki t_operation_infos option
 val get_alias : _ t -> Btype.t_alias 
 
+val add_alias : _ t -> string -> Btype.t -> bool
 val add_symbol : _ t -> loc -> string -> Btype.t -> t_global_kind -> unit
 val add_operation : _ t -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> is_readonly:bool -> unit
 val promote_operation : _ t -> loc -> string -> unit
@@ -185,3 +186,4 @@ val load_interface_for_extended_machine : _ t -> t_interface -> ren_ident -> (lo
 val load_interface_for_refined_machine : _ t -> t_interface -> lident -> lident list -> unit
 
 val check_operation_coherence : iEnv -> loc -> unit
+val add_local_operation : iEnv -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> unit

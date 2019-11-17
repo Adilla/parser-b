@@ -108,10 +108,10 @@ type ('id_ki,'mut_ki,'assert_ki,'op_src) operation =
   }
 
 type promoted =
-  { op_out: (string*Btype.t) list;
-    op_name: lident;
-    op_in: (string*Btype.t) list;
-    op_source:ren_ident
+  { pop_out: (string*Btype.t) list;
+    pop_name: lident;
+    pop_in: (string*Btype.t) list;
+    pop_source:ren_ident
   }
   
 type 'id_ki machine_instanciation = {
@@ -213,12 +213,12 @@ type t_abs_imp_symb = {
 *)
 
 type t_local_operation =
-  { op_out: arg list;
-    op_name: lident;
-    op_in: arg list;
-    op_spec: (V.Imp.Local_Operations.t,V.Imp.Local_Operations.t_mut,
+  { lop_out: arg list;
+    lop_name: lident;
+    lop_in: arg list;
+    lop_spec: (V.Imp.Local_Operations.t,V.Imp.Local_Operations.t_mut,
               V.Imp.Assert.t,V.Imp.Local_Operations.t_op,Btype.t) substitution;
-    op_body: (V.Imp.Operations.t,V.Imp.Operations.t_mut,V.Imp.Assert.t,
+    lop_body: (V.Imp.Operations.t,V.Imp.Operations.t_mut,V.Imp.Assert.t,
               V.Imp.Operations.t_op,Btype.t) substitution
   }
 

@@ -287,7 +287,7 @@ let get_operation_context_exn (type a b) (env:(a,b) Global.t) (op:P.operation) =
     let aux ki ctx lid = Local.declare ctx lid.lid_str ki in
     let ctx = List.fold_left (aux Local.L_Param_In) Local.empty op.P.op_in in
     List.fold_left (aux Local.L_Param_Out) ctx op.P.op_out
-  | Some infos -> (*FIXME check refine*)
+  | Some infos -> (*FIXME check refine or local*)
     let aux (lk:Local.t_local_kind) (ctx:Local.t) (s,ty:string*Btype.t) =
       Local.declare_with_type ctx s ty lk
     in
@@ -360,11 +360,11 @@ let get_mch_symbols (env:G.mEnv) : t_mch_symbols =
 
 let get_mch_promoted_operations (env:G.mEnv) : T.promoted list =
   let aux lid_str infos lst =
-    let op_out = infos.Global.op_args_out in
-    let op_in = infos.Global.op_args_in in
+    let pop_out = infos.Global.op_args_out in
+    let pop_in = infos.Global.op_args_in in
     match infos.Global.op_src with
-    | G.Mch.O_Included_And_Promoted op_source -> (*FIXME*)
-      {T.op_out; op_name={lid_loc=Utils.dloc;lid_str}; op_in; op_source}::lst
+    | G.Mch.O_Included_And_Promoted pop_source -> (*FIXME*)
+      {T.pop_out; pop_name={lid_loc=Utils.dloc;lid_str}; pop_in; pop_source}::lst
     | _ -> lst
   in
   Global.fold_operations aux env []
@@ -457,11 +457,11 @@ let get_ref_symbols (env:G.rEnv) : t_ref_symbols =
 
 let get_ref_promoted_operations (env:G.rEnv) : T.promoted list =
   let aux (lid_str:string) (infos:G.Ref.t_op_source G.t_operation_infos) lst =
-    let op_out = infos.Global.op_args_out in
-    let op_in = infos.Global.op_args_in in
+    let pop_out = infos.Global.op_args_out in
+    let pop_in = infos.Global.op_args_in in
     match infos.Global.op_src with
-    | G.Ref.O_Refined_Included_And_Promoted op_source ->
-      {T.op_out; op_name={lid_loc=Utils.dloc;lid_str}; op_in; op_source}::lst
+    | G.Ref.O_Refined_Included_And_Promoted pop_source ->
+      {T.pop_out; pop_name={lid_loc=Utils.dloc;lid_str}; pop_in; pop_source}::lst
     | _ -> lst
   in
   Global.fold_operations aux env []
@@ -527,35 +527,31 @@ let type_value_exn (env:_ Global.t) (v,e:lident*P.expression) :
       Error.error e.P.exp_loc
         ("This expression has type '" ^ to_string te.T.exp_typ ^
          "' but an expression of type '" ^ to_string var_typ ^"' was expected.")
-(*
+
 let is_abstract_set env v =
   match Global.get_symbol env v with
   | None -> false
   | Some infos ->
    begin match infos.Global.sy_kind with
-     | Global.K_Abstract_Set _ -> true
+     | Global.Imp.Abstract_Set _ -> true
      | _ -> false
    end
 
-let manage_set_concretisation_exn (lst:(Btype.t_atomic_src*string) list) (env:Global.t_ref Global.t) (v,e:lident*P.expression) : unit =
+let manage_set_concretisation_exn (env:_ Global.t) (v,e:lident*P.expression) : unit =
   if is_abstract_set env v.lid_str then
     let alias = match e.exp_desc with
     | P.Ident (None,id) ->
-      begin match List.find_opt (fun (_,x) -> String.equal id x) lst with
-        | Some (x,y) -> Btype.mk_Abstract_Set x y
-        | None ->
-          if is_abstract_set env id then
-            Btype.mk_Abstract_Set Btype.T_Current id
-          else
-            Btype.t_int
-      end
+      if is_abstract_set env id then
+        Btype.mk_Abstract_Set Btype.T_Current id
+      else
+        Btype.t_int
     | P.Builtin_2 (Interval,_,_) -> Btype.t_int
     | _ ->
       Error.error v.lid_loc "Incorrect set valuation (rhs is neither an identifier nor an interval)."
     in
     if not (Global.add_alias env v.lid_str alias) then
       Error.error v.lid_loc "Incorrect abstract set definition (cyclic alias)."
-*)
+
 type t_imp_symbols = {
   set_parameters: lident list;
   scalar_parameters: T.t_param list;
@@ -642,22 +638,11 @@ let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:
         T.O_Local { op_name=op.P.op_name; op_in; op_out; op_spec; op_body }
     end
   | Some _ -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
+   *)
 
-let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op:P.operation) : t_lops_map =
-  let (ctx0,ctx) = get_ref_operation_context_exn env op in
-  let op_body =
-    if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.M_LOCAL_OPERATIONS env ctx op.P.op_body
-    else
-      begin match op.P.op_body.P.sub_desc with
-        | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_LOCAL_OPERATIONS env ctx0 p in
-          let ts = Inference.type_substitution_exn V.M_LOCAL_OPERATIONS env ctx s in
-          { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.M_LOCAL_OPERATIONS env ctx op.P.op_body
-      end
-  in
-  let op_body = close_subst_exn Ref op_body in (*XXX which substitutions are allowed in local operations?*)
+let declare_local_operation_exn (env:_ Global.t) map (op:P.operation) : _ T.substitution SMap.t =
+  let ctx = get_operation_context_exn env op in
+  let op_body = close_subst_exn (Inference.type_substitution_exn V.IS_Local_Operations env ctx op.P.op_body) in
   let type_arg_exn ctx lid : T.arg =
     match Local.get ctx lid.lid_str with
     | None ->assert false
@@ -671,23 +656,23 @@ let declare_local_operation_exn (env:Global.t_ref Global.t) (map:t_lops_map) (op
   let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
   let args_in = List.map aux op_in in
   let args_out = List.map aux op_out in
-  Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:true;
+  Global.add_local_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out;
   SMap.add op.P.op_name.lid_str op_body map
 
 let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
   let aux id infos map =
     match infos.Global.sy_kind with
-    | Global.K_Abstract_Set (Global.D_Machine l) ->
+    | Global.Imp.Abstract_Set (Global.Imp.C_Machine l) ->
       SMap.add id (false,l) map
-    | Global.K_Abstract_Set (Global.D_Redeclared Global.Implicitely) ->
+    | Global.Imp.Abstract_Set (Global.Imp.C_Refined) ->
       SMap.add id (false,rm_loc) map
-    | Global.K_Abstract_Set (Global.D_Redeclared Global.By_Machine l) ->
+    | Global.Imp.Abstract_Set (Global.Imp.C_Redeclared_In_Machine l) -> (*FIXME*)
       SMap.add id (false,l) map
-    | Global.K_Concrete_Constant (Global.D_Machine l) ->
+    | Global.Imp.Concrete_Constant (Global.Imp.C_Machine l) ->
       SMap.add id (false,l) map
-    | Global.K_Concrete_Constant (Global.D_Redeclared Global.Implicitely) ->
+    | Global.Imp.Concrete_Constant (Global.Imp.C_Refined) ->
       SMap.add id (false,rm_loc) map
-    | Global.K_Concrete_Constant (Global.D_Redeclared Global.By_Machine l) ->
+    | Global.Imp.Concrete_Constant (Global.Imp.C_Redeclared_In_Machine l) ->
       SMap.add id (false,l) map
     | _ -> map
   in
@@ -703,6 +688,7 @@ let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
       if not is_valuated then
         Error.warn loc ("The constant '"^id^"' is not valuated.")
     ) cconst
+    (*
 
 let get_imported_or_seen_csets f sees imports : (Btype.t_atomic_src*string) list =
   let aux1 res seen =
@@ -720,40 +706,27 @@ let get_imported_or_seen_csets f sees imports : (Btype.t_atomic_src*string) list
   let res = List.fold_left aux1 res sees in
   List.fold_left aux2 res imports
 *)
-(*
-let declare_imp_constants_exn (env:(_,_) Global.t) (cl:_ V.clause)
-    (cconst:lident list) (aconst:lident list) (prop:P.predicate option)
-  : (_,Btype.t) T.predicate option =
-  let ctx = Local.empty in
-  let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cconst in
-  let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx aconst in
-  let t_prop = Utils.map_opt (Inference.type_predicate_exn cl env ctx) prop in
-  List.iter (promote_symbol_exn env ctx G.K_Concrete_Constant) cconst;
-  List.iter (promote_symbol_exn env ctx G.K_Abstract_Variable) aconst;
-  Utils.map_opt close_pred_exn t_prop
-
-let declare_imp_variables_exn (env:_ Global.t) cl
-    (cvars:lident list) (avars:lident list) (inv:P.predicate option)
-  : (_,Btype.t) T.predicate option =
-  let ctx = Local.empty in
-  let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx cvars in
-  let ctx = List.fold_left (declare_local_symbol_in_ref env) ctx avars in
-  let t_inv = Utils.map_opt (Inference.type_predicate_exn cl env ctx) inv in
-  List.iter (promote_symbol_exn env ctx G.K_Concrete_Variable) cvars;
-  List.iter (promote_symbol_exn env ctx G.K_Abstract_Variable) avars;
-  Utils.map_opt close_pred_exn t_inv
-*)
 
 let get_imp_promoted_operations (env:G.iEnv) : T.promoted list =
   let aux (lid_str:string) (infos:G.Imp.t_op_source G.t_operation_infos) lst =
-    let op_out = infos.Global.op_args_out in
-    let op_in = infos.Global.op_args_in in
+    let pop_out = infos.Global.op_args_out in
+    let pop_in = infos.Global.op_args_in in
     match infos.Global.op_src with
-    | G.Imp.O_Imported_Promoted_And_Refined (op_source,_) ->
-      {T.op_out; op_name={lid_loc=Utils.dloc;lid_str}; op_in; op_source}::lst
+    | G.Imp.O_Imported_Promoted_And_Refined (pop_source,_) ->
+      {T.pop_out; pop_name={lid_loc=Utils.dloc;lid_str}; pop_in; pop_source}::lst
     | _ -> lst
   in
   Global.fold_operations aux env []
+
+let filter_lop map op =
+  match SMap.find_opt op.T.op_name.lid_str map with
+  | None -> None
+  | Some lop_spec ->
+    Some { T.lop_name=op.T.op_name;
+           lop_out=op.T.op_out;
+           lop_in=op.T.op_in;
+           lop_body=op.T.op_body;
+           lop_spec }
 
 let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
     (env:_ Global.t) (imp:P.implementation) : T.implementation
@@ -766,8 +739,8 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
   in
 (*
   let imported_or_seen_csets = get_imported_or_seen_csets f imp.P.imp_sees imp.P.imp_imports in
-  let () = List.iter (manage_set_concretisation_exn imported_or_seen_csets env) imp.P.imp_values in
 *)
+  let () = List.iter (manage_set_concretisation_exn env) imp.P.imp_values in
   let imp_sees = List.map (load_seen f env) imp.P.imp_sees in
   let imp_imports = List.map (load_included_or_imported V.I_Imports f env) imp.P.imp_imports in
   let imp_extends = List.map (load_extended V.I_Imports f env) imp.P.imp_extends in
@@ -775,7 +748,7 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
       imp.P.imp_concrete_constants [] imp.P.imp_properties
   in
   let imp_values = List.map (type_value_exn env) imp.P.imp_values in
-(*   let () = check_values imp.P.imp_refines.lid_loc env imp_values in *)
+  let () = check_values imp.P.imp_refines.lid_loc env imp_values in
   let imp_invariant = declare_variables_exn V.I_Invariant env
       imp.P.imp_concrete_variables [] imp.P.imp_invariant
   in
@@ -785,11 +758,12 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
       (fun op_name -> G.promote_operation env op_name.lid_loc op_name.lid_str)
       imp.P.imp_promotes
   in
-(*   let lops_map = List.fold_left (declare_local_operation_exn env) SMap.empty imp.P.imp_local_operations in *)
+  let lop_map = List.fold_left (declare_local_operation_exn env) SMap.empty imp.P.imp_local_operations in
   let imp_initialisation = Utils.map_opt (type_substitution_exn V.IS_Operations env) imp.P.imp_initialisation in
-  let imp_operations = List.map (declare_operation_exn V.IS_Operations env) imp.P.imp_operations in (*FIXME filtrer les op locales*)
+  let imp_all_operations = List.map (declare_operation_exn V.IS_Operations env) imp.P.imp_operations in
   let imp_promoted = get_imp_promoted_operations env in (*XXX we could check that there is no recursivité*)
-  let imp_local_operations = [] in (*FIXME*)
+  let imp_operations = List.filter (fun op -> not (SMap.mem op.T.op_name.lid_str lop_map)) imp_all_operations in
+  let imp_local_operations = Utils.filter_map (filter_lop lop_map) imp_all_operations in
   { T.imp_refines;
     imp_sees; imp_imports; imp_extends;
     imp_set_parameters = symbs.set_parameters;

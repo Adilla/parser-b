@@ -376,7 +376,7 @@ let type_machine_exn (f:Utils.loc->string->Global.t_interface option)
   =
   let mch_set_parameters = List.filter is_set_param mch.P.mch_parameters in
   List.iter (fun p ->
-      let ty = Btype.mk_Power (Btype.mk_Concrete_Set T_Current p.lid_str) in
+      let ty = Btype.mk_Power (Btype.mk_Concrete_Set p.lid_str) in
       G.add_symbol env p.lid_loc p.lid_str ty (G.K_Parameter G.Set)
     ) mch_set_parameters;
   let scalar_params = List.filter (fun x -> not (is_set_param x)) mch.P.mch_parameters in
@@ -515,7 +515,7 @@ let type_value_exn (env:_ Global.t) (v,e:lident*P.expression) :
     let te = close_expr_exn
         (Inference.type_expression_exn V.I_Values env Local.empty e)
     in
-    if Btype.is_equal_modulo_alias (Global.get_alias env) te.T.exp_typ var_typ then
+    if Btype.is_equal (Global.get_alias env) te.T.exp_typ var_typ then
       let val_kind = match infos.Global.sy_kind with
         | G.Imp.Abstract_Set _ -> T.VK_Abstract_Set
         | G.Imp.Concrete_Constant _ -> T.VK_Concrete_Constant
@@ -541,8 +541,8 @@ let manage_set_concretisation_exn (env:_ Global.t) (v,e:lident*P.expression) : u
   if is_abstract_set env v.lid_str then
     let alias = match e.exp_desc with
     | P.Ident (None,id) ->
-      if is_abstract_set env id then
-        Btype.mk_Abstract_Set Btype.T_Current id
+      if is_abstract_set env id then (*FIXME might be an abstract set of imported?*)
+        Btype.mk_Abstract_Set id
       else
         Btype.t_int
     | P.Builtin_2 (Interval,_,_) -> Btype.t_int

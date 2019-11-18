@@ -28,7 +28,7 @@ type t_global_kind =
 module MachineInterface :
 sig
   type t
-  type t_symb = { id:string; typ:Btype.t; kind:t_global_kind }
+  type t_symb = { id:string; typ:Btype.t; kind:t_global_kind; }
   type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   type t_param = { id:string; typ:Btype.t; kind:t_param_kind }
   val make : t_param list -> t_symb list -> t_op list -> t
@@ -36,7 +36,7 @@ sig
   val get_operations : t -> t_op list
   val get_params : t -> t_param list
 end = struct
-  type t_symb = { id:string; typ:Btype.t; kind:t_global_kind }
+  type t_symb = { id:string; typ:Btype.t; kind:t_global_kind; }
   type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   type t_param = { id:string; typ:Btype.t; kind:t_param_kind }
   type t = t_param list * t_symb list * t_op list
@@ -119,6 +119,23 @@ module Mch = struct
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts }::lst
     | Enumerate (Machine _|Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Enumerate }::lst
+(*
+    | Abstract_Variable (Included mch)->
+      { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable; is_inc=ByInclusion mch.r_str }::lst
+    | Abstract_Constant (Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant; is_inc=ByInclusion mch.r_str }::lst
+    | Concrete_Variable (Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable; is_inc=ByInclusion mch.r_str }::lst
+    | Concrete_Constant (Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant; is_inc=ByInclusion mch.r_str }::lst
+    | Abstract_Set (Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Abstract_Set; is_inc=ByInclusion mch.r_str }::lst
+    | Concrete_Set (elts, (Included mch)) ->
+      { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts; is_inc=ByInclusion mch.r_str }::lst
+    | Enumerate (Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Enumerate; is_inc=ByInclusion mch.r_str }::lst
+*)
+
     | _ -> lst
 
   let get_operations (id:string) (op:t_op_source t_operation_infos) lst =
@@ -136,6 +153,7 @@ end
 
 module Ref = struct
 
+  
   type t_source =
     | Machine of loc
     | Seen of ren_ident
@@ -202,6 +220,25 @@ module Ref = struct
           Some (Concrete_Constant (A_Redeclared_In_Included mch))
         | _, _ -> None
       end
+    | Abstract_Set Refined, K_Abstract_Set
+    | Concrete_Variable A_Refined, K_Concrete_Variable
+    | Concrete_Constant A_Refined, K_Concrete_Constant
+    | Enumerate Refined, K_Enumerate ->
+      begin match src with
+        | Included _ -> Some decl (*FIXME*)
+        | _ -> None
+      end
+    | Concrete_Set (elts1,Refined), K_Concrete_Set elts2 ->
+      begin match src with
+        | Included _ ->
+          begin try
+              if List.for_all2 String.equal elts1 elts2 then Some decl (*FIXME*)
+              else None
+            with Invalid_argument _ -> None
+          end
+        | _ -> None
+      end
+
     | _ -> None
 
   let to_source_2 = function
@@ -240,24 +277,40 @@ module Ref = struct
   let get_symbols (x:string) (symb:t_kind t_symbol_infos) (lst:MachineInterface.t_symb list) =
     match symb.sy_kind with
     | Parameter (_, _) -> lst
-    | Abstract_Variable (A_Machine _|A_Included _
-                        |A_Redeclared_In_Machine _|A_Redeclared_In_Included _)->
+    | Abstract_Variable (A_Machine _|A_Redeclared_In_Machine _|
+                         A_Included _|A_Redeclared_In_Included _)->
       { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable }::lst
-    | Abstract_Constant (A_Machine _|A_Included _
-                        |A_Redeclared_In_Machine _|A_Redeclared_In_Included _) ->
+    | Abstract_Constant (A_Machine _|A_Redeclared_In_Machine _|
+                         A_Included _|A_Redeclared_In_Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant }::lst
-    | Concrete_Variable (A_Machine _|A_Included _|A_Refined
-                        |A_Redeclared_In_Machine _|A_Redeclared_In_Included _) ->
+    | Concrete_Variable (A_Machine _|A_Refined|A_Redeclared_In_Machine _|
+                         A_Included _|A_Redeclared_In_Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable }::lst
-    | Concrete_Constant (A_Machine _|A_Included _|A_Refined
-                        |A_Redeclared_In_Machine _|A_Redeclared_In_Included _) ->
+    | Concrete_Constant (A_Machine _|A_Refined|A_Redeclared_In_Machine _|
+                         A_Included _|A_Redeclared_In_Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant }::lst
-    | Abstract_Set (Machine _|Included _|Refined) ->
+    | Abstract_Set (Machine _ |Refined|Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Abstract_Set }::lst
-    | Concrete_Set (elts, (Machine _|Included _|Refined)) ->
+    | Concrete_Set (elts, (Machine _|Refined|Included _)) ->
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts }::lst
-    | Enumerate (Machine _|Included _|Refined) ->
+    | Enumerate (Machine _|Refined|Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Enumerate }::lst
+(*
+    | Abstract_Variable (A_Redeclared_In_Included mch)->
+      { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable; is_inc=ByInclusion mch.r_str }::lst
+    | Abstract_Constant (A_Included mch|A_Redeclared_In_Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant; is_inc=ByInclusion mch.r_str }::lst
+    | Concrete_Variable (A_Included mch|A_Redeclared_In_Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable; is_inc=ByInclusion mch.r_str }::lst
+    | Concrete_Constant (A_Included mch|A_Redeclared_In_Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant; is_inc=ByInclusion mch.r_str }::lst
+    | Abstract_Set (Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Abstract_Set; is_inc=ByInclusion mch.r_str }::lst
+    | Concrete_Set (elts, Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts; is_inc=ByInclusion mch.r_str }::lst
+    | Enumerate (Included mch) ->
+      { id=x; typ=symb.sy_typ; kind=K_Enumerate; is_inc=ByInclusion mch.r_str }::lst
+*)
     | _ -> lst
 
   let get_operations (id:string) (op:t_op_source t_operation_infos) lst =
@@ -353,7 +406,11 @@ module Imp = struct
     | K_Abstract_Set -> Abstract_Set (to_concrete_const_decl src)
     | K_Concrete_Set elts -> Concrete_Set (elts,to_concrete_const_decl src)
     | K_Enumerate -> Enumerate (to_concrete_const_decl src)
-    | K_Parameter _ -> assert false (*FIXME*)
+    | K_Parameter k ->
+      begin match src with
+        | Machine l -> Parameter (k,l)
+        | _ -> assert false (*FIXME*)
+      end
 
   let update_kind (decl:t_kind) (ki:t_global_kind) (src:t_source) : t_kind option =
     match decl, ki with
@@ -387,7 +444,29 @@ module Imp = struct
           Some (Concrete_Constant (C_Redeclared_In_Imported mch))
         | _, _ -> None
       end
-    (*FIXME*)
+    | Abstract_Set C_Refined, K_Abstract_Set
+    | Concrete_Constant C_Refined, K_Concrete_Constant ->
+      begin match src with
+        | Imported _ -> Some decl (*FIXME*)
+        | Seen _ -> Some decl (*FIXME valuation*)
+        | _ -> None
+      end
+    | Concrete_Variable V_Refined, K_Concrete_Variable
+    | Enumerate C_Refined, K_Enumerate ->
+      begin match src with
+        | Imported _ -> Some decl (*FIXME*)
+        | _ -> None
+      end
+    | Concrete_Set (elts1,C_Refined), K_Concrete_Set elts2 ->
+      begin match src with
+        | Imported _ ->
+          begin try
+              if List.for_all2 String.equal elts1 elts2 then Some decl (*FIXME*)
+              else None
+            with Invalid_argument _ -> None
+          end
+        | _ -> None
+      end
     | _ -> None
 
   let mk_op_source = function
@@ -460,7 +539,7 @@ let _add_symbol (type a b src) update_kind mk_kind (env:(a,b)t) (err_loc:loc)
       | None -> Error.error err_loc ("The identifier '" ^ id ^
                                      "' clashes with previous declaration.")
     in
-    if not (Btype.is_equal_modulo_alias Btype.no_alias infos.sy_typ sy_typ) then
+    if not (Btype.is_equal env.alias infos.sy_typ sy_typ) then
       Error.error  err_loc
         ("The identifier '" ^ id ^ "' has type " 
          ^ Btype.to_string sy_typ
@@ -487,7 +566,7 @@ let rec find_duplicate : (string*'a) list -> string option = function
 let check_args_type alias (err_loc:loc) (args_old:(string*Btype.t)list) (args_new:(string*Btype.t)list) : unit =
   let aux (x1,ty1) (x2,ty2) =
     if String.equal x1 x2 then
-      if Btype.is_equal_modulo_alias alias ty1 ty2 then ()
+      if Btype.is_equal alias ty1 ty2 then ()
       else Error.error err_loc
           ("The parameter '"^x1^"' has type '"^Btype.to_string ty1^
            "' but parameter of type '"^Btype.to_string ty2^"' was expected.")
@@ -506,8 +585,8 @@ let _add_operation (type a b src) update_op_source mk_op_source (env:(a,b)t) (er
       | None ->
         Error.error err_loc ("The operation '" ^ id ^ "' clashes with previous declaration.") 
       | Some op_src ->
-        ( check_args_type Btype.no_alias err_loc infos.op_args_in op_args_in;
-          check_args_type Btype.no_alias err_loc infos.op_args_out op_args_out;
+        ( check_args_type env.alias err_loc infos.op_args_in op_args_in;
+          check_args_type env.alias err_loc infos.op_args_out op_args_out;
           Hashtbl.replace env.ops id { infos with op_src } )
     end
   | None ->
@@ -580,17 +659,17 @@ let add_abstract_constant env loc id ty = add_symbol env loc id ty K_Abstract_Co
 let add_concrete_constant env loc id ty = add_symbol env loc id ty K_Concrete_Constant
 
 let add_abstract_set env loc id =
-  let ty = Btype.mk_Power (Btype.mk_Abstract_Set Btype.T_Current id) in
+  let ty = Btype.mk_Power (Btype.mk_Abstract_Set id) in
   add_symbol env loc id ty K_Abstract_Set
 
 let add_concrete_set env loc id elts =
-  let ty = Btype.mk_Abstract_Set Btype.T_Current id in
+  let ty = Btype.mk_Abstract_Set id in
   List.iter (fun x -> add_symbol env x.SyntaxCore.lid_loc x.SyntaxCore.lid_str ty K_Enumerate) elts;
   add_symbol env loc id (Btype.mk_Power ty)
     (K_Concrete_Set (List.map (fun x -> x.SyntaxCore.lid_str) elts))
 
 let load_external_symbol (type a b src) update_kind mk_kind (env:(a,b)t) alias (mch:ren_ident) (src:src)
-    ({id;typ;kind}:MachineInterface.t_symb) : unit =
+    ({id;typ;kind;_}:MachineInterface.t_symb) : unit =
   let mk_id id = match mch.r_prefix with
     | None -> id
     | Some p -> p ^ "." ^ id 
@@ -598,28 +677,22 @@ let load_external_symbol (type a b src) update_kind mk_kind (env:(a,b)t) alias (
   match kind with
   | K_Abstract_Variable
   | K_Concrete_Variable ->
-    _add_symbol update_kind mk_kind env mch.SyntaxCore.r_loc (mk_id id)
-      (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) (Btype.subst alias typ))
-      kind src
+    let ty = Btype.subst alias typ in
+    _add_symbol update_kind mk_kind env mch.SyntaxCore.r_loc (mk_id id) ty kind src
   | _ ->
     if (is_in_deps env.deps mch.SyntaxCore.r_str) then ()
     else
-      _add_symbol update_kind mk_kind env mch.SyntaxCore.r_loc id
-        (Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) typ)
-        kind src 
+      _add_symbol update_kind mk_kind env mch.SyntaxCore.r_loc id typ kind src 
 
 let load_external_op (type a b src) update_op_source mk_op_source (env:(a,b)t)
     (mch:ren_ident) (src:src) (op:MachineInterface.t_op) : unit
   =
-  let change_current = List.map (fun (s,ty) ->
-      (s,Btype.change_current (Btype.T_Ext mch.SyntaxCore.r_str) ty)
-    ) in
   let op_name = match mch.SyntaxCore.r_prefix with
     | None -> op.id
     | Some p -> p ^ "." ^ op.id
   in
   _add_operation update_op_source mk_op_source env mch.SyntaxCore.r_loc op_name
-    (change_current op.args_in) (change_current op.args_out) src op.readonly
+    (op.args_in) (op.args_out) src op.readonly
 
 let load_interface_for_used_machine (env:mEnv) (itf:t_interface) (mch:ren_ident) : unit =
   (*FIXME check not already in deps*)
@@ -632,8 +705,7 @@ let load_interface_for_seen_machine (type a b) (env:(a,b) t) (itf:t_interface) (
   let open MachineInterface in
   (*FIXME check not already in deps*)
   (*FIXME parameters*)
-  env.deps <- mch.r_str::env.deps;
-  match env.witness with
+  (match env.witness with
   | Mch ->
     List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env Btype.SMap.empty mch (Mch.Seen mch)) (get_symbols itf);
     List.iter (load_external_op Mch.update_op_source Mch.mk_op_source env mch (Mch.Seen mch)) (get_operations itf)
@@ -642,7 +714,8 @@ let load_interface_for_seen_machine (type a b) (env:(a,b) t) (itf:t_interface) (
     List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env mch (Ref.Seen mch)) (get_operations itf)
   | Imp ->
     List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env Btype.SMap.empty mch (Imp.Seen mch)) (get_symbols itf);
-    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Seen mch)) (get_operations itf)
+    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Seen mch)) (get_operations itf) );
+  env.deps <- mch.r_str::env.deps
 
 let rec check_set_params err_loc lst1 lst2 alias =
   let open MachineInterface in
@@ -688,10 +761,9 @@ let rec check_scalar_params alias lst1 lst2 =
 let load_interface_for_included_or_imported_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
   let open MachineInterface in
   (*FIXME check not already in deps*)
-  env.deps <- mch.r_str::env.deps;
   let alias = check_set_params mch.r_loc (get_params itf) params Btype.SMap.empty in
   check_scalar_params alias (get_params itf) params;
-  match env.witness with
+  (match env.witness with
   | Mch ->
     List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env alias mch (Mch.Included mch)) (get_symbols itf);
     List.iter (load_external_op Mch.update_op_source Mch.mk_op_source env mch (Mch.Included mch)) (get_operations itf) (*FIXME alias*)
@@ -700,7 +772,8 @@ let load_interface_for_included_or_imported_machine (type a b) (env:(a,b)t) (itf
     List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env mch (Ref.Included mch)) (get_operations itf) (*FIXME alias*)
   | Imp ->
     List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env alias mch (Imp.Imported mch)) (get_symbols itf);
-    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Imported mch)) (get_operations itf) (*FIXME alias*)
+    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Imported mch)) (get_operations itf) (*FIXME alias*) );
+  env.deps <- mch.r_str::env.deps
 
 let load_interface_for_extended_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
   let open MachineInterface in
@@ -724,8 +797,7 @@ let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface)
   (*FIXME check not already in deps*)
   let open MachineInterface in
   let ren_mch = { SyntaxCore.r_prefix=None; r_str=mch.lid_str; r_loc=mch.lid_loc } in
-  env.deps <- mch.lid_str::env.deps;
-  match env.witness with
+  ( match env.witness with
   | Mch -> assert false (*FIXME*)
   | Ref ->
     let add_param l p =
@@ -740,7 +812,8 @@ let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface)
     in
     check_param mch.lid_loc add_param params (get_params itf);
     List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env Btype.SMap.empty ren_mch Imp.Refined) (get_symbols itf);
-    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env ren_mch Imp.Refined) (get_operations itf)
+    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env ren_mch Imp.Refined) (get_operations itf) );
+  env.deps <- mch.lid_str::env.deps
 
 let _to_interface (type a b) get_symbols get_operations param_kind (env:(a,b)t) : t_interface =
   let get_params (lid:lident) : MachineInterface.t_param =
@@ -774,7 +847,7 @@ let check_operation_coherence (env:iEnv) (lc:loc) : unit =
       | Imp.O_Current_And_Refined _ -> ()
       | Imp.O_Imported_Promoted_And_Refined _ -> ()
       | Imp.O_Refined -> Error.error lc ("The operation '"^x^"' is not refined.")
-      | Imp.O_Local_Spec lc -> Error.error lc ("The operation '"^x^"' is not implemented.")
+      | Imp.O_Local_Spec lc -> Error.error lc ("The local operation '"^x^"' is not implemented.")
       | Imp.O_Imported_And_Refined _ ->
         Error.error lc ("The operation '"^x^"' is not refined (missing promotion?).")
   ) env.ops

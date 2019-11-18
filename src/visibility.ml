@@ -48,13 +48,11 @@ module Mch = struct
   module Assert = struct
     type t =
       | Global of G.Mch.t_kind
-      | Expr_Binder
+      | Local of Local.t_local_kind
 
     let mk_global x = Some (Global x)
 
-    let mk_local = function
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> assert false (*FIXME*)
+    let mk_local x = Some (Local x)
   end
 
   module Properties = struct
@@ -177,14 +175,12 @@ module Ref = struct
 
   module Assert = struct
     type t =
-      | Expr_Binder
       | Global of G.Ref.t_kind
+      | Local of Local.t_local_kind
 
     let mk_global x = Some (Global x)
 
-    let mk_local = function 
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+    let mk_local x = Some (Local x)
   end
 
   module Properties = struct
@@ -257,6 +253,7 @@ module Ref = struct
       | G.Ref.Abstract_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Abstract_Variable l) (*FIXME*)
       | G.Ref.Concrete_Variable (G.Ref.A_Machine l) -> Some (Concrete_Variable l)
       | G.Ref.Concrete_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Concrete_Variable l) (*FIXME*)
+      | G.Ref.Concrete_Variable (G.Ref.A_Refined) -> Some (Concrete_Variable Utils.dloc) (*FIXME*)
       | _ -> None
 
     type t_op =
@@ -322,14 +319,12 @@ module Imp = struct
 
   module Assert = struct
     type t =
-      | Expr_Binder
       | Global of G.Imp.t_kind
+      | Local of Local.t_local_kind
 
     let mk_global x = Some (Global x)
 
-    let mk_local = function 
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+    let mk_local x = Some (Local x)
   end
 
   module Properties = struct
@@ -446,6 +441,7 @@ module Imp = struct
       | C_Imported of SyntaxCore.ren_ident
       | C_Redeclared_In_Imported of SyntaxCore.ren_ident
       | C_Machine of Utils.loc
+      | C_Refined
       | C_Redeclared_In_Machine of Utils.loc
 
     type t_mut =
@@ -467,6 +463,7 @@ module Imp = struct
       | G.Imp.Concrete_Variable (G.Imp.V_Redeclared_In_Machine l) -> Some (Concrete_Variable (C_Redeclared_In_Machine l))
       | G.Imp.Concrete_Variable (G.Imp.V_Redeclared_In_Imported mch) -> Some (Concrete_Variable (C_Redeclared_In_Imported mch))
       | G.Imp.Concrete_Variable (G.Imp.V_Imported mch) -> Some (Concrete_Variable (C_Imported mch))
+      | G.Imp.Concrete_Variable (G.Imp.V_Refined) -> Some (Concrete_Variable (C_Refined))
       | _ -> None
 
     type t_op =

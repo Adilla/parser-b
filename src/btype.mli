@@ -2,9 +2,11 @@
 type t_alias
 val no_alias: t_alias
 
+(*
 type t_atomic_src =
     | T_Current
     | T_Ext of string
+*)
 
 module Open :
 sig
@@ -12,8 +14,8 @@ sig
     | T_Int
     | T_Bool
     | T_String
-    | T_Abstract_Set of t_atomic_src*string
-    | T_Concrete_Set of t_atomic_src*string
+    | T_Abstract_Set of string
+    | T_Concrete_Set of string
     | T_Power of t
     | T_Product of t * t
     | T_Record of (string*t) list
@@ -24,8 +26,8 @@ sig
   val t_bool : t
   val t_string : t
 
-  val mk_Abstract_Set : t_atomic_src -> string -> t
-  val mk_Concrete_Set : t_atomic_src -> string -> t
+  val mk_Abstract_Set : string -> t
+  val mk_Concrete_Set : string -> t
   val mk_Power : t -> t
   val mk_Product : t -> t -> t
   val mk_Record : (string*t) list -> t
@@ -53,8 +55,8 @@ val equal : t -> t -> bool
 
 val close : Open.t -> t option
 
-val mk_Abstract_Set : t_atomic_src -> string -> t
-val mk_Concrete_Set : t_atomic_src -> string -> t
+val mk_Abstract_Set : string -> t
+val mk_Concrete_Set : string -> t
 val mk_Power : t -> t
 val mk_Product : t -> t -> t
 val mk_Record : (string*t) list -> t
@@ -63,17 +65,17 @@ type t_view =
   | T_Int
   | T_Bool
   | T_String
-  | T_Abstract_Set of t_atomic_src*string
-  | T_Concrete_Set of t_atomic_src*string
+  | T_Abstract_Set of string
+  | T_Concrete_Set of string
   | T_Power of t
   | T_Product of t * t
   | T_Record of (string*t) list
 
 val view : t -> t_view
 
-val is_equal_modulo_alias : t_alias -> t -> t -> bool
+val is_equal : t_alias -> t -> t -> bool
 val add_alias : t_alias -> string -> t -> t_alias option
-val change_current : t_atomic_src -> t -> t
+(* val change_current : t_atomic_src -> t -> t *)
 
 module SMap : Map.S with type key=string
 val subst : t SMap.t -> t -> t

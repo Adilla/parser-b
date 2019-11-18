@@ -693,7 +693,7 @@ let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibili
                   { T.id_loc=x.r_loc; id_name=x.r_str;
                     id_type=(infos.Global.sy_typ:>Btype.Open.t);
                     id_kind }
-                | None -> assert false (*FIXME*)
+                | None -> Error.error x.r_loc ("The symbol '"^x.r_str^"' is read-only.")
               end
             | None -> Error.error x.r_loc ("Unknown identifier '"^x.r_str^"'.")
           end

@@ -22,7 +22,7 @@ module Mch : sig
   module Assert : sig
     type t =
       | Global of G.Mch.t_kind
-      | Expr_Binder
+      | Local of Local.t_local_kind
   end
 
   module Properties : sig
@@ -75,8 +75,8 @@ module Ref : sig
 
   module Assert : sig
     type t =
-      | Expr_Binder
       | Global of G.Ref.t_kind
+      | Local of Local.t_local_kind
   end
 
   module Properties : sig
@@ -132,8 +132,8 @@ module Imp : sig
 
   module Assert : sig
     type t =
-      | Expr_Binder
       | Global of G.Imp.t_kind
+      | Local of Local.t_local_kind
   end
 
   module Properties : sig
@@ -190,6 +190,7 @@ module Imp : sig
       | C_Imported of SyntaxCore.ren_ident
       | C_Redeclared_In_Imported of SyntaxCore.ren_ident
       | C_Machine of Utils.loc
+      | C_Refined
       | C_Redeclared_In_Machine of Utils.loc
 
     type t_mut =

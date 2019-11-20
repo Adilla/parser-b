@@ -140,9 +140,9 @@ module Imp : sig
     type t =
       | Expr_Binder
       | Concrete_Constant of G.Imp.t_concrete_const_decl
-      | Abstract_Set of G.Imp.t_concrete_const_decl
-      | Enumerate of G.Imp.t_concrete_const_decl
-      | Concrete_Set of string list*G.Imp.t_concrete_const_decl
+      | Abstract_Set of G.Imp.t_abstract_set_decl
+      | Enumerate of G.Imp.t_concrete_data_decl
+      | Concrete_Set of string list*G.Imp.t_concrete_data_decl
       | Abstract_Constant of G.Imp.t_abstract_decl
   end
 
@@ -213,9 +213,9 @@ module Imp : sig
     type t =
       | Expr_Binder
       | Concrete_Constant of G.Imp.t_concrete_const_decl
-      | Abstract_Set of G.Imp.t_concrete_const_decl
-      | Enumerate of G.Imp.t_concrete_const_decl
-      | Concrete_Set of string list*G.Imp.t_concrete_const_decl
+      | Abstract_Set of G.Imp.t_abstract_set_decl
+      | Enumerate of G.Imp.t_concrete_data_decl
+      | Concrete_Set of string list*G.Imp.t_concrete_data_decl
   end
 end
 

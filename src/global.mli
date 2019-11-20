@@ -110,7 +110,7 @@ module Ref : sig
     | O_Refined_And_Machine of loc
     | O_Seen of ren_ident
     | O_Included of ren_ident
-    | O_Refined_And_Included of ren_ident (*FIXME*)
+    | O_Refined_And_Included of ren_ident
     | O_Refined_Included_And_Promoted of ren_ident
 
 end
@@ -143,7 +143,21 @@ module Imp : sig
     | C_Imported of ren_ident
     | C_Redeclared_In_Seen of ren_ident
     | C_Redeclared_In_Imported of ren_ident
-    | C_Redeclared_In_Machine of loc (*FIXME only of constant*)
+    | C_Redeclared_In_Machine of loc
+
+  type t_abstract_set_decl =
+    | S_Machine of loc
+    | S_Seen of ren_ident
+    | S_Refined
+    | S_Imported of ren_ident
+    | S_Redeclared_In_Seen of ren_ident
+    | S_Redeclared_In_Imported of ren_ident
+
+  type t_concrete_data_decl =
+    | D_Machine of loc
+    | D_Seen of ren_ident
+    | D_Refined
+    | D_Imported of ren_ident
 
   type t_kind =
     | Parameter of t_param_kind*loc
@@ -151,9 +165,9 @@ module Imp : sig
     | Abstract_Constant of t_abstract_decl
     | Concrete_Variable of t_concrete_var_decl
     | Concrete_Constant of t_concrete_const_decl
-    | Abstract_Set of t_concrete_const_decl
-    | Concrete_Set of string list * t_concrete_const_decl
-    | Enumerate of t_concrete_const_decl
+    | Abstract_Set of t_abstract_set_decl
+    | Concrete_Set of string list * t_concrete_data_decl
+    | Enumerate of t_concrete_data_decl
 
   type t_op_source =
     | O_Seen of ren_ident

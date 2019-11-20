@@ -2,12 +2,6 @@
 type t_alias
 val no_alias: t_alias
 
-(*
-type t_atomic_src =
-    | T_Current
-    | T_Ext of string
-*)
-
 module Open :
 sig
   type t = private
@@ -77,5 +71,4 @@ val is_equal : t_alias -> t -> t -> bool
 val add_alias : t_alias -> string -> t -> t_alias option
 (* val change_current : t_atomic_src -> t -> t *)
 
-module SMap : Map.S with type key=string
-val subst : t SMap.t -> t -> t
+val subst : t Utils.SMap.t -> t -> t

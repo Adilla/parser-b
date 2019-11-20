@@ -1,9 +1,3 @@
-module SMap = Map.Make(
-  struct
-    type t = string
-    let compare = compare
-  end )
-
 (*
 type t_atomic_src =
   | T_Current
@@ -24,7 +18,7 @@ struct
     | T_UVar of uv ref
   and uv = Unbound of int | Bound of t
 
-  type t_alias = t SMap.t
+  type t_alias = t Utils.SMap.t
 
   let t_int = T_Int
   let t_bool = T_Bool
@@ -143,7 +137,7 @@ struct
         else uv := Bound ty
       | T_Concrete_Set (s1), T_Concrete_Set (s2)
       | T_Abstract_Set (s1), T_Abstract_Set (s2) ->
-        begin match SMap.find_opt s1 alias, SMap.find_opt s2 alias with
+        begin match Utils.SMap.find_opt s1 alias, Utils.SMap.find_opt s2 alias with
           | None, None -> raise Not_Unifiable
           | None, Some t2 -> unify_exn alias t1 t2
           | Some t1, None -> unify_exn alias t1 t2
@@ -151,7 +145,7 @@ struct
         end
       | T_Concrete_Set (s) , ty | ty, T_Concrete_Set (s)
       | T_Abstract_Set (s) , ty | ty, T_Abstract_Set (s) ->
-        begin match SMap.find_opt s alias with
+        begin match Utils.SMap.find_opt s alias with
           | None -> raise Not_Unifiable
           | Some ty' -> unify_exn alias ty ty'
         end
@@ -173,7 +167,7 @@ struct
   let rec weak_norm alias : t -> t = function
     | T_UVar { contents=Bound ty } -> weak_norm alias ty
     | T_Abstract_Set (s) as ty ->
-      begin match SMap.find_opt s alias with
+      begin match Utils.SMap.find_opt s alias with
         | None -> ty
         | Some ty2 -> weak_norm alias ty2
       end
@@ -228,7 +222,7 @@ let view = function
   | Open.T_UVar _ -> assert false
 
 type t_alias = Open.t_alias
-let no_alias = SMap.empty
+let no_alias = Utils.SMap.empty
 
 let normalize_alias (alias:t_alias) (ty:t) : t =
   let rec loop : t -> t = fun ty ->
@@ -240,7 +234,7 @@ let normalize_alias (alias:t_alias) (ty:t) : t =
 *)
     | Open.T_Concrete_Set (s)
     | Open.T_Abstract_Set (s) ->
-      begin match SMap.find_opt s alias with
+      begin match Utils.SMap.find_opt s alias with
         | None -> ty
         | Some ty' -> ty'
       end
@@ -266,8 +260,8 @@ let is_equal (alias:t_alias) (t1:t) (t2:t) : bool =
 
 let add_alias (s:t_alias) (alias:string) (ty:t) : t_alias option =
   let ty = normalize_alias s ty in
-  if occurs_atm alias ty || SMap.mem alias s then None
-  else Some (SMap.add alias ty s)
+  if occurs_atm alias ty || Utils.SMap.mem alias s then None
+  else Some (Utils.SMap.add alias ty s)
 
 (*
 let change_current (src:t_atomic_src) (ty:Open.t) : Open.t =
@@ -287,7 +281,7 @@ let change_current (src:t_atomic_src) (ty:Open.t) : Open.t =
 
 let rec subst s = function
   | Open.T_Abstract_Set (id) as ty ->
-    begin match SMap.find_opt id s with
+    begin match Utils.SMap.find_opt id s with
       | None -> ty
       | Some ty -> ty
     end

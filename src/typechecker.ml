@@ -555,8 +555,8 @@ let manage_set_concretisation_exn (env:_ Global.t) (v,e:lident*P.expression) : u
 type t_imp_symbols = {
   set_parameters: lident list;
   scalar_parameters: T.t_param list;
-  abstract_sets: G.Imp.t_concrete_const_decl T.symb list;
-  concrete_sets: (G.Imp.t_concrete_const_decl T.symb*string list) list;
+  abstract_sets: G.Imp.t_abstract_set_decl T.symb list;
+  concrete_sets: (G.Imp.t_concrete_data_decl T.symb*string list) list;
   abstract_constants: G.Imp.t_abstract_decl T.symb list;
   concrete_constants: G.Imp.t_concrete_const_decl T.symb list;
   abstract_variables: G.Imp.t_abstract_decl T.symb list;
@@ -659,7 +659,9 @@ let declare_local_operation_exn (env:_ Global.t) map (op:P.operation) : _ T.subs
   Global.add_local_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out;
   SMap.add op.P.op_name.lid_str op_body map
 
-let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
+let check_values _ (_:_ Global.t) (_:(T.value*_) list) : unit =
+  () (*FIXME*)
+(*
   let aux id infos map =
     match infos.Global.sy_kind with
     | Global.Imp.Abstract_Set (Global.Imp.C_Machine l) ->
@@ -688,6 +690,7 @@ let check_values rm_loc (env:_ Global.t) (vlst:(T.value*_) list) : unit =
       if not is_valuated then
         Error.warn loc ("The constant '"^id^"' is not valuated.")
     ) cconst
+*)
     (*
 
 let get_imported_or_seen_csets f sees imports : (Btype.t_atomic_src*string) list =

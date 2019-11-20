@@ -25,32 +25,32 @@ type t_global_kind =
   | K_Concrete_Set of string list
   | K_Enumerate
 
-module MachineInterface :
-sig
-  type t
+module MachineInterface = struct
   type t_symb = { id:string; typ:Btype.t; kind:t_global_kind; }
   type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
   type t_param = { id:string; typ:Btype.t; kind:t_param_kind }
-  val make : t_param list -> t_symb list -> t_op list -> t
-  val get_symbols : t -> t_symb list
-  val get_operations : t -> t_op list
-  val get_params : t -> t_param list
-end = struct
-  type t_symb = { id:string; typ:Btype.t; kind:t_global_kind; }
-  type t_op = { id:string; args_in: (string*Btype.t) list; args_out: (string*Btype.t) list; readonly:bool }
-  type t_param = { id:string; typ:Btype.t; kind:t_param_kind }
-  type t = t_param list * t_symb list * t_op list
-
-  let make l0 l1 l2 = (l0,l1,l2)
-  let get_symbols (_,l,_) = l
-  let get_operations (_,_,l) = l
-  let get_params (l,_,_) = l
+  type t = {
+    params: t_param list;
+    symbs: t_symb list;
+    ops: t_op list;
+    hidden: string Utils.SMap.t }
 end
 
 type t_interface = MachineInterface.t
 
 let is_in_deps (deps:string list) (mch:string) : bool =
   List.exists (String.equal mch) deps
+
+module type S = sig
+  type t_source
+  type t_kind
+  type t_op_source
+  val mk_kind : t_global_kind -> t_source -> t_kind
+  val update_kind : t_kind -> t_global_kind -> t_source -> t_kind option
+  val mk_op_source : t_source -> t_op_source option
+  val update_op_source : t_op_source -> t_source -> t_op_source option
+  val check_hidden : string Utils.SMap.t -> string -> t_source -> bool
+end
 
 module Mch = struct
 
@@ -95,10 +95,10 @@ module Mch = struct
   let update_kind _ _ _ = None
 
   let mk_op_source = function
-    | Machine l -> O_Machine l
-    | Seen mch -> O_Seen mch
-    | Used mch -> O_Used mch
-    | Included mch -> O_Included mch
+    | Machine l -> Some (O_Machine l)
+    | Seen mch -> Some (O_Seen mch)
+    | Used mch -> Some (O_Used mch)
+    | Included mch -> Some (O_Included mch)
 
   let update_op_source _ _ = None
 
@@ -119,24 +119,13 @@ module Mch = struct
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts }::lst
     | Enumerate (Machine _|Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Enumerate }::lst
-(*
-    | Abstract_Variable (Included mch)->
-      { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable; is_inc=ByInclusion mch.r_str }::lst
-    | Abstract_Constant (Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant; is_inc=ByInclusion mch.r_str }::lst
-    | Concrete_Variable (Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable; is_inc=ByInclusion mch.r_str }::lst
-    | Concrete_Constant (Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant; is_inc=ByInclusion mch.r_str }::lst
-    | Abstract_Set (Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Abstract_Set; is_inc=ByInclusion mch.r_str }::lst
-    | Concrete_Set (elts, (Included mch)) ->
-      { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts; is_inc=ByInclusion mch.r_str }::lst
-    | Enumerate (Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Enumerate; is_inc=ByInclusion mch.r_str }::lst
-*)
-
     | _ -> lst
+
+  let get_hidden (x:string) (symb:t_kind t_symbol_infos) (map:string Utils.SMap.t) : string Utils.SMap.t =
+    match symb.sy_kind with
+    | Abstract_Set (Seen mch|Used mch) | Concrete_Set (_, (Seen mch|Used mch)) ->
+      Utils.SMap.add x mch.r_str map
+    | _ -> map
 
   let get_operations (id:string) (op:t_op_source t_operation_infos) lst =
     match op.op_src with
@@ -149,11 +138,18 @@ module Mch = struct
     | Parameter (k,_) -> Some k
     | _ -> None
 
+  let check_hidden (map:string Utils.SMap.t) (id:string) (src:t_source) : bool =
+    match Utils.SMap.find_opt id map with
+    | None -> true
+    | Some mch ->
+      begin match src with
+        | Machine _ -> false
+        | Used mch2 | Included mch2 | Seen mch2 -> String.equal mch mch2.r_str
+      end
 end
 
 module Ref = struct
 
-  
   type t_source =
     | Machine of loc
     | Seen of ren_ident
@@ -188,29 +184,29 @@ module Ref = struct
 
   let update_kind (decl:t_kind) (ki:t_global_kind) (src:t_source) : t_kind option =
     match decl, ki with
-    | Abstract_Variable src2, K_Abstract_Variable ->
-      begin match src2, src with
-        | A_Refined, Machine l ->
+    | Abstract_Variable A_Refined, K_Abstract_Variable ->
+      begin match src with
+        | Machine l ->
           Some (Abstract_Variable (A_Redeclared_In_Machine l))
-        | A_Refined, Included mch ->
+        | Included mch ->
           Some (Abstract_Variable (A_Redeclared_In_Included mch))
-        | _, _ -> None
+        | _ -> None
       end
-    | Abstract_Variable src2, K_Concrete_Variable ->
-      begin match src2, src with
-        | A_Refined, Machine l ->
+    | Abstract_Variable A_Refined, K_Concrete_Variable ->
+      begin match src with
+        | Machine l ->
           Some (Concrete_Variable (A_Redeclared_In_Machine l))
-        | A_Refined, Included mch->
+        | Included mch->
           Some (Concrete_Variable (A_Redeclared_In_Included mch))
-        | _, _ -> None
+        | _ -> None
       end
-    | Abstract_Constant src2, K_Abstract_Constant ->
-      begin match src2, src with
-        | A_Refined, Machine l ->
+    | Abstract_Constant A_Refined, K_Abstract_Constant ->
+      begin match src with
+        | Machine l ->
           Some (Abstract_Constant (A_Redeclared_In_Machine l))
-        | A_Refined, Included mch ->
+        | Included mch ->
           Some (Abstract_Constant (A_Redeclared_In_Included mch))
-        | _, _ -> None
+        | _ -> None
       end
     | Abstract_Constant src2, K_Concrete_Constant ->
       begin match src2, src with
@@ -220,19 +216,38 @@ module Ref = struct
           Some (Concrete_Constant (A_Redeclared_In_Included mch))
         | _, _ -> None
       end
-    | Abstract_Set Refined, K_Abstract_Set
-    | Concrete_Variable A_Refined, K_Concrete_Variable
-    | Concrete_Constant A_Refined, K_Concrete_Constant
+    | Abstract_Set Refined, K_Abstract_Set ->
+      begin match src with
+        (*XXX should be allowed only when the same machine is included in the
+         * refined machine and the refinement *)
+        | Included mch -> Some (Abstract_Set (Included mch)) 
+        | _ -> None
+      end
+    | Concrete_Variable A_Refined, K_Concrete_Variable ->
+      begin match src with
+        (*XXX idem*)
+        | Included mch -> Some (Concrete_Variable (A_Redeclared_In_Included mch)) 
+        | _ -> None
+      end
+    | Concrete_Constant A_Refined, K_Concrete_Constant ->
+      begin match src with
+        (*XXX idem*)
+        | Included mch -> Some (Concrete_Constant (A_Redeclared_In_Included mch)) 
+        | _ -> None
+      end
     | Enumerate Refined, K_Enumerate ->
       begin match src with
-        | Included _ -> Some decl (*FIXME*)
+        (*XXX idem*)
+        | Included mch -> Some (Enumerate (Included mch)) 
         | _ -> None
       end
     | Concrete_Set (elts1,Refined), K_Concrete_Set elts2 ->
       begin match src with
-        | Included _ ->
+        (*XXX idem*)
+        | Included mch ->
           begin try
-              if List.for_all2 String.equal elts1 elts2 then Some decl (*FIXME*)
+              if List.for_all2 String.equal elts1 elts2 then
+                Some (Concrete_Set (elts1,Included mch))
               else None
             with Invalid_argument _ -> None
           end
@@ -259,14 +274,14 @@ module Ref = struct
     | K_Parameter k ->
       begin match src with
         | Machine l -> Parameter(k,l)
-        | _ -> assert false (*FIXME*)
+        | _ -> failwith "Internal error: Global.Ref.mk_kind"
       end
 
   let mk_op_source = function
-    | Machine _ -> assert false (*FIXME*)
-    | Seen mch -> O_Seen mch
-    | Refined -> O_Refined
-    | Included mch -> O_Included mch
+    | Machine _ -> None
+    | Seen mch -> Some (O_Seen mch)
+    | Refined -> Some O_Refined
+    | Included mch -> Some (O_Included mch)
 
   let update_op_source old_src new_src =
     match old_src, new_src with
@@ -280,38 +295,34 @@ module Ref = struct
     | Abstract_Variable (A_Machine _|A_Redeclared_In_Machine _|
                          A_Included _|A_Redeclared_In_Included _)->
       { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable }::lst
+    | Abstract_Variable (A_Seen _|A_Refined) -> lst
     | Abstract_Constant (A_Machine _|A_Redeclared_In_Machine _|
                          A_Included _|A_Redeclared_In_Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant }::lst
+    | Abstract_Constant (A_Seen _|A_Refined) -> lst
     | Concrete_Variable (A_Machine _|A_Refined|A_Redeclared_In_Machine _|
                          A_Included _|A_Redeclared_In_Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable }::lst
+    | Concrete_Variable (A_Seen _) -> lst
     | Concrete_Constant (A_Machine _|A_Refined|A_Redeclared_In_Machine _|
                          A_Included _|A_Redeclared_In_Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant }::lst
+    | Concrete_Constant (A_Seen _) -> lst
     | Abstract_Set (Machine _ |Refined|Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Abstract_Set }::lst
+    | Abstract_Set (Seen _) -> lst
     | Concrete_Set (elts, (Machine _|Refined|Included _)) ->
       { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts }::lst
+    | Concrete_Set (_,Seen _) -> lst
     | Enumerate (Machine _|Refined|Included _) ->
       { id=x; typ=symb.sy_typ; kind=K_Enumerate }::lst
-(*
-    | Abstract_Variable (A_Redeclared_In_Included mch)->
-      { id=x; typ=symb.sy_typ; kind=K_Abstract_Variable; is_inc=ByInclusion mch.r_str }::lst
-    | Abstract_Constant (A_Included mch|A_Redeclared_In_Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Abstract_Constant; is_inc=ByInclusion mch.r_str }::lst
-    | Concrete_Variable (A_Included mch|A_Redeclared_In_Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Concrete_Variable; is_inc=ByInclusion mch.r_str }::lst
-    | Concrete_Constant (A_Included mch|A_Redeclared_In_Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Concrete_Constant; is_inc=ByInclusion mch.r_str }::lst
-    | Abstract_Set (Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Abstract_Set; is_inc=ByInclusion mch.r_str }::lst
-    | Concrete_Set (elts, Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Concrete_Set elts; is_inc=ByInclusion mch.r_str }::lst
-    | Enumerate (Included mch) ->
-      { id=x; typ=symb.sy_typ; kind=K_Enumerate; is_inc=ByInclusion mch.r_str }::lst
-*)
-    | _ -> lst
+    | Enumerate (Seen _) -> lst
+
+  let get_hidden (x:string) (symb:t_kind t_symbol_infos) (map:string Utils.SMap.t) : string Utils.SMap.t =
+    match symb.sy_kind with
+    | Abstract_Set (Seen mch) | Concrete_Set (_, (Seen mch)) ->
+      Utils.SMap.add x mch.r_str map
+    | _ -> map
 
   let get_operations (id:string) (op:t_op_source t_operation_infos) lst =
     match op.op_src with
@@ -323,6 +334,16 @@ module Ref = struct
     let param_kind = function
       | Parameter (kind,_) -> Some kind
       | _ -> None
+
+  let check_hidden (map:string Utils.SMap.t) (id:string) (src:t_source) : bool =
+    match Utils.SMap.find_opt id map with
+    | None -> true
+    | Some mch ->
+      begin match src with
+        | Machine _ | Refined -> false
+        | Included mch2 | Seen mch2 -> String.equal mch mch2.r_str
+      end
+
 end
 
 module Imp = struct
@@ -356,15 +377,29 @@ module Imp = struct
     | C_Redeclared_In_Imported of ren_ident
     | C_Redeclared_In_Machine of loc
 
+  type t_concrete_data_decl =
+    | D_Machine of loc
+    | D_Seen of ren_ident
+    | D_Refined
+    | D_Imported of ren_ident
+
+  type t_abstract_set_decl =
+    | S_Machine of loc
+    | S_Seen of ren_ident
+    | S_Refined
+    | S_Imported of ren_ident
+    | S_Redeclared_In_Seen of ren_ident
+    | S_Redeclared_In_Imported of ren_ident
+
   type t_kind =
     | Parameter of t_param_kind*loc
     | Abstract_Variable of t_abstract_decl
     | Abstract_Constant of t_abstract_decl
     | Concrete_Variable of t_concrete_var_decl
     | Concrete_Constant of t_concrete_const_decl
-    | Abstract_Set of t_concrete_const_decl
-    | Concrete_Set of string list * t_concrete_const_decl
-    | Enumerate of t_concrete_const_decl
+    | Abstract_Set of t_abstract_set_decl
+    | Concrete_Set of string list * t_concrete_data_decl
+    | Enumerate of t_concrete_data_decl
 
   type t_op_source =
     | O_Seen of ren_ident
@@ -378,7 +413,8 @@ module Imp = struct
 
   let to_abstract_decl (src:t_source) : t_abstract_decl =
     match src with
-    | Machine _ -> assert false (*FIXME*)
+    | Machine _ ->
+      failwith "Internal error: Global.Imp.to_abstract_decl" (*no abstract data in implementations*)
     | Seen mch -> A_Seen mch
     | Refined -> A_Refined
     | Imported mch -> A_Imported mch
@@ -397,26 +433,41 @@ module Imp = struct
     | Refined -> C_Refined
     | Imported mch -> C_Imported mch
 
+  let to_concrete_data_decl (src:t_source) : t_concrete_data_decl =
+    match src with
+    | Machine l -> D_Machine l
+    | Seen mch -> D_Seen mch
+    | Refined -> D_Refined
+    | Imported mch -> D_Imported mch
+
+  let to_abstract_set_decl (src:t_source) : t_abstract_set_decl =
+    match src with
+    | Machine l -> S_Machine l
+    | Seen mch -> S_Seen mch
+    | Refined -> S_Refined
+    | Imported mch -> S_Imported mch
+
   let mk_kind (kind:t_global_kind) (src:t_source) : t_kind =
     match kind with
     | K_Abstract_Variable -> Abstract_Variable (to_abstract_decl src)
     | K_Abstract_Constant -> Abstract_Constant (to_abstract_decl src)
     | K_Concrete_Variable -> Concrete_Variable (to_concrete_var_decl src)
     | K_Concrete_Constant -> Concrete_Constant (to_concrete_const_decl src)
-    | K_Abstract_Set -> Abstract_Set (to_concrete_const_decl src)
-    | K_Concrete_Set elts -> Concrete_Set (elts,to_concrete_const_decl src)
-    | K_Enumerate -> Enumerate (to_concrete_const_decl src)
+    | K_Abstract_Set -> Abstract_Set (to_abstract_set_decl src)
+    | K_Concrete_Set elts -> Concrete_Set (elts,to_concrete_data_decl src)
+    | K_Enumerate -> Enumerate (to_concrete_data_decl src)
     | K_Parameter k ->
       begin match src with
         | Machine l -> Parameter (k,l)
-        | _ -> assert false (*FIXME*)
+        | _ -> failwith "Internal error: Global.Imp.mk_kind"
       end
 
   let update_kind (decl:t_kind) (ki:t_global_kind) (src:t_source) : t_kind option =
     match decl, ki with
     | Abstract_Variable src2, K_Abstract_Variable ->
       begin match src2, src with
-        | A_Refined, Machine _ -> assert false (*FIXME*)
+        | A_Refined, Machine _ ->
+          failwith "Internal error: Global.Imp.update_kind" (*no abstract data in implementations*)
         | A_Refined, Imported mch ->
           Some (Abstract_Variable (A_Redeclared_In_Imported mch))
         | _, _ -> None
@@ -431,7 +482,8 @@ module Imp = struct
       end
     | Abstract_Constant src2, K_Abstract_Constant ->
       begin match src2, src with
-        | A_Refined, Machine _ -> assert false (*FIXME*)
+        | A_Refined, Machine _ ->
+          failwith "Internal error: Global.Imp.update_kind" (*no abstract data in implementations*)
         | A_Refined, Imported mch ->
           Some (Abstract_Constant (A_Redeclared_In_Imported mch))
         | _, _ -> None
@@ -442,26 +494,40 @@ module Imp = struct
           Some (Concrete_Constant (C_Redeclared_In_Machine l))
         | A_Refined, Imported mch->
           Some (Concrete_Constant (C_Redeclared_In_Imported mch))
+        | A_Refined, Seen mch->
+          Some (Concrete_Constant (C_Redeclared_In_Seen mch))
         | _, _ -> None
       end
-    | Abstract_Set C_Refined, K_Abstract_Set
+    | Abstract_Set S_Refined, K_Abstract_Set ->
+        begin match src with
+        | Imported mch -> Some (Abstract_Set (S_Redeclared_In_Imported mch))
+        | Seen mch -> Some (Abstract_Set (S_Redeclared_In_Seen mch))
+        | _ -> None
+      end
     | Concrete_Constant C_Refined, K_Concrete_Constant ->
       begin match src with
-        | Imported _ -> Some decl (*FIXME*)
-        | Seen _ -> Some decl (*FIXME valuation*)
+        | Imported mch -> Some (Concrete_Constant (C_Redeclared_In_Imported mch))
+        | Seen mch -> Some (Concrete_Constant (C_Redeclared_In_Seen mch))
         | _ -> None
       end
-    | Concrete_Variable V_Refined, K_Concrete_Variable
-    | Enumerate C_Refined, K_Enumerate ->
-      begin match src with
-        | Imported _ -> Some decl (*FIXME*)
+    | Concrete_Variable V_Refined, K_Concrete_Variable ->
+        begin match src with
+        | Imported mch -> Some (Concrete_Variable (V_Redeclared_In_Imported mch))
         | _ -> None
       end
-    | Concrete_Set (elts1,C_Refined), K_Concrete_Set elts2 ->
+    | Enumerate D_Refined, K_Enumerate ->
       begin match src with
-        | Imported _ ->
+        (*XXX should be allowed only when the same machine is included in the
+         * refined machine and imported in the implementation *)
+        | Imported mch -> Some (Enumerate (D_Imported mch)) 
+        | _ -> None
+      end
+    | Concrete_Set (elts1,D_Refined), K_Concrete_Set elts2 ->
+      begin match src with
+        | Imported mch ->
           begin try
-              if List.for_all2 String.equal elts1 elts2 then Some decl (*FIXME*)
+              if List.for_all2 String.equal elts1 elts2 then
+                Some (Concrete_Set (elts1,D_Imported mch)) (*XXX idem*)
               else None
             with Invalid_argument _ -> None
           end
@@ -470,10 +536,10 @@ module Imp = struct
     | _ -> None
 
   let mk_op_source = function
-    | Machine _ -> assert false (*FIXME*)
-    | Refined -> O_Refined
-    | Seen mch -> O_Seen mch
-    | Imported mch -> O_Imported mch
+    | Machine _ -> None
+    | Refined -> Some O_Refined
+    | Seen mch -> Some (O_Seen mch)
+    | Imported mch -> Some (O_Imported mch)
 
   let update_op_source (old_src:t_op_source) (new_src:t_source) : t_op_source option =
     match old_src, new_src with
@@ -482,6 +548,14 @@ module Imp = struct
     | O_Local_Spec l1 , Machine l2 -> Some (O_Local_Spec_And_Implem (l1,l2))
     | _, _ -> None
 
+  let check_hidden (map:string Utils.SMap.t) (id:string) (src:t_source) : bool =
+    match Utils.SMap.find_opt id map with
+    | None -> true
+    | Some mch ->
+      begin match src with
+        | Machine _ | Refined -> false
+        | Imported mch2 | Seen mch2 -> String.equal mch mch2.r_str
+      end
 end
 
 type (_,_) c_kind =
@@ -495,13 +569,15 @@ type ('sy_ki,'op_ki) t = {
   params: lident list;
   mutable alias:Btype.t_alias;
   symb:(string,'sy_ki t_symbol_infos) Hashtbl.t;
-  ops:(string,'op_ki t_operation_infos) Hashtbl.t
+  ops:(string,'op_ki t_operation_infos) Hashtbl.t;
+  mutable hidden_types: string Utils.SMap.t
 }
 
 let create witness params : _ t =
   { witness;
     deps=[];
     params;
+    hidden_types=Utils.SMap.empty;
     alias=Btype.no_alias;
     symb=Hashtbl.create 47;
     ops=Hashtbl.create 47 }
@@ -529,12 +605,29 @@ let add_alias (s:_ t) (alias:string) (ty:Btype.t) : bool =
   | None -> false
   | Some alias -> (s.alias <- alias; true)
 
-let _add_symbol (type a b src) update_kind mk_kind (env:(a,b)t) (err_loc:loc)
+type ('sy_ki,'op_ki,'src) func = (
+  module S with
+    type t_kind = 'sy_ki and
+  type t_op_source = 'op_ki and
+  type t_source = 'src
+)
+
+let merge_hidden (_:_ t) (_:string Utils.SMap.t) : unit = assert false (*FIXME*)
+
+let mFunc : (Mch.t_kind,Mch.t_op_source,Mch.t_source) func =
+  (module Mch : S with type t_kind=Mch.t_kind and type t_source=Mch.t_source and type t_op_source=Mch.t_op_source )
+let rFunc : (Ref.t_kind,Ref.t_op_source,Ref.t_source) func =
+  (module Ref : S with type t_kind=Ref.t_kind and type t_source=Ref.t_source and type t_op_source=Ref.t_op_source )
+let iFunc : (Imp.t_kind,Imp.t_op_source,Imp.t_source) func =
+  (module Imp : S with type t_kind=Imp.t_kind and type t_source=Imp.t_source and type t_op_source=Imp.t_op_source )
+
+let _add_symbol (type a b src) (f:(a,b,src) func) (env:(a,b)t) (err_loc:loc)
     (id:string) (sy_typ:Btype.t) (ki:t_global_kind) (src:src) : unit
   =
+  let module F = (val f) in
   match Hashtbl.find_opt env.symb id with
   | Some infos ->
-    let sy_kind = match update_kind infos.sy_kind ki src with
+    let sy_kind = match F.update_kind infos.sy_kind ki src with
       | Some x -> x
       | None -> Error.error err_loc ("The identifier '" ^ id ^
                                      "' clashes with previous declaration.")
@@ -548,13 +641,16 @@ let _add_symbol (type a b src) update_kind mk_kind (env:(a,b)t) (err_loc:loc)
     else
       Hashtbl.replace env.symb id { sy_typ; sy_kind }
   | None ->
-    Hashtbl.add env.symb id { sy_typ; sy_kind=mk_kind ki src }
+      if F.check_hidden env.hidden_types id src then
+        Hashtbl.add env.symb id { sy_typ; sy_kind=F.mk_kind ki src }
+      else
+        assert false (*FIXME error hidden clash*)
 
 let add_symbol (type a b) (env:(a,b) t) l id ty ki : unit =
   match env.witness with
-  | Mch -> _add_symbol Mch.update_kind Mch.mk_kind env l id ty ki (Mch.Machine l)
-  | Ref -> _add_symbol Ref.update_kind Ref.mk_kind env l id ty ki (Ref.Machine l)
-  | Imp -> _add_symbol Imp.update_kind Imp.mk_kind env l id ty ki (Imp.Machine l)
+  | Mch -> _add_symbol mFunc env l id ty ki (Mch.Machine l)
+  | Ref -> _add_symbol rFunc env l id ty ki (Ref.Machine l)
+  | Imp -> _add_symbol iFunc env l id ty ki (Imp.Machine l)
 
 let rec find_duplicate : (string*'a) list -> string option = function
   | [] -> None
@@ -575,13 +671,14 @@ let check_args_type alias (err_loc:loc) (args_old:(string*Btype.t)list) (args_ne
   try List.iter2 aux args_old args_new;
   with Invalid_argument _ -> Error.error err_loc "Unexpected number of parameters."
 
-let _add_operation (type a b src) update_op_source mk_op_source (env:(a,b)t) (err_loc:loc) (id:string)
+let _add_operation (type a b src) (f:(a,b,src)func) (env:(a,b)t) (err_loc:loc) (id:string)
     (op_args_in:(string*Btype.t)list) (op_args_out:(string*Btype.t)list)
     (src:src) op_readonly : unit
   =
+  let module F = (val f) in
   match Hashtbl.find_opt env.ops id with
   | Some infos ->
-    begin match update_op_source infos.op_src src with
+    begin match F.update_op_source infos.op_src src with
       | None ->
         Error.error err_loc ("The operation '" ^ id ^ "' clashes with previous declaration.") 
       | Some op_src ->
@@ -590,8 +687,11 @@ let _add_operation (type a b src) update_op_source mk_op_source (env:(a,b)t) (er
           Hashtbl.replace env.ops id { infos with op_src } )
     end
   | None ->
-    Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly;
-                             op_src=mk_op_source src }
+    begin match F.mk_op_source src with
+      | Some op_src ->
+        Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly; op_src }
+      | None -> assert false (*FIXME error*)
+    end
 
 let add_operation (type a b) (env:(a,b) t) (loc:loc) (id:string)
     (args_in:(string*Btype.t) list) (args_out:(string*Btype.t) list)
@@ -600,12 +700,9 @@ let add_operation (type a b) (env:(a,b) t) (loc:loc) (id:string)
   match find_duplicate (args_in@args_out) with
   | None ->
     begin match env.witness with
-      | Mch -> _add_operation Mch.update_op_source Mch.mk_op_source
-                 env loc id args_in args_out (Mch.Machine loc) is_readonly
-      | Ref -> _add_operation Ref.update_op_source Ref.mk_op_source
-                 env loc id args_in args_out (Ref.Machine loc) is_readonly
-      | Imp -> _add_operation Imp.update_op_source Imp.mk_op_source
-                 env loc id args_in args_out (Imp.Machine loc) is_readonly
+      | Mch -> _add_operation mFunc env loc id args_in args_out (Mch.Machine loc) is_readonly
+      | Ref -> _add_operation rFunc env loc id args_in args_out (Ref.Machine loc) is_readonly
+      | Imp -> _add_operation iFunc env loc id args_in args_out (Imp.Machine loc) is_readonly
     end
   | Some arg ->
     Error.error loc ("The argument '"^arg^"' appears twice in this operation declaration.")
@@ -626,14 +723,14 @@ let mch_promote _ = function
 
 let ref_promote _ = function
   | Ref.O_Refined_And_Included mch -> Some (Ref.O_Refined_Included_And_Promoted mch)
-  | Ref.O_Included _ -> assert false (*FIXME*)
-  | Ref.O_Refined_Included_And_Promoted _ -> assert false (*FIXME*)
+  | Ref.O_Included _ -> assert false (*FIXME error*)
+  | Ref.O_Refined_Included_And_Promoted _ -> assert false (*FIXME err*)
   | _ -> None
 
 let imp_promote lc = function
   | Imp.O_Imported_And_Refined mch -> Some (Imp.O_Imported_Promoted_And_Refined (mch,lc))
-  | Imp.O_Imported _ -> assert false (*FIXME*)
-  | Imp.O_Imported_Promoted_And_Refined _ -> assert false (*FIXME*)
+  | Imp.O_Imported _ -> assert false (*FIXME error*)
+  | Imp.O_Imported_Promoted_And_Refined _ -> assert false (*FIXME error*)
   | _ -> None
 
 let _promote_operation (type a b) promote (env:(a,b) t) (lc:loc) (id:string) : unit =
@@ -668,8 +765,8 @@ let add_concrete_set env loc id elts =
   add_symbol env loc id (Btype.mk_Power ty)
     (K_Concrete_Set (List.map (fun x -> x.SyntaxCore.lid_str) elts))
 
-let load_external_symbol (type a b src) update_kind mk_kind (env:(a,b)t) alias (mch:ren_ident) (src:src)
-    ({id;typ;kind;_}:MachineInterface.t_symb) : unit =
+let load_external_symbol (type a b src) f (env:(a,b)t) alias (mch:ren_ident)
+    (src:src) ({id;typ;kind;_}:MachineInterface.t_symb) : unit =
   let mk_id id = match mch.r_prefix with
     | None -> id
     | Some p -> p ^ "." ^ id 
@@ -678,43 +775,44 @@ let load_external_symbol (type a b src) update_kind mk_kind (env:(a,b)t) alias (
   | K_Abstract_Variable
   | K_Concrete_Variable ->
     let ty = Btype.subst alias typ in
-    _add_symbol update_kind mk_kind env mch.SyntaxCore.r_loc (mk_id id) ty kind src
+    _add_symbol f env mch.SyntaxCore.r_loc (mk_id id) ty kind src
   | _ ->
     if (is_in_deps env.deps mch.SyntaxCore.r_str) then ()
     else
-      _add_symbol update_kind mk_kind env mch.SyntaxCore.r_loc id typ kind src 
+      _add_symbol f env mch.SyntaxCore.r_loc id typ kind src 
 
-let load_external_op (type a b src) update_op_source mk_op_source (env:(a,b)t)
+let load_external_op (type a b src) (f:(a,b,src)func) (env:(a,b)t)
     (mch:ren_ident) (src:src) (op:MachineInterface.t_op) : unit
   =
   let op_name = match mch.SyntaxCore.r_prefix with
     | None -> op.id
     | Some p -> p ^ "." ^ op.id
   in
-  _add_operation update_op_source mk_op_source env mch.SyntaxCore.r_loc op_name
-    (op.args_in) (op.args_out) src op.readonly
+  _add_operation f env mch.SyntaxCore.r_loc op_name (op.args_in) (op.args_out) src op.readonly
 
 let load_interface_for_used_machine (env:mEnv) (itf:t_interface) (mch:ren_ident) : unit =
   (*FIXME check not already in deps*)
   (*FIXME parameters*)
+  merge_hidden env itf.hidden;
   let open MachineInterface in
-  List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env Btype.SMap.empty mch (Mch.Used mch)) (get_symbols itf);
+  List.iter (load_external_symbol mFunc env Utils.SMap.empty mch (Mch.Used mch)) itf.symbs;
   env.deps <- mch.r_str::env.deps
 
 let load_interface_for_seen_machine (type a b) (env:(a,b) t) (itf:t_interface) (mch:ren_ident) : unit =
   let open MachineInterface in
   (*FIXME check not already in deps*)
   (*FIXME parameters*)
+  merge_hidden env itf.hidden;
   (match env.witness with
   | Mch ->
-    List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env Btype.SMap.empty mch (Mch.Seen mch)) (get_symbols itf);
-    List.iter (load_external_op Mch.update_op_source Mch.mk_op_source env mch (Mch.Seen mch)) (get_operations itf)
+    List.iter (load_external_symbol mFunc env Utils.SMap.empty mch (Mch.Seen mch)) itf.symbs;
+    List.iter (load_external_op mFunc env mch (Mch.Seen mch)) itf.ops
   | Ref ->
-    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env Btype.SMap.empty mch (Ref.Seen mch)) (get_symbols itf);
-    List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env mch (Ref.Seen mch)) (get_operations itf)
+    List.iter (load_external_symbol rFunc env Utils.SMap.empty mch (Ref.Seen mch)) itf.symbs;
+    List.iter (load_external_op rFunc env mch (Ref.Seen mch)) itf.ops
   | Imp ->
-    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env Btype.SMap.empty mch (Imp.Seen mch)) (get_symbols itf);
-    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Seen mch)) (get_operations itf) );
+    List.iter (load_external_symbol iFunc env Utils.SMap.empty mch (Imp.Seen mch)) itf.symbs;
+    List.iter (load_external_op iFunc env mch (Imp.Seen mch)) itf.ops );
   env.deps <- mch.r_str::env.deps
 
 let rec check_set_params err_loc lst1 lst2 alias =
@@ -726,7 +824,7 @@ let rec check_set_params err_loc lst1 lst2 alias =
       | Scalar -> check_set_params err_loc tl1 tl2 alias
       | Set ->
         begin match Btype.view hd2 with
-          | Btype.T_Power ty -> check_set_params err_loc tl1 tl2 (Btype.SMap.add hd1.id ty alias)
+          | Btype.T_Power ty -> check_set_params err_loc tl1 tl2 (Utils.SMap.add hd1.id ty alias)
           | _ ->
             let err_txt = Printf.sprintf
                 "This expression has type '%s' but an expression of type '%s' was expected."
@@ -756,23 +854,24 @@ let rec check_scalar_params alias lst1 lst2 =
           Error.error lc err_txt
       | Set -> check_scalar_params alias tl1 tl2
     end
-  | _, _ -> assert false (*FIXME*)
+  | _, _ -> assert false (*FIXME error *)
 
 let load_interface_for_included_or_imported_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
   let open MachineInterface in
   (*FIXME check not already in deps*)
-  let alias = check_set_params mch.r_loc (get_params itf) params Btype.SMap.empty in
-  check_scalar_params alias (get_params itf) params;
+  merge_hidden env itf.hidden;
+  let alias = check_set_params mch.r_loc itf.params params Utils.SMap.empty in
+  check_scalar_params alias itf.params params;
   (match env.witness with
   | Mch ->
-    List.iter (load_external_symbol Mch.update_kind Mch.mk_kind env alias mch (Mch.Included mch)) (get_symbols itf);
-    List.iter (load_external_op Mch.update_op_source Mch.mk_op_source env mch (Mch.Included mch)) (get_operations itf) (*FIXME alias*)
+    List.iter (load_external_symbol mFunc env alias mch (Mch.Included mch)) itf.symbs;
+    List.iter (load_external_op mFunc env mch (Mch.Included mch)) itf.ops
   | Ref ->
-    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env alias mch (Ref.Included mch)) (get_symbols itf);
-    List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env mch (Ref.Included mch)) (get_operations itf) (*FIXME alias*)
+    List.iter (load_external_symbol rFunc env alias mch (Ref.Included mch)) itf.symbs;
+    List.iter (load_external_op rFunc env mch (Ref.Included mch)) itf.ops
   | Imp ->
-    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env alias mch (Imp.Imported mch)) (get_symbols itf);
-    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env mch (Imp.Imported mch)) (get_operations itf) (*FIXME alias*) );
+    List.iter (load_external_symbol iFunc env alias mch (Imp.Imported mch)) itf.symbs;
+    List.iter (load_external_op iFunc env mch (Imp.Imported mch)) itf.ops );
   env.deps <- mch.r_str::env.deps
 
 let load_interface_for_extended_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
@@ -780,7 +879,7 @@ let load_interface_for_extended_machine (type a b) (env:(a,b)t) (itf:t_interface
   load_interface_for_included_or_imported_machine env itf mch params;
   List.iter (fun (r:t_op) ->
       promote_operation env mch.SyntaxCore.r_loc r.id
-    ) (get_operations itf)
+    ) itf.ops
 
 let rec check_param err_loc (add_param:loc -> MachineInterface.t_param -> unit)
     (lst1:lident list) (lst2:MachineInterface.t_param list) : unit =
@@ -795,27 +894,29 @@ let rec check_param err_loc (add_param:loc -> MachineInterface.t_param -> unit)
 
 let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:lident) (params:lident list) : unit =
   (*FIXME check not already in deps*)
+  merge_hidden env itf.hidden;
   let open MachineInterface in
   let ren_mch = { SyntaxCore.r_prefix=None; r_str=mch.lid_str; r_loc=mch.lid_loc } in
   ( match env.witness with
-  | Mch -> assert false (*FIXME*)
+  | Mch -> failwith "Internal error: Global.load_interface_for_refined_machine"
   | Ref ->
     let add_param l p =
-      _add_symbol Ref.update_kind Ref.mk_kind env l p.id p.typ (K_Parameter p.kind)(Ref.Machine l)
+      _add_symbol rFunc env l p.id p.typ (K_Parameter p.kind)(Ref.Machine l)
     in
-    check_param mch.lid_loc add_param params (get_params itf);
-    List.iter (load_external_symbol Ref.update_kind Ref.mk_kind env Btype.SMap.empty ren_mch Ref.Refined) (get_symbols itf);
-    List.iter (load_external_op Ref.update_op_source Ref.mk_op_source env ren_mch Ref.Refined) (get_operations itf)
+    check_param mch.lid_loc add_param params itf.params;
+    List.iter (load_external_symbol rFunc env Utils.SMap.empty ren_mch Ref.Refined) itf.symbs;
+    List.iter (load_external_op rFunc env ren_mch Ref.Refined) itf.ops
   | Imp ->
     let add_param l p =
-      _add_symbol Imp.update_kind Imp.mk_kind env l p.id p.typ (K_Parameter p.kind)(Imp.Machine l)
+      _add_symbol iFunc env l p.id p.typ (K_Parameter p.kind)(Imp.Machine l)
     in
-    check_param mch.lid_loc add_param params (get_params itf);
-    List.iter (load_external_symbol Imp.update_kind Imp.mk_kind env Btype.SMap.empty ren_mch Imp.Refined) (get_symbols itf);
-    List.iter (load_external_op Imp.update_op_source Imp.mk_op_source env ren_mch Imp.Refined) (get_operations itf) );
+    check_param mch.lid_loc add_param params itf.params;
+    List.iter (load_external_symbol iFunc env Utils.SMap.empty ren_mch Imp.Refined) itf.symbs;
+    List.iter (load_external_op iFunc env ren_mch Imp.Refined) itf.ops );
   env.deps <- mch.lid_str::env.deps
 
-let _to_interface (type a b) get_symbols get_operations param_kind (env:(a,b)t) : t_interface =
+let _to_interface (type a b) get_symbols get_operations param_kind get_hidden
+    (env:(a,b)t) : t_interface =
   let get_params (lid:lident) : MachineInterface.t_param =
     let id = lid.SyntaxCore.lid_str in
     match Hashtbl.find_opt env.symb id with
@@ -829,13 +930,14 @@ let _to_interface (type a b) get_symbols get_operations param_kind (env:(a,b)t) 
   let params:MachineInterface.t_param list = List.map get_params env.params in
   let symbs = Hashtbl.fold get_symbols env.symb [] in
   let ops = Hashtbl.fold get_operations env.ops [] in
-  MachineInterface.make params symbs ops
+  let hidden = Hashtbl.fold get_hidden env.symb Utils.SMap.empty in
+  MachineInterface.({symbs;ops;params;hidden})
 
 let to_interface (type a b) (env:(a,b)t) : t_interface =
   match env.witness with
-  | Mch -> _to_interface Mch.get_symbols Mch.get_operations Mch.param_kind env
-  | Ref -> _to_interface Ref.get_symbols Ref.get_operations Ref.param_kind env
-  | Imp -> assert false (*FIXME*)
+  | Mch -> _to_interface Mch.get_symbols Mch.get_operations Mch.param_kind Mch.get_hidden env
+  | Ref -> _to_interface Ref.get_symbols Ref.get_operations Ref.param_kind Ref.get_hidden env
+  | Imp -> failwith "Internal error: Global.to_interface"
 
 let check_operation_coherence (env:iEnv) (lc:loc) : unit =
   Hashtbl.iter (

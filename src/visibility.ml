@@ -294,22 +294,23 @@ module Imp = struct
       | G.Imp.Concrete_Constant (G.Imp.C_Refined) -> Some (Concrete_Constant (Refined))
       | G.Imp.Concrete_Constant (G.Imp.C_Redeclared_In_Machine l) -> Some (Concrete_Constant (Machine l)) (*FIXME*)
       | G.Imp.Concrete_Constant (G.Imp.C_Redeclared_In_Seen mch) -> Some (Concrete_Constant (Seen mch)) (*FIXME*)
-      | G.Imp.Abstract_Set (G.Imp.C_Machine l) -> Some (Abstract_Set (Machine l))
-      | G.Imp.Abstract_Set (G.Imp.C_Seen mch) -> Some (Abstract_Set (Seen mch))
-      | G.Imp.Abstract_Set (G.Imp.C_Refined) -> Some (Abstract_Set (Refined))
-      | G.Imp.Abstract_Set (G.Imp.C_Redeclared_In_Machine l) -> Some (Abstract_Set (Machine l)) (*FIXME*)
-      | G.Imp.Abstract_Set (G.Imp.C_Redeclared_In_Seen mch) -> Some (Abstract_Set (Seen mch)) (*FIXME*)
-      | G.Imp.Concrete_Set (elts,G.Imp.C_Machine l) -> Some (Concrete_Set (elts,Machine l))
-      | G.Imp.Concrete_Set (elts,G.Imp.C_Seen mch) -> Some (Concrete_Set (elts,Seen mch))
-      | G.Imp.Concrete_Set (elts,G.Imp.C_Refined) -> Some (Concrete_Set (elts,Refined))
-      | G.Imp.Concrete_Set (elts,G.Imp.C_Redeclared_In_Machine l) -> Some (Concrete_Set (elts,Machine l)) (*FIXME*)
-      | G.Imp.Concrete_Set (elts,G.Imp.C_Redeclared_In_Seen mch) -> Some (Concrete_Set (elts,Seen mch)) (*FIXME*)
-      | G.Imp.Enumerate (G.Imp.C_Machine l) -> Some (Enumerate (Machine l))
-      | G.Imp.Enumerate (G.Imp.C_Seen mch) -> Some (Enumerate (Seen mch))
-      | G.Imp.Enumerate (G.Imp.C_Refined) -> Some (Enumerate (Refined))
-      | G.Imp.Enumerate (G.Imp.C_Redeclared_In_Machine l) -> Some (Enumerate (Machine l)) (*FIXME*)
-      | G.Imp.Enumerate (G.Imp.C_Redeclared_In_Seen mch) -> Some (Enumerate (Seen mch)) (*FIXME*)
-      | _ -> None
+      | G.Imp.Concrete_Constant(G.Imp.C_Imported _|G.Imp.C_Redeclared_In_Imported _) -> None
+      | G.Imp.Abstract_Set (G.Imp.S_Machine l) -> Some (Abstract_Set (Machine l))
+      | G.Imp.Abstract_Set (G.Imp.S_Seen mch) -> Some (Abstract_Set (Seen mch))
+      | G.Imp.Abstract_Set (G.Imp.S_Refined) -> Some (Abstract_Set (Refined))
+      | G.Imp.Abstract_Set (G.Imp.S_Redeclared_In_Seen mch) -> Some (Abstract_Set (Seen mch)) (*FIXME*)
+      | G.Imp.Abstract_Set (G.Imp.S_Imported _|G.Imp.S_Redeclared_In_Imported _) -> None
+      | G.Imp.Concrete_Set (elts,G.Imp.D_Machine l) -> Some (Concrete_Set (elts,Machine l))
+      | G.Imp.Concrete_Set (elts,G.Imp.D_Seen mch) -> Some (Concrete_Set (elts,Seen mch))
+      | G.Imp.Concrete_Set (elts,G.Imp.D_Refined) -> Some (Concrete_Set (elts,Refined))
+      | G.Imp.Concrete_Set (_,G.Imp.D_Imported _) -> None
+      | G.Imp.Enumerate (G.Imp.D_Machine l) -> Some (Enumerate (Machine l))
+      | G.Imp.Enumerate (G.Imp.D_Seen mch) -> Some (Enumerate (Seen mch))
+      | G.Imp.Enumerate (G.Imp.D_Refined) -> Some (Enumerate (Refined))
+      | G.Imp.Enumerate (G.Imp.D_Imported _) -> None
+      | G.Imp.Abstract_Variable _
+      | G.Imp.Concrete_Variable _
+      | G.Imp.Abstract_Constant _ -> None
 
     let mk_local = function 
       | Local.L_Expr_Binder -> Some Expr_Binder
@@ -331,9 +332,9 @@ module Imp = struct
     type t =
       | Expr_Binder
       | Concrete_Constant of G.Imp.t_concrete_const_decl
-      | Abstract_Set of G.Imp.t_concrete_const_decl
-      | Enumerate of G.Imp.t_concrete_const_decl
-      | Concrete_Set of string list*G.Imp.t_concrete_const_decl
+      | Abstract_Set of G.Imp.t_abstract_set_decl
+      | Enumerate of G.Imp.t_concrete_data_decl
+      | Concrete_Set of string list*G.Imp.t_concrete_data_decl
       | Abstract_Constant of G.Imp.t_abstract_decl
 
     let mk_global = function
@@ -489,9 +490,9 @@ module Imp = struct
     type t =
       | Expr_Binder
       | Concrete_Constant of G.Imp.t_concrete_const_decl
-      | Abstract_Set of G.Imp.t_concrete_const_decl
-      | Enumerate of G.Imp.t_concrete_const_decl
-      | Concrete_Set of string list*G.Imp.t_concrete_const_decl
+      | Abstract_Set of G.Imp.t_abstract_set_decl
+      | Enumerate of G.Imp.t_concrete_data_decl
+      | Concrete_Set of string list*G.Imp.t_concrete_data_decl
 
     let mk_global = function
       | G.Imp.Abstract_Variable _ -> None

@@ -224,8 +224,8 @@ type implementation = {
   imp_imports: V.Imp.Imports.t machine_instanciation list;
   imp_extends: V.Imp.Imports.t machine_instanciation list;
 
-  imp_abstract_sets: G.Imp.t_concrete_const_decl symb list;
-  imp_concrete_sets: (G.Imp.t_concrete_const_decl symb*string list) list;
+  imp_abstract_sets: G.Imp.t_abstract_set_decl symb list;
+  imp_concrete_sets: (G.Imp.t_concrete_data_decl symb*string list) list;
   imp_abstract_constants: G.Imp.t_abstract_decl symb list;
   imp_concrete_constants: G.Imp.t_concrete_const_decl symb list;
   imp_abstract_variables: G.Imp.t_abstract_decl symb list;

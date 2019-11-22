@@ -229,7 +229,7 @@ let type_global_ident (type env_ki id_ki)
           id_type=(infos.Global.sy_typ :> Btype.Open.t);
           id_kind}
       | None ->
-        Error.error id_loc ("The symbol '"^id_name^"' is not visible in this clause.") (*FIXME*)
+        Visibility.error id_loc id_name cl infos.sy_kind
     end
   | None -> Error.error id_loc ("Unknown identifier '"^id_name^"'.")
 
@@ -247,7 +247,7 @@ let type_ident (type env_ki id_ki)
               id_type=(ty :> Btype.Open.t);
               id_kind }
           | None ->
-            Error.error id_loc ("The symbol '"^id_str^"' is not visible in this clause.") (*FIXME*)
+            Error.error id_loc ("The symbol '"^id_str^"' is not visible in this clause.") (*FIXME better error*)
         end
       | Some(None,_) ->
         Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
@@ -297,7 +297,7 @@ let type_untyped_id (type env_ki id_ki) (cl:(env_ki,id_ki) Visibility.clause) (c
     let () = Local.set_type ctx id_name cty in
     begin match Visibility.mk_local cl ki with
       | Some id_kind -> mk_expr id_loc ty (T.Ident { T.id_name; id_loc; id_type=ty; id_kind })
-      | None -> assert false (*FIXME*)
+      | None -> assert false (*FIXME error*)
     end
 
 let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
@@ -621,7 +621,7 @@ and check_utuple : type  env_ki id_ki. (env_ki,id_ki) V.clause ->
           begin match Visibility.mk_local cl ki with
             | Some id_kind ->
               mk_expr id_loc ty_exp (T.Ident { T.id_name; id_loc; id_type=ty_exp; id_kind })
-            | None -> assert false (*FIXME*)
+            | None -> assert false (*FIXME error*)
           end
       end
   | T_Couple (c,lc,t1,t2) ->
@@ -683,7 +683,7 @@ let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibili
         | Some (Some ty,ki) ->
           begin match V.mk_local_mut cl ki with
             | Some id_kind -> { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(ty:>Btype.Open.t); id_kind }
-            | None -> assert false (*FIXME*)
+            | None -> assert false (*FIXME error*)
           end
         | None ->
           begin match Global.get_symbol env x.r_str with
@@ -706,7 +706,7 @@ let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibili
             | Some id_kind ->
               { T.id_loc=x.r_loc; id_name; id_type=(infos.Global.sy_typ:>Btype.Open.t);
                 id_kind }
-            | None -> assert false (*FIXME*)
+            | None -> assert false (*FIXME error*)
           end
         | None -> Error.error x.r_loc ("Unknown identifier '"^id_name^"'.")
       end
@@ -729,7 +729,7 @@ let check_writable_nlist : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) V.sclause
               let () = Local.set_type ctx lid.r_str cty in
               begin match Visibility.mk_local_mut cl ki with
                 | Some id_kind -> { T.id_loc=lid.r_loc; id_name=lid.r_str; id_type; id_kind }
-                | None -> assert false (*FIXME*)
+                | None -> assert false (*FIXME error*)
               end
           end
         | _ ->
@@ -779,7 +779,7 @@ let type_out_parameter (type env_ki mut_ki) (cl:(env_ki,_,mut_ki,_,_,_) V.sclaus
         let () = Local.set_type ctx id.r_str ty in
         begin match V.mk_local_mut cl ki with
           | Some id_kind -> { T.id_loc=id.r_loc; id_name=id.r_str; id_type=ty_exp; id_kind }
-          | None -> assert false (*FIXME*)
+          | None -> assert false (*FIXME error*)
         end
       | _ ->
         let tid = type_writable_var_exn cl env ctx id in
@@ -988,7 +988,7 @@ let rec type_substitution_exn : type env_ki id_ki mut_ki assert_ki env_op_ki op_
 *)
             begin try
                 let op_src = match Visibility.mk_op cl infos.op_src with
-                  | None -> assert false (*FIXME*)
+                  | None -> assert false (*FIXME error*)
                   | Some op_src -> op_src
                 in
                 let op = { T.op_prefix=op.r_prefix; op_id = op.r_str; op_loc = op.r_loc; op_src } in

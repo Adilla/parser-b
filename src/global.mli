@@ -201,3 +201,5 @@ val load_interface_for_refined_machine : _ t -> t_interface -> lident -> lident 
 
 val check_operation_coherence : iEnv -> loc -> unit
 val add_local_operation : iEnv -> loc -> string -> (string*Btype.t) list -> (string*Btype.t) list -> unit
+
+val get_kind_in_itf : t_interface -> string -> t_global_kind option

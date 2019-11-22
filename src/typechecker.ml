@@ -530,24 +530,45 @@ let type_value_exn (env:_ Global.t) (v,e:lident*P.expression) :
 
 let is_abstract_set env v =
   match Global.get_symbol env v with
-  | None -> false
+  | None -> None
   | Some infos ->
    begin match infos.Global.sy_kind with
-     | Global.Imp.Abstract_Set _ -> true
-     | _ -> false
+     | Global.Imp.Abstract_Set _ -> Some true
+     | _ -> Some false
    end
 
-let manage_set_concretisation_exn (env:_ Global.t) (v,e:lident*P.expression) : unit =
-  if is_abstract_set env v.lid_str then
+let rec get_imported_kind (f:Utils.loc->string->Global.t_interface option) id = function
+  | [] -> None
+  | imported::tl ->
+    let imported = imported.P.mi_mch in
+    match f imported.r_loc imported.r_str with
+    | None -> Error.error imported.r_loc ("The machine '"^imported.r_str^"' does not typecheck.")
+    | Some itf ->
+      begin match Global.get_kind_in_itf itf id with
+        | Some _ as s -> s
+        | None -> get_imported_kind f id tl
+      end
+
+let set_concretisation_exn f (env:_ Global.t) imports (v,e:lident*P.expression) : unit =
+  match is_abstract_set env v.lid_str with
+  | None -> assert false (*FIXME error *)
+  | Some false -> ()
+  | Some true ->
     let alias = match e.exp_desc with
-    | P.Ident (None,id) ->
-      if is_abstract_set env id then (*FIXME might be an abstract set of imported?*)
-        Btype.mk_Abstract_Set id
-      else
-        Btype.t_int
-    | P.Builtin_2 (Interval,_,_) -> Btype.t_int
-    | _ ->
-      Error.error v.lid_loc "Incorrect set valuation (rhs is neither an identifier nor an interval)."
+      | P.Ident (None,id) ->
+        begin match is_abstract_set env id with
+          | Some true -> Btype.mk_Abstract_Set id
+          | Some false -> Btype.t_int
+          | None ->
+            begin match get_imported_kind f id imports with
+              | None -> assert false (*FIXME error*)
+              | Some G.K_Abstract_Set -> Btype.mk_Abstract_Set id
+              | Some _ -> Btype.t_int
+            end
+        end
+      | P.Builtin_2 (Interval,_,_) -> Btype.t_int
+      | _ ->
+        Error.error v.lid_loc "Incorrect set valuation (rhs is neither an identifier nor an interval)."
     in
     if not (Global.add_alias env v.lid_str alias) then
       Error.error v.lid_loc "Incorrect abstract set definition (cyclic alias)."
@@ -592,12 +613,7 @@ let get_imp_symbols (env:G.iEnv) : t_imp_symbols =
       abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
 (*
-let type_imp_init_exn env s =
-  close_subst_exn Imp (Inference.type_substitution_exn V.IS_Operations env Local.empty s)
-*)
-(*
 
-module SMap = Map.Make(String)
 type t_lops_map = (Global.t_ref,Btype.t) T.substitution SMap.t
 
 let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:P.operation) : Global.t_ref T.operation =
@@ -693,21 +709,6 @@ let check_values _ (_:_ Global.t) (_:(T.value*_) list) : unit =
 *)
     (*
 
-let get_imported_or_seen_csets f sees imports : (Btype.t_atomic_src*string) list =
-  let aux1 res seen =
-    match f seen.r_loc seen.r_str with
-    | None -> Error.error seen.r_loc ("The machine '"^seen.r_str^"' does not typecheck.")
-    | Some itf -> Global.add_abstract_sets (Btype.T_Ext seen.r_str) res itf
-  in
-  let aux2 res imported =
-    let imported = imported.P.mi_mch in
-    match f imported.r_loc imported.r_str with
-    | None -> Error.error imported.r_loc ("The machine '"^imported.r_str^"' does not typecheck.")
-    | Some itf -> Global.add_abstract_sets Btype.T_Current res itf
-  in
-  let res = [] in
-  let res = List.fold_left aux1 res sees in
-  List.fold_left aux2 res imports
 *)
 
 let get_imp_promoted_operations (env:G.iEnv) : T.promoted list =
@@ -740,11 +741,8 @@ let type_implementation_exn (f:Utils.loc->string->Global.t_interface option)
       | P.Concrete_Set (v,elts) -> G.add_concrete_set env v.lid_loc v.lid_str elts
     ) imp.P.imp_sets
   in
-(*
-  let imported_or_seen_csets = get_imported_or_seen_csets f imp.P.imp_sees imp.P.imp_imports in
-*)
-  let () = List.iter (manage_set_concretisation_exn env) imp.P.imp_values in
   let imp_sees = List.map (load_seen f env) imp.P.imp_sees in
+  let () = List.iter (set_concretisation_exn f env (imp.P.imp_imports@imp.P.imp_extends)) imp.P.imp_values in
   let imp_imports = List.map (load_included_or_imported V.I_Imports f env) imp.P.imp_imports in
   let imp_extends = List.map (load_extended V.I_Imports f env) imp.P.imp_extends in
   let imp_properties = declare_constants_exn V.I_Properties env

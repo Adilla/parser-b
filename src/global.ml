@@ -34,9 +34,16 @@ module MachineInterface = struct
     symbs: t_symb list;
     ops: t_op list;
     hidden: string Utils.SMap.t }
+  let get_kind_in_itf itf id =
+    let rec loop : t_symb list -> t_global_kind option = function
+      | [] -> None
+      | hd::tl -> if String.equal id hd.id then Some hd.kind else loop tl
+    in
+    loop itf.symbs
 end
 
 type t_interface = MachineInterface.t
+let get_kind_in_itf = MachineInterface.get_kind_in_itf
 
 let is_in_deps (deps:string list) (mch:string) : bool =
   List.exists (String.equal mch) deps
@@ -612,7 +619,15 @@ type ('sy_ki,'op_ki,'src) func = (
   type t_source = 'src
 )
 
-let merge_hidden (_:_ t) (_:string Utils.SMap.t) : unit = assert false (*FIXME*)
+let merge_hidden (env:_ t) (map:string Utils.SMap.t) : unit =
+  let aux (id:string) (mch:string) (map:string Utils.SMap.t) =
+    match Utils.SMap.find_opt id map with 
+    | None -> Utils.SMap.add id mch map
+    | Some mch2 ->
+      if String.equal mch mch2 then Utils.SMap.add id mch map
+      else assert false (*FIXME error*)
+  in
+  env.hidden_types <- Utils.SMap.fold aux map env.hidden_types
 
 let mFunc : (Mch.t_kind,Mch.t_op_source,Mch.t_source) func =
   (module Mch : S with type t_kind=Mch.t_kind and type t_source=Mch.t_source and type t_op_source=Mch.t_op_source )

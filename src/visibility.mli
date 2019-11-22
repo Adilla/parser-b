@@ -99,12 +99,21 @@ module Ref : sig
     type t =
       | Global of G.Ref.t_kind (*FIXME*)
       | Local of Local.t_local_kind
-  
+
+    type t_source_1 =
+      | A_Machine of Utils.loc
+      | A_Redeclared of Utils.loc
+
+    type t_source_2 =
+      | C_Machine of Utils.loc
+      | C_Refined
+      | C_Redeclared of Utils.loc
+ 
     type t_mut =
       | Param_Out
       | Subst_Binder
-      | Abstract_Variable of Utils.loc
-      | Concrete_Variable of Utils.loc
+      | Abstract_Variable of t_source_1
+      | Concrete_Variable of t_source_2
     
     type t_op =
       | O_Seen of SyntaxCore.ren_ident
@@ -274,3 +283,5 @@ val mk_op : (_,_,_,_,'env_op_ki,'op_ki) sclause -> 'env_op_ki -> 'op_ki option
 
 val to_clause : ('env_ki,'id_ki,_,_,_,_) sclause -> ('env_ki,'id_ki) clause
 val to_assert : ('env_ki,_,_,'assert_ki,_,_) sclause -> ('env_ki,'assert_ki) clause
+
+val error : Utils.loc -> string -> ('a,'b) clause -> 'a -> 'c

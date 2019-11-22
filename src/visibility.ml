@@ -41,7 +41,7 @@ module Mch = struct
 
     let mk_local = function
       | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> assert false (*FIXME*)
+      | _ -> None
 
   end
 
@@ -76,7 +76,7 @@ module Mch = struct
 
     let mk_local = function
       | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> assert false (*FIXME*)
+      | _ -> None
   end
 
   module Invariant = struct
@@ -87,13 +87,13 @@ module Mch = struct
     let mk_global x =
       if !extended_sees then Some (Global x)
       else match x with
-      | G.Mch.Abstract_Variable _ -> None
-      | G.Mch.Concrete_Variable _ -> None
+      | G.Mch.Abstract_Variable (G.Mch.Seen _) -> None
+      | G.Mch.Concrete_Variable (G.Mch.Seen _) -> None
       | _ -> Some (Global x)
 
     let mk_local = function
       | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> assert false (*FIXME*)
+      | _ -> None
   end
 
   module Operations = struct
@@ -122,7 +122,7 @@ module Mch = struct
 
     let mk_op = function
       | G.Mch.O_Machine _ -> None
-      | G.Mch.O_Seen mch -> Some (O_Seen mch)
+      | G.Mch.O_Seen mch -> Some (O_Seen mch) (*FIXME*)
       | G.Mch.O_Used mch -> Some (O_Used mch)
       | G.Mch.O_Included mch -> Some (O_Included mch)
       | G.Mch.O_Included_And_Promoted mch -> Some (O_Included_And_Promoted mch)
@@ -156,7 +156,7 @@ module Ref = struct
       | G.Ref.Concrete_Constant (Global.Ref.A_Machine l) -> Some (Concrete_Constant (Machine l))
       | G.Ref.Concrete_Constant (Global.Ref.A_Seen mch) -> Some (Concrete_Constant (Seen mch))
       | G.Ref.Concrete_Constant (Global.Ref.A_Refined) -> Some (Concrete_Constant (Refined))
-      | G.Ref.Concrete_Constant (Global.Ref.A_Redeclared_In_Machine l) -> Some (Concrete_Constant (Machine l)) (*FIXME*)
+      | G.Ref.Concrete_Constant (Global.Ref.A_Redeclared_In_Machine l) -> Some (Concrete_Constant (Machine l))
       | G.Ref.Abstract_Set (Global.Ref.Machine l) -> Some (Abstract_Set (Machine l))
       | G.Ref.Abstract_Set (Global.Ref.Seen mch) -> Some (Abstract_Set (Seen mch))
       | G.Ref.Abstract_Set (Global.Ref.Refined) -> Some (Abstract_Set (Refined))
@@ -215,13 +215,13 @@ module Ref = struct
     let mk_global x =
       if !extended_sees then Some (Global x)
       else match x with
-      | G.Ref.Abstract_Variable _ -> None
-      | G.Ref.Concrete_Variable _ -> None
+      | G.Ref.Abstract_Variable (G.Ref.A_Seen _) -> None
+      | G.Ref.Concrete_Variable (G.Ref.A_Seen _) -> None
       | _ -> Some (Global x)
 
     let mk_local = function
       | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> assert false (*FIXME*)
+      | _ -> None
   end
 
   module Operations = struct
@@ -234,11 +234,20 @@ module Ref = struct
       | G.Ref.Abstract_Constant G.Ref.A_Refined -> None
       | x -> Some (Global x)
 
+    type t_source_1 =
+      | A_Machine of Utils.loc
+      | A_Redeclared of Utils.loc
+
+    type t_source_2 =
+      | C_Machine of Utils.loc
+      | C_Refined
+      | C_Redeclared of Utils.loc
+
     type t_mut =
       | Param_Out
       | Subst_Binder
-      | Abstract_Variable of Utils.loc
-      | Concrete_Variable of Utils.loc
+      | Abstract_Variable of t_source_1
+      | Concrete_Variable of t_source_2
 
     let mk_local x = Some (Local x)
 
@@ -249,11 +258,11 @@ module Ref = struct
       | Local.L_Param_Out -> Some Param_Out
 
     let mk_global_mut = function
-      | G.Ref.Abstract_Variable (G.Ref.A_Machine l) -> Some (Abstract_Variable l)
-      | G.Ref.Abstract_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Abstract_Variable l) (*FIXME*)
-      | G.Ref.Concrete_Variable (G.Ref.A_Machine l) -> Some (Concrete_Variable l)
-      | G.Ref.Concrete_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Concrete_Variable l) (*FIXME*)
-      | G.Ref.Concrete_Variable (G.Ref.A_Refined) -> Some (Concrete_Variable Utils.dloc) (*FIXME*)
+      | G.Ref.Abstract_Variable (G.Ref.A_Machine l) -> Some (Abstract_Variable (A_Machine l))
+      | G.Ref.Abstract_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Abstract_Variable (A_Redeclared l))
+      | G.Ref.Concrete_Variable (G.Ref.A_Machine l) -> Some (Concrete_Variable (C_Machine l))
+      | G.Ref.Concrete_Variable (G.Ref.A_Redeclared_In_Machine l) -> Some (Concrete_Variable (C_Redeclared l))
+      | G.Ref.Concrete_Variable (G.Ref.A_Refined) -> Some (Concrete_Variable C_Refined)
       | _ -> None
 
     type t_op =
@@ -266,7 +275,7 @@ module Ref = struct
     let mk_op = function
       | G.Ref.O_Refined -> None
       | G.Ref.O_Refined_And_Machine _ -> None
-      | G.Ref.O_Seen mch -> Some (O_Seen mch)
+      | G.Ref.O_Seen mch -> Some (O_Seen mch) (*FIXME*)
       | G.Ref.O_Included mch -> Some (O_Included mch)
       | G.Ref.O_Refined_And_Included mch -> Some (O_Refined_And_Included mch)
       | G.Ref.O_Refined_Included_And_Promoted mch -> Some (O_Refined_Included_And_Promoted mch)
@@ -354,19 +363,19 @@ module Imp = struct
 
   module Invariant = struct
     type t =
-      | Global of G.Imp.t_kind
+      | Global of G.Imp.t_kind (*FIXME*)
       | Expr_Binder
 
     let mk_global x =
       if !extended_sees then Some (Global x)
       else match x with
-      | G.Imp.Abstract_Variable _ -> None
-      | G.Imp.Concrete_Variable _ -> None
+      | G.Imp.Abstract_Variable (G.Imp.A_Seen _) -> None
+      | G.Imp.Concrete_Variable (G.Imp.V_Seen _) -> None
       | _ -> Some (Global x)
 
     let mk_local = function
       | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> assert false (*FIXME*)
+      | _ -> None
   end
 
   module Operations = struct
@@ -413,7 +422,7 @@ module Imp = struct
     let mk_op = function
       | G.Imp.O_Refined -> None
       | G.Imp.O_Current_And_Refined _ -> None
-      | G.Imp.O_Seen mch -> Some (O_Seen mch)
+      | G.Imp.O_Seen mch -> Some (O_Seen mch) (*FIXME*)
       | G.Imp.O_Imported mch -> Some (O_Imported mch)
       | G.Imp.O_Imported_And_Refined mch -> Some (O_Refined_And_Imported mch)
       | G.Imp.O_Imported_Promoted_And_Refined (mch,_) -> Some (O_Refined_Imported_And_Promoted mch)
@@ -631,3 +640,70 @@ let to_assert : type a b c d e f.(a,b,c,d,e,f) sclause -> (a,d) clause = functio
   | RS_Operations -> R_Assert
   | IS_Operations -> I_Assert
   | IS_Local_Operations -> I_Assert
+
+let mch_kind (ki:G.Mch.t_kind) : string = (*FIXME*)
+  match ki with
+  | Parameter _ -> "parameter"
+  | Abstract_Variable (Global.Mch.Machine _) -> "abstract variable"
+  | Abstract_Variable (Global.Mch.Seen _) -> "seen abstract variable"
+  | Abstract_Variable (Global.Mch.Used _) -> "used abstract variable"
+  | Abstract_Variable (Global.Mch.Included _) -> "included abstract variable"
+  | Abstract_Constant _ -> "abstract constant"
+  | Concrete_Variable _ -> "concrete variable"
+  | Concrete_Constant _ -> "concrete constant"
+  | Abstract_Set _ -> "abstract set"
+  | Concrete_Set _ -> "concrete set"
+  | Enumerate _ -> "enumerate"
+
+let ref_kind (ki:G.Ref.t_kind) : string = (*FIXME*)
+  match ki with
+  | Parameter _ -> "parameter"
+  | Abstract_Variable (Global.Ref.A_Machine _) -> "abstract variable"
+  | Abstract_Variable (Global.Ref.A_Seen _) -> "seen abstract variable"
+  | Abstract_Variable (Global.Ref.A_Refined) -> "disappearing abstract variable"
+  | Abstract_Variable (Global.Ref.A_Included _) -> "included abstract variable"
+  | Abstract_Variable (Global.Ref.A_Redeclared_In_Machine _) -> "abstract variable"
+  | Abstract_Variable (Global.Ref.A_Redeclared_In_Included _) -> "included abstract variable"
+  | Abstract_Constant _ -> "abstract constant"
+  | Concrete_Variable _ -> "concrete variable"
+  | Concrete_Constant _ -> "concrete constant"
+  | Abstract_Set _ -> "abstract set"
+  | Concrete_Set _ -> "concrete set"
+  | Enumerate _ -> "enumerate"
+
+let imp_kind (ki:G.Imp.t_kind) : string = (*FIXME*)
+  match ki with
+  | Parameter _ -> "parameter"
+  | Abstract_Variable (G.Imp.A_Seen _) -> "seen abstract variable"
+  | Abstract_Variable (G.Imp.A_Refined) -> "disappearing abstract variable"
+  | Abstract_Variable (G.Imp.A_Imported _) -> "imported abstract variable"
+  | Abstract_Variable (G.Imp.A_Redeclared_In_Imported _) -> "imported abstract variable"
+  | Abstract_Constant _ -> "abstract constant"
+  | Concrete_Variable _ -> "concrete variable"
+  | Concrete_Constant _ -> "concrete constant"
+  | Abstract_Set _ -> "abstract set"
+  | Concrete_Set _ -> "concrete set"
+  | Enumerate _ -> "enumerate"
+
+let error (type a b c) (loc:Utils.loc) (id:string) (cl:(a,b) clause) (ki:a) : c =
+  let (ki_str,cl_str) =  match cl with
+    | M_Constraints -> mch_kind ki, "the clause CONSTRAINTS"
+    | M_Includes -> mch_kind ki, "the clauses INCLUDES and EXTENDS"
+    | M_Assert -> mch_kind ki, "the ASSERT substitution"
+    | M_Properties -> mch_kind ki, "the clause PROPERTIES"
+    | M_Invariant -> mch_kind ki, "the clause INVARIANT"
+    | M_Operations -> mch_kind ki, "the clause OPERATIONS"
+    | R_Includes -> ref_kind ki, "the clauses INCLUDES and EXTENDS"
+    | R_Assert -> ref_kind ki, "the ASSERT substitution"
+    | R_Properties -> ref_kind ki, "the clause PROPERTIES"
+    | R_Invariant -> ref_kind ki, "the clause INVARIANT"
+    | R_Operations -> ref_kind ki, "the clause OPERATIONS"
+    | I_Imports -> imp_kind ki, "the clauses IMPORTS and EXTENDS"
+    | I_Assert -> imp_kind ki, "the ASSERT substitution nor in the VARIANT and INVARIANT part of a WHILE"
+    | I_Properties -> imp_kind ki, "the clause PROPERTIES"
+    | I_Invariant -> imp_kind ki, "the clause INVARIANT"
+    | I_Operations -> imp_kind ki, "the clause OPERATIONS"
+    | I_Local_Operations -> imp_kind ki, "the clause LOCAL_OPERATIONS"
+    | I_Values -> imp_kind ki, "the clause VALUES"
+  in
+  Error.error loc ("The "^ki_str^" '"^id^"' is not visible in "^cl_str^".")

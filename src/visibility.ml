@@ -13,8 +13,8 @@ module Mch = struct
       | _ -> None
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Includes = struct
@@ -40,8 +40,8 @@ module Mch = struct
       | _ -> None
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
 
   end
 
@@ -52,7 +52,7 @@ module Mch = struct
 
     let mk_global x = Some (Global x)
 
-    let mk_local x = Some (Local x)
+    let mk_local x = Local x
   end
 
   module Properties = struct
@@ -75,8 +75,8 @@ module Mch = struct
       | G.Mch.Abstract_Constant src -> Some (Abstract_Constant src)
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Invariant = struct
@@ -92,8 +92,8 @@ module Mch = struct
       | _ -> Some (Global x)
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Operations = struct
@@ -120,14 +120,14 @@ module Mch = struct
       | G.Mch.Concrete_Variable (G.Mch.Machine l) -> Some (Concrete_Variable (l))
       | _ -> None
 
-    let mk_op = function
+    let mk_op readonly = function
       | G.Mch.O_Machine _ -> None
-      | G.Mch.O_Seen mch -> Some (O_Seen mch) (*FIXME*)
+      | G.Mch.O_Seen mch -> if readonly then Some (O_Seen mch) else None
       | G.Mch.O_Used mch -> Some (O_Used mch)
       | G.Mch.O_Included mch -> Some (O_Included mch)
-      | G.Mch.O_Included_And_Promoted mch -> Some (O_Included_And_Promoted mch)
+      | G.Mch.O_Included_And_Promoted (_,mch) -> Some (O_Included_And_Promoted mch)
 
-    let mk_local x = Some (Local x)
+    let mk_local x = Local x
 
     let mk_local_mut = function
       | Local.L_Expr_Binder -> None
@@ -169,8 +169,8 @@ module Ref = struct
       | _ -> None
 
     let mk_local = function 
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Assert = struct
@@ -180,7 +180,7 @@ module Ref = struct
 
     let mk_global x = Some (Global x)
 
-    let mk_local x = Some (Local x)
+    let mk_local x = Local x
   end
 
   module Properties = struct
@@ -203,8 +203,8 @@ module Ref = struct
       | G.Ref.Abstract_Constant src -> Some (Abstract_Constant src)
 
     let mk_local = function 
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Invariant = struct
@@ -220,8 +220,8 @@ module Ref = struct
       | _ -> Some (Global x)
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Operations = struct
@@ -249,7 +249,7 @@ module Ref = struct
       | Abstract_Variable of t_source_1
       | Concrete_Variable of t_source_2
 
-    let mk_local x = Some (Local x)
+    let mk_local x = Local x
 
     let mk_local_mut = function
       | Local.L_Expr_Binder -> None
@@ -272,13 +272,13 @@ module Ref = struct
       | O_Included_And_Promoted of SyntaxCore.ren_ident
       | O_Refined_Included_And_Promoted of SyntaxCore.ren_ident
 
-    let mk_op = function
+    let mk_op readonly = function
       | G.Ref.O_Refined -> None
       | G.Ref.O_Refined_And_Machine _ -> None
-      | G.Ref.O_Seen mch -> Some (O_Seen mch) (*FIXME*)
+      | G.Ref.O_Seen mch -> if readonly then Some (O_Seen mch) else None
       | G.Ref.O_Included mch -> Some (O_Included mch)
       | G.Ref.O_Refined_And_Included mch -> Some (O_Refined_And_Included mch)
-      | G.Ref.O_Refined_Included_And_Promoted mch -> Some (O_Refined_Included_And_Promoted mch)
+      | G.Ref.O_Refined_Included_And_Promoted (_,mch) -> Some (O_Refined_Included_And_Promoted mch)
 
   end
 end
@@ -322,8 +322,8 @@ module Imp = struct
       | G.Imp.Abstract_Constant _ -> None
 
     let mk_local = function 
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
 
   end
 
@@ -334,7 +334,7 @@ module Imp = struct
 
     let mk_global x = Some (Global x)
 
-    let mk_local x = Some (Local x)
+    let mk_local x = Local x
   end
 
   module Properties = struct
@@ -357,8 +357,8 @@ module Imp = struct
       | G.Imp.Abstract_Constant src -> Some (Abstract_Constant src)
 
     let mk_local = function 
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Invariant = struct
@@ -374,8 +374,8 @@ module Imp = struct
       | _ -> Some (Global x)
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
   end
 
   module Operations = struct
@@ -397,7 +397,7 @@ module Imp = struct
       | Subst_Binder
       | Concrete_Variable of t_source
 
-    let mk_local x = Some (Local x)
+    let mk_local x = Local x
 
     let mk_local_mut = function
       | Local.L_Expr_Binder -> None
@@ -419,10 +419,10 @@ module Imp = struct
       | O_Refined_Imported_And_Promoted of SyntaxCore.ren_ident
       | O_Local of Utils.loc
 
-    let mk_op = function
+    let mk_op readonly = function
       | G.Imp.O_Refined -> None
       | G.Imp.O_Current_And_Refined _ -> None
-      | G.Imp.O_Seen mch -> Some (O_Seen mch) (*FIXME*)
+      | G.Imp.O_Seen mch -> if readonly then Some (O_Seen mch) else None
       | G.Imp.O_Imported mch -> Some (O_Imported mch)
       | G.Imp.O_Imported_And_Refined mch -> Some (O_Refined_And_Imported mch)
       | G.Imp.O_Imported_Promoted_And_Refined (mch,_) -> Some (O_Refined_Imported_And_Promoted mch)
@@ -441,7 +441,7 @@ module Imp = struct
       | G.Imp.Abstract_Constant G.Imp.A_Refined -> None
       | x -> Some (Global x)
 
-    let mk_local x = Some (Local x)
+    let mk_local x = Local x
 
     type t_source_a =
       | A_Imported of SyntaxCore.ren_ident
@@ -484,10 +484,10 @@ module Imp = struct
       | O_Refined_Imported_And_Promoted of SyntaxCore.ren_ident
       | O_Local of Utils.loc
 
-    let mk_op = function
+    let mk_op readonly = function
       | G.Imp.O_Refined -> None
       | G.Imp.O_Current_And_Refined _ -> None
-      | G.Imp.O_Seen mch -> Some (O_Seen mch)
+      | G.Imp.O_Seen mch -> if readonly then Some (O_Seen mch) else None
       | G.Imp.O_Imported mch -> Some (O_Imported mch)
       | G.Imp.O_Imported_And_Refined mch -> Some (O_Refined_And_Imported mch)
       | G.Imp.O_Imported_Promoted_And_Refined (mch,_) -> Some (O_Refined_Imported_And_Promoted mch)
@@ -514,8 +514,8 @@ module Imp = struct
       | G.Imp.Concrete_Set (elts,src) -> Some (Concrete_Set (elts,src))
 
     let mk_local = function 
-      | Local.L_Expr_Binder -> Some Expr_Binder
-      | _ -> None
+      | Local.L_Expr_Binder -> Expr_Binder
+      | _ -> assert false
 
   end
 end
@@ -561,7 +561,7 @@ let mk_global (type a b) (cl:(a,b) clause) (ki:a) : b option =
   | I_Local_Operations -> Imp.Local_Operations.mk_global ki
   | I_Values -> Imp.Values.mk_global ki
 
-let mk_local (type a b) (cl:(a,b) clause) (ki:Local.t_local_kind) : b option =
+let mk_local (type a b) (cl:(a,b) clause) (ki:Local.t_local_kind) : b =
   match cl with
   | M_Constraints -> Mch.Constraints.mk_local ki
   | M_Includes -> Mch.Includes.mk_local ki
@@ -622,12 +622,12 @@ let mk_local_mut (type a b c d e f) (cl:(a,b,c,d,e,f) sclause) (ki:Local.t_local
   | IS_Operations ->  Imp.Operations.mk_local_mut ki
   | IS_Local_Operations ->  Imp.Local_Operations.mk_local_mut ki
 
-let mk_op (type a b c d e f) (cl: (a,b,c,d,e,f) sclause) (ki:e) : f option =
+let mk_op (type a b c d e f) (cl: (a,b,c,d,e,f) sclause) readonly (ki:e) : f option =
   match cl with
-  | MS_Operations -> Mch.Operations.mk_op ki
-  | RS_Operations ->  Ref.Operations.mk_op ki
-  | IS_Operations ->  Imp.Operations.mk_op ki
-  | IS_Local_Operations -> Imp.Local_Operations.mk_op ki
+  | MS_Operations -> Mch.Operations.mk_op readonly ki
+  | RS_Operations ->  Ref.Operations.mk_op readonly ki
+  | IS_Operations ->  Imp.Operations.mk_op readonly ki
+  | IS_Local_Operations -> Imp.Local_Operations.mk_op readonly ki
 
 let to_clause : type a b c d e f. (a,b,c,d,e,f) sclause -> (a,b) clause = function
   | MS_Operations -> M_Operations

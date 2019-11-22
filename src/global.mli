@@ -76,7 +76,7 @@ module Mch : sig
     | O_Seen of ren_ident
     | O_Used of ren_ident
     | O_Included of ren_ident
-    | O_Included_And_Promoted of ren_ident
+    | O_Included_And_Promoted of Utils.loc*ren_ident
 
 end
 
@@ -111,7 +111,7 @@ module Ref : sig
     | O_Seen of ren_ident
     | O_Included of ren_ident
     | O_Refined_And_Included of ren_ident
-    | O_Refined_Included_And_Promoted of ren_ident
+    | O_Refined_Included_And_Promoted of Utils.loc*ren_ident
 
 end
 

@@ -7,8 +7,6 @@ module V = Visibility
 module G = Global
 module M = Global.Mch
 
-let allow_becomes_such_that_in_implementation = ref false
-
 (* *****************************************************************************
  * Type Checking for Components
  * ************************************************************************** *)
@@ -230,7 +228,7 @@ let load_extended cl (f:Utils.loc->string->Global.t_interface option)
 let declare_local_symbol (env:_ Global.t) (ctx:Local.t) (lid:lident) : Local.t =
   match Global.get_symbol env lid.lid_str with
   | None -> Local.declare ctx lid.lid_str Local.L_Expr_Binder
-  | Some infos -> (*FIXME check refine and compatible kind*)
+  | Some infos -> (*XXX check allowed homonym and compatible kind*)
     Local.declare_with_type ctx lid.lid_str infos.Global.sy_typ Local.L_Expr_Binder
 
 let promote_symbol_exn env (ctx:Local.t) (ki:G.t_global_kind) (lid:lident) : unit =
@@ -287,7 +285,7 @@ let get_operation_context_exn (type a b) (env:(a,b) Global.t) (op:P.operation) =
     let aux ki ctx lid = Local.declare ctx lid.lid_str ki in
     let ctx = List.fold_left (aux Local.L_Param_In) Local.empty op.P.op_in in
     List.fold_left (aux Local.L_Param_Out) ctx op.P.op_out
-  | Some infos -> (*FIXME check refine or local*)
+  | Some infos -> (*XXX check refine or local*)
     let aux (lk:Local.t_local_kind) (ctx:Local.t) (s,ty:string*Btype.t) =
       Local.declare_with_type ctx s ty lk
     in
@@ -363,8 +361,8 @@ let get_mch_promoted_operations (env:G.mEnv) : T.promoted list =
     let pop_out = infos.Global.op_args_out in
     let pop_in = infos.Global.op_args_in in
     match infos.Global.op_src with
-    | G.Mch.O_Included_And_Promoted pop_source -> (*FIXME*)
-      {T.pop_out; pop_name={lid_loc=Utils.dloc;lid_str}; pop_in; pop_source}::lst
+    | G.Mch.O_Included_And_Promoted (lid_loc,pop_source) ->
+      {T.pop_out; pop_name={lid_loc;lid_str}; pop_in; pop_source}::lst
     | _ -> lst
   in
   Global.fold_operations aux env []
@@ -460,8 +458,8 @@ let get_ref_promoted_operations (env:G.rEnv) : T.promoted list =
     let pop_out = infos.Global.op_args_out in
     let pop_in = infos.Global.op_args_in in
     match infos.Global.op_src with
-    | G.Ref.O_Refined_Included_And_Promoted pop_source ->
-      {T.pop_out; pop_name={lid_loc=Utils.dloc;lid_str}; pop_in; pop_source}::lst
+    | G.Ref.O_Refined_Included_And_Promoted (lid_loc,pop_source) ->
+      {T.pop_out; pop_name={lid_loc;lid_str}; pop_in; pop_source}::lst
     | _ -> lst
   in
   Global.fold_operations aux env []
@@ -517,8 +515,12 @@ let type_value_exn (env:_ Global.t) (v,e:lident*P.expression) :
     in
     if Btype.is_equal (Global.get_alias env) te.T.exp_typ var_typ then
       let val_kind = match infos.Global.sy_kind with
-        | G.Imp.Abstract_Set _ -> T.VK_Abstract_Set
-        | G.Imp.Concrete_Constant _ -> T.VK_Concrete_Constant
+        | G.Imp.Abstract_Set (S_Machine _|S_Refined) -> T.VK_Abstract_Set
+        | G.Imp.Abstract_Set _ ->
+          Error.error v.lid_loc "This abstract set is not expected to be valued."
+        | G.Imp.Concrete_Constant (C_Machine _|C_Refined) -> T.VK_Concrete_Constant
+        | G.Imp.Concrete_Constant _ ->
+          Error.error v.lid_loc "This concrete constant is not expected to be valued."
         | _ -> Error.error v.lid_loc
                  "This symbol is neither an abstract set nor a concrete constant."
       in
@@ -551,7 +553,7 @@ let rec get_imported_kind (f:Utils.loc->string->Global.t_interface option) id = 
 
 let set_concretisation_exn f (env:_ Global.t) imports (v,e:lident*P.expression) : unit =
   match is_abstract_set env v.lid_str with
-  | None -> assert false (*FIXME error *)
+  | None -> Error.error v.lid_loc ("Unknown identifier '"^v.lid_str^"'.")
   | Some false -> ()
   | Some true ->
     let alias = match e.exp_desc with
@@ -561,7 +563,8 @@ let set_concretisation_exn f (env:_ Global.t) imports (v,e:lident*P.expression) 
           | Some false -> Btype.t_int
           | None ->
             begin match get_imported_kind f id imports with
-              | None -> assert false (*FIXME error*)
+              | None ->
+                Error.error v.lid_loc ("Unknown identifier '"^v.lid_str^"'.")
               | Some G.K_Abstract_Set -> Btype.mk_Abstract_Set id
               | Some _ -> Btype.t_int
             end
@@ -612,50 +615,6 @@ let get_imp_symbols (env:G.iEnv) : t_imp_symbols =
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
       abstract_constants=[]; concrete_constants=[]; abstract_variables=[]; concrete_variables=[]; }
 
-(*
-
-type t_lops_map = (Global.t_ref,Btype.t) T.substitution SMap.t
-
-let declare_imp_operation_exn (env:Global.t_ref Global.t) (lops:t_lops_map) (op:P.operation) : Global.t_ref T.operation =
-  let (ctx0,ctx) = get_ref_operation_context_exn env op in
-  let op_body =
-    if !allow_out_parameters_in_precondition then
-      Inference.type_substitution_exn V.M_IMP_OPERATIONS env ctx op.P.op_body
-    else
-      begin match op.P.op_body.P.sub_desc with
-        | P.Pre (p,s) ->
-          let tp = Inference.type_predicate_exn V.C_IMP_OPERATIONS env ctx0 p in
-          let ts = Inference.type_substitution_exn V.M_IMP_OPERATIONS env ctx s in
-          { T.sub_loc=op.P.op_body.P.sub_loc; sub_desc=T.Pre (tp,ts)}
-        | _ -> Inference.type_substitution_exn V.M_IMP_OPERATIONS env ctx op.P.op_body
-      end
-  in
-  let op_body = close_subst_exn Imp op_body in
-  let type_arg_exn ctx lid : T.arg =
-    match Local.get ctx lid.lid_str with
-    | None -> assert false
-    | Some (None,_) ->
-      Error.error lid.lid_loc ("The type of parameter '"^lid.lid_str^"' could not be inferred.")
-    | Some (Some arg_typ,_) ->
-      { T.arg_loc = lid.lid_loc; arg_id=lid.lid_str; arg_typ }
-  in
-  let op_in = List.map (type_arg_exn ctx) op.P.op_in in
-  let op_out = List.map (type_arg_exn ctx) op.P.op_out in
-  let aux arg = (arg.T.arg_id,arg.T.arg_typ) in
-  let args_in = List.map aux op_in in
-  let args_out = List.map aux op_out in
-  Global.add_ref_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out ~is_local:false;
-  match Global.get_operation env op.P.op_name.lid_str with
-  | None -> assert false 
-  | Some { Global.op_src=Global.OD_Local_Spec_And_Implem (_,_); _ } ->
-    begin match SMap.find_opt op.P.op_name.lid_str lops with
-      | None -> assert false
-      | Some op_spec ->
-        T.O_Local { op_name=op.P.op_name; op_in; op_out; op_spec; op_body }
-    end
-  | Some _ -> T.O_Specified { op_name=op.P.op_name; op_in; op_out; op_body }
-   *)
-
 let declare_local_operation_exn (env:_ Global.t) map (op:P.operation) : _ T.substitution SMap.t =
   let ctx = get_operation_context_exn env op in
   let op_body = close_subst_exn (Inference.type_substitution_exn V.IS_Local_Operations env ctx op.P.op_body) in
@@ -675,23 +634,14 @@ let declare_local_operation_exn (env:_ Global.t) map (op:P.operation) : _ T.subs
   Global.add_local_operation env op.P.op_name.lid_loc op.P.op_name.lid_str args_in args_out;
   SMap.add op.P.op_name.lid_str op_body map
 
-let check_values _ (_:_ Global.t) (_:(T.value*_) list) : unit =
-  () (*FIXME*)
-(*
+let check_values rm_loc (env:Global.iEnv) (vlst:(T.value*_) list) : unit =
   let aux id infos map =
     match infos.Global.sy_kind with
-    | Global.Imp.Abstract_Set (Global.Imp.C_Machine l) ->
-      SMap.add id (false,l) map
-    | Global.Imp.Abstract_Set (Global.Imp.C_Refined) ->
-      SMap.add id (false,rm_loc) map
-    | Global.Imp.Abstract_Set (Global.Imp.C_Redeclared_In_Machine l) -> (*FIXME*)
-      SMap.add id (false,l) map
-    | Global.Imp.Concrete_Constant (Global.Imp.C_Machine l) ->
-      SMap.add id (false,l) map
-    | Global.Imp.Concrete_Constant (Global.Imp.C_Refined) ->
-      SMap.add id (false,rm_loc) map
-    | Global.Imp.Concrete_Constant (Global.Imp.C_Redeclared_In_Machine l) ->
-      SMap.add id (false,l) map
+    | Global.Imp.Abstract_Set (G.Imp.S_Machine l) -> SMap.add id (false,l) map
+    | Global.Imp.Abstract_Set (G.Imp.S_Refined) -> SMap.add id (false,rm_loc) map
+    | Global.Imp.Concrete_Constant (G.Imp.C_Machine l) -> SMap.add id (false,l) map
+    | Global.Imp.Concrete_Constant (G.Imp.C_Refined) -> SMap.add id (false,rm_loc) map
+    | Global.Imp.Concrete_Constant (G.Imp.C_Redeclared_In_Machine l) -> SMap.add id (false,l) map
     | _ -> map
   in
   let cconst = Global.fold_symbols aux env SMap.empty in
@@ -706,10 +656,6 @@ let check_values _ (_:_ Global.t) (_:(T.value*_) list) : unit =
       if not is_valuated then
         Error.warn loc ("The constant '"^id^"' is not valuated.")
     ) cconst
-*)
-    (*
-
-*)
 
 let get_imp_promoted_operations (env:G.iEnv) : T.promoted list =
   let aux (lid_str:string) (infos:G.Imp.t_op_source G.t_operation_infos) lst =

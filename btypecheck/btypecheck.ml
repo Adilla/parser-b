@@ -13,16 +13,6 @@ let safe_find ht s =
   try Some (Hashtbl.find ht s)
   with Not_found -> None
 
-(*
-let print_error err =
-  Error.print_error err;
-  if not !continue_on_error then exit(1)
-
-let print_error_no_loc msg =
-  Printf.fprintf stderr "%s\n" msg;
-  if not !continue_on_error then exit(1)
-*)
-
 let rec type_component_from_filename (ht:interface_table) (filename:string) : machine_interface option =
   match safe_find ht filename with
   | Some (Done itf) -> itf
@@ -71,7 +61,6 @@ let args = [
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
   ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
   ("-x", Arg.Set Visibility.extended_sees, "Extended SEES" );
-  ("-a", Arg.Set Typechecker.allow_becomes_such_that_in_implementation, "Allow the substitution 'Becomes Such That' in implementations" );
 ]
 
 let _ = Arg.parse args run_on_file ("Usage: "^ Sys.argv.(0) ^" [options] files")

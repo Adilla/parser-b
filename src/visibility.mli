@@ -249,7 +249,7 @@ type (_,_) clause =
   | I_Values : (Global.Imp.t_kind,Imp.Values.t) clause
 
 val mk_global : ('env_ki,'id_ki) clause -> 'env_ki -> 'id_ki option
-val mk_local : (_,'id_ki) clause -> Local.t_local_kind -> 'id_ki option
+val mk_local : (_,'id_ki) clause -> Local.t_local_kind -> 'id_ki
 
 type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
   | MS_Operations : (Global.Mch.t_kind,
@@ -279,7 +279,7 @@ type ('env_ki,'id_ki,'mut_ki,'assert_ki,'env_op_ki,'op_ki) sclause =
 
 val mk_global_mut : ('env_ki,_,'mut_ki,_,_,_) sclause -> 'env_ki -> 'mut_ki option
 val mk_local_mut : (_,_,'mut_ki,_,_,_) sclause -> Local.t_local_kind -> 'mut_ki option
-val mk_op : (_,_,_,_,'env_op_ki,'op_ki) sclause -> 'env_op_ki -> 'op_ki option
+val mk_op : (_,_,_,_,'env_op_ki,'op_ki) sclause -> bool -> 'env_op_ki -> 'op_ki option
 
 val to_clause : ('env_ki,'id_ki,_,_,_,_) sclause -> ('env_ki,'id_ki) clause
 val to_assert : ('env_ki,_,_,'assert_ki,_,_) sclause -> ('env_ki,'assert_ki) clause

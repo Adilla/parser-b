@@ -82,7 +82,7 @@ module Mch = struct
     | O_Seen of ren_ident
     | O_Used of ren_ident
     | O_Included of ren_ident
-    | O_Included_And_Promoted of ren_ident
+    | O_Included_And_Promoted of Utils.loc*ren_ident
 
   let mk_kind kind src =
     match kind with
@@ -187,7 +187,7 @@ module Ref = struct
     | O_Seen of ren_ident
     | O_Included of ren_ident
     | O_Refined_And_Included of ren_ident
-    | O_Refined_Included_And_Promoted of ren_ident
+    | O_Refined_Included_And_Promoted of Utils.loc*ren_ident
 
   let update_kind (decl:t_kind) (ki:t_global_kind) (src:t_source) : t_kind option =
     match decl, ki with
@@ -732,12 +732,12 @@ let add_local_operation  (env:iEnv) (lc:loc) (id:string)
     Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly=false;
                              op_src=Imp.O_Local_Spec lc }
 
-let mch_promote _ = function
-  | Mch.O_Included mch -> Some (Mch.O_Included_And_Promoted mch)
+let mch_promote l = function
+  | Mch.O_Included mch -> Some (Mch.O_Included_And_Promoted (l,mch))
   | _ -> None
 
-let ref_promote _ = function
-  | Ref.O_Refined_And_Included mch -> Some (Ref.O_Refined_Included_And_Promoted mch)
+let ref_promote l = function
+  | Ref.O_Refined_And_Included mch -> Some (Ref.O_Refined_Included_And_Promoted (l,mch))
   | Ref.O_Included _ -> assert false (*FIXME error*)
   | Ref.O_Refined_Included_And_Promoted _ -> assert false (*FIXME err*)
   | _ -> None

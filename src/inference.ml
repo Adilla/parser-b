@@ -240,15 +240,10 @@ let type_ident (type env_ki id_ki)
   | None ->
     begin match Local.get ctx id_str with
       | Some(Some ty,ki) ->
-        begin match Visibility.mk_local cl ki with
-          | Some id_kind ->
             { T.id_name = id_str;
               id_loc;
               id_type=(ty :> Btype.Open.t);
-              id_kind }
-          | None ->
-            Error.error id_loc ("The symbol '"^id_str^"' is not visible in this clause.") (*FIXME better error*)
-        end
+              id_kind=Visibility.mk_local cl ki }
       | Some(None,_) ->
         Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
       | None -> type_global_ident cl env id_loc id_str
@@ -295,10 +290,7 @@ let type_untyped_id (type env_ki id_ki) (cl:(env_ki,id_ki) Visibility.clause) (c
        Btype.Open.to_string ty^"'.")
   | Some cty ->
     let () = Local.set_type ctx id_name cty in
-    begin match Visibility.mk_local cl ki with
-      | Some id_kind -> mk_expr id_loc ty (T.Ident { T.id_name; id_loc; id_type=ty; id_kind })
-      | None -> assert false (*FIXME error*)
-    end
+    mk_expr id_loc ty (T.Ident { T.id_name; id_loc; id_type=ty; id_kind=Visibility.mk_local cl ki })
 
 let get_bv_types (ctx:Local.t) (ids:lident Nlist.t) : T.bvar Nlist.t =
   Nlist.map (
@@ -618,11 +610,7 @@ and check_utuple : type  env_ki id_ki. (env_ki,id_ki) V.clause ->
              Btype.Open.to_string ty_exp^"'.")
         | Some cty ->
           let () = Local.set_type ctx id_name cty in
-          begin match Visibility.mk_local cl ki with
-            | Some id_kind ->
-              mk_expr id_loc ty_exp (T.Ident { T.id_name; id_loc; id_type=ty_exp; id_kind })
-            | None -> assert false (*FIXME error*)
-          end
+          mk_expr id_loc ty_exp (T.Ident { T.id_name; id_loc; id_type=ty_exp; id_kind=Visibility.mk_local cl ki })
       end
   | T_Couple (c,lc,t1,t2) ->
     begin match Btype.Open.weak_norm (Global.get_alias env) ty_exp with
@@ -641,49 +629,20 @@ and check_utuple : type  env_ki id_ki. (env_ki,id_ki) V.clause ->
       | None -> unexpected_type_exn e.P.exp_loc te.T.exp_typ ty_exp
     end
 
-(*
-let type_global_mut_ident (type env_ki mut_ki)
-    (cl:(env_ki,_,mut_ki,_,_,_) Visibility.sclause) (env:(env_ki,_) Global.env)
-    (id_loc:Utils.loc) (id_name:string) : (mut_ki,Btype.Open.t) T.t_ident
-  =
-  match Global.get_symbol env id_name with
-  | Some infos ->
-    { T.id_name;
-      id_loc;
-      id_type=(infos.Global.sy_typ :> Btype.Open.t);
-      id_kind=Visibility.mk_global_mut cl infos.Global.sy_kind }
-  | None -> Error.error id_loc ("Unknown identifier '"^id_name^"'.")
-
-let type_mut_ident (type env_ki mut_ki)
-    (cl:(env_ki,_,mut_ki,_,_,_) Visibility.sclause) (env:(env_ki,_) Global.env) (ctx:Local.t) 
-    (id_loc:Utils.loc) (id_prefix:string option) (id_str:string) : (mut_ki,Btype.Open.t) T.t_ident =
-  match id_prefix with
-  | None ->
-    begin match Local.get ctx id_str with
-      | Some(Some ty,ki) ->
-        { T.id_name = id_str;
-          id_loc;
-          id_type=(ty :> Btype.Open.t);
-          id_kind=Visibility.mk_local_mut cl ki }
-      | Some(None,_) ->
-        Error.error id_loc ("The identifier '"^id_str^"' must be typed before use.")
-      | None -> type_global_mut_ident cl env id_loc id_str
-    end
-  | Some p ->
-    type_global_mut_ident cl env id_loc (p ^ "." ^ id_str)
-*)
-
 let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibility.sclause ->
   (env_ki,_) Global.t -> Local.t -> ren_ident -> (mut_ki,Btype.Open.t) T.t_ident
   = fun cl env ctx x ->
     match x.r_prefix with
     | None ->
       begin match Local.get ctx x.r_str with
-        | Some(None,_) -> Error.error x.r_loc ("The identifier '"^x.r_str^"' must be typed before use.")
+        | Some(None,_) ->
+          Error.error x.r_loc ("The identifier '"^x.r_str^"' must be typed before use.")
         | Some (Some ty,ki) ->
           begin match V.mk_local_mut cl ki with
-            | Some id_kind -> { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(ty:>Btype.Open.t); id_kind }
-            | None -> assert false (*FIXME error*)
+            | Some id_kind ->
+              { T.id_loc=x.r_loc; id_name=x.r_str; id_type=(ty:>Btype.Open.t); id_kind }
+            | None ->
+              Error.error x.r_loc ("The identifier '"^x.r_str^"' is read-only.")
           end
         | None ->
           begin match Global.get_symbol env x.r_str with
@@ -706,7 +665,8 @@ let type_writable_var_exn : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) Visibili
             | Some id_kind ->
               { T.id_loc=x.r_loc; id_name; id_type=(infos.Global.sy_typ:>Btype.Open.t);
                 id_kind }
-            | None -> assert false (*FIXME error*)
+            | None ->
+              Error.error x.r_loc ("The identifier '"^id_name^"' is read-only.")
           end
         | None -> Error.error x.r_loc ("Unknown identifier '"^id_name^"'.")
       end
@@ -728,8 +688,10 @@ let check_writable_nlist : type env_ki mut_ki. (env_ki,_,mut_ki,_,_,_) V.sclause
             | Some cty ->
               let () = Local.set_type ctx lid.r_str cty in
               begin match Visibility.mk_local_mut cl ki with
-                | Some id_kind -> { T.id_loc=lid.r_loc; id_name=lid.r_str; id_type; id_kind }
-                | None -> assert false (*FIXME error*)
+                | Some id_kind ->
+                  { T.id_loc=lid.r_loc; id_name=lid.r_str; id_type; id_kind }
+                | None ->
+                  Error.error lid.r_loc ("The identifier '"^lid.r_str^"' is read-only.")
               end
           end
         | _ ->
@@ -778,8 +740,10 @@ let type_out_parameter (type env_ki mut_ki) (cl:(env_ki,_,mut_ki,_,_,_) V.sclaus
       | Some(None,ki) ->
         let () = Local.set_type ctx id.r_str ty in
         begin match V.mk_local_mut cl ki with
-          | Some id_kind -> { T.id_loc=id.r_loc; id_name=id.r_str; id_type=ty_exp; id_kind }
-          | None -> assert false (*FIXME error*)
+          | Some id_kind ->
+            { T.id_loc=id.r_loc; id_name=id.r_str; id_type=ty_exp; id_kind }
+          | None ->
+            Error.error id.r_loc ("The identifier '"^id.r_str^"' is read-only.")
         end
       | _ ->
         let tid = type_writable_var_exn cl env ctx id in
@@ -981,24 +945,19 @@ let rec type_substitution_exn : type env_ki id_ki mut_ki assert_ki env_op_ki op_
     begin match Global.get_operation env op_name with
       | None -> Error.error op.r_loc ("Unknown operation '"^op_name^"'.")
       | Some infos ->
-(*
-        begin match to_op_source infos.Global.op_readonly infos.Global.op_src with
-          | None -> Error.error op.r_loc ("The operation '"^op_name^"' is not visible.")
-          | Some op_src ->
-*)
-            begin try
-                let op_src = match Visibility.mk_op cl infos.op_src with
-                  | None -> assert false (*FIXME error*)
-                  | Some op_src -> op_src
-                in
-                let op = { T.op_prefix=op.r_prefix; op_id = op.r_str; op_loc = op.r_loc; op_src } in
-                let tids = List.map2 (type_out_parameter cl env ctx) ids infos.Global.op_args_out in
-                let tparams = List.map2 (type_in_parameter (V.to_clause cl) env ctx) params infos.Global.op_args_in in
-                mk_subst s0.P.sub_loc (T.CallUp (tids,op,tparams))
-              with Invalid_argument _ ->
-                Error.error op.r_loc ("Incorrect number of in/out parameters.")
-            end
-(*         end *)
+        begin try
+            let op_src = match Visibility.mk_op cl infos.op_readonly infos.op_src with
+              | None ->
+                Error.error op.r_loc ("The operation '"^op_name^"' is not visible.")
+              | Some op_src -> op_src
+            in
+            let op = { T.op_prefix=op.r_prefix; op_id = op.r_str; op_loc = op.r_loc; op_src } in
+            let tids = List.map2 (type_out_parameter cl env ctx) ids infos.Global.op_args_out in
+            let tparams = List.map2 (type_in_parameter (V.to_clause cl) env ctx) params infos.Global.op_args_in in
+            mk_subst s0.P.sub_loc (T.CallUp (tids,op,tparams))
+          with Invalid_argument _ ->
+            Error.error op.r_loc ("Incorrect number of in/out parameters.")
+        end
     end
 
   | P.While (p,s,inv,var) ->

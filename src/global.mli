@@ -61,8 +61,13 @@ module Mch : sig
     | Used of ren_ident
     | Included of ren_ident
  
+  type t_param_source =
+    | P_Machine of loc
+    | P_Seen of ren_ident
+    | P_Used of ren_ident
+
   type t_kind =
-    | Parameter of t_param_kind*loc
+    | Parameter of t_param_kind*t_param_source
     | Abstract_Variable of t_source
     | Abstract_Constant of t_source
     | Concrete_Variable of t_source
@@ -95,8 +100,12 @@ module Ref : sig
     | A_Redeclared_In_Machine of loc
     | A_Redeclared_In_Included of ren_ident
 
+  type t_param_source =
+    | P_Machine of loc
+    | P_Seen of ren_ident
+
   type t_kind =
-    | Parameter of t_param_kind*loc
+    | Parameter of t_param_kind*t_param_source
     | Abstract_Variable of t_source_2
     | Abstract_Constant of t_source_2
     | Concrete_Variable of t_source_2
@@ -159,8 +168,12 @@ module Imp : sig
     | D_Refined
     | D_Imported of ren_ident
 
+  type t_param_source =
+    | P_Machine of loc
+    | P_Seen of ren_ident
+
   type t_kind =
-    | Parameter of t_param_kind*loc
+    | Parameter of t_param_kind*t_param_source
     | Abstract_Variable of t_abstract_decl
     | Abstract_Constant of t_abstract_decl
     | Concrete_Variable of t_concrete_var_decl

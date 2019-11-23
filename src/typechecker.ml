@@ -343,13 +343,13 @@ let get_mch_symbols (env:G.mEnv) : t_mch_symbols =
       add_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
     | G.Mch.Concrete_Variable src ->
       add_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
-    | G.Mch.Parameter (G.Scalar,p_loc) ->
+    | G.Mch.Parameter (G.Scalar,G.Mch.P_Machine p_loc) ->
       let x = { T.p_id=id;p_typ=infos.Global.sy_typ;p_loc } in
       { rc with scalar_parameters = (x::rc.scalar_parameters) }
-    | G.Mch.Parameter (G.Set,lid_loc) ->
+    | G.Mch.Parameter (G.Set,G.Mch.P_Machine lid_loc) ->
       let x = { lid_str=id; lid_loc } in
       { rc with set_parameters = (x::rc.set_parameters) }
-    | G.Mch.Enumerate _ -> rc
+    | G.Mch.Parameter _ | G.Mch.Enumerate _ -> rc
   in
   G.fold_symbols aux env
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
@@ -441,13 +441,13 @@ let get_ref_symbols (env:G.rEnv) : t_ref_symbols =
       add_symb (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
     | G.Ref.Concrete_Variable src ->
       add_symb (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
-    | G.Ref.Parameter (Global.Scalar,p_loc) ->
+    | G.Ref.Parameter (Global.Scalar,G.Ref.P_Machine p_loc) ->
       let x = { T.p_id=id;p_typ=infos.Global.sy_typ;p_loc } in
       { rc with scalar_parameters = (x::rc.scalar_parameters) }
-    | G.Ref.Parameter (Global.Set,lid_loc) ->
+    | G.Ref.Parameter (Global.Set,G.Ref.P_Machine lid_loc) ->
       let x = { lid_str=id; lid_loc } in
       { rc with set_parameters = (x::rc.set_parameters) }
-    | G.Ref.Enumerate _ -> rc
+    | G.Ref.Parameter _ | G.Ref.Enumerate _ -> rc
   in
   Global.fold_symbols aux env
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];
@@ -603,13 +603,13 @@ let get_imp_symbols (env:G.iEnv) : t_imp_symbols =
       add (fun x -> { rc with abstract_variables = (x::rc.abstract_variables) }) src
     | G.Imp.Concrete_Variable src ->
       add (fun x -> { rc with concrete_variables = (x::rc.concrete_variables) }) src
-    | G.Imp.Parameter (Global.Scalar,p_loc) ->
+    | G.Imp.Parameter (Global.Scalar,G.Imp.P_Machine p_loc) ->
       let x = { T.p_id=id;p_typ=infos.Global.sy_typ;p_loc } in
       { rc with scalar_parameters = (x::rc.scalar_parameters) }
-    | G.Imp.Parameter (Global.Set,lid_loc) ->
+    | G.Imp.Parameter (Global.Set,G.Imp.P_Machine lid_loc) ->
       let x = { lid_str=id; lid_loc } in
       { rc with set_parameters = (x::rc.set_parameters) }
-    | G.Imp.Enumerate _ -> rc
+    | G.Imp.Parameter _ | G.Imp.Enumerate _ -> rc
   in
   Global.fold_symbols aux env
     { set_parameters=[]; scalar_parameters=[]; abstract_sets=[]; concrete_sets=[];

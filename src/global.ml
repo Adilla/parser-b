@@ -56,7 +56,7 @@ module type S = sig
   val update_kind : t_kind -> t_global_kind -> t_source -> t_kind option
   val mk_op_source : t_source -> t_op_source option
   val update_op_source : t_op_source -> t_source -> t_op_source option
-  val check_hidden : string Utils.SMap.t -> string -> t_source -> bool
+  val check_hidden : Utils.loc -> string Utils.SMap.t -> string -> t_source -> unit
 end
 
 module Mch = struct
@@ -67,8 +67,13 @@ module Mch = struct
     | Used of ren_ident
     | Included of ren_ident
 
+  type t_param_source =
+    | P_Machine of loc
+    | P_Seen of ren_ident
+    | P_Used of ren_ident
+
   type t_kind =
-    | Parameter of t_param_kind*loc
+    | Parameter of t_param_kind*t_param_source
     | Abstract_Variable of t_source
     | Abstract_Constant of t_source
     | Concrete_Variable of t_source
@@ -88,7 +93,9 @@ module Mch = struct
     match kind with
     | K_Parameter k ->
      begin match src with
-       | Machine l -> Parameter (k,l)
+       | Machine l -> Parameter (k,P_Machine l)
+       | Used mch -> Parameter (k,P_Used mch)
+       | Seen mch -> Parameter (k,P_Seen mch)
        | _ -> failwith "Error in Global.Mch.mk_kind"
      end
     | K_Abstract_Variable -> Abstract_Variable src
@@ -145,13 +152,16 @@ module Mch = struct
     | Parameter (k,_) -> Some k
     | _ -> None
 
-  let check_hidden (map:string Utils.SMap.t) (id:string) (src:t_source) : bool =
+  let check_hidden lc (map:string Utils.SMap.t) (id:string) (src:t_source) : unit =
     match Utils.SMap.find_opt id map with
-    | None -> true
+    | None -> ()
     | Some mch ->
       begin match src with
-        | Machine _ -> false
-        | Used mch2 | Included mch2 | Seen mch2 -> String.equal mch mch2.r_str
+        | Machine _ ->
+          Error.error lc ("Hidden clash: the identifier '"^id ^"' is already declared in '"^mch^"'.")
+        | Used mch2 | Included mch2 | Seen mch2 ->
+          if not (String.equal mch mch2.r_str) then
+            Error.error lc ("Hidden clash: the identifier '"^id ^"' is declared in '"^mch^"' and '"^mch2.r_str^"'.")
       end
 end
 
@@ -171,8 +181,12 @@ module Ref = struct
     | A_Redeclared_In_Machine of loc
     | A_Redeclared_In_Included of ren_ident
 
+  type t_param_source =
+    | P_Machine of loc
+    | P_Seen of ren_ident
+
   type t_kind =
-    | Parameter of t_param_kind*loc
+    | Parameter of t_param_kind*t_param_source
     | Abstract_Variable of t_source_2
     | Abstract_Constant of t_source_2
     | Concrete_Variable of t_source_2
@@ -280,7 +294,8 @@ module Ref = struct
     | K_Enumerate -> Enumerate src
     | K_Parameter k ->
       begin match src with
-        | Machine l -> Parameter(k,l)
+        | Machine l -> Parameter(k,P_Machine l)
+        | Seen l -> Parameter(k,P_Seen l)
         | _ -> failwith "Internal error: Global.Ref.mk_kind"
       end
 
@@ -342,13 +357,16 @@ module Ref = struct
       | Parameter (kind,_) -> Some kind
       | _ -> None
 
-  let check_hidden (map:string Utils.SMap.t) (id:string) (src:t_source) : bool =
+  let check_hidden lc (map:string Utils.SMap.t) (id:string) (src:t_source) : unit =
     match Utils.SMap.find_opt id map with
-    | None -> true
+    | None -> ()
     | Some mch ->
       begin match src with
-        | Machine _ | Refined -> false
-        | Included mch2 | Seen mch2 -> String.equal mch mch2.r_str
+        | Machine _ | Refined ->
+          Error.error lc ("Hidden clash: the identifier '"^id ^"' is already declared in '"^mch^"'.")
+        | Included mch2 | Seen mch2 ->
+          if not (String.equal mch mch2.r_str) then
+            Error.error lc ("Hidden clash: the identifier '"^id ^"' is declared in '"^mch^"' and '"^mch2.r_str^"'.")
       end
 
 end
@@ -398,8 +416,12 @@ module Imp = struct
     | S_Redeclared_In_Seen of ren_ident
     | S_Redeclared_In_Imported of ren_ident
 
+  type t_param_source =
+    | P_Machine of loc
+    | P_Seen of ren_ident
+
   type t_kind =
-    | Parameter of t_param_kind*loc
+    | Parameter of t_param_kind*t_param_source
     | Abstract_Variable of t_abstract_decl
     | Abstract_Constant of t_abstract_decl
     | Concrete_Variable of t_concrete_var_decl
@@ -465,7 +487,8 @@ module Imp = struct
     | K_Enumerate -> Enumerate (to_concrete_data_decl src)
     | K_Parameter k ->
       begin match src with
-        | Machine l -> Parameter (k,l)
+        | Machine l -> Parameter (k,P_Machine l)
+        | Seen l -> Parameter (k,P_Seen l)
         | _ -> failwith "Internal error: Global.Imp.mk_kind"
       end
 
@@ -555,13 +578,16 @@ module Imp = struct
     | O_Local_Spec l1 , Machine l2 -> Some (O_Local_Spec_And_Implem (l1,l2))
     | _, _ -> None
 
-  let check_hidden (map:string Utils.SMap.t) (id:string) (src:t_source) : bool =
+  let check_hidden lc (map:string Utils.SMap.t) (id:string) (src:t_source) : unit =
     match Utils.SMap.find_opt id map with
-    | None -> true
+    | None -> ()
     | Some mch ->
       begin match src with
-        | Machine _ | Refined -> false
-        | Imported mch2 | Seen mch2 -> String.equal mch mch2.r_str
+        | Machine _ | Refined ->
+          Error.error lc ("Hidden clash: the identifier '"^id ^"' is already declared in '"^mch^"'.")
+        | Imported mch2 | Seen mch2 ->
+          if not (String.equal mch mch2.r_str) then
+            Error.error lc ("Hidden clash: the identifier '"^id ^"' is declared in '"^mch^"' and '"^mch2.r_str^"'.")
       end
 end
 
@@ -619,13 +645,14 @@ type ('sy_ki,'op_ki,'src) func = (
   type t_source = 'src
 )
 
-let merge_hidden (env:_ t) (map:string Utils.SMap.t) : unit =
+let merge_hidden lc (env:_ t) (map:string Utils.SMap.t) : unit =
   let aux (id:string) (mch:string) (map:string Utils.SMap.t) =
     match Utils.SMap.find_opt id map with 
     | None -> Utils.SMap.add id mch map
     | Some mch2 ->
       if String.equal mch mch2 then Utils.SMap.add id mch map
-      else assert false (*FIXME error*)
+      else Error.error lc ("Hidden clash: the identifier '"^id^
+                           "' is declared in '"^mch^"' and '"^mch2^"'.")
   in
   env.hidden_types <- Utils.SMap.fold aux map env.hidden_types
 
@@ -656,10 +683,8 @@ let _add_symbol (type a b src) (f:(a,b,src) func) (env:(a,b)t) (err_loc:loc)
     else
       Hashtbl.replace env.symb id { sy_typ; sy_kind }
   | None ->
-      if F.check_hidden env.hidden_types id src then
-        Hashtbl.add env.symb id { sy_typ; sy_kind=F.mk_kind ki src }
-      else
-        assert false (*FIXME error hidden clash*)
+    ( F.check_hidden err_loc env.hidden_types id src;
+      Hashtbl.add env.symb id { sy_typ; sy_kind=F.mk_kind ki src } )
 
 let add_symbol (type a b) (env:(a,b) t) l id ty ki : unit =
   match env.witness with
@@ -705,7 +730,8 @@ let _add_operation (type a b src) (f:(a,b,src)func) (env:(a,b)t) (err_loc:loc) (
     begin match F.mk_op_source src with
       | Some op_src ->
         Hashtbl.add env.ops id { op_args_in; op_args_out; op_readonly; op_src }
-      | None -> assert false (*FIXME error*)
+      | None ->
+        Error.error err_loc "No corresponding operation in the refined machine."
     end
 
 let add_operation (type a b) (env:(a,b) t) (loc:loc) (id:string)
@@ -733,30 +759,30 @@ let add_local_operation  (env:iEnv) (lc:loc) (id:string)
                              op_src=Imp.O_Local_Spec lc }
 
 let mch_promote l = function
-  | Mch.O_Included mch -> Some (Mch.O_Included_And_Promoted (l,mch))
-  | _ -> None
+  | Mch.O_Included mch -> Mch.O_Included_And_Promoted (l,mch)
+  | _ -> Error.error l ("This operation is not an operation of an included or extended machine.")
 
 let ref_promote l = function
-  | Ref.O_Refined_And_Included mch -> Some (Ref.O_Refined_Included_And_Promoted (l,mch))
-  | Ref.O_Included _ -> assert false (*FIXME error*)
-  | Ref.O_Refined_Included_And_Promoted _ -> assert false (*FIXME err*)
-  | _ -> None
+  | Ref.O_Refined_And_Included mch -> Ref.O_Refined_Included_And_Promoted (l,mch)
+  | Ref.O_Included _ -> Error.error l "No corresponding operation in the refined machine"
+  | Ref.O_Refined_Included_And_Promoted _ -> 
+    Error.error l "This operation is already promoted"
+  | Ref.O_Refined | Ref.O_Seen _ | Ref.O_Refined_And_Machine _ ->
+    Error.error l ("This operation is not an operation of an included or extended machine.")
 
 let imp_promote lc = function
-  | Imp.O_Imported_And_Refined mch -> Some (Imp.O_Imported_Promoted_And_Refined (mch,lc))
-  | Imp.O_Imported _ -> assert false (*FIXME error*)
-  | Imp.O_Imported_Promoted_And_Refined _ -> assert false (*FIXME error*)
-  | _ -> None
+  | Imp.O_Imported_And_Refined mch -> Imp.O_Imported_Promoted_And_Refined (mch,lc)
+  | Imp.O_Imported _ -> Error.error lc "No corresponding operation in the refined machine"
+  | Imp.O_Imported_Promoted_And_Refined _ ->
+    Error.error lc "This operation is already promoted"
+  | Imp.O_Refined | Imp.O_Seen _ | Imp.O_Local_Spec _
+  | Imp.O_Local_Spec_And_Implem _ | Imp.O_Current_And_Refined _ ->
+    Error.error lc ("This operation is not an operation of an included or extended machine.")
 
 let _promote_operation (type a b) promote (env:(a,b) t) (lc:loc) (id:string) : unit =
   match get_operation env id with
   | None -> Error.error lc ("Unknown operation '"^id^"'.")
-  | Some op ->
-    begin match promote lc op.op_src with
-      | Some op_src -> Hashtbl.replace env.ops id { op with op_src }
-      | None ->
-        Error.error lc ("The operation '"^id^"' is not an operation of an included/imported/extended machine.")
-    end
+  | Some op -> Hashtbl.replace env.ops id { op with op_src=promote lc op.op_src }
 
 let promote_operation (type a b) (env:(a,b) t) l id : unit =
   match env.witness with
@@ -806,26 +832,40 @@ let load_external_op (type a b src) (f:(a,b,src)func) (env:(a,b)t)
   _add_operation f env mch.SyntaxCore.r_loc op_name (op.args_in) (op.args_out) src op.readonly
 
 let load_interface_for_used_machine (env:mEnv) (itf:t_interface) (mch:ren_ident) : unit =
-  (*FIXME check not already in deps*)
-  (*FIXME parameters*)
-  merge_hidden env itf.hidden;
+  (*XXX check not already in deps*)
+  merge_hidden mch.r_loc env itf.hidden;
   let open MachineInterface in
+  List.iter (
+    fun p -> load_external_symbol mFunc env Utils.SMap.empty mch (Mch.Used mch)
+        {id=p.id;typ=p.typ;kind=K_Parameter p.kind}
+  ) itf.params;
   List.iter (load_external_symbol mFunc env Utils.SMap.empty mch (Mch.Used mch)) itf.symbs;
   env.deps <- mch.r_str::env.deps
 
 let load_interface_for_seen_machine (type a b) (env:(a,b) t) (itf:t_interface) (mch:ren_ident) : unit =
   let open MachineInterface in
-  (*FIXME check not already in deps*)
-  (*FIXME parameters*)
-  merge_hidden env itf.hidden;
+  (*XXX check not already in deps*)
+  merge_hidden mch.r_loc env itf.hidden;
   (match env.witness with
   | Mch ->
+    List.iter (
+      fun p -> load_external_symbol mFunc env Utils.SMap.empty mch (Mch.Seen mch)
+          {id=p.id;typ=p.typ;kind=K_Parameter p.kind}
+    ) itf.params;
     List.iter (load_external_symbol mFunc env Utils.SMap.empty mch (Mch.Seen mch)) itf.symbs;
     List.iter (load_external_op mFunc env mch (Mch.Seen mch)) itf.ops
   | Ref ->
+    List.iter (
+      fun p -> load_external_symbol rFunc env Utils.SMap.empty mch (Ref.Seen mch)
+          {id=p.id;typ=p.typ;kind=K_Parameter p.kind}
+    ) itf.params;
     List.iter (load_external_symbol rFunc env Utils.SMap.empty mch (Ref.Seen mch)) itf.symbs;
     List.iter (load_external_op rFunc env mch (Ref.Seen mch)) itf.ops
   | Imp ->
+    List.iter (
+      fun p -> load_external_symbol iFunc env Utils.SMap.empty mch (Imp.Seen mch)
+          {id=p.id;typ=p.typ;kind=K_Parameter p.kind}
+    ) itf.params;
     List.iter (load_external_symbol iFunc env Utils.SMap.empty mch (Imp.Seen mch)) itf.symbs;
     List.iter (load_external_op iFunc env mch (Imp.Seen mch)) itf.ops );
   env.deps <- mch.r_str::env.deps
@@ -851,7 +891,7 @@ let rec check_set_params err_loc lst1 lst2 alias =
     end
   | _, _ -> Error.error err_loc "Wrong number of parameters."
 
-let rec check_scalar_params alias lst1 lst2 =
+let rec check_scalar_params err_loc alias lst1 lst2 =
   let open MachineInterface in
   match lst1, lst2 with
   | [], [] -> ()
@@ -859,7 +899,7 @@ let rec check_scalar_params alias lst1 lst2 =
     begin match hd1.kind with
       | Scalar ->
         if Btype.equal (Btype.subst alias hd1.typ) hd2 then
-          check_scalar_params alias tl1 tl2
+          check_scalar_params err_loc alias tl1 tl2
         else
           let err_txt = Printf.sprintf
               "This expression has type '%s' but an expression of type '%s' was expected."
@@ -867,16 +907,17 @@ let rec check_scalar_params alias lst1 lst2 =
               (Btype.Open.to_string (Btype.Open.mk_Power (Btype.Open.new_meta ())))
           in
           Error.error lc err_txt
-      | Set -> check_scalar_params alias tl1 tl2
+      | Set -> check_scalar_params err_loc alias tl1 tl2
     end
-  | _, _ -> assert false (*FIXME error *)
+  | _, _ -> Error.error err_loc "Wrong number of parameters."
 
-let load_interface_for_included_or_imported_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
+let load_interface_for_included_or_imported_machine (type a b) (env:(a,b)t)
+    (itf:t_interface) (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
   let open MachineInterface in
-  (*FIXME check not already in deps*)
-  merge_hidden env itf.hidden;
+  (*XXX check not already in deps*)
+  merge_hidden mch.r_loc env itf.hidden;
   let alias = check_set_params mch.r_loc itf.params params Utils.SMap.empty in
-  check_scalar_params alias itf.params params;
+  check_scalar_params mch.r_loc alias itf.params params;
   (match env.witness with
   | Mch ->
     List.iter (load_external_symbol mFunc env alias mch (Mch.Included mch)) itf.symbs;
@@ -907,9 +948,10 @@ let rec check_param err_loc (add_param:loc -> MachineInterface.t_param -> unit)
     | hd1::_, [] -> Error.error hd1.lid_loc "Parameter mismatch."
     | [], hd2::_ -> Error.error err_loc ("Missing parameter '"^hd2.id^"'.")
 
-let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface) (mch:lident) (params:lident list) : unit =
-  (*FIXME check not already in deps*)
-  merge_hidden env itf.hidden;
+let load_interface_for_refined_machine (type a b) (env:(a,b)t) (itf:t_interface)
+    (mch:lident) (params:lident list) : unit =
+  (*XXX check not already in deps*)
+  merge_hidden mch.lid_loc env itf.hidden;
   let open MachineInterface in
   let ren_mch = { SyntaxCore.r_prefix=None; r_str=mch.lid_str; r_loc=mch.lid_loc } in
   ( match env.witness with
@@ -968,79 +1010,3 @@ let check_operation_coherence (env:iEnv) (lc:loc) : unit =
       | Imp.O_Imported_And_Refined _ ->
         Error.error lc ("The operation '"^x^"' is not refined (missing promotion?).")
   ) env.ops
-(*
-
-
-
-let load_interface_for_included_or_imported_machine (env:'a t) (itf:MachineInterface.t)
-    (mch:ren_ident) (params:(loc*Btype.t) list) : unit =
-  let open MachineInterface in
-  
-  List.iter (fun (S { id;typ;kind}:t_symb) ->
-      match kind with
-      | G_Parameter _ -> ()
-      | G_Abstract_Variable ->
-        let ren_id = match mch.r_prefix with
-          | None -> id
-          | Some p -> p ^ "." ^ id 
-        in
-        _add_symbol env mch.SyntaxCore.r_loc ren_id (Btype.subst alias typ) kind (S_Included_Or_Imported mch)
-      | G_Concrete_Variable ->
-        let ren_id = match mch.r_prefix with
-          | None -> id
-          | Some p -> p ^ "." ^ id 
-        in
-        _add_symbol env mch.SyntaxCore.r_loc ren_id (Btype.subst alias typ) kind (S_Included_Or_Imported mch)
-      | _ ->
-        begin match mch.r_prefix with
-          | None ->
-            _add_symbol env mch.SyntaxCore.r_loc id typ kind (S_Included_Or_Imported mch)
-          | Some _ ->
-            if is_in_deps env mch.SyntaxCore.r_str then ()
-            else
-              _add_symbol env mch.SyntaxCore.r_loc id typ kind (S_Included_Or_Imported mch)
-        end
-    ) (get_symbols itf);
-  List.iter (fun (r:t_op) ->
-      let op_name = match mch.SyntaxCore.r_prefix with
-        | None -> r.id
-        | Some p -> p ^ "." ^ r.id
-      in
-      _add_operation env mch.SyntaxCore.r_loc op_name r.args_in r.args_out r.readonly (SO_Included_Or_Imported mch)
-    ) (get_operations itf);
-  env.deps <- mch.r_str::env.deps
-
-let load_interface_for_refined_machine (env:t_ref t) (itf:MachineInterface.t) (mch:lident) (params:lident list): unit =
-  let open MachineInterface in
-  let rec check_param (lst1:lident list) (lst2:t_param list) =
-    match lst1, lst2 with
-    | [], [] -> ()
-    | hd1::tl1, hd2::tl2 ->
-      if hd1.lid_str = hd2.id then
-        ( _add_symbol env hd1.lid_loc hd2.id hd2.typ (G_Parameter hd2.kind) (S_Current hd1.lid_loc);
-          check_param tl1 tl2 )
-      else Error.error hd1.lid_loc "Parameter mismatch."
-    | hd1::_, [] -> Error.error hd1.lid_loc "Parameter mismatch."
-    | [], hd2::_ -> Error.error mch.lid_loc ("Missing parameter '"^hd2.id^"'.")
-  in
-  check_param params (get_params itf);
-  List.iter (fun (S { id;typ;kind}:t_symb) ->
-      _add_symbol env mch.SyntaxCore.lid_loc id typ kind (S_Refined mch)
-    ) (get_symbols itf);
-  List.iter (fun (r:t_op) ->
-      _add_operation env mch.SyntaxCore.lid_loc r.id r.args_in r.args_out r.readonly (SO_Refined mch)
-    ) (get_operations itf);
-  env.deps <- mch.lid_str::env.deps
-
-
-
-let add_abstract_sets (src:Btype.t_atomic_src) (accu:(Btype.t_atomic_src*string) list)
-    (itf:t_interface) : (Btype.t_atomic_src*string) list =
-  let open MachineInterface in
-  let aux accu (x:t_symb) = match x.kind with
-    | G_Abstract_Set -> (src,x.id)::accu
-    | _ -> accu
-  in
-  List.fold_left aux accu (get_symbols itf)
-   *)
-

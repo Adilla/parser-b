@@ -3,13 +3,22 @@ module G = Global
 let extended_sees = ref false
 
 module Mch = struct
+
+  type t_source = [
+      `Machine of Utils.loc
+    | `Seen of SyntaxCore.lident
+    | `Included of SyntaxCore.ren_ident
+    | `Used of SyntaxCore.ren_ident
+  ]
+
+
   module Constraints = struct
     type t =
       | Expr_Binder
-      | Parameter of Global.t_param_kind*Utils.loc 
+      | Parameter of Global.t_param_kind*[`Machine of Utils.loc]
 
     let mk_global = function
-      | G.Mch.Parameter (k,l) -> Some (Parameter (k,l))
+      | G.Mch.Parameter (k,G.Mch.P_Machine l) -> Some (Parameter (k,`Machine l))
       | _ -> None
 
     let mk_local = function
@@ -28,7 +37,7 @@ module Mch = struct
       | Enumerate of t_source
 
     let mk_global = function
-      | G.Mch.Parameter (k,l) -> Some (Parameter (k,l))
+      | G.Mch.Parameter (k,G.Mch.P_Machine l) -> Some (Parameter (k,l))
       | G.Mch.Concrete_Constant (Global.Mch.Machine l) -> Some (Concrete_Constant (Machine l))
       | G.Mch.Concrete_Constant (Global.Mch.Seen mch) -> Some (Concrete_Constant (Seen mch))
       | G.Mch.Abstract_Set (Global.Mch.Machine l) -> Some (Abstract_Set (Machine l))
@@ -50,7 +59,7 @@ module Mch = struct
       | Global of G.Mch.t_kind
       | Local of Local.t_local_kind
 
-    let mk_global x = Some (Global x)
+    let mk_global x = Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_local x = Local x
   end
@@ -85,11 +94,11 @@ module Mch = struct
       | Expr_Binder
 
     let mk_global x =
-      if !extended_sees then Some (Global x)
+      if !extended_sees then Some (Global x) (*FIXME pas parametre seen*)
       else match x with
       | G.Mch.Abstract_Variable (G.Mch.Seen _) -> None
       | G.Mch.Concrete_Variable (G.Mch.Seen _) -> None
-      | _ -> Some (Global x)
+      | _ -> Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_local = function
       | Local.L_Expr_Binder -> Expr_Binder
@@ -113,7 +122,7 @@ module Mch = struct
       | O_Included of SyntaxCore.ren_ident
       | O_Included_And_Promoted of SyntaxCore.ren_ident
 
-    let mk_global x = Some (Global x)
+    let mk_global x = Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_global_mut = function
       | G.Mch.Abstract_Variable (G.Mch.Machine l) -> Some (Abstract_Variable (l))
@@ -152,7 +161,7 @@ module Ref = struct
       | Enumerate of t_source
 
     let mk_global = function 
-      | G.Ref.Parameter (k,l) -> Some (Parameter (k,l))
+      | G.Ref.Parameter (k,G.Ref.P_Machine l) -> Some (Parameter (k,l))
       | G.Ref.Concrete_Constant (Global.Ref.A_Machine l) -> Some (Concrete_Constant (Machine l))
       | G.Ref.Concrete_Constant (Global.Ref.A_Seen mch) -> Some (Concrete_Constant (Seen mch))
       | G.Ref.Concrete_Constant (Global.Ref.A_Refined) -> Some (Concrete_Constant (Refined))
@@ -178,7 +187,7 @@ module Ref = struct
       | Global of G.Ref.t_kind
       | Local of Local.t_local_kind
 
-    let mk_global x = Some (Global x)
+    let mk_global x = Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_local x = Local x
   end
@@ -213,11 +222,11 @@ module Ref = struct
       | Expr_Binder
 
     let mk_global x =
-      if !extended_sees then Some (Global x)
+      if !extended_sees then Some (Global x) (*FIXME pas parametre seen*)
       else match x with
       | G.Ref.Abstract_Variable (G.Ref.A_Seen _) -> None
       | G.Ref.Concrete_Variable (G.Ref.A_Seen _) -> None
-      | _ -> Some (Global x)
+      | _ -> Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_local = function
       | Local.L_Expr_Binder -> Expr_Binder
@@ -232,7 +241,7 @@ module Ref = struct
     let mk_global = function 
       | G.Ref.Abstract_Variable G.Ref.A_Refined
       | G.Ref.Abstract_Constant G.Ref.A_Refined -> None
-      | x -> Some (Global x)
+      | x -> Some (Global x) (*FIXME pas parametre seen*)
 
     type t_source_1 =
       | A_Machine of Utils.loc
@@ -297,7 +306,8 @@ module Imp = struct
       | Enumerate of t_source
 
     let mk_global = function 
-      | G.Imp.Parameter (k,l) -> Some (Parameter (k,l))
+      | G.Imp.Parameter (k,G.Imp.P_Machine l) -> Some (Parameter (k,l))
+      | G.Imp.Parameter (_,G.Imp.P_Seen _) -> None
       | G.Imp.Concrete_Constant (G.Imp.C_Machine l) -> Some (Concrete_Constant (Machine l))
       | G.Imp.Concrete_Constant (G.Imp.C_Seen mch) -> Some (Concrete_Constant (Seen mch))
       | G.Imp.Concrete_Constant (G.Imp.C_Refined) -> Some (Concrete_Constant (Refined))
@@ -332,7 +342,7 @@ module Imp = struct
       | Global of G.Imp.t_kind
       | Local of Local.t_local_kind
 
-    let mk_global x = Some (Global x)
+    let mk_global x = Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_local x = Local x
   end
@@ -367,11 +377,11 @@ module Imp = struct
       | Expr_Binder
 
     let mk_global x =
-      if !extended_sees then Some (Global x)
+      if !extended_sees then Some (Global x) (*FIXME pas parametre seen*)
       else match x with
       | G.Imp.Abstract_Variable (G.Imp.A_Seen _) -> None
       | G.Imp.Concrete_Variable (G.Imp.V_Seen _) -> None
-      | _ -> Some (Global x)
+      | _ -> Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_local = function
       | Local.L_Expr_Binder -> Expr_Binder
@@ -385,7 +395,7 @@ module Imp = struct
 
     let mk_global = function 
       | G.Imp.Abstract_Variable _ | G.Imp.Abstract_Constant _ -> None
-      | x -> Some (Global x)
+      | x -> Some (Global x) (*FIXME pas parametre seen*)
 
     type t_source =
       | Machine of Utils.loc
@@ -439,7 +449,7 @@ module Imp = struct
     let mk_global = function 
       | G.Imp.Abstract_Variable G.Imp.A_Refined
       | G.Imp.Abstract_Constant G.Imp.A_Refined -> None
-      | x -> Some (Global x)
+      | x -> Some (Global x) (*FIXME pas parametre seen*)
 
     let mk_local x = Local x
 

@@ -65,7 +65,6 @@ let args = [
   ("-v", Arg.Unit (fun () -> Log.set_verbose true) , "Verbose mode" );
   ("-keep-macro-loc", Arg.Set MacroLexer.keep_macro_loc, "Keep macro locations");
   ("-x", Arg.Set Visibility.extended_sees, "Extended SEES" );
-  ("-a", Arg.Set Typechecker.allow_becomes_such_that_in_implementation, "Allow the substitution 'Becomes Such That' in implementations" );
 ]
 
 let _ =

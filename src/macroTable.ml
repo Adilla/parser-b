@@ -58,7 +58,7 @@ let print out (defs:t) : unit =
       | ABSTRACT_CONSTANTS, _, _ | CONCRETE_CONSTANTS, _, _
       | CONSTANTS, _, _ | VALUES, _, _ | ABSTRACT_VARIABLES, _, _
       | VARIABLES, _, _ | CONCRETE_VARIABLES, _, _ | INVARIANT, _, _
-      (*FIXME invariant might be part of a while construct and not the beginnig of a clause*)
+      (*XXX invariant might be part of a while construct and not the beginnig of a clause*)
       | ASSERTIONS, _, _ | INITIALISATION, _, _ | OPERATIONS, _, _
       | LOCAL_OPERATIONS, _, _ | EOF, _, _ | PROPERTIES, _, _ ->
         (List.iter (L.push_token s) (next::accu);false)

@@ -10,15 +10,6 @@ This repository provides a set of command-line tools for parsing, checking and t
   * `b2sexp` prints the AST of a B machine as an s-expression (mostly useful for debugging the parser).
   * `bdefs` dumps the definition table (mostly useful for debugging the lexer).
 
-### Known limitations
-
-#### All tools:
-  * Machine renaming is not supported.
-
-#### `btypechecks`:
-  * Machines with parameters are not supported.
-  * The following clauses are not supported: PARAMETERS, CONSTRAINTS.
-
 ### Experimental B to Ada and Rust translators
   * [Ada](https://github.com/rsaill/parser-b/tree/b2ada)
   * [Rust](https://github.com/rsaill/parser-b/tree/rework_rust)

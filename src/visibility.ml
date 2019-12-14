@@ -4,62 +4,58 @@ let extended_sees = ref false
 
 module Mch = struct
 
-  type t_source = [
-      `Machine of Utils.loc
-    | `Seen of SyntaxCore.lident
-    | `Included of SyntaxCore.ren_ident
-    | `Used of SyntaxCore.ren_ident
-  ]
-
+  type t_kind =
+    | Local of Local.t_local_kind
+    | Global of G.Mch.t_kind
 
   module Constraints = struct
-    type t =
-      | Expr_Binder
-      | Parameter of Global.t_param_kind*[`Machine of Utils.loc]
+    type t = private t_kind
 
     let mk_global = function
-      | G.Mch.Parameter (k,G.Mch.P_Machine l) -> Some (Parameter (k,`Machine l))
+      | G.Mch.Parameter (_,G.Mch.P_Machine _) as x -> Some (Global x)
       | _ -> None
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Expr_Binder
+      | Local.L_Expr_Binder as x -> Local x
       | _ -> assert false
   end
 
   module Includes = struct
-    type t_source = Machine of Utils.loc | Seen of SyntaxCore.ren_ident
-    type t =
-      | Expr_Binder
-      | Parameter of G.t_param_kind*Utils.loc 
-      | Concrete_Constant of  t_source
-      | Concrete_Set of string list * t_source
-      | Abstract_Set of t_source
-      | Enumerate of t_source
+    type t = private t_kind
 
-    let mk_global = function
-      | G.Mch.Parameter (k,G.Mch.P_Machine l) -> Some (Parameter (k,l))
-      | G.Mch.Concrete_Constant (Global.Mch.Machine l) -> Some (Concrete_Constant (Machine l))
-      | G.Mch.Concrete_Constant (Global.Mch.Seen mch) -> Some (Concrete_Constant (Seen mch))
-      | G.Mch.Abstract_Set (Global.Mch.Machine l) -> Some (Abstract_Set (Machine l))
-      | G.Mch.Abstract_Set (Global.Mch.Seen mch) -> Some (Abstract_Set (Seen mch))
-      | G.Mch.Concrete_Set (elts,Global.Mch.Machine l) -> Some (Concrete_Set (elts,Machine l))
-      | G.Mch.Concrete_Set (elts,Global.Mch.Seen mch) -> Some (Concrete_Set (elts,Seen mch))
-      | G.Mch.Enumerate (Global.Mch.Machine l) -> Some (Enumerate (Machine l))
-      | G.Mch.Enumerate (Global.Mch.Seen mch) -> Some (Enumerate (Seen mch))
+    let mk_global x =
+      match x with
+      | G.Mch.Parameter (_,G.Mch.P_Machine _)
+      | G.Mch.Concrete_Constant (Global.Mch.Machine _)
+      | G.Mch.Concrete_Constant (Global.Mch.Seen _)
+      | G.Mch.Abstract_Set (Global.Mch.Machine _)
+      | G.Mch.Abstract_Set (Global.Mch.Seen _)
+      | G.Mch.Concrete_Set (_,Global.Mch.Machine _)
+      | G.Mch.Concrete_Set (_,Global.Mch.Seen _)
+      | G.Mch.Enumerate (Global.Mch.Machine _)
+      | G.Mch.Enumerate (Global.Mch.Seen _) -> Some x
       | _ -> None
 
     let mk_local = function
-      | Local.L_Expr_Binder -> Expr_Binder
+      | Local.L_Expr_Binder as x -> Local x
       | _ -> assert false
 
   end
 
   module Assert = struct
-    type t =
-      | Global of G.Mch.t_kind
-      | Local of Local.t_local_kind
+    type t = private t_kind
 
-    let mk_global x = Some (Global x) (*FIXME pas parametre seen*)
+    let mk_global = function
+      | G.Mch.Parameter (k,G.Mch.P_Machine l) -> Some (Parameter (k,`Machine l))
+      | G.Mch.Concrete_Constant (Global.Mch.Machine l) -> Some (Concrete_Constant (`Machine l))
+      | G.Mch.Concrete_Constant (Global.Mch.Seen mch) -> Some (Concrete_Constant (`Seen mch))
+      | G.Mch.Abstract_Set (Global.Mch.Machine l) -> Some (Abstract_Set (`Machine l))
+      | G.Mch.Abstract_Set (Global.Mch.Seen mch) -> Some (Abstract_Set (`Seen mch))
+      | G.Mch.Concrete_Set (elts,Global.Mch.Machine l) -> Some (Concrete_Set (elts,`Machine l))
+      | G.Mch.Concrete_Set (elts,Global.Mch.Seen mch) -> Some (Concrete_Set (elts,`Seen mch))
+      | G.Mch.Enumerate (Global.Mch.Machine l) -> Some (Enumerate (`Machine l))
+      | G.Mch.Enumerate (Global.Mch.Seen mch) -> Some (Enumerate (`Seen mch))
+
 
     let mk_local x = Local x
   end

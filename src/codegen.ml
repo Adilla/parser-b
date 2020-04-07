@@ -910,6 +910,40 @@ end
 
 module Ada = Make(Ada_ident)
 
+
+module ML_ident = 
+struct 
+  let reserved_list = [
+    "auto"; "break"; "case"; "char";
+    "const"; "continue"; "default"; "do";
+    "int"; "long"; "register"; "return";
+    "short"; "signed"; "sizeof"; "static";
+    "struct"; "switch"; "typedef"; "union";
+    "unsigned"; "void"; "volatile"; "while";
+    "double"; "else"; "enum"; "extern";
+    "float"; "for"; "goto"; "if" ]
+
+  let reserved_set = List.fold_left (fun x y -> SSet.add y x) SSet.empty reserved_list
+
+  type t = string
+  let to_string x = x
+  type t_pkg_id = string
+  let pkg_to_string x = xor
+
+  let is_valid_c_id (id:string) : bool =
+    let reg = Str.regexp {|[a-zA-Z]\(_?[a-zA-Z0-9]\)*$|} in 
+    not ( SSet.mem (String.lowercase_ascii id) reserved_set) &&
+    (Str.string_match reg id 0)
+
+  let make x = 
+    if is_valid_c_id x then Some x
+    else None
+
+  let make_pkg_id x = make
+end 
+
+module ML = Make(ML_ident)
+
 module Rust_ident =
 struct
   let reserved_list = [

@@ -1,0 +1,4 @@
+(executable
+ (name b2ml)
+ (libraries easy-format str blib)
+)

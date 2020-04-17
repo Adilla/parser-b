@@ -25,7 +25,7 @@ let b0_constant_to_string : t_b0_constant -> string = function
   | B0_MaxInt -> "max_int" (** Dunno if I have to Int32 or Int64 **)
   | B0_MinInt -> "min_int"
   | B0_True -> "true"
-  | B0_False -> "talse"
+  | B0_False -> "false"
 
 let b0_binary_op_to_string : t_b0_binary_op -> string = function
   | B0_Conjonction -> "&&"
@@ -78,8 +78,14 @@ let mk_fun_app (f:Easy_format.t) (args:Easy_format.t Nlist.t) : Easy_format.t  =
              align_closing = false;
              wrap_body = `Wrap_atoms;
              indent_body = 2 } in
-  mk_label 2 false `Auto f (mk_list "(" "," ")" st (Nlist.to_list args))
+  mk_label 2 false `Auto f (mk_list "" "" "" st (Nlist.to_list args))
+  (* this should represent a call according to the following syntax: 
+   func_name arg1 arg2 ... argn *)
+  (* mk_label 2 false `Auto f (mk_list "(" "," ")" st (Nlist.to_list args)) *)
 
+
+(* I don't need two different types of function calls in OCaml.
+  Will use only the one above *)
 let mk_proc_call (f:string) (args:Easy_format.t list) : Easy_format.t  =
   let st = { Easy_format.list with
              Easy_format.space_after_opening = false;
@@ -92,6 +98,8 @@ let mk_proc_call (f:string) (args:Easy_format.t list) : Easy_format.t  =
              wrap_body = `Wrap_atoms;
              indent_body = 2 } in
   mk_label 2 false `Auto (mk_atom f) (mk_list "(" "," ");" st args)
+
+
 
 (*
 let mk_array_init (e:Easy_format.t) : Easy_format.t =
@@ -172,7 +180,9 @@ let mk_sequence_nl (lst:Easy_format.t list) : Easy_format.t =
              align_closing = false;
              wrap_body = `Force_breaks;
              indent_body = 0 } in
-  mk_list "" "" "" st lst
+  mk_list "" ";" "" st lst 
+  (* Sequences in ocaml are e1; e2; e3 *)
+  (* mk_list "" "" "" st lst *)
 
 let rec get_seq_list (s:t_b0_subst) =
   match s.sub0_desc with
@@ -188,7 +198,7 @@ let b0_type_to_string lc : t_b0_type -> string = function
   | T_Int -> "int"
   | T_Bool -> "bool"
   | T_String -> "string"
-  | T_Abstract ts -> t_symb_to_string ts
+  | T_Abstract ts -> t_symb_to_string ts (* Not sure how this can be translted in ocaml *)
   | T_Enum ts -> t_symb_to_string ts
   | T_Array _ -> Error.raise_exn lc "Array types not supported."
   | T_Record _ -> Error.raise_exn lc "Record types not supported."
@@ -200,7 +210,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
     let var = mk_atom (Codegen.ML_ident.to_string x) in
     let def = mk_expr e in
     let st = Easy_format.list in
-    mk_list "" "=" ";;" st [var;def]
+    mk_list "let" "=" ";" st [var;def]   (* Check how this can become a let xx = bb in *)
   | B0_Affectation (LHS_Array _,_) ->
     Error.raise_exn s0.sub0_loc "Array types not supported."
   | B0_Affectation (LHS_Record _,_) ->
@@ -238,7 +248,7 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
           | CS_Enum e -> mk_ident e
         ) (Nlist.to_list lst) in
       let st = Easy_format.list in
-      let whn = mk_list "  |" "," "->" st lst in
+      let whn = mk_list " |" "," "->" st lst in (* Ici il construit juste une liste *)
       mk_label 4 true `Auto whn (mk_subst s)
     in
     let clst = List.map aux (Nlist.to_list cases) in
@@ -246,40 +256,46 @@ let rec mk_subst (s0:t_b0_subst) : Easy_format.t =
       | None -> case::(clst)
       (* | None -> case::(clst@[mk_atom "}"]) *)
       | Some s ->
-        let others = mk_label 4 true `Auto (mk_atom "  _") (mk_subst s) in
+        let others = mk_label 4 true `Auto (mk_atom " _") (mk_subst s) in
         case::(clst)
         (* case::(clst@[others;mk_atom "}"]) *)
     in
     mk_sequence_nl lst
-  | B0_Var (vars,s) ->
+  (* | B0_Var (vars,s) -> (* Note that there is no variable declaration in Ocaml *)
     let aux (id,ty) = mk_atom (Codegen.ML_ident.to_string id ^ ": " ^ b0_type_to_string s0.sub0_loc ty ^ ";") in
     let st = Easy_format.list in
     let vars = mk_list "" "" "" st (List.map aux (Nlist.to_list vars)) in
     let decl = mk_label 2 true `Always_rec (mk_atom "declare") vars in
     let st = Easy_format.list in
     let block = mk_list "{" "" "}" st [mk_subst s] in
-    mk_sequence_nl [decl;block]
+    mk_sequence_nl [decl;block] *)
+  | B0_Var (vars,s) ->
+    let st = Easy_format.list in 
+    let block = mk_list "" "" "" st [mk_subst s] in
+    mk_sequence_nl block
   | B0_While (cond,s) ->
     mk_sequence_nl [ mk_label 2 true `Always_rec (mk_atom "while") (mk_expr cond);
-                     mk_label 2 true `Always_rec ("{") (mk_subst s);
-                     mk_atom "}"]
-  | B0_CallUp ([],f,[]) -> mk_atom (t_symb_to_string f ^ ";")
+                     mk_label 2 true `Always_rec ("do") (mk_subst s);
+                     mk_atom "done"]
+  | B0_CallUp ([],f,[]) -> mk_atom (t_symb_to_string f ^ ";;")
   | B0_CallUp (out,f,args) ->
     let args = (List.map mk_expr args)@
                (List.map (fun (_,x) -> mk_atom (Codegen.ML_ident.to_string x)) out) in
     mk_proc_call (t_symb_to_string f) args
   | B0_Sequencement _ ->
     begin match get_seq_list s0 with
-      | [] -> mk_atom "null;"
+      | [] -> mk_atom "();"
       | seqs ->
         let seqs = List.map (fun s -> mk_subst s) seqs in
         let st = Easy_format.list in
         mk_list "" "" "" st seqs
     end
 
-let mk_dep (dep,_:Codegen.ML_ident.t_pkg_id*_) =
-  mk_atom ("with " ^ Codegen.ML_ident.pkg_to_string dep ^ ";")
 
+let mk_dep (dep,_:Codegen.ML_ident.t_pkg_id*_) =
+  mk_atom ("open " ^ Codegen.ML_ident.pkg_to_string dep ^ ";")
+
+(* Does not apply *)
 let mk_type (ty:t_type) : Easy_format.t =
   match ty.ty_def with
   | D_Alias ts ->
@@ -289,12 +305,15 @@ let mk_type (ty:t_type) : Easy_format.t =
     mk_atom ("subtype " ^ Codegen.ML_ident.to_string ty.ty_name ^ " is Integer;")
   | D_Enum _ -> assert false (*FIXME*)
 
+(* Does not apply *)
 let t_mode_to_string b = if b then "out" else "in"
 
+(* Does not apply *)
 let mk_arg (is_out:bool) (a:t_arg) : Easy_format.t =
   mk_label 2 true `Auto (mk_atom (Codegen.ML_ident.to_string a.arg_name^":"))
     (mk_atom (t_mode_to_string is_out^" "^ b0_type_to_string a.arg_loc a.arg_type))
 
+(* Applies differently *)
 let mk_fun_spec (f:t_fun) : Easy_format.t =
   let fn = mk_atom ("function " ^ Codegen.ML_ident.to_string f.f_name) in
   let args = List.map (mk_arg false) (Nlist.to_list f.f_args) in
@@ -457,7 +476,7 @@ let mk_fun_body (c:t_constant_or_fun) : Easy_format.t option =
   match c with
   | Cst _ -> None
   | Fun f ->
-    let fn = mk_atom ("function " ^ Codegen.ML_ident.to_string f.f_name) in
+    let fn = mk_atom ("let" ^ Codegen.ML_ident.to_string f.f_name) in
     let args = List.map (mk_arg false) (Nlist.to_list f.f_args) in
     let st = Easy_format.list in
     let fn =
@@ -466,12 +485,12 @@ let mk_fun_body (c:t_constant_or_fun) : Easy_format.t option =
         let args = mk_list "(" ";" ")" st args in
         mk_label 2 false `Auto fn args
     in
-    let ret_ty = mk_atom ("return "^b0_type_to_string f.f_loc f.f_ret.exp0_type) in
+    let ret_ty = mk_atom (" "^b0_type_to_string f.f_loc f.f_ret.exp0_type) in
     let st = Easy_format.list in
-    let ret =  mk_list  "return" "" ";" st [mk_expr f.f_ret] in
+    let ret =  mk_list  "" "" ";" st [mk_expr f.f_ret] in
     let st = Easy_format.list in
     let body = mk_list "{" "" ("end "^Codegen.ML_ident.to_string f.f_name^";") st [ret] in
-    Some (mk_sequence_nl [fn;ret_ty;mk_atom "is";body])
+    Some (mk_sequence_nl [fn;ret_ty;mk_atom "";body])
 
 let mk_local_proc_spec (p:t_procedure) : Easy_format.t option =
   if not p.p_is_local then None
